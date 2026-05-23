@@ -1,0 +1,1 @@
+# Слушатель триггера LISTEN/NOTIFY для Long Polling
