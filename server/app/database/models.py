@@ -9,6 +9,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy import Enum as SqlEnum
 
 class Base(DeclarativeBase):
     pass
@@ -17,31 +18,31 @@ class Base(DeclarativeBase):
 # СИСТЕМНЫЕ ПЕРЕЧИСЛЕНИЯ (ENUMS)
 # ============================================================================
 
-class AppRights(enum.Enum):
+class AppRights(str, enum.Enum):
     user = 'user'
     admin = 'admin'
     superadmin = 'superadmin'
 
-class DocDirection(enum.Enum):
-    internal = 'внутренние'
-    external = 'внешние'
+class DocDirection(str, enum.Enum):
+    internal = "internal"
+    external = "external"
 
-class DocStatus(enum.Enum):
-    under_review = 'на рассмотрении'
-    partially_approved = 'частично утвержден'
-    approved = 'утвержден'
-    rejected = 'отклонен'
+class DocStatus(str, enum.Enum):
+    under_review = 'under_review'
+    partially_approved = 'partially_approved'
+    approved = 'approved'
+    rejected = 'rejected'
 
-class TagPriority(enum.Enum):
-    normal = 'обычный'
-    important = 'важно'
-    urgent = 'срочно'
+class TagPriority(str, enum.Enum):
+    normal = 'normal'
+    important = 'important'
+    urgent = 'urgent'
 
-class DocumentRole(enum.Enum):
-    sender = 'отправитель'
-    executor = 'исполнитель'
-    recipient = 'получатель'
-    delegate = 'делегат'
+class DocumentRole(str, enum.Enum):
+    sender = 'sender'
+    executor = 'executor'
+    recipient = 'recipient'
+    delegate = 'delegate'
 
 # ============================================================================
 # МОДЕЛИ КЛАССИЧЕСКОЙ ОРГСТРУКТУРЫ И КАДРОВ
@@ -126,9 +127,19 @@ class Document(Base):
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    status: Mapped[DocStatus] = mapped_column(Enum(DocStatus), server_default="under_review", nullable=False, index=True)
-    type_id: Mapped[int] = mapped_column(Integer, ForeignKey("types.id", ondelete="RESTRICT"), nullable=False, index=True)
-    direction: Mapped[DocDirection] = mapped_column(Enum(DocDirection), nullable=False, index=True)
+
+    status: Mapped[DocStatus] = mapped_column(
+        SqlEnum(DocStatus, name="doc_status", inherit_schema=True),
+        server_default="на рассмотрении",
+        nullable=False
+    )
+
+    direction: Mapped[DocDirection] = mapped_column(
+        SqlEnum(DocDirection, name="doc_direction", inherit_schema=True),
+        nullable=False
+    )
+
+    type_id: Mapped[int] = mapped_column(Integer, ForeignKey("types.id", ondelete="RESTRICT"), nullable=False)
     title: Mapped[Optional[str]] = mapped_column(Text)
     about: Mapped[Optional[str]] = mapped_column(Text)
     reg_number: Mapped[Optional[str]] = mapped_column(String(100))
@@ -143,7 +154,11 @@ class Tag(Base):
     __tablename__ = "tags"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    priority: Mapped[TagPriority] = mapped_column(Enum(TagPriority), server_default="normal", nullable=False)
+    priority: Mapped[TagPriority] = mapped_column(
+        SqlEnum(TagPriority, name="tag_priority", inherit_schema=True),
+        server_default="обычный",
+        nullable=False
+    )
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
 class DocumentTag(Base):
@@ -184,10 +199,14 @@ class Read(Base):
     )
 
 class SystemEmployee(Base):
-    __tablename__ = "system_employees" # Чтобы не путать с таблицей сотрудников из кадров
+    __tablename__ = "system_employees"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    rights: Mapped[AppRights] = mapped_column(Enum(AppRights), server_default="user", nullable=False)
+    rights: Mapped[AppRights] = mapped_column(
+        SqlEnum(AppRights, name="app_rights", inherit_schema=True),
+        server_default="user",
+        nullable=False
+    )
 
 class EmployeeDocument(Base):
     __tablename__ = "employee_document"
@@ -195,7 +214,10 @@ class EmployeeDocument(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     document_id: Mapped[int] = mapped_column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
     employee_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    role: Mapped[DocumentRole] = mapped_column(Enum(DocumentRole), nullable=False)
+    role: Mapped[DocumentRole] = mapped_column(
+        SqlEnum(DocumentRole, name="document_role", inherit_schema=True),
+        nullable=False
+    )
     is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
     __table_args__ = (
@@ -206,7 +228,7 @@ class UserSession(Base):
     __tablename__ = "user_sessions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("system_employees.id", ondelete="CASCADE"), nullable=False)
     refresh_token: Mapped[str] = mapped_column(String(500), unique=True, nullable=False, index=True)
     device_info: Mapped[Optional[str]] = mapped_column(Text)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

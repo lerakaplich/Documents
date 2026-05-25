@@ -4,7 +4,7 @@ from sqlalchemy import select, delete
 from typing import List
 
 from server.app.database.session import get_docs_db
-from server.app.database.models import Document, EmployeeDocument, DocumentType, AppRights, DocStatus
+from server.app.database.models import Document, EmployeeDocument, DocumentType, AppRights, DocStatus, DocumentRole
 from server.app.api.deps import get_current_user, RoleChecker
 from server.app.schemas.doc_schemas.doc_employee_dto import DocumentListItem, DocumentCreateForm, DocumentDetailRead, \
     DocumentStatusUpdate
@@ -38,21 +38,31 @@ async def create_document(
     db_docs.add(new_doc)
     await db_docs.flush()  # Получаем автоматически сгенерированный id документа
 
-    # 3. Привязываем создателя документа как 'отправителя'
+    # 3. Привязываем создателя документа как 'sender' (ИСПРАВЛЕНО НА АНГЛИЙСКИЙ ENUM)
     owner_relation = EmployeeDocument(
         document_id=new_doc.id,
         employee_id=current_user.id,
-        role="отправитель",
+        role=DocumentRole.sender,
         is_approved=True
     )
     db_docs.add(owner_relation)
 
-    # 4. Привязываем исполнителей и получателей, которых передал фронтенд
+    # 4. Привязываем исполнителей и получателей (ИСПРАВЛЕНО НА АНГЛИЙСКИЙ ENUM)
     for emp_id in payload.executors:
-        db_docs.add(EmployeeDocument(document_id=new_doc.id, employee_id=emp_id, role="исполнитель", is_approved=True))
+        db_docs.add(EmployeeDocument(
+            document_id=new_doc.id,
+            employee_id=emp_id,
+            role=DocumentRole.executor,
+            is_approved=True
+        ))
 
     for emp_id in payload.recipients:
-        db_docs.add(EmployeeDocument(document_id=new_doc.id, employee_id=emp_id, role="получатель", is_approved=False))
+        db_docs.add(EmployeeDocument(
+            document_id=new_doc.id,
+            employee_id=emp_id,
+            role=DocumentRole.recipient,
+            is_approved=False
+        ))
 
     return new_doc
 
@@ -128,10 +138,13 @@ async def update_document_status(
     doc_result = await db_docs.execute(select(Document).where(Document.id == doc_id))
     document = doc_result.scalar_one_or_none()
 
+    if not document:
+        raise HTTPException(status_code=404, detail="Документ не найден.")
+
     document.status = payload.status
 
-    # Если текущий пользователь был получателем и нажал "Утвердить" — фиксируем это в связующей таблице
-    if relation and payload.status == DocStatus.approved:
+    # ИСПРАВЛЕНО: Если документ утвержден (полностью или частично), фиксируем согласие пользователя в связи
+    if relation and payload.status in [DocStatus.approved, DocStatus.partially_approved]:
         relation.is_approved = True
 
     return document
