@@ -57,7 +57,7 @@ async def get_current_user(
     system_user = sys_result.scalar_one_or_none()
 
     # Если сотрудника добавили в кадры, но еще не завели в СЭД — даем базовую роль 'user'
-    user_role = system_user.rights if system_user else AppRights.user
+    user_rights = system_user.rights if system_user else AppRights.user
 
     # 3. Собираем и возвращаем объединенный объект
     return CurrentUser(
@@ -67,7 +67,7 @@ async def get_current_user(
         first_name=employee.first_name,
         patronymic=employee.patronymic,
         position=employee.position,
-        role=user_role
+        rights=user_rights
     )
 
 
@@ -79,11 +79,11 @@ class RoleChecker:
     Позволяет писать: Depends(RoleChecker([AppRights.admin, AppRights.superadmin]))
     """
 
-    def __init__(self, allowed_roles: list[AppRights]):
-        self.allowed_roles = allowed_roles
+    def __init__(self, allowed_rights: list[AppRights]):
+        self.allowed_rights = allowed_rights
 
     def __call__(self, current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
-        if current_user.role not in self.allowed_roles:
+        if current_user.rights not in self.allowed_rights:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Отказ в доступе. Недостаточно системных прав для выполнения операции."

@@ -1,167 +1,254 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from typing import List
+from typing import List, Optional
+from datetime import date
 
 from server.app.database.session import get_docs_db
-from server.app.database.models import Document, EmployeeDocument, DocumentType, AppRights, DocStatus, DocumentRole
+from server.app.database.models import AppRights, DocStatus, DocDirection
 from server.app.api.deps import get_current_user, RoleChecker
-from server.app.schemas.doc_schemas.doc_employee_dto import DocumentListItem, DocumentCreateForm, DocumentDetailRead, \
-    DocumentStatusUpdate
+from server.app.schemas.doc_schemas.document_dto import DocumentToggleComplete, DocumentListItem, DocumentCreateForm, \
+    DocumentDetailRead, AdminMetadataUpdate, ReviewDocumentPayload, ToggleCompletionPayload
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
+
+# Импортируем наш сервис!
+from server.app.services.documents import DocumentService
+from fastapi.responses import FileResponse # <- Добавляем сюда
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
-
-# [C] CREATE: Создание документа (Доступно всем авторизованным)
 @router.post("/", response_model=DocumentListItem, status_code=status.HTTP_201_CREATED)
 async def create_document(
         payload: DocumentCreateForm,
         current_user: CurrentUser = Depends(get_current_user),
         db_docs: AsyncSession = Depends(get_docs_db)
 ):
-    # 1. Проверяем, существует ли указанный тип документа
-    type_check = await db_docs.execute(select(DocumentType).where(DocumentType.id == payload.type_id))
-    if not type_check.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Указанный тип документа не существует.")
-
-    # 2. Создаем сам документ (путь к файлу пока имитируем)
-    new_doc = Document(
-        type_id=payload.type_id,
-        direction=payload.direction,
-        title=payload.title,
-        about=payload.about,
-        reg_number=payload.reg_number,
-        deadline=payload.deadline,
-        file_path=f"storage/docs/{payload.reg_number or 'temp'}.zip"
-    )
-    db_docs.add(new_doc)
-    await db_docs.flush()  # Получаем автоматически сгенерированный id документа
-
-    # 3. Привязываем создателя документа как 'sender' (ИСПРАВЛЕНО НА АНГЛИЙСКИЙ ENUM)
-    owner_relation = EmployeeDocument(
-        document_id=new_doc.id,
-        employee_id=current_user.id,
-        role=DocumentRole.sender,
-        is_approved=True
-    )
-    db_docs.add(owner_relation)
-
-    # 4. Привязываем исполнителей и получателей (ИСПРАВЛЕНО НА АНГЛИЙСКИЙ ENUM)
-    for emp_id in payload.executors:
-        db_docs.add(EmployeeDocument(
-            document_id=new_doc.id,
-            employee_id=emp_id,
-            role=DocumentRole.executor,
-            is_approved=True
-        ))
-
-    for emp_id in payload.recipients:
-        db_docs.add(EmployeeDocument(
-            document_id=new_doc.id,
-            employee_id=emp_id,
-            role=DocumentRole.recipient,
-            is_approved=False
-        ))
-
-    return new_doc
+    service = DocumentService(db_docs)
+    return await service.create(payload, current_user.id)
 
 
-# [R] READ ALL: Получить список документов (С фильтрацией "Мои документы")
 @router.get("/", response_model=List[DocumentListItem])
 async def get_documents(
-        current_user: CurrentUser = Depends(get_current_user),
-        db_docs: AsyncSession = Depends(get_docs_db)
+    scope: str = "my",
+    is_completed: Optional[bool] = None,
+    status_filters: Optional[List[DocStatus]] = Query(None),
+    type_id: Optional[int] = None,
+    direction: Optional[DocDirection] = None,
+    tag_ids: Optional[List[int]] = Query(None), # Передача списком: ?tag_ids=1&tag_ids=2
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    search: Optional[str] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",  # Добавляем: "asc" или "desc"
+    current_user: CurrentUser = Depends(get_current_user),
+    db_docs: AsyncSession = Depends(get_docs_db)
 ):
-    # Если пользователь — админ, он видит ВСЕ документы в системе
-    if current_user.role in [AppRights.admin, AppRights.superadmin]:
-        result = await db_docs.execute(select(Document).order_by(Document.created_at.desc()))
-        return result.scalars().all()
-
-    # Если обычный user — вытаскиваем ТОЛЬКО те документы, где он фигурирует в employee_document
-    query = (
-        select(Document)
-        .join(EmployeeDocument, Document.id == EmployeeDocument.document_id)
-        .where(EmployeeDocument.employee_id == current_user.id)
-        .order_by(Document.created_at.desc())
-        .distinct()
+    """
+    Универсальный реестр документов с поддержкой сложных комбинаций фильтров
+    (для тематических вкладок интерфейса PyQt6).
+    """
+    service = DocumentService(db_docs)
+    return await service.get_all(
+        user_id=current_user.id,
+        user_rights=current_user.rights,
+        scope=scope,
+        is_completed=is_completed,
+        status_filters=status_filters,
+        type_id=type_id,
+        direction=direction,
+        tag_ids=tag_ids,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order
     )
-    result = await db_docs.execute(query)
-    return result.scalars().all()
 
 
-# [R] READ ONE: Карточка конкретного документа (С проверкой доступа)
 @router.get("/{doc_id}", response_model=DocumentDetailRead)
 async def get_document_by_id(
         doc_id: int,
         current_user: CurrentUser = Depends(get_current_user),
         db_docs: AsyncSession = Depends(get_docs_db)
 ):
-    result = await db_docs.execute(select(Document).where(Document.id == doc_id))
-    document = result.scalar_one_or_none()
-
-    if not document:
-        raise HTTPException(status_code=404, detail="Документ не найден.")
-
-    # Проверка прав: обычный пользователь не может смотреть чужие документы
-    if current_user.role not in [AppRights.admin, AppRights.superadmin]:
-        access_check = await db_docs.execute(
-            select(EmployeeDocument)
-            .where(EmployeeDocument.document_id == doc_id, EmployeeDocument.employee_id == current_user.id)
-        )
-        if not access_check.scalar_one_or_none():
-            raise HTTPException(status_code=403, detail="Доступ запрещен. Вы не являетесь участником этого документа.")
-
-    return document
+    service = DocumentService(db_docs)
+    return await service.get_by_id(doc_id, current_user.id, current_user.rights)
 
 
-# [U] UPDATE STATUS: Утвердить или Отклонить документ
-@router.patch("/{doc_id}/status", response_model=DocumentListItem)
-async def update_document_status(
-        doc_id: int,
-        payload: DocumentStatusUpdate,
-        current_user: CurrentUser = Depends(get_current_user),
-        db_docs: AsyncSession = Depends(get_docs_db)
-):
-    # 1. Ищем связь текущего пользователя с этим документом
-    rel_result = await db_docs.execute(
-        select(EmployeeDocument)
-        .where(EmployeeDocument.document_id == doc_id, EmployeeDocument.employee_id == current_user.id)
-    )
-    relation = rel_result.scalar_one_or_none()
-
-    # Изменять статус (утверждать) могут либо админы, либо назначенные получатели/исполнители документа
-    if not relation and current_user.role not in [AppRights.admin, AppRights.superadmin]:
-        raise HTTPException(status_code=403, detail="Вы не имеете права изменять статус этого документа.")
-
-    # 2. Обновляем статус в основной таблице документов
-    doc_result = await db_docs.execute(select(Document).where(Document.id == doc_id))
-    document = doc_result.scalar_one_or_none()
-
-    if not document:
-        raise HTTPException(status_code=404, detail="Документ не найден.")
-
-    document.status = payload.status
-
-    # ИСПРАВЛЕНО: Если документ утвержден (полностью или частично), фиксируем согласие пользователя в связи
-    if relation and payload.status in [DocStatus.approved, DocStatus.partially_approved]:
-        relation.is_approved = True
-
-    return document
-
-
-# [D] DELETE: Удаление документа (Строго для Admin / Superadmin)
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_document(
         doc_id: int,
         admin_user: CurrentUser = Depends(RoleChecker([AppRights.admin, AppRights.superadmin])),
         db_docs: AsyncSession = Depends(get_docs_db)
 ):
-    result = await db_docs.execute(select(Document).where(Document.id == doc_id))
-    document = result.scalar_one_or_none()
-
-    if not document:
-        raise HTTPException(status_code=404, detail="Документ не найден.")
-
-    await db_docs.execute(delete(Document).where(Document.id == doc_id))
+    service = DocumentService(db_docs)
+    await service.delete(doc_id)
     return None
+
+# ============================================================================
+# 1. АДМИНИСТРАТИВНОЕ РЕДАКТИРОВАНИЕ
+# ============================================================================
+
+@router.put("/{document_id}/admin-metadata", response_model=DocumentListItem)
+async def admin_update_metadata(
+    document_id: int,
+    payload: AdminMetadataUpdate,
+    current_user: CurrentUser = Depends(get_current_user), # Используем базовую зависимость
+    db_docs: AsyncSession = Depends(get_docs_db)
+):
+    """
+    [Админ-панель] Прямое принудительное редактирование метаданных карточки
+    в обход стандартных кругов согласования. Доступно только admin и superadmin.
+    """
+    # Жесткая проверка прав «на лету»
+    if current_user.rights not in [AppRights.admin, AppRights.superadmin]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Недостаточно прав для выполнения данной операции. Требуются права Администратора."
+        )
+
+    service = DocumentService(db_docs)
+    return await service.admin_update_metadata(document_id, payload)
+
+
+# ============================================================================
+# 2. УТВЕРЖДЕНИЕ / СОГЛАСОВАНИЕ
+# ============================================================================
+
+@router.post("/{document_id}/review", status_code=status.HTTP_200_OK)
+async def review_document(
+        document_id: int,
+        payload: ReviewDocumentPayload,
+        current_user: CurrentUser = Depends(get_current_user),
+        db_docs: AsyncSession = Depends(get_docs_db)
+):
+    """
+    Принять решение по документу (Утвердить / Отклонить).
+    Меняет флаг согласования у текущего сотрудника и пересчитывает общий статус документа.
+    """
+    service = DocumentService(db_docs)
+    await service.process_review(document_id, current_user.id, payload.approved, payload.comment)
+    return {"status": "success", "message": "Решение по документу успешно зафиксировано"}
+
+
+# ============================================================================
+# 3. ОТМЕТКА О ВЫПОЛНЕНИИ (В РАБОТЕ / АРХИВ)
+# ============================================================================
+
+@router.post("/{document_id}/toggle-completion", status_code=status.HTTP_200_OK)
+async def toggle_completion(
+        document_id: int,
+        payload: ToggleCompletionPayload,
+        current_user: CurrentUser = Depends(get_current_user),
+        db_docs: AsyncSession = Depends(get_docs_db)
+):
+    """
+    Переключить состояние документа для текущего пользователя (В работе <=> В архиве).
+    Влияет на фильтрацию по умолчанию на клиенте.
+    """
+    service = DocumentService(db_docs)
+    await service.toggle_completion(document_id, current_user.id, payload.is_completed)
+    return {"status": "success", "message": "Статус отображения изменен"}
+
+
+# ============================================================================
+# 4 & 5. УПРАВЛЕНИЕ ПАКЕТНЫМИ ВЛОЖЕНИЯМИ (АРХИВЫ С TIFF)
+# ============================================================================
+
+@router.post("/{document_id}/attachments/main", status_code=status.HTTP_200_OK)
+async def update_main_attachments(
+        document_id: int,
+        files: List[UploadFile] = File(..., description="Полный список актуальных файлов вложения"),
+        current_user: CurrentUser = Depends(get_current_user),
+        db_docs: AsyncSession = Depends(get_docs_db)
+):
+    """
+    Загрузить или обновить пакет основных вложений.
+    Принимает файлы, конвертирует сканы в TIFF, упаковывает в единый ZIP и обновляет file_path.
+    """
+    service = DocumentService(db_docs)
+    await service.save_main_attachments(document_id, files, current_user.id)
+    return {"status": "success", "message": "Основной пакет вложений успешно обновлен"}
+
+
+@router.post("/{document_id}/attachments/response", status_code=status.HTTP_200_OK)
+async def upload_response_attachments(
+        document_id: int,
+        files: List[UploadFile] = File(..., description="Файлы отчета об исполнении"),
+        current_user: CurrentUser = Depends(get_current_user),
+        db_docs: AsyncSession = Depends(get_docs_db)
+):
+    """
+    Загрузить или перезаписать ответное вложение (отчет о выполнении).
+    Файлы конвертируются, пакуются в ZIP и путь пишется в response_file_path.
+    """
+    service = DocumentService(db_docs)
+    await service.save_response_attachments(document_id, files, current_user.id)
+    return {"status": "success", "message": "Ответный пакет вложений успешно прикреплен"}
+
+
+@router.get("/{document_id}/attachments/download/{archive_type}")
+async def download_attachments_archive(
+        document_id: int,
+        archive_type: str,  # "main" или "response"
+        current_user: CurrentUser = Depends(get_current_user),
+        db_docs: AsyncSession = Depends(get_docs_db)
+):
+    """
+    Скачать ZIP-архив с вложениями (основными или ответными) для распаковки
+    и просмотра файлов в интерфейсе PyQt6.
+    """
+    service = DocumentService(db_docs)
+    file_path = await service.get_attachment_path(document_id, archive_type)
+
+    if not file_path:
+        raise HTTPException(status_code=404, detail="Запрошенный архив вложений отсутствует")
+
+    return FileResponse(path=file_path, filename=f"doc_{document_id}_{archive_type}.zip", media_type="application/zip")
+
+
+# ============================================================================
+# 6. ПЕРЕНАПРАВЛЕНИЕ / ДЕЛЕГИРОВАНИЕ
+# ============================================================================
+
+@router.post("/{document_id}/redirect", status_code=status.HTTP_201_CREATED)
+async def redirect_document(
+        document_id: int,
+        to_employee_id: int = Form(..., description="ID сотрудника, которому пересылается документ"),
+        message: Optional[str] = Form(None, description="Текст резолюции / поручения"),
+        current_user: CurrentUser = Depends(get_current_user),
+        db_docs: AsyncSession = Depends(get_docs_db)
+):
+    """
+    Перенаправить документ на другого сотрудника. СЭД создает запись в истории
+    перенаправлений и добавляет сотрудника в матрицу участников (роль delegate/executor).
+    """
+    service = DocumentService(db_docs)
+    await service.redirect_document(document_id, current_user.id, to_employee_id, message)
+    return {"status": "success", "message": f"Документ успешно перенаправлен сотруднику {to_employee_id}"}
+
+
+# ============================================================================
+# 7. ВНЕСЕНИЕ ПРАВОК И СБРОС КРУГА СОГЛАСОВАНИЯ
+# ============================================================================
+
+@router.post("/{document_id}/edit-revision", response_model=DocumentListItem)
+async def make_document_revisions(
+        document_id: int,
+        title: Optional[str] = Form(None, description="Обновленное название"),
+        about: Optional[str] = Form(None, description="Обновленная аннотация"),
+        new_files: Optional[List[UploadFile]] = File(None, description="Новый пакет файлов, если они менялись"),
+        current_user: CurrentUser = Depends(get_current_user),
+        db_docs: AsyncSession = Depends(get_docs_db)
+):
+    """
+    Внести правки в документ (новая ревизия). Сбрасывает все выставленные
+    ранее статусы `is_approved` у получателей обратно в FALSE и возвращает на круг согласования.
+    """
+    service = DocumentService(db_docs)
+    return await service.make_revisions(
+        document_id=document_id,
+        user_id=current_user.id,
+        title=title,
+        about=about,
+        new_files=new_files
+    )

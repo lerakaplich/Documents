@@ -58,7 +58,7 @@ class Organization(Base):
     address: Mapped[Optional[str]] = mapped_column(Text)
     site: Mapped[Optional[str]] = mapped_column(Text)
     email: Mapped[Optional[str]] = mapped_column(Text)
-    boss: Mapped[Optional[str]] = mapped_column(Text)
+    boss_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("employees.id", ondelete="SET NULL"))
 
 class Division(Base):
     __tablename__ = "divisions"
@@ -66,7 +66,7 @@ class Division(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     number: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    boss: Mapped[Optional[str]] = mapped_column(Text)
+    boss_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("employees.id", ondelete="SET NULL"))
     phone_number: Mapped[Optional[str]] = mapped_column(Text)
     workshop_code: Mapped[Optional[str]] = mapped_column(Text)
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
@@ -77,7 +77,7 @@ class Department(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     number: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    boss: Mapped[Optional[str]] = mapped_column(Text)
+    boss_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("employees.id", ondelete="SET NULL"))
     phone_number: Mapped[Optional[str]] = mapped_column(Text)
     division_id: Mapped[int] = mapped_column(Integer, ForeignKey("divisions.id", ondelete="RESTRICT"), nullable=False)
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
@@ -127,18 +127,15 @@ class Document(Base):
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-
     status: Mapped[DocStatus] = mapped_column(
         SqlEnum(DocStatus, name="doc_status", inherit_schema=True),
-        server_default="на рассмотрении",
+        server_default="under_review",
         nullable=False
     )
-
     direction: Mapped[DocDirection] = mapped_column(
         SqlEnum(DocDirection, name="doc_direction", inherit_schema=True),
         nullable=False
     )
-
     type_id: Mapped[int] = mapped_column(Integer, ForeignKey("types.id", ondelete="RESTRICT"), nullable=False)
     title: Mapped[Optional[str]] = mapped_column(Text)
     about: Mapped[Optional[str]] = mapped_column(Text)
@@ -150,22 +147,54 @@ class Document(Base):
     file_path: Mapped[str] = mapped_column(Text, nullable=False)
     response_file_path: Mapped[Optional[str]] = mapped_column(Text)
 
+    tags: Mapped[List["Tag"]] = relationship(
+        secondary="document_tags",
+        back_populates="documents",
+        lazy="selectin"  # Чтобы не было ошибок асинхронности lazy-load
+    )
+    employees: Mapped[List["EmployeeDocument"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
+
+
 class Tag(Base):
     __tablename__ = "tags"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # ИСПРАВЛЕНО: Английский дефолт
     priority: Mapped[TagPriority] = mapped_column(
         SqlEnum(TagPriority, name="tag_priority", inherit_schema=True),
-        server_default="обычный",
+        server_default="normal",
         nullable=False
     )
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
+    # ДОБАВЛЕНО: Обратная связь для тегов
+    documents: Mapped[List["Document"]] = relationship(
+        secondary="document_tags",
+        back_populates="tags",
+        lazy="selectin"
+    )
+
 class DocumentTag(Base):
     __tablename__ = "document_tags"
 
-    document_id: Mapped[int] = mapped_column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True)
-    tag_id: Mapped[int] = mapped_column(Integer, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
+    document_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+    tag_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("tags.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+
+    # Дополнительные связи (опционально, но крайне полезно для явных джоинов)
+    document: Mapped["Document"] = relationship(viewonly=True)
+    tag: Mapped["Tag"] = relationship(viewonly=True)
 
 class RedirectHistory(Base):
     __tablename__ = "redirect_history"
@@ -202,6 +231,9 @@ class SystemEmployee(Base):
     __tablename__ = "system_employees"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_name: Mapped[str] = mapped_column(String, nullable=False)
+    first_name: Mapped[str] = mapped_column(String, nullable=False)
+    patronymic: Mapped[str | None] = mapped_column(String, nullable=True)
     rights: Mapped[AppRights] = mapped_column(
         SqlEnum(AppRights, name="app_rights", inherit_schema=True),
         server_default="user",
@@ -219,6 +251,9 @@ class EmployeeDocument(Base):
         nullable=False
     )
     is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    is_completed: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    document: Mapped["Document"] = relationship(back_populates="employees")
 
     __table_args__ = (
         UniqueConstraint('document_id', 'employee_id', 'role', name='unique_doc_employee_role'),

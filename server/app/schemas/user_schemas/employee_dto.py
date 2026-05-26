@@ -37,6 +37,6 @@ class CurrentUser(BaseModel):
     first_name: str
     patronymic: Optional[str] = None
     position: Optional[str] = None
-    role: AppRights
+    rights: AppRights
 
     model_config = ConfigDict(from_attributes=True)
