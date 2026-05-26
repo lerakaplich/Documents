@@ -1,28 +1,29 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, or_, and_, cast, String, desc, asc
+from sqlalchemy import select, delete, or_, and_, cast, String, desc, asc, exists
 from fastapi import HTTPException, status
 from typing import List, Optional
 from datetime import date
 
+from server.app.config import MSG_TEMPLATE_NEW_REVISION
 from server.app.database.models import Document, EmployeeDocument, DocumentType, DocumentRole, AppRights, DocStatus, \
     Employee, Department, Division, Organization, DocDirection, TagPriority, SystemEmployee, Tag, DocumentTag
 from datetime import datetime, timezone
 
 from server.app.schemas.doc_schemas.document_dto import DocumentCreateForm, AdminMetadataUpdate
+from server.app.services.documents.comment_service import CommentService
 
 
 class DocumentService:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, comment_service: CommentService):
         self.db = db
+        self.comment_service = comment_service  # Внедряем CRUD-сервис комментов
 
     async def create(self, payload: DocumentCreateForm, user_id: int) -> Document:
         """Создание документа с автоматической привязкой участников и тегов"""
-        # 1. Проверка типа документа
         type_check = await self.db.execute(select(DocumentType).where(DocumentType.id == payload.type_id))
         if not type_check.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Указанный тип документа не существует.")
 
-        # 2. Создание самого объекта документа
         new_doc = Document(
             type_id=payload.type_id,
             direction=payload.direction,
@@ -33,33 +34,30 @@ class DocumentService:
             file_path=f"storage/docs/{payload.reg_number or 'temp'}.zip"
         )
         self.db.add(new_doc)
-        await self.db.flush()  # Генерируем new_doc.id
+        await self.db.flush()
 
-        # 3. Привязываем создателя (sender)
+        # Привязываем создателя (sender) и исполнителей -> им согласовывать не нужно (True)
         self.db.add(EmployeeDocument(
             document_id=new_doc.id, employee_id=user_id, role=DocumentRole.sender, is_approved=True
         ))
 
-        # 4. Привязываем исполнителей
         for emp_id in payload.executors:
             self.db.add(EmployeeDocument(
                 document_id=new_doc.id, employee_id=emp_id, role=DocumentRole.executor, is_approved=True
             ))
 
-        # 5. Привязываем получателей
+        # ИСПРАВЛЕНО: Получатели инициализируются как None (ожидают решения в PyQt6)
         for emp_id in payload.recipients:
             self.db.add(EmployeeDocument(
-                document_id=new_doc.id, employee_id=emp_id, role=DocumentRole.recipient, is_approved=False
+                document_id=new_doc.id, employee_id=emp_id, role=DocumentRole.recipient, is_approved=None
             ))
 
-        # 6. Привязываем теги (Многие-ко-многим через связующую таблицу)
         if payload.tag_ids:
-            from server.app.database.models import DocumentTag
             for tag_id in payload.tag_ids:
                 self.db.add(DocumentTag(document_id=new_doc.id, tag_id=tag_id))
 
         await self.db.commit()
-        await self.db.refresh(new_doc)  # Загружаем обратно со всеми связями
+        await self.db.refresh(new_doc)
         return new_doc
 
     async def get_all(
@@ -417,3 +415,158 @@ class DocumentService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Ошибка при сохранении изменений администратора: {str(e)}"
             )
+
+    # ГЛАВНЫЙ МЕТОД СОГЛАСОВАНИЯ
+    async def process_review(self, document_id: int, user_id: int, approved: bool):
+        """
+        Фиксация решения согласующего (True - Утверждено, False - Отклонено).
+        """
+        # 1. Валидация участника и защита от повторного клика
+        emp_doc_record = await self._validate_reviewer(document_id, user_id)
+
+        # 2. Проставляем статус (True или False)
+        emp_doc_record.is_approved = approved
+
+        # 3. Скоростной пересчет общего статуса карточки
+        await self._recalculate_document_status(document_id)
+
+        try:
+            await self.db.commit()
+        except Exception as e:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ошибка при сохранении решения участника: {str(e)}"
+            )
+
+    async def _recalculate_document_status(self, document_id: int):
+        """
+        Скоростной пересчет общего статуса документа по трехзначной логике (True / False / Null)
+        """
+        # 1. Проверяем, отклонил ли документ хотя бы ОДИН человек
+        has_rejected_query = select(exists().where(
+            and_(EmployeeDocument.document_id == document_id, EmployeeDocument.is_approved == False)
+        ))
+        has_rejected = (await self.db.execute(has_rejected_query)).scalar()
+
+        # Загружаем документ для изменения статуса
+        doc_query = select(Document).where(Document.id == document_id)
+        document = (await self.db.execute(doc_query)).scalar_one_or_none()
+        if not document:
+            return
+
+        # Если есть хоть один отказ (False) -> весь документ падает в статус 'rejected'
+        if has_rejected:
+            document.status = DocStatus.rejected
+            return
+
+        # 2. Проверяем, остался ли хоть кто-то, кто ЕЩЕ НЕ ПРИНЯЛ решение (сидит в NULL/None)
+        has_null_query = select(exists().where(
+            and_(EmployeeDocument.document_id == document_id, EmployeeDocument.is_approved == None)
+        ))
+        has_null = (await self.db.execute(has_null_query)).scalar()
+
+        if not has_null:
+            # Никто не отклонил и никого в None не осталось -> Значит, абсолютно ВСЕ сказали True
+            document.status = DocStatus.approved
+        else:
+            # Кто-то еще думает (есть None), но проверим, одобрил ли уже ХОТЬ ОДИН согласующий
+            has_approved_reviewer_query = select(exists().where(
+                and_(
+                    EmployeeDocument.document_id == document_id,
+                    EmployeeDocument.is_approved == True,
+                    EmployeeDocument.role.in_([DocumentRole.recipient, DocumentRole.delegate])
+                )
+            ))
+            has_approved_reviewer = (await self.db.execute(has_approved_reviewer_query)).scalar()
+
+            if has_approved_reviewer:
+                document.status = DocStatus.partially_approved
+            else:
+                document.status = DocStatus.under_review
+
+    async def _validate_reviewer(self, document_id: int, user_id: int) -> EmployeeDocument:
+        """Проверка прав участника на выполнение операции review"""
+        query = select(EmployeeDocument).where(
+            and_(
+                EmployeeDocument.document_id == document_id,
+                EmployeeDocument.employee_id == user_id
+            )
+        )
+        result = await self.db.execute(query)
+        emp_doc = result.scalar_one_or_none()
+
+        if not emp_doc:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Вы не являетесь участником данного документа."
+            )
+
+        if emp_doc.role not in [DocumentRole.recipient, DocumentRole.delegate]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ваша роль в документе не требует согласования."
+            )
+
+        # ИСПРАВЛЕНО: Защита от повторного клика. Если статус уже НЕ None, значит решение принято.
+        if emp_doc.is_approved is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Вы уже зафиксировали свое решение (утвердили или отклонили) по этому документу."
+            )
+
+        return emp_doc
+
+    # ВНЕСЕНИЕ ПРАВОК
+    async def make_revisions(self, document_id: int, user_id: int, text: str) -> None:
+        """
+        Бизнес-логика фиксации замечаний по документу от согласующей стороны.
+        """
+        # 1. Проверяем, что голосует именно получатель/делегат
+        role_query = select(EmployeeDocument).where(
+            and_(
+                EmployeeDocument.document_id == document_id,
+                EmployeeDocument.employee_id == user_id
+            )
+        )
+        user_relation = (await self.db.execute(role_query)).scalar_one_or_none()
+
+        if not user_relation:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Вы не являетесь участником этого документа."
+            )
+
+        if user_relation.role not in [DocumentRole.recipient, DocumentRole.delegate]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Оставлять правки/замечания могут только согласующие лица (получатели или делегаты)."
+            )
+
+        # 2. Проверяем существование документа (чтобы выдать красивую 404, если что)
+        doc_query = select(Document).where(Document.id == document_id)
+        document = (await self.db.execute(doc_query)).scalar_one_or_none()
+        if not document:
+            raise HTTPException(status_code=404, detail="Документ не найден")
+
+        # 3. Передаем чистый текст в CRUD комментариев
+        await self.comment_service.create_comment(
+            document_id=document_id,
+            user_id=user_id,
+            text=text
+        )
+
+        # 4. Фиксируем транзакцию
+        try:
+            await self.db.commit()
+        except Exception as e:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ошибка сохранения замечания: {str(e)}"
+            )
+
+        # 5. Отправляем пуш боту о том, что появились новые замечания
+        await self.comment_service.send_notification_stub(document)
+
+

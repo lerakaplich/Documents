@@ -9,10 +9,6 @@ from server.app.database.models import Employee, UserSession
 from server.app.database.session import get_employees_db, get_docs_db
 from server.app.schemas.user_schemas.auth_dto import AuthRequestCode, TokenResponse, AuthVerifyCode, TokenRefreshRequest
 
-# TODO ЗАМЕНИТЬ НА ИМПОРТ ОТ БОТА
-# URL, на котором Разработчик 3 запустит своего бота
-BOT_API_URL = "http://127.0.0.1:8080/internal/send-notification"
-
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 # Имитация кэша для кодов подтверждения (в реальном проекте лучше Redis, но для старта монолита хватит словаря)

@@ -14,6 +14,8 @@ from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.documents import DocumentService
 from fastapi.responses import FileResponse # <- Добавляем сюда
 
+from server.app.services.documents.comment_service import CommentService
+
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
 @router.post("/", response_model=DocumentListItem, status_code=status.HTTP_201_CREATED)
@@ -114,21 +116,26 @@ async def admin_update_metadata(
 # 2. УТВЕРЖДЕНИЕ / СОГЛАСОВАНИЕ
 # ============================================================================
 
-@router.post("/{document_id}/review", status_code=status.HTTP_200_OK)
-async def review_document(
+@router.post("/{document_id}/edit-revision", response_model=dict)
+async def make_document_revisions(
         document_id: int,
-        payload: ReviewDocumentPayload,
+        text: str = Form(..., description="Текст вносимых правок/замечаний"),
         current_user: CurrentUser = Depends(get_current_user),
         db_docs: AsyncSession = Depends(get_docs_db)
 ):
     """
-    Принять решение по документу (Утвердить / Отклонить).
-    Меняет флаг согласования у текущего сотрудника и пересчитывает общий статус документа.
+    Направить замечания по документу (внести правки).
+    Доступно только согласующим (recipient/delegate). Создает запись в комментариях.
     """
-    service = DocumentService(db_docs)
-    await service.process_review(document_id, current_user.id, payload.approved, payload.comment)
-    return {"status": "success", "message": "Решение по документу успешно зафиксировано"}
+    comment_svc = CommentService(db_docs)
+    document_svc = DocumentService(db_docs, comment_service=comment_svc)
 
+    await document_svc.make_revisions(
+        document_id=document_id,
+        user_id=current_user.id,
+        text=text
+    )
+    return {"status": "success", "message": "Правки успешно добавлены в историю документа"}
 
 # ============================================================================
 # 3. ОТМЕТКА О ВЫПОЛНЕНИИ (В РАБОТЕ / АРХИВ)
@@ -225,30 +232,3 @@ async def redirect_document(
     service = DocumentService(db_docs)
     await service.redirect_document(document_id, current_user.id, to_employee_id, message)
     return {"status": "success", "message": f"Документ успешно перенаправлен сотруднику {to_employee_id}"}
-
-
-# ============================================================================
-# 7. ВНЕСЕНИЕ ПРАВОК И СБРОС КРУГА СОГЛАСОВАНИЯ
-# ============================================================================
-
-@router.post("/{document_id}/edit-revision", response_model=DocumentListItem)
-async def make_document_revisions(
-        document_id: int,
-        title: Optional[str] = Form(None, description="Обновленное название"),
-        about: Optional[str] = Form(None, description="Обновленная аннотация"),
-        new_files: Optional[List[UploadFile]] = File(None, description="Новый пакет файлов, если они менялись"),
-        current_user: CurrentUser = Depends(get_current_user),
-        db_docs: AsyncSession = Depends(get_docs_db)
-):
-    """
-    Внести правки в документ (новая ревизия). Сбрасывает все выставленные
-    ранее статусы `is_approved` у получателей обратно в FALSE и возвращает на круг согласования.
-    """
-    service = DocumentService(db_docs)
-    return await service.make_revisions(
-        document_id=document_id,
-        user_id=current_user.id,
-        title=title,
-        about=about,
-        new_files=new_files
-    )
