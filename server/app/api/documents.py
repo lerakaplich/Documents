@@ -1,58 +1,87 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from datetime import date
 
+from server.app.database.document_models import DocStatus, DocDirection, AppRights
 from server.app.database.session import get_docs_db
-from server.app.database.models import AppRights, DocStatus, DocDirection
-from server.app.api.deps import get_current_user, RoleChecker
-from server.app.schemas.doc_schemas.document_dto import DocumentToggleComplete, DocumentListItem, DocumentCreateForm, \
-    DocumentDetailRead, AdminMetadataUpdate, ReviewDocumentPayload, ToggleCompletionPayload
+from server.app.deps import get_current_user, RoleChecker
+from server.app.repositories.comment_repo import CommentRepository
+from server.app.repositories.document_repo import DocumentRepository
+from server.app.schemas.doc_schemas.document_dto import (
+    DocumentListItem, DocumentCreateForm, DocumentDetailRead,
+    AdminMetadataUpdate, DocumentPaginationResponse, ToggleCompletionPayload
+)
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 
-# Импортируем наш сервис!
-from server.app.services.documents import DocumentService
-from fastapi.responses import FileResponse # <- Добавляем сюда
-
-from server.app.services.documents.comment_service import CommentService
+# Импортируем обновленные сервисы СЭД
+from server.app.services.documents.document_service import DocumentService
+from server.app.services.documents.review_service import DocumentReviewService
+from server.app.services.documents.registry_service import DocumentRegistryService
+from server.app.services.comment_service import CommentService
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
+
+
+# --- ФАБРИКИ ЗАВИСИМОСТЕЙ ДЛЯ СЕРВИСОВ ---
+
+def get_doc_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentService:
+    repo = DocumentRepository(db_docs)
+    return DocumentService(repo)
+
+
+def get_review_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentReviewService:
+    doc_repo = DocumentRepository(db_docs)
+    comment_repo = CommentRepository(db_docs)
+
+    comment_svc = CommentService(comment_repo)
+
+    return DocumentReviewService(db_repo=doc_repo, comment_service=comment_svc)
+
+def get_registry_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentRegistryService:
+    repo = DocumentRepository(db_docs)
+    return DocumentRegistryService(repo)
+
+def get_comment_service(db_docs: AsyncSession = Depends(get_docs_db)) -> CommentService:
+    repo = CommentRepository(db_docs)
+    return CommentService(repo)
+
+
+# --- ЭНДПОИНТЫ КАРТОЧКИ ДОКУМЕНТА ---
 
 @router.post("/", response_model=DocumentListItem, status_code=status.HTTP_201_CREATED)
 async def create_document(
         payload: DocumentCreateForm,
         current_user: CurrentUser = Depends(get_current_user),
-        db_docs: AsyncSession = Depends(get_docs_db)
+        service: DocumentService = Depends(get_doc_service)
 ):
-    service = DocumentService(db_docs)
+    """Создание новой карточки документа во внутреннем контуре"""
     return await service.create(payload, current_user.id)
 
 
-@router.get("/", response_model=List[DocumentListItem])
+@router.get("/", response_model=DocumentPaginationResponse)
 async def get_documents(
-    scope: str = "my",
-    is_completed: Optional[bool] = None,
-    status_filters: Optional[List[DocStatus]] = Query(None),
-    type_id: Optional[int] = None,
-    direction: Optional[DocDirection] = None,
-    tag_ids: Optional[List[int]] = Query(None), # Передача списком: ?tag_ids=1&tag_ids=2
-    date_from: Optional[date] = None,
-    date_to: Optional[date] = None,
-    search: Optional[str] = None,
-    sort_by: str = "created_at",
-    sort_order: str = "desc",  # Добавляем: "asc" или "desc"
-    current_user: CurrentUser = Depends(get_current_user),
-    db_docs: AsyncSession = Depends(get_docs_db)
+        scope: str = "my",
+        is_completed: Optional[bool] = None,
+        status_filters: Optional[List[DocStatus]] = Query(None),
+        type_id: Optional[int] = None,
+        direction: Optional[DocDirection] = None,
+        tag_ids: Optional[List[int]] = Query(None),
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None,
+        search: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = Query(20, ge=1, le=100, description="Размер страницы"),
+        offset: int = Query(0, ge=0, description="Смещение выборки"),
+        current_user: CurrentUser = Depends(get_current_user),
+        service: DocumentRegistryService = Depends(get_registry_service)
 ):
-    """
-    Универсальный реестр документов с поддержкой сложных комбинаций фильтров
-    (для тематических вкладок интерфейса PyQt6).
-    """
-    service = DocumentService(db_docs)
-    return await service.get_all(
+    """Реестр документов с динамической фильтрацией и пагинацией для PyQt6 таблиц"""
+    total, items = await service.get_all_paginated(
         user_id=current_user.id,
         user_rights=current_user.rights,
-        scope=scope,
         is_completed=is_completed,
         status_filters=status_filters,
         type_id=type_id,
@@ -62,17 +91,20 @@ async def get_documents(
         date_to=date_to,
         search=search,
         sort_by=sort_by,
-        sort_order=sort_order
+        sort_order=sort_order,
+        limit=limit,
+        offset=offset
     )
+    return {"total": total, "limit": limit, "offset": offset, "items": items}
 
 
 @router.get("/{doc_id}", response_model=DocumentDetailRead)
 async def get_document_by_id(
         doc_id: int,
         current_user: CurrentUser = Depends(get_current_user),
-        db_docs: AsyncSession = Depends(get_docs_db)
+        service: DocumentService = Depends(get_doc_service)
 ):
-    service = DocumentService(db_docs)
+    """Получение детальной информации о документе с фиксацией прочтения"""
     return await service.get_by_id(doc_id, current_user.id, current_user.rights)
 
 
@@ -80,115 +112,101 @@ async def get_document_by_id(
 async def delete_document(
         doc_id: int,
         admin_user: CurrentUser = Depends(RoleChecker([AppRights.admin, AppRights.superadmin])),
-        db_docs: AsyncSession = Depends(get_docs_db)
+        service: DocumentService = Depends(get_doc_service)
 ):
-    service = DocumentService(db_docs)
+    """Удаление документа администратором системы"""
     await service.delete(doc_id)
     return None
 
-# ============================================================================
-# 1. АДМИНИСТРАТИВНОЕ РЕДАКТИРОВАНИЕ
-# ============================================================================
 
 @router.put("/{document_id}/admin-metadata", response_model=DocumentListItem)
 async def admin_update_metadata(
-    document_id: int,
-    payload: AdminMetadataUpdate,
-    current_user: CurrentUser = Depends(get_current_user), # Используем базовую зависимость
-    db_docs: AsyncSession = Depends(get_docs_db)
+        document_id: int,
+        payload: AdminMetadataUpdate,
+        admin_user: CurrentUser = Depends(RoleChecker([AppRights.admin, AppRights.superadmin])),
+        service: DocumentService = Depends(get_doc_service)
 ):
-    """
-    [Админ-панель] Прямое принудительное редактирование метаданных карточки
-    в обход стандартных кругов согласования. Доступно только admin и superadmin.
-    """
-    # Жесткая проверка прав «на лету»
-    if current_user.rights not in [AppRights.admin, AppRights.superadmin]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Недостаточно прав для выполнения данной операции. Требуются права Администратора."
-        )
-
-    service = DocumentService(db_docs)
+    """Административное редактирование метаданных в обход ограничений состояний"""
     return await service.admin_update_metadata(document_id, payload)
 
 
-# ============================================================================
-# 2. УТВЕРЖДЕНИЕ / СОГЛАСОВАНИЕ
-# ============================================================================
+# --- ЖИЗНЕННЫЙ ЦИКЛ, СОГЛАСОВАНИЕ И ЗАМЕЧАНИЯ ---
 
 @router.post("/{document_id}/edit-revision", response_model=dict)
 async def make_document_revisions(
         document_id: int,
         text: str = Form(..., description="Текст вносимых правок/замечаний"),
         current_user: CurrentUser = Depends(get_current_user),
-        db_docs: AsyncSession = Depends(get_docs_db)
+        service: DocumentReviewService = Depends(get_review_service)
 ):
-    """
-    Направить замечания по документу (внести правки).
-    Доступно только согласующим (recipient/delegate). Создает запись в комментариях.
-    """
-    comment_svc = CommentService(db_docs)
-    document_svc = DocumentService(db_docs, comment_service=comment_svc)
-
-    await document_svc.make_revisions(
-        document_id=document_id,
-        user_id=current_user.id,
-        text=text
-    )
+    """Внесение правок согласующим лицом без вынесения итогового решения"""
+    await service.make_revisions(document_id=document_id, user_id=current_user.id, text=text)
     return {"status": "success", "message": "Правки успешно добавлены в историю документа"}
 
-# ============================================================================
-# 3. ОТМЕТКА О ВЫПОЛНЕНИИ (В РАБОТЕ / АРХИВ)
-# ============================================================================
+
+@router.post("/{document_id}/review", response_model=dict)
+async def process_document_review(
+        document_id: int,
+        approved: bool = Form(..., description="Решение: True - утвердить, False - отклонить"),
+        comment_text: Optional[str] = Form(None, description="Опциональный комментарий к решению"),
+        current_user: CurrentUser = Depends(get_current_user),
+        service: DocumentReviewService = Depends(get_review_service)
+):
+    """Вынесение финального вердикта по документу (Утвердить / Отклонить)"""
+    await service.process_review(
+        document_id=document_id,
+        user_id=current_user.id,
+        approved=approved,
+        comment_text=comment_text
+    )
+    return {"status": "success", "message": "Ваше решение успешно зафиксировано"}
+
+
+@router.get("/{document_id}/comments", response_model=List[dict])
+async def get_document_comments_history(
+        document_id: int,
+        current_user: CurrentUser = Depends(get_current_user),
+        comment_svc: CommentService = Depends(get_comment_service)
+):
+    """Получить полную историю замечаний к документу с расшифрованными ФИО авторов"""
+    return await comment_svc.get_document_comments_with_authors(document_id)
+
 
 @router.post("/{document_id}/toggle-completion", status_code=status.HTTP_200_OK)
 async def toggle_completion(
         document_id: int,
         payload: ToggleCompletionPayload,
         current_user: CurrentUser = Depends(get_current_user),
-        db_docs: AsyncSession = Depends(get_docs_db)
+        service: DocumentReviewService = Depends(get_review_service)
 ):
-    """
-    Переключить состояние документа для текущего пользователя (В работе <=> В архиве).
-    Влияет на фильтрацию по умолчанию на клиенте.
-    """
-    service = DocumentService(db_docs)
-    await service.toggle_completion(document_id, current_user.id, payload.is_completed)
+    """Переключение документа между вкладками 'В работе' и 'Архив'"""
+    await service.toggle_complete(document_id, current_user.id, payload.is_completed)
     return {"status": "success", "message": "Статус отображения изменен"}
 
 
-# ============================================================================
-# 4 & 5. УПРАВЛЕНИЕ ПАКЕТНЫМИ ВЛОЖЕНИЯМИ (АРХИВЫ С TIFF)
-# ============================================================================
+# --- УПРАВЛЕНИЕ АРХИВАМИ С ТИФФАМИ (ВЛОЖЕНИЯ) ---
 
 @router.post("/{document_id}/attachments/main", status_code=status.HTTP_200_OK)
 async def update_main_attachments(
         document_id: int,
-        files: List[UploadFile] = File(..., description="Полный список актуальных файлов вложения"),
+        files: List[UploadFile] = File(..., description="Полный список файлов"),
         current_user: CurrentUser = Depends(get_current_user),
-        db_docs: AsyncSession = Depends(get_docs_db)
+        service: DocumentService = Depends(get_doc_service)
 ):
-    """
-    Загрузить или обновить пакет основных вложений.
-    Принимает файлы, конвертирует сканы в TIFF, упаковывает в единый ZIP и обновляет file_path.
-    """
-    service = DocumentService(db_docs)
+    """Загрузка основного пакета документов"""
     await service.save_main_attachments(document_id, files, current_user.id)
     return {"status": "success", "message": "Основной пакет вложений успешно обновлен"}
 
 
+# ИСПРАВЛЕНО: Убран дубликат метода загрузки ответных вложений
 @router.post("/{document_id}/attachments/response", status_code=status.HTTP_200_OK)
 async def upload_response_attachments(
         document_id: int,
         files: List[UploadFile] = File(..., description="Файлы отчета об исполнении"),
         current_user: CurrentUser = Depends(get_current_user),
-        db_docs: AsyncSession = Depends(get_docs_db)
+        service: DocumentService = Depends(get_doc_service)
 ):
-    """
-    Загрузить или перезаписать ответное вложение (отчет о выполнении).
-    Файлы конвертируются, пакуются в ZIP и путь пишется в response_file_path.
-    """
-    service = DocumentService(db_docs)
+    """Загрузить или перезаписать ответное вложение (отчет об исполнении)"""
     await service.save_response_attachments(document_id, files, current_user.id)
     return {"status": "success", "message": "Ответный пакет вложений успешно прикреплен"}
 
@@ -196,39 +214,28 @@ async def upload_response_attachments(
 @router.get("/{document_id}/attachments/download/{archive_type}")
 async def download_attachments_archive(
         document_id: int,
-        archive_type: str,  # "main" или "response"
+        archive_type: str,
         current_user: CurrentUser = Depends(get_current_user),
-        db_docs: AsyncSession = Depends(get_docs_db)
+        service: DocumentService = Depends(get_doc_service)
 ):
-    """
-    Скачать ZIP-архив с вложениями (основными или ответными) для распаковки
-    и просмотра файлов в интерфейсе PyQt6.
-    """
-    service = DocumentService(db_docs)
+    """Скачивание ZIP-архива файлов документа (основной или ответный пакет)"""
     file_path = await service.get_attachment_path(document_id, archive_type)
-
     if not file_path:
-        raise HTTPException(status_code=404, detail="Запрошенный архив вложений отсутствует")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Запрошенный архив вложений отсутствует")
 
     return FileResponse(path=file_path, filename=f"doc_{document_id}_{archive_type}.zip", media_type="application/zip")
 
 
-# ============================================================================
-# 6. ПЕРЕНАПРАВЛЕНИЕ / ДЕЛЕГИРОВАНИЕ
-# ============================================================================
+# --- ДЕЛЕГИРОВАНИЕ / ПЕРЕНАПРАВЛЕНИЕ ---
 
 @router.post("/{document_id}/redirect", status_code=status.HTTP_201_CREATED)
 async def redirect_document(
         document_id: int,
         to_employee_id: int = Form(..., description="ID сотрудника, которому пересылается документ"),
-        message: Optional[str] = Form(None, description="Текст резолюции / поручения"),
+        message: Optional[str] = Form(None, description="Текст резолюции"),
         current_user: CurrentUser = Depends(get_current_user),
-        db_docs: AsyncSession = Depends(get_docs_db)
+        service: DocumentService = Depends(get_doc_service)
 ):
-    """
-    Перенаправить документ на другого сотрудника. СЭД создает запись в истории
-    перенаправлений и добавляет сотрудника в матрицу участников (роль delegate/executor).
-    """
-    service = DocumentService(db_docs)
+    """Перенаправление/делегирование документа другому исполнителю на МАЗе"""
     await service.redirect_document(document_id, current_user.id, to_employee_id, message)
     return {"status": "success", "message": f"Документ успешно перенаправлен сотруднику {to_employee_id}"}

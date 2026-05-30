@@ -1,15 +1,18 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List
-from datetime import date, datetime
-
-from server.app.database.models import TagPriority
+from server.app.database.document_models import TagPriority
 
 
-# --- СХЕМЫ ДЛЯ ХЭШТЕГОВ ---
 class TagBase(BaseModel):
     name: str
     priority: TagPriority = TagPriority.normal
+    color: str = Field("#808080", max_length=7, description="HEX-код цвета для UI PyQt6")
+
+
+class TagCreate(TagBase):
+    pass
+
 
 class TagRead(TagBase):
     id: int
+
     model_config = ConfigDict(from_attributes=True)

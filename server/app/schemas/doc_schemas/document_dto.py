@@ -2,14 +2,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import date, datetime
 
-from server.app.database.models import DocStatus, DocDirection
+from server.app.database.document_models import DocStatus, DocDirection
 from server.app.schemas.doc_schemas.doc_employee_dto import DocEmployeeItem
 from server.app.schemas.doc_schemas.tag_dto import TagRead
+from server.app.schemas.doc_schemas.attachment_dto import DocumentAttachmentRead
+from server.app.schemas.doc_schemas.receiver_dto import DocumentReceiverRead
 
 
-# --- СХЕМЫ ДЛЯ ДОКУМЕНТОВ ---
 class DocumentCreateForm(BaseModel):
-    """Данные, которые PyQt6 присылает вместе с файлом при создании"""
     type_id: int
     direction: DocDirection
     title: Optional[str] = None
@@ -17,73 +17,99 @@ class DocumentCreateForm(BaseModel):
     reg_number: Optional[str] = None
     deadline: Optional[date] = None
 
-    # Списки ID сотрудников, которых нужно привязать к документу
-    executors: List[int] = []  # Исполнители
-    recipients: List[int] = []  # Получатели/Утверждающие
-    tag_ids: List[int] = []  # Привязанные хэштеги
+    # СМДО / Безопасность (Добавлено на основании новых полей БД)
+    global_msg_id: str  # Локальный UUID или UUID пакета СМДО
+    parent_document_id: Optional[int] = None
+    confident_flag: int = 0  # 0 - открытый, 1 - ДСП
+    clearance_id: Optional[int] = None
+
+    executors: List[int] = []  # ID сотрудников
+    recipients: List[int] = []  # ID сотрудников
+    tag_ids: List[int] = []
 
 
 class DocumentListItem(BaseModel):
-    """Усеченная модель для отображения в главной таблице PyQt6 (чтобы сеть не грузить)"""
+    """Усеченная модель для отображения в главной таблице PyQt6"""
     id: int
-    title: Optional[str]
-    reg_number: Optional[str]
-    status: DocStatus
+    title: Optional[str] = None
+    reg_number: Optional[str] = None
+    status: DocStatus = DocStatus.under_review
     direction: DocDirection
     created_at: datetime
-    deadline: Optional[date]
+    deadline: Optional[date] = None
+    last_comment_text: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class DocumentDetailRead(BaseModel):
-    """Полная карточка документа со всеми связями"""
+    """Полная карточка документа (открытие по двойному клику в UI)"""
     id: int
-    title: Optional[str]
-    about: Optional[str]
-    reg_number: Optional[str]
-    sequence_number: Optional[int]
     status: DocStatus
+    type_id: int
     direction: DocDirection
-    created_at: datetime
-    deadline: Optional[date]
-    file_path: str
-    response_file_path: Optional[str] = None
+    title: Optional[str] = None
+    about: Optional[str] = None
 
+    reg_number: Optional[str] = None
+    sequence_number: Optional[int] = None
+    sent_date: Optional[date] = None
+    deadline: Optional[date] = None
+
+    incoming_number: Optional[str] = None
+    incoming_date: Optional[date] = None
+
+    global_msg_id: str
+    parent_document_id: Optional[int] = None
+    confident_flag: int
+    clearance_id: Optional[int] = None
+    numcopy: Optional[str] = None
+
+    source_employee_id: Optional[int] = None
+    source_organization_id: Optional[int] = None
+    source_official_text: Optional[str] = None
+
+    last_comment_text: Optional[str] = None
+    created_at: datetime
+
+    # Вложенные списки
     tags: List[TagRead] = []
     employees: List[DocEmployeeItem] = []
+    attachments: List[DocumentAttachmentRead] = []  # Заменило старые плоские пути файлов!
+    receivers: List[DocumentReceiverRead] = []  # Веерная рассылка пакета
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class DocumentStatusUpdate(BaseModel):
-    """DTO для смены статуса (Утвердить/Отклонить)"""
-    status: DocStatus
+class DocumentPaginationResponse(BaseModel):
+    """Ответ для PyQt6 с поддержкой постраничной пагинации"""
+    total: int = Field(..., description="Общее количество документов по фильтрам")
+    limit: int = Field(..., description="Размер страницы")
+    offset: int = Field(..., description="Смещение")
+    items: List[DocumentListItem] = Field(..., description="Массив документов текущей страницы")
 
+    model_config = ConfigDict(from_attributes=True)
 
-class DocumentToggleComplete(BaseModel):
-    """DTO для отметки выполнения документа (отправка в архив)"""
-    is_completed: bool
 
 class AdminMetadataUpdate(BaseModel):
-    title: Optional[str] = Field(None, description="Название документа")
-    about: Optional[str] = Field(None, description="Аннотация / Краткое содержание")
-    reg_number: Optional[str] = Field(None, description="Регистрационный номер")
-    sequence_number: Optional[int] = Field(None, description="Порядковый номер")
-    sent_date: Optional[date] = Field(None, description="Дата отправки")
-    deadline: Optional[date] = Field(None, description="Срок исполнения")
-    status: Optional[DocStatus] = Field(None, description="Принудительное изменение статуса документа")
-    type_id: Optional[int] = Field(None, description="Изменение типа документа")
-    direction: Optional[DocDirection] = Field(None, description="Изменение направления (internal/external)")
+    """DTO для полного администрирования метаданных"""
+    title: Optional[str] = None
+    about: Optional[str] = None
+    reg_number: Optional[str] = None
+    sequence_number: Optional[int] = None
+    sent_date: Optional[date] = None
+    deadline: Optional[date] = None
+    status: Optional[DocStatus] = None
+    type_id: Optional[int] = None
+    direction: Optional[DocDirection] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class ReviewDocumentPayload(BaseModel):
-    """Схема для согласования/отклонения документа"""
+    """Согласование / Отклонение документа на этапе under_review"""
     approved: bool = Field(..., description="True - утвердить, False - отклонить")
-    comment: Optional[str] = Field(None, description="Необязательный комментарий к решению")
+    comment: Optional[str] = Field(None, description="Комментарий к решению (замечание)")
 
 class ToggleCompletionPayload(BaseModel):
-    """Схема для переключения В работе / Архив"""
-    is_completed: bool = Field(..., description="Состояние выполнения задачи сотрудником")
+    is_completed: bool

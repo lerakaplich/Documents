@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from server.app.api.auth import router as auth_router
+from server.app.api.auth_router import router as auth_router
 from server.app.api.documents import router as doc_router
 
 app = FastAPI(
