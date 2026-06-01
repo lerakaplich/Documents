@@ -113,3 +113,14 @@ class ReviewDocumentPayload(BaseModel):
 
 class ToggleCompletionPayload(BaseModel):
     is_completed: bool
+
+class RedirectHistoryRead(BaseModel):
+    id: int
+    document_id: int
+    from_employee_id: int
+    to_employee_id: int
+    redirected_at: datetime
+    message: Optional[str]
+
+    class Config:
+        from_attributes = True # Позволяет создавать схему из ORM-объектов

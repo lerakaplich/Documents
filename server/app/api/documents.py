@@ -11,7 +11,7 @@ from server.app.repositories.comment_repo import CommentRepository
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.schemas.doc_schemas.document_dto import (
     DocumentListItem, DocumentCreateForm, DocumentDetailRead,
-    AdminMetadataUpdate, DocumentPaginationResponse, ToggleCompletionPayload
+    AdminMetadataUpdate, DocumentPaginationResponse, ToggleCompletionPayload, RedirectHistoryRead
 )
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 
@@ -20,6 +20,7 @@ from server.app.services.documents.document_service import DocumentService
 from server.app.services.documents.review_service import DocumentReviewService
 from server.app.services.documents.registry_service import DocumentRegistryService
 from server.app.services.comment_service import CommentService
+from server.app.services.documents.workflow_service import DocumentWorkflowService
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -30,6 +31,9 @@ def get_doc_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentSer
     repo = DocumentRepository(db_docs)
     return DocumentService(repo)
 
+def get_workflow_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentWorkflowService:
+    repo = DocumentRepository(db_docs)
+    return DocumentWorkflowService(repo)
 
 def get_review_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentReviewService:
     doc_repo = DocumentRepository(db_docs)
@@ -226,16 +230,36 @@ async def download_attachments_archive(
     return FileResponse(path=file_path, filename=f"doc_{document_id}_{archive_type}.zip", media_type="application/zip")
 
 
-# --- ДЕЛЕГИРОВАНИЕ / ПЕРЕНАПРАВЛЕНИЕ ---
+# --- ЭНДПОИНТЫ ДЕЛЕГИРОВАНИЯ ---
 
-@router.post("/{document_id}/redirect", status_code=status.HTTP_201_CREATED)
-async def redirect_document(
+@router.post("/{document_id}/delegates", status_code=status.HTTP_201_CREATED)
+async def add_delegate(
         document_id: int,
-        to_employee_id: int = Form(..., description="ID сотрудника, которому пересылается документ"),
-        message: Optional[str] = Form(None, description="Текст резолюции"),
+        to_employee_id: int, # В теле запроса (Pydantic модель)
+        message: Optional[str] = None,
         current_user: CurrentUser = Depends(get_current_user),
-        service: DocumentService = Depends(get_doc_service)
+        service: DocumentWorkflowService = Depends(get_workflow_service)
 ):
-    """Перенаправление/делегирование документа другому исполнителю на МАЗе"""
-    await service.redirect_document(document_id, current_user.id, to_employee_id, message)
-    return {"status": "success", "message": f"Документ успешно перенаправлен сотруднику {to_employee_id}"}
+    """Назначить сотрудника участником/делегатом"""
+    await service.add_delegate(document_id, current_user.id, to_employee_id, message)
+    return {"status": "success", "message": "Сотрудник добавлен в список участников"}
+
+@router.delete("/{document_id}/delegates/{emp_id}")
+async def remove_delegate(
+        document_id: int,
+        emp_id: int,
+        current_user: CurrentUser = Depends(get_current_user),
+        service: DocumentWorkflowService = Depends(get_workflow_service)
+):
+    """Отозвать права участника (только если есть права на управление)"""
+    await service.remove_delegate(document_id, current_user.id, emp_id)
+    return {"status": "success", "message": "Сотрудник удален из списка участников"}
+
+@router.get("/{document_id}/redirect-history", response_model=List[RedirectHistoryRead])
+async def get_redirect_history(
+        document_id: int,
+        current_user: CurrentUser = Depends(get_current_user),
+        service: DocumentWorkflowService = Depends(get_workflow_service)
+):
+    """История движений документа"""
+    return await service.get_history(document_id)

@@ -1,12 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, cast, String, desc, asc, exists
+from sqlalchemy import select, func, and_, or_, cast, String, desc, asc, exists, insert, delete
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from typing import List, Optional, Tuple
 from datetime import date
 
 # ИСПРАВЛЕНО: Импортируем сущности строго из новой схемы db_documents
 from server.app.database.document_models import (
     Document, EmployeeDocument, SystemEmployee,
-    Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority
+    Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority, DocumentRole, RedirectHistory
 )
 
 
@@ -210,3 +211,51 @@ class DocumentRepository:
         # 8. ВЫПОЛНЕНИЕ
         result = await self.db.execute(query)
         return total_count, list(result.scalars().all())
+
+    async def assign_role_to_employee(self, doc_id: int, emp_id: int, role: DocumentRole):
+        """Безопасное добавление участника"""
+        stmt = pg_insert(EmployeeDocument).values(
+            document_id=doc_id,
+            employee_id=emp_id,
+            role=role
+        ).on_conflict_do_nothing(
+            # ВАЖНО: Имя должно строго совпадать с тем, что сейчас в БД!
+            constraint="unique_doc_employee"
+        ).returning(EmployeeDocument.id)
+
+        result = await self.db.execute(stmt)
+        return result.scalar() is not None
+
+    async def remove_employee_from_doc(self, doc_id: int, emp_id: int):
+        """Удаление сотрудника из документа"""
+        stmt = delete(EmployeeDocument).where(
+            EmployeeDocument.document_id == doc_id,
+            EmployeeDocument.employee_id == emp_id
+        )
+        await self.db.execute(stmt)
+
+    async def add_redirect_history(self, doc_id: int, from_id: int, to_id: int, message: str):
+        """Запись в лог перенаправлений"""
+        stmt = insert(RedirectHistory).values(
+            document_id=doc_id,
+            from_employee_id=from_id,
+            to_employee_id=to_id,
+            message=message
+        )
+        await self.db.execute(stmt)
+
+    async def get_participants(self, doc_id: int) -> List[EmployeeDocument]:
+        """Получить список всех текущих участников документа"""
+        result = await self.db.execute(
+            select(EmployeeDocument).where(EmployeeDocument.document_id == doc_id)
+        )
+        return list(result.scalars().all())
+
+    async def get_redirect_history(self, doc_id: int) -> List[RedirectHistory]:
+        """Получить историю перенаправлений"""
+        result = await self.db.execute(
+            select(RedirectHistory)
+            .where(RedirectHistory.document_id == doc_id)
+            .order_by(RedirectHistory.redirected_at.desc())
+        )
+        return list(result.scalars().all())
