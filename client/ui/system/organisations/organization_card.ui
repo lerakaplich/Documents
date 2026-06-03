@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>OrganizationCard</class>
+ <widget class="QFrame" name="OrganizationCard">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>934</width>
+    <height>150</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>350</width>
+    <height>130</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>150</height>
+   </size>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+    QFrame#OrganizationCard {
+        background-color: white;
+        border: 1px solid #DEE2E6;
+        border-radius: 10px;
+    }
+    QFrame#OrganizationCard:hover {
+        border: 2px solid #CCAB6E;
+        background-color: #FDFBF7;
+    }
+   </string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>15</number>
+   </property>
+   <property name="topMargin">
+    <number>2</number>
+   </property>
+   <property name="rightMargin">
+    <number>15</number>
+   </property>
+   <property name="bottomMargin">
+    <number>2</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="buttonsLayout">
+     <property name="spacing">
+      <number>10</number>
+     </property>
+     <item>
+      <layout class="QVBoxLayout" name="infoLayout">
+       <property name="spacing">
+        <number>4</number>
+       </property>
+       <property name="topMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
+        <number>10</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="nameLabel">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 16px; font-weight: bold; color: #212529; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>ОАО &quot;МАЗ&quot; - Минский автомобильный завод</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="unpLabel">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 14px; font-weight: 500; color: #CCAB6E; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>УНП: 100123456</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="addressLabel">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 14px; color: #495057; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>г. Минск, ул. Социалистическая, 42</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="phoneLabel">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 14px; color: #495057; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>+375 17 276-20-20</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="emailLabel">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 14px; color: #495057; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>info@maz.by</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="directorLabel">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 12px; font-weight: bold; color: #7A6A50; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>Директор: Иванов И.И.</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="editBtn">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+         QPushButton {
+             background-color: #FDFBF7;
+             color: #CCAB6E;
+             border: 1px solid #E8DCC8;
+             border-radius: 5px;
+             font-size: 13px;
+             font-weight: 500;
+         }
+         QPushButton:hover {
+             background-color: #CCAB6E;
+             color: white;
+         }
+         QPushButton:pressed {
+             background-color: #7A6A50;
+         }
+        </string>
+       </property>
+       <property name="text">
+        <string>Редактировать</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="deleteBtn">
+       <property name="minimumSize">
+        <size>
+         <width>80</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>80</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+         QPushButton {
+             background-color: #FFF5F5;
+             color: #D22730;
+             border: 1px solid #FEB2B2;
+             border-radius: 5px;
+             font-size: 13px;
+             font-weight: 500;
+         }
+         QPushButton:hover {
+             background-color: #D22730;
+             color: white;
+         }
+         QPushButton:pressed {
+             background-color: #C53030;
+         }
+        </string>
+       </property>
+       <property name="text">
+        <string>Удалить</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
