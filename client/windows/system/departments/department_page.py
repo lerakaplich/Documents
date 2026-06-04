@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QLineEdit, QScrollArea, QMenu, QMessageBox, QApplication,
     QSizePolicy
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.uic import loadUi
 
 from client.windows.animations.collapsible_group import CollapsibleGroup
@@ -254,17 +254,22 @@ class DepartmentPage(QWidget):
     def update_display(self):
         """Обновление отображения элементов"""
         # Очищаем layout
-        for i in reversed(range(self.scrollAreaLayout.count())):
-            widget = self.scrollAreaLayout.itemAt(i).widget()
-            if widget:
-                widget.deleteLater()
+        while self.scrollAreaLayout.count():
+            item = self.scrollAreaLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.spacerItem():
+                del item
 
         # Получаем отфильтрованные и отсортированные элементы
         self.filtered_items = self.filter_and_sort_items()
         groups = self.group_by_organization(self.filtered_items)
 
-        # Сортируем организации: МАЗ первый
-        org_order = sorted(groups.keys(), key=lambda x: (x != "ОАО МАЗ", x))
+        # Сортируем организации: сначала заполненные, потом пустые, МАЗ первый
+        org_order = sorted(
+            [org for org in groups.keys() if groups[org]],  # Только непустые группы
+            key=lambda x: (x != "ОАО МАЗ", x)
+        )
 
         for i, org_name in enumerate(org_order):
             items = groups[org_name]
@@ -285,14 +290,23 @@ class DepartmentPage(QWidget):
                 }
 
                 item_card = DepartmentCard(card_data)
+                item_card.edit_clicked.connect(self.on_edit_department)
+                item_card.delete_clicked.connect(self.on_delete_department)
+
                 group.add_widget(item_card)
 
             self.scrollAreaLayout.addWidget(group)
 
+            # Если группа развернута, обновляем её высоту после добавления
+            if is_expanded:
+                QTimer.singleShot(50, group._delayed_height_update)
+
+        # Добавляем растяжку в конце
         self.scrollAreaLayout.addStretch()
 
-        # Обновляем позицию плавающей кнопки
-        self.position_floating_button()
+        # Сбрасываем скролл в начало
+        self.scrollArea.verticalScrollBar().setValue(0)
+        self.scrollArea.update()
 
     def position_floating_button(self):
         """Позиционирование плавающей кнопки в правом нижнем углу"""

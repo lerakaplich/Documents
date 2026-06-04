@@ -32,6 +32,9 @@
    <property name="bottomMargin">
     <number>10</number>
    </property>
+   <property name="alignment">
+    <set>Qt::AlignTop</set>
+   </property>
    <item>
     <layout class="QHBoxLayout" name="toolbarLayout">
      <property name="spacing">

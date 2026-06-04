@@ -668,6 +668,9 @@ class EmployeesPage(QWidget):
         org_order = list(groups.keys())
         org_order.sort(key=lambda x: (x != "ОАО МАЗ", x))
 
+        # Глобальный счетчик для порядковых номеров
+        global_counter = 0
+
         for i, org_name in enumerate(org_order):
             employees = groups[org_name]
             if not employees:
@@ -682,27 +685,26 @@ class EmployeesPage(QWidget):
 
             group = CollapsibleGroup(org_name, is_expanded)
 
-            # === ИСПРАВЛЕНИЕ ЗДЕСЬ ===
-            # Принудительно устанавливаем отступы между карточками
             if hasattr(group, 'content_layout') and isinstance(group.content_layout, QVBoxLayout):
-                group.content_layout.setSpacing(12)  # расстояние между карточками
+                group.content_layout.setSpacing(12)
                 group.content_layout.setContentsMargins(8, 8, 8, 12)
             elif hasattr(group, 'layout') and isinstance(group.layout, QVBoxLayout):
                 group.layout.setSpacing(12)
 
             for emp in employees:
+                global_counter += 1  # Увеличиваем счетчик
                 full_name = f"{emp.get('last_name', '')} {emp.get('first_name', '')} {emp.get('patronymic', '')}".strip()
 
                 card_data = {
                     "id": emp.get("id"),
-                    "number": emp.get("service_number", ""),
+                    "display_number": str(global_counter),  # ← Порядковый номер
                     "full_name": full_name,
                     "position": emp.get("position_name", ""),
                     "company": org_name,
                     "department": emp.get("department_name", ""),
                     "subdivision": emp.get("department_path", ""),
-                    "phone": emp.get("phone_number", ""),
                     "work_phone": emp.get("work_number", ""),
+                    "email": emp.get("email", ""),  # ← Добавлен email
                     "rights": "Администратор" if emp.get("is_leader") else "Пользователь"
                 }
 

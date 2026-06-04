@@ -1,8 +1,6 @@
-# employee_card.py
 import sys
 import os
-from PyQt6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget, QHBoxLayout, QLabel, QPushButton, QSpacerItem, \
-    QSizePolicy
+from PyQt6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget, QHBoxLayout, QLabel, QPushButton
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.uic import loadUi
 
@@ -23,7 +21,6 @@ class EmployeeCard(QFrame):
             loadUi(ui_path, self)
         else:
             print(f"UI файл не найден: {ui_path}")
-            # Создаем заглушку, если файл не найден
             self.setup_placeholder()
 
         # Сохраняем данные
@@ -41,9 +38,7 @@ class EmployeeCard(QFrame):
 
     def get_ui_path(self):
         """Возвращает путь к UI файлу"""
-        # Путь относительно текущего файла
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        # Поднимаемся на уровень выше до client/windows/system/employees/
         ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'employees', 'employee_card.ui')
         return os.path.normpath(ui_path)
 
@@ -52,10 +47,10 @@ class EmployeeCard(QFrame):
         if not self.employee_data:
             return
 
-        # Заполняем ФИО с номером (если есть порядковый номер)
+        # Заполняем ФИО с порядковым номером
         if hasattr(self, 'nameLabel'):
             name = self.employee_data.get('full_name', '')
-            number = self.employee_data.get('number', '')
+            number = self.employee_data.get('display_number', '')
             if number and name:
                 self.nameLabel.setText(f"{number}. {name}")
             elif name:
@@ -80,31 +75,36 @@ class EmployeeCard(QFrame):
             else:
                 self.departmentLabel.setText("Место работы не указано")
 
-        # Заполняем мобильный телефон
-        if hasattr(self, 'phoneLabel'):
-            phone = self.employee_data.get('phone', '')
-            self.phoneLabel.setText(phone if phone else "Телефон не указан")
-
         # Заполняем рабочий телефон
         if hasattr(self, 'workPhoneLabel'):
             work_phone = self.employee_data.get('work_phone', '')
-            self.workPhoneLabel.setText(work_phone if work_phone else "Рабочий телефон не указан")
+            if work_phone:
+                self.workPhoneLabel.setText(f"📞 {work_phone}")
+            else:
+                self.workPhoneLabel.setText("📞 не указан")
+
+        # Заполняем email
+        if hasattr(self, 'emailLabel'):
+            email = self.employee_data.get('email', '')
+            if email:
+                self.emailLabel.setText(f"✉ {email}")
+            else:
+                self.emailLabel.setText("✉ не указан")
 
         # Заполняем права доступа
         if hasattr(self, 'rightsLabel'):
             rights = self.employee_data.get('rights', '')
             if rights:
                 self.rightsLabel.setText(rights)
-                # Устанавливаем цвет в зависимости от уровня прав
                 if rights.lower() == 'администратор':
-                    self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #CCAB6E;")
+                    self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #CCAB6E; background-color: transparent;")
                 elif rights.lower() == 'пользователь':
-                    self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #28A745;")
-                elif rights.lower() == 'гость':
-                    self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #6C757D;")
+                    self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #28A745; background-color: transparent;")
+                else:
+                    self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #6C757D; background-color: transparent;")
             else:
                 self.rightsLabel.setText("Права не назначены")
-                self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #DC3545;")
+                self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #DC3545; background-color: transparent;")
 
     def on_edit_clicked(self):
         """Обработчик кнопки редактирования"""
@@ -117,6 +117,11 @@ class EmployeeCard(QFrame):
     def update_data(self, new_data):
         """Обновляет данные карточки"""
         self.employee_data.update(new_data)
+        self.setup_card()
+
+    def set_display_number(self, number):
+        """Устанавливает порядковый номер для отображения"""
+        self.employee_data['display_number'] = str(number)
         self.setup_card()
 
     def setup_placeholder(self):
@@ -133,11 +138,11 @@ class EmployeeCard(QFrame):
         self.departmentLabel = QLabel("Отдел")
         layout.addWidget(self.departmentLabel)
 
-        self.phoneLabel = QLabel("Телефон")
-        layout.addWidget(self.phoneLabel)
-
-        self.workPhoneLabel = QLabel("Рабочий телефон")
+        self.workPhoneLabel = QLabel("📞 Рабочий телефон")
         layout.addWidget(self.workPhoneLabel)
+
+        self.emailLabel = QLabel("✉ Email")
+        layout.addWidget(self.emailLabel)
 
         self.rightsLabel = QLabel("Права")
         layout.addWidget(self.rightsLabel)
@@ -153,36 +158,27 @@ class EmployeeCard(QFrame):
         self.deleteBtn.clicked.connect(self.on_delete_clicked)
 
 
-
 # Точка входа для тестирования
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
-    # Тест отдельной карточки
     test_data = {
         'id': 1,
-        'number': '1',
+        'display_number': '1',
         'full_name': 'Иванов Иван Иванович',
         'position': 'Генеральный директор',
         'company': 'ОАО МАЗ',
         'department': 'Управление персоналом',
         'subdivision': 'Отдел кадров',
-        'phone': '+375 29 123-45-67',
         'work_phone': '101',
+        'email': 'i.ivanov@maz.by',
         'rights': 'Администратор'
     }
 
-    # Создаем и показываем карточку
     card = EmployeeCard(test_data)
     card.setWindowTitle("Тест карточки сотрудника")
     card.edit_clicked.connect(lambda data: print(f"Редактировать: {data['full_name']}"))
     card.delete_clicked.connect(lambda emp_id: print(f"Удалить ID: {emp_id}"))
     card.show()
-
-    # Альтернативно, показать панель со всеми карточками
-    # panel = EmployeesPanel()
-    # panel.setWindowTitle("Сотрудники")
-    # panel.resize(900, 600)
-    # panel.show()
 
     sys.exit(app.exec())

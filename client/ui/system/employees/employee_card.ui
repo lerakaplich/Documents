@@ -19,8 +19,14 @@
   <property name="maximumSize">
    <size>
     <width>16777215</width>
-    <height>150</height>
+    <height>200</height>
    </size>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="styleSheet">
    <string notr="true">
@@ -43,13 +49,13 @@
     <number>15</number>
    </property>
    <property name="topMargin">
-    <number>2</number>
+    <number>8</number>
    </property>
    <property name="rightMargin">
     <number>15</number>
    </property>
    <property name="bottomMargin">
-    <number>2</number>
+    <number>8</number>
    </property>
    <item>
     <layout class="QHBoxLayout" name="buttonsLayout">
@@ -69,6 +75,15 @@
        </property>
        <item>
         <widget class="QLabel" name="nameLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 16px; font-weight: bold; color: #4A3B28; background-color: transparent;</string>
          </property>
@@ -79,6 +94,15 @@
        </item>
        <item>
         <widget class="QLabel" name="positionLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; font-weight: 500; color: #998664; background-color: transparent;</string>
          </property>
@@ -89,6 +113,15 @@
        </item>
        <item>
         <widget class="QLabel" name="departmentLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; color: #7A6A50; background-color: transparent;</string>
          </property>
@@ -98,27 +131,54 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="phoneLabel">
+        <widget class="QLabel" name="workPhoneLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; color: #7A6A50; background-color: transparent;</string>
          </property>
          <property name="text">
-          <string>+375 29 123-45-67</string>
+          <string>Номер телефона: 101</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="workPhoneLabel">
+        <widget class="QLabel" name="emailLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; color: #7A6A50; background-color: transparent;</string>
          </property>
          <property name="text">
-          <string>101</string>
+          <string>Эл. почта: i.ivanov@maz.by</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QLabel" name="rightsLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 12px; font-weight: bold; color: #CCAB6E; background-color: transparent;</string>
          </property>
