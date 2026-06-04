@@ -259,3 +259,48 @@ class DocumentRepository:
             .order_by(RedirectHistory.redirected_at.desc())
         )
         return list(result.scalars().all())
+
+    async def get_rights_map(self, emp_ids: List[int]) -> dict:
+        """
+        Быстрый запрос для получения прав по списку ID сотрудников.
+        Возвращает словарь {emp_id: rights_value}
+        """
+        if not emp_ids:
+            return {}
+
+        stmt = select(SystemEmployee.id, SystemEmployee.rights).where(SystemEmployee.id.in_(emp_ids))
+        result = await self.db.execute(stmt)
+
+        # Превращаем результат в удобный словарь
+        return {row.id: row.rights for row in result.all()}
+
+    async def get_system_employee(self, emp_id: int) -> Optional[SystemEmployee]:
+        """Получить запись о сотруднике из БД документов для сверки"""
+        result = await self.db.execute(select(SystemEmployee).where(SystemEmployee.id == emp_id))
+        return result.scalar_one_or_none()
+
+    async def upsert_system_employee(
+            self,
+            id: int,
+            last_name: str,
+            first_name: str,
+            patronymic: str,
+            rights: AppRights
+    ):
+        # Проверяем, что все параметры переданы (на уровне Python)
+        if None in [id, last_name, first_name, rights]:
+            raise ValueError("Обязательные поля для upsert не могут быть None")
+
+        stmt = pg_insert(SystemEmployee).values(
+            id=id, last_name=last_name, first_name=first_name,
+            patronymic=patronymic, rights=rights
+        ).on_conflict_do_update(
+            index_elements=['id'],
+            set_={
+                'last_name': last_name,
+                'first_name': first_name,
+                'patronymic': patronymic,
+                'rights': rights
+            }
+        )
+        await self.db.execute(stmt)

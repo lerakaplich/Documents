@@ -1,6 +1,19 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
+from pydantic import BaseModel, ConfigDict
+from typing import List
+
+class DepartmentNode(BaseModel):
+    id: int
+    name: str
+    children: List["DepartmentNode"] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+# Обязательно вызываем для обработки ссылок на самого себя
+DepartmentNode.model_rebuild()
+
 class OrganizationBase(BaseModel):
     unp: str  # Уникальный бизнес-ключ
     smdo_code: Optional[str] = None

@@ -2,6 +2,8 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import date
 from server.app.database.document_models import AppRights  # Используется в SystemEmployee
+from server.app.database.employee_models import AssignmentType
+
 
 class EmployeeBase(BaseModel):
     service_number: str
@@ -14,15 +16,22 @@ class EmployeeBase(BaseModel):
     birth_date: Optional[date] = None
     chat_id: Optional[int] = None
 
+class EmployeePositionCreate(BaseModel):
+    department_id: int
+    position_name: str
+    assignment_kind: AssignmentType  # ИСПОЛЬЗУЕМ ENUM ВМЕСТО STR
+    is_leader: bool = False
+
 class EmployeeCreate(EmployeeBase):
-    pass
+    rights: AppRights  # Права в системе (user/admin/superadmin)
+    position: EmployeePositionCreate  # Данные о должности
 
 class EmployeePositionRead(BaseModel):
     """Должностная позиция сотрудника (Где и кем работает)"""
     id: int
     department_id: int
     position_name: str
-    assignment_kind: str
+    assignment_kind: AssignmentType
     is_leader: bool
 
     model_config = ConfigDict(from_attributes=True)
@@ -33,6 +42,15 @@ class EmployeeRead(EmployeeBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+class EmployeeListRead(BaseModel):
+    id: int
+    full_name: str           # Соберем на бэкенде: "Иванов И.И."
+    position_name: str       # Из employee_positions
+    department_name: str     # Из departments
+    phone_number: Optional[str]
+    rights: str              # user/admin/superadmin из system_employees
+
+    model_config = ConfigDict(from_attributes=True)
 
 class CurrentUser(BaseModel):
     """Текущий сессионный пользователь приложения СЭД"""
@@ -44,3 +62,7 @@ class CurrentUser(BaseModel):
     rights: AppRights  # Права из локальной таблицы public.system_employees
 
     model_config = ConfigDict(from_attributes=True)
+
+class EmployeeDetailRead(EmployeeRead):
+    rights: str  # user/admin/superadmin
+    is_active: bool

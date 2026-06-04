@@ -65,6 +65,7 @@ class Employee(BaseEmployees):
     email: Mapped[Optional[str]] = mapped_column(Text)
     birth_date: Mapped[Optional[date]] = mapped_column(Date)
     chat_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
 
     positions: Mapped[List["EmployeePosition"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
 
