@@ -25,15 +25,18 @@ class LeftPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setMinimumWidth(50)
-        self.setMaximumWidth(280)
+        # Константы для размеров панели
+        self.COLLAPSED_WIDTH = 80  # Ширина в свернутом состоянии
+        self.EXPANDED_WIDTH = 280  # Ширина в развернутом состоянии
+
+        self.setMinimumWidth(self.COLLAPSED_WIDTH)
+        self.setMaximumWidth(self.EXPANDED_WIDTH)
         self.is_expanded = True
 
         # Загружаем UI
         ui_path = os.path.join(ROOT_DIR, "ui", "left_panel.ui")
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
-
 
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
@@ -175,7 +178,6 @@ class LeftPanel(QWidget):
         if hasattr(self, 'hidePanelBtn'):
             self.hidePanelBtn.clicked.connect(self.toggle_panel)
 
-
     def setup_groups_container(self):
         """Создает контейнер для групп направлений в scrollArea"""
         try:
@@ -301,15 +303,15 @@ class LeftPanel(QWidget):
         self.collapse_animation.stop()
 
         if self.is_expanded:
-            # Сворачиваем
-            self.collapse_animation.setStartValue(280)
-            self.collapse_animation.setEndValue(50)
+            # Сворачиваем - используем константы
+            self.collapse_animation.setStartValue(self.EXPANDED_WIDTH)
+            self.collapse_animation.setEndValue(self.COLLAPSED_WIDTH)
             self.is_expanded = False
             self.toggle_buttons_visibility(False)
         else:
-            # Разворачиваем
-            self.collapse_animation.setStartValue(50)
-            self.collapse_animation.setEndValue(280)
+            # Разворачиваем - используем константы
+            self.collapse_animation.setStartValue(self.COLLAPSED_WIDTH)
+            self.collapse_animation.setEndValue(self.EXPANDED_WIDTH)
             self.is_expanded = True
             self.toggle_buttons_visibility(True)
 
@@ -342,6 +344,25 @@ class LeftPanel(QWidget):
 
         if hasattr(self, 'hidePanelBtn'):
             self.hidePanelBtn.setText("◀ Скрыть панель" if visible else "▶")
+            # Применяем специальный стиль для свернутого состояния
+            if visible:
+                self.hidePanelBtn.setStyleSheet(self._get_collapse_button_style())
+            else:
+                self.hidePanelBtn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #DDB87A;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 20px;
+                text-align: center;
+                min-height: 42px;
+            }
+            QPushButton:hover {
+                background-color: #3A4A54;
+            }
+        """)
 
         # Главное — скрываем только содержимое групп
         if hasattr(self, 'scrollArea'):

@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>OvertimeCard</class>
+ <widget class="QFrame" name="OvertimeCard">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>130</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>400</width>
+    <height>120</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>200</height>
+   </size>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+    QFrame#OvertimeCard {
+        background-color: white;
+        border: 1px solid #DEE2E6;
+        border-radius: 10px;
+    }
+    QFrame#OvertimeCard:hover {
+        border: 2px solid #CCAB6E;
+        background-color: #FDFBF7;
+    }
+   </string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>15</number>
+   </property>
+   <property name="topMargin">
+    <number>12</number>
+   </property>
+   <property name="rightMargin">
+    <number>15</number>
+   </property>
+   <property name="bottomMargin">
+    <number>12</number>
+   </property>
+   <item>
+    <layout class="QVBoxLayout" name="mainLayout">
+     <property name="spacing">
+      <number>8</number>
+     </property>
+     <item>
+      <layout class="QHBoxLayout" name="headerLayout">
+       <property name="spacing">
+        <number>10</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="labelEmployee">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>1</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 16px; font-weight: bold; color: #4A3B28; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>Иванов Иван Иванович</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="headerSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelCreatedAt">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 11px; color: #998664; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>Создана: 01.06.2026</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="descriptionLayout">
+       <property name="spacing">
+        <number>10</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="labelDescription">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>1</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 13px; color: #7A6A50; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>Срочный проект - подготовка отчётности для налоговой инспекции</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnEdit">
+         <property name="minimumSize">
+          <size>
+           <width>90</width>
+           <height>28</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>90</width>
+           <height>28</height>
+          </size>
+         </property>
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">
+           QPushButton {
+               background-color: #FFF8ED;
+               color: #CCAB6E;
+               border: 1px solid #CCAB6E;
+               border-radius: 6px;
+               font-size: 12px;
+               font-weight: 500;
+           }
+           QPushButton:hover {
+               background-color: #CCAB6E;
+               color: white;
+           }
+           QPushButton:pressed {
+               background-color: #998664;
+           }
+          </string>
+         </property>
+         <property name="text">
+          <string>✏️ Редактировать</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="infoLayout">
+       <property name="spacing">
+        <number>15</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="labelDateIcon">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 13px; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>📅</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelDate">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 13px; color: #28a745; font-weight: bold; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>15.06.2026</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelTimeIcon">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 13px; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>⏰</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelTime">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 13px; color: #7A6A50; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>18:00 - 20:00</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelDurationIcon">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 13px; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>⏱️</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelDuration">
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 13px; color: #CCAB6E; font-weight: bold; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>2.00 ч.</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="infoSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnDelete">
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>28</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>28</height>
+          </size>
+         </property>
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">
+           QPushButton {
+               background-color: #FFF5F5;
+               color: #E53E3E;
+               border: 1px solid #FEB2B2;
+               border-radius: 6px;
+               font-size: 12px;
+               font-weight: 500;
+           }
+           QPushButton:hover {
+               background-color: #E53E3E;
+               color: white;
+           }
+           QPushButton:pressed {
+               background-color: #C53030;
+           }
+          </string>
+         </property>
+         <property name="text">
+          <string>🗑️ Удалить</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
