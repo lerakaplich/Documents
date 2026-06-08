@@ -8,7 +8,7 @@ from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
 from server.app.schemas.user_schemas.employee_dto import EmployeeRead, EmployeeListRead, CurrentUser, \
-    EmployeeDetailRead, EmployeeCreate
+    EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate
 from server.app.schemas.user_schemas.org_dto import DepartmentNode
 from server.app.services.employees.employee_service import EmployeeService
 from server.app.services.employees.org_service import OrgService
@@ -83,3 +83,30 @@ async def create_employee(
     Доступно: Админ, Суперадмин, Руководитель (в рамках своей иерархии).
     """
     return await service.create_employee(current_user, data)
+
+@router.patch("/me/profile", response_model=EmployeeRead)
+async def update_my_profile(
+    data: EmployeeProfileUpdate,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: EmployeeService = Depends(get_employee_service)
+):
+    return await service.update_own_profile(current_user.id, data)
+
+@router.patch("/{employee_id}", response_model=EmployeeFullUpdate)
+async def update_employee_by_manager(
+    employee_id: int,
+    data: EmployeeFullUpdate,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: EmployeeService = Depends(get_employee_service)
+):
+    return await service.update_employee_by_manager(current_user.id, employee_id, data)
+
+@router.patch("/{employee_id}/leadership")
+async def toggle_leadership(
+    employee_id: int,
+    is_leader: bool,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: EmployeeService = Depends(get_employee_service)
+):
+    # Метод сервиса, который меняет только поле is_leader
+    return await service.set_leadership(current_user.id, employee_id, is_leader)

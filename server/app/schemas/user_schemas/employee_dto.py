@@ -66,3 +66,28 @@ class CurrentUser(BaseModel):
 class EmployeeDetailRead(EmployeeRead):
     rights: str  # user/admin/superadmin
     is_active: bool
+
+class EmployeeProfileUpdate(BaseModel):
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+
+
+class EmployeeFullUpdate(BaseModel):
+    # Поля опциональны, чтобы поддерживать PATCH
+    service_number: Optional[str] = None
+    last_name: Optional[str] = None
+    first_name: Optional[str] = None
+    patronymic: Optional[str] = None
+    phone_number: Optional[str] = None
+    work_number: Optional[str] = None
+    email: Optional[str] = None
+    birth_date: Optional[date] = None
+
+    # Административные поля
+    rights: Optional[AppRights] = None
+    is_active: Optional[bool] = None
+
+    # Позиция
+    position: Optional[EmployeePositionCreate] = None
+
+    model_config = ConfigDict(from_attributes=True)

@@ -284,16 +284,19 @@ class DocumentRepository:
             id: int,
             last_name: str,
             first_name: str,
-            patronymic: str,
+            patronymic: Optional[str],
             rights: AppRights
     ):
-        # Проверяем, что все параметры переданы (на уровне Python)
-        if None in [id, last_name, first_name, rights]:
-            raise ValueError("Обязательные поля для upsert не могут быть None")
-
+        """
+        Единственный метод для синхронизации данных сотрудника в СЭД.
+        Гарантирует отсутствие NULL в обязательных полях.
+        """
         stmt = pg_insert(SystemEmployee).values(
-            id=id, last_name=last_name, first_name=first_name,
-            patronymic=patronymic, rights=rights
+            id=id,
+            last_name=last_name,
+            first_name=first_name,
+            patronymic=patronymic,
+            rights=rights
         ).on_conflict_do_update(
             index_elements=['id'],
             set_={
@@ -304,3 +307,9 @@ class DocumentRepository:
             }
         )
         await self.db.execute(stmt)
+        await self.db.flush()
+
+    async def get_system_employee_by_id(self, employee_id: int) -> Optional[SystemEmployee]:
+        """Получить запись о сотруднике по ID (для проверки прав)"""
+        result = await self.db.execute(select(SystemEmployee).where(SystemEmployee.id == employee_id))
+        return result.scalar_one_or_none()

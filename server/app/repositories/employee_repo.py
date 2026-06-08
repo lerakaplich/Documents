@@ -2,8 +2,9 @@
 from typing import List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload
+
 from server.app.database.employee_models import Employee, EmployeePosition, Department
 from server.app.schemas.user_schemas.employee_dto import EmployeePositionCreate, EmployeeCreate
 
@@ -111,3 +112,30 @@ class EmployeesRepository:
         )
         result = await self.db.execute(stmt)
         return result.scalars().first()
+
+    async def update_employee_profile(self, employee_id: int, update_data: dict):
+        # Обновляем все переданные поля (включая is_active)
+        stmt = (
+            update(Employee)
+            .where(Employee.id == employee_id)
+            .values(**update_data)
+            .returning(Employee)
+        )
+        result = await self.db.execute(stmt)
+        await self.db.flush()
+        return result.scalar_one()
+
+    async def update_employee_position(self, employee_id: int, position_data: EmployeePositionCreate):
+        # Предполагаем, что у сотрудника одна активная позиция или нам нужно обновить конкретную
+        stmt = (
+            update(EmployeePosition)
+            .where(EmployeePosition.employee_id == employee_id)
+            .values(
+                department_id=position_data.department_id,
+                position_name=position_data.position_name,
+                assignment_kind=position_data.assignment_kind,
+                is_leader=position_data.is_leader
+            )
+        )
+        await self.db.execute(stmt)
+        await self.db.flush()

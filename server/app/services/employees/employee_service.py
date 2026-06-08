@@ -1,14 +1,12 @@
 from typing import List, Optional
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 
 from server.app.database.document_models import AppRights
-from server.app.database.employee_models import EmployeePosition
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.schemas.user_schemas.employee_dto import EmployeeRead, EmployeeListRead, CurrentUser, \
-    EmployeeDetailRead, EmployeeCreate
-from sqlalchemy.exc import IntegrityError
+    EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate
 
 
 class EmployeeService:
@@ -116,3 +114,88 @@ class EmployeeService:
 
         # Руководитель может управлять, если его путь является префиксом пути целевого отдела
         return any(target_path.startswith(path) for path in leader_paths)
+
+    async def update_own_profile(self, user_id: int, data: EmployeeProfileUpdate):
+        update_dict = data.model_dump(exclude_unset=True)
+        if not update_dict:
+            raise HTTPException(status_code=400, detail="Нет данных для обновления")
+
+        # 1. Обновляем данные
+        await self.repo.update_employee_profile(user_id, update_dict)
+
+        # 2. Перечитываем объект с уже загруженными позициями (selectinload)
+        return await self.repo.get_employee_with_positions(user_id)
+
+    async def update_employee_by_manager(self, manager_id: int, target_id: int, data: EmployeeFullUpdate):
+        # 1. Проверка прав
+        if not await self.can_manage_employee(manager_id, target_id):
+            raise HTTPException(status_code=403, detail="Нет прав на редактирование")
+
+        # 2. Получаем текущие данные (как из HR, так и из системы прав)
+        current_emp = await self.repo.get_by_id(target_id)
+        current_sys = await self.doc_repo.get_system_employee_by_id(target_id)
+
+        if not current_emp or not current_sys:
+            raise HTTPException(status_code=404, detail="Сотрудник не найден")
+
+        async with self.repo.db.begin_nested():
+            # 3. Обновление HR-данных
+            update_data = data.model_dump(
+                exclude={"position", "rights", "last_name", "first_name", "patronymic"},
+                exclude_unset=True
+            )
+            if update_data:
+                await self.repo.update_employee_profile(target_id, update_data)
+
+            # 4. Обновление позиции
+            if data.position:
+                await self.repo.update_employee_position(target_id, data.position)
+
+            # 5. Синхронизация всех полей с системой документов
+            await self.doc_repo.upsert_system_employee(
+                id=target_id,
+                last_name=data.last_name or current_emp.last_name,
+                first_name=data.first_name or current_emp.first_name,
+                patronymic=data.patronymic if data.patronymic is not None else current_emp.patronymic,
+                rights=data.rights or current_sys.rights
+            )
+
+        # 6. Возврат результата
+        updated_emp = await self.repo.get_employee_with_positions(target_id)
+        # Собираем DetailRead для Pydantic
+        return EmployeeDetailRead.model_validate({
+            **updated_emp.__dict__,
+            "rights": data.rights or current_sys.rights
+        })
+
+    async def can_manage_employee(self, manager_id: int, target_id: int) -> bool:
+        """
+        Проверяет, имеет ли менеджер право редактировать сотрудника.
+        """
+        # 1. Получаем системные данные менеджера (где хранятся права)
+        manager_sys = await self.doc_repo.get_system_employee_by_id(manager_id)
+
+        if not manager_sys:
+            return False
+
+        # 2. Если супер-админ, разрешаем всё
+        if manager_sys.rights == AppRights.superadmin:
+            return True
+
+        # 3. Если просто админ, тоже разрешаем (или добавьте доп. логику)
+        if manager_sys.rights == AppRights.admin:
+            return True
+
+        # 4. Логика для обычных руководителей (иерархия)
+        # Получаем пути подразделений менеджера
+        leader_paths = await self.repo.get_leader_paths(manager_id)
+        # Получаем пути подразделений целевого сотрудника
+        target_paths = await self.repo.get_target_dept_paths(target_id)
+
+        # Руководитель может управлять, если его путь является префиксом пути отдела сотрудника
+        for leader_path in leader_paths:
+            for target_path in target_paths:
+                if target_path.startswith(leader_path):
+                    return True
+
+        return False
