@@ -139,3 +139,28 @@ class EmployeesRepository:
         )
         await self.db.execute(stmt)
         await self.db.flush()
+
+    async def update_is_leader(self, position_id: int, is_leader: bool):
+        stmt = (
+            update(EmployeePosition)
+            .where(EmployeePosition.id == position_id)
+            .values(is_leader=is_leader)
+        )
+        await self.db.execute(stmt)
+        await self.db.flush()
+        return True
+
+    async def get_position_by_id(self, position_id: int) -> Optional[EmployeePosition]:
+        result = await self.db.execute(
+            select(EmployeePosition).filter(EmployeePosition.id == position_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def update_department_head(self, dept_id: int, emp_id: int):
+        stmt = (
+            update(Department)
+            .where(Department.id == dept_id)
+            .values(head_employee_id=emp_id)
+        )
+        await self.db.execute(stmt)
+        await self.db.flush()

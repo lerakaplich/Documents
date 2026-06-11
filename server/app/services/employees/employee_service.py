@@ -199,3 +199,14 @@ class EmployeeService:
                     return True
 
         return False
+
+    # ЛОГИКА ПРАВ (Технический доступ)
+    async def set_access_leadership(self, user: CurrentUser, emp_id: int, pos_id: int, is_leader: bool):
+        pos = await self.repo.get_position_by_id(pos_id)
+        # Проверка иерархии (доступно руководителям)
+        if not await self.can_manage_department(user, int(pos.department_id)):
+            raise HTTPException(status_code=403, detail="Нет прав на управление этим отделом")
+        return await self.repo.update_is_leader(pos_id, is_leader)
+
+    async def set_department_head(self, user: CurrentUser, dept_id: int, new_head_id: int):
+        return await self.repo.update_department_head(dept_id, new_head_id)

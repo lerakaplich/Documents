@@ -2,7 +2,6 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import date
 from server.app.database.document_models import AppRights  # Используется в SystemEmployee
-from server.app.database.employee_models import AssignmentType
 
 
 class EmployeeBase(BaseModel):
@@ -19,7 +18,6 @@ class EmployeeBase(BaseModel):
 class EmployeePositionCreate(BaseModel):
     department_id: int
     position_name: str
-    assignment_kind: AssignmentType  # ИСПОЛЬЗУЕМ ENUM ВМЕСТО STR
     is_leader: bool = False
 
 class EmployeeCreate(EmployeeBase):
@@ -31,7 +29,6 @@ class EmployeePositionRead(BaseModel):
     id: int
     department_id: int
     position_name: str
-    assignment_kind: AssignmentType
     is_leader: bool
 
     model_config = ConfigDict(from_attributes=True)

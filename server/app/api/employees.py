@@ -2,8 +2,9 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from server.app.database.document_models import AppRights
 from server.app.database.session import get_employees_db, get_docs_db
-from server.app.deps import get_current_user
+from server.app.deps import get_current_user, RoleChecker
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
@@ -101,12 +102,26 @@ async def update_employee_by_manager(
 ):
     return await service.update_employee_by_manager(current_user.id, employee_id, data)
 
-@router.patch("/{employee_id}/leadership")
-async def toggle_leadership(
+# 1. Управление техническими правами
+@router.patch("/{employee_id}/positions/{position_id}/toggle-access")
+async def toggle_access_leadership(
     employee_id: int,
+    position_id: int,
     is_leader: bool,
     current_user: CurrentUser = Depends(get_current_user),
     service: EmployeeService = Depends(get_employee_service)
 ):
-    # Метод сервиса, который меняет только поле is_leader
-    return await service.set_leadership(current_user.id, employee_id, is_leader)
+    # Передаем объект current_user целиком (уже так сделано в create_employee)
+    return await service.set_access_leadership(current_user, employee_id, position_id, is_leader)
+
+# 2. Управление формальной должностью
+@router.patch("/departments/{department_id}/head",
+              dependencies=[Depends(RoleChecker([AppRights.superadmin]))])
+async def update_department_head(
+    department_id: int,
+    new_head_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: EmployeeService = Depends(get_employee_service)
+):
+    # Раз RoleChecker пропустил, значит current_user — админ. Передаем его.
+    return await service.set_department_head(current_user, department_id, new_head_id)

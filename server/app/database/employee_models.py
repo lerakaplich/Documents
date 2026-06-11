@@ -10,12 +10,6 @@ class BaseEmployees(DeclarativeBase):
     pass
 
 
-class AssignmentType(str, enum.Enum):
-    primary = 'primary'
-    part_time = 'part_time'
-    acting_director = 'acting_director'
-
-
 class Organization(BaseEmployees):
     """Справочник организаций (И МАЗ, и внешние контрагенты СМДО)"""
     __tablename__ = "organizations"
@@ -81,11 +75,6 @@ class EmployeePosition(BaseEmployees):
     department_id: Mapped[int] = mapped_column(Integer, ForeignKey("departments.id", ondelete="CASCADE"),
                                                nullable=False)
     position_name: Mapped[str] = mapped_column(Text, nullable=False)
-    assignment_kind: Mapped[AssignmentType] = mapped_column(
-        SqlEnum(AssignmentType, name="assignment_type"),
-        server_default="primary",
-        nullable=False
-    )
     is_leader: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)  # Заменяет boss_id
 
     employee: Mapped["Employee"] = relationship(back_populates="positions")
