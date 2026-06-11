@@ -21,20 +21,14 @@ def get_org_service(emp_db: AsyncSession = Depends(get_employees_db)) -> OrgServ
     return OrgService(repo)
 
 def get_employee_service(
-    emp_db: AsyncSession = Depends(get_employees_db),
-    doc_db: AsyncSession = Depends(get_docs_db)
+        emp_db: AsyncSession = Depends(get_employees_db),
+        doc_db: AsyncSession = Depends(get_docs_db)
 ) -> EmployeeService:
     emp_repo = EmployeesRepository(emp_db)
     doc_repo = DocumentRepository(doc_db)
-    return EmployeeService(emp_repo, doc_repo)
+    org_repo = OrgRepository(emp_db)
 
-@router.get("/organizations/{org_id}/structure", response_model=List[DepartmentNode])
-async def get_org_structure(
-    org_id: int,
-    service: OrgService = Depends(get_org_service)
-):
-    """Возвращает дерево подразделений для PyQt6"""
-    return await service.get_org_structure(org_id)
+    return EmployeeService(emp_repo, doc_repo, org_repo)
 
 @router.get("/departments/{department_id}/staff", response_model=List[EmployeeRead])
 async def get_department_staff(
@@ -115,13 +109,12 @@ async def toggle_access_leadership(
     return await service.set_access_leadership(current_user, employee_id, position_id, is_leader)
 
 # 2. Управление формальной должностью
-@router.patch("/departments/{department_id}/head",
-              dependencies=[Depends(RoleChecker([AppRights.superadmin]))])
+@router.patch("/departments/{department_id}/head")
 async def update_department_head(
     department_id: int,
     new_head_id: int,
     current_user: CurrentUser = Depends(get_current_user),
     service: EmployeeService = Depends(get_employee_service)
 ):
-    # Раз RoleChecker пропустил, значит current_user — админ. Передаем его.
+    # Теперь сервис сам проверит, может ли current_user назначать руководителей в этот отдел
     return await service.set_department_head(current_user, department_id, new_head_id)

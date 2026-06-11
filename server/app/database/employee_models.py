@@ -25,6 +25,15 @@ class Organization(BaseEmployees):
 
     departments: Mapped[List["Department"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
 
+class DepartmentType(BaseEmployees):
+    """Справочник типов подразделений (Отдел, Бюро, Дирекция и т.д.)"""
+    __tablename__ = "department_types"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+
+    # Обратная связь, чтобы знать, какие подразделения имеют этот тип
+    departments: Mapped[List["Department"]] = relationship(back_populates="department_type")
 
 class Department(BaseEmployees):
     """Универсальное дерево подразделений (Иерархическая структура)"""
@@ -40,10 +49,13 @@ class Department(BaseEmployees):
     phone_number: Mapped[Optional[str]] = mapped_column(Text)
     hierarchy_path: Mapped[Optional[str]] = mapped_column(String(255), index=True)  # Строка вида '1/4/12'
 
+    department_type_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("department_types.id"), nullable=True)
+    head_employee_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("employees.id"), nullable=True)
     organization: Mapped["Organization"] = relationship(back_populates="departments")
+    department_type: Mapped[Optional["DepartmentType"]] = relationship(back_populates="departments")
     positions: Mapped[List["EmployeePosition"]] = relationship(back_populates="department",
-                                                               cascade="all, delete-orphan")
-
+                                                                cascade="all, delete-orphan")
+    head_employee: Mapped[Optional["Employee"]] = relationship()
 
 class Employee(BaseEmployees):
     """Физические лица (И сотрудники МАЗа, и внешние персоны для СМДО)"""

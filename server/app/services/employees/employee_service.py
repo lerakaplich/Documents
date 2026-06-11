@@ -5,13 +5,15 @@ from fastapi import HTTPException
 from server.app.database.document_models import AppRights
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
+from server.app.repositories.org_repo import OrgRepository
 from server.app.schemas.user_schemas.employee_dto import EmployeeRead, EmployeeListRead, CurrentUser, \
     EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate
 
 
 class EmployeeService:
-    def __init__(self, repo: EmployeesRepository, doc_repo: DocumentRepository):
-        self.repo = repo
+    def __init__(self, repo: EmployeesRepository, doc_repo: DocumentRepository, org_repo: OrgRepository):
+        self.emp_repo = repo
+        self.org_repo = org_repo  # Добавляем доступ к репозиторию оргструктуры
         self.doc_repo = doc_repo
 
     async def get_staff_by_department(
@@ -19,14 +21,14 @@ class EmployeeService:
         department_id: int,
         include_inactive: bool = False # Добавляем параметр
     ) -> List[EmployeeRead]:
-        employees = await self.repo.get_by_department(department_id, include_inactive=include_inactive)
+        employees = await self.emp_repo.get_by_department(department_id, include_inactive=include_inactive)
         return [EmployeeRead.model_validate(e) for e in employees]
 
     async def get_employees_list(self, page: int, limit: int, show_fired: bool):
         offset = (page - 1) * limit
 
         # Получаем данные из HR-базы
-        employees_rows = await self.repo.get_paginated_employees(limit, offset, show_fired)
+        employees_rows = await self.emp_repo.get_paginated_employees(limit, offset, show_fired)
 
         # Получаем права из БД документов
         emp_ids = [r.id for r in employees_rows]
@@ -49,10 +51,10 @@ class EmployeeService:
             return True
 
         # 2. Получаем подразделения, где текущий пользователь - руководитель
-        leader_dept_paths = await self.repo.get_leader_paths(current_user.id)
+        leader_dept_paths = await self.emp_repo.get_leader_paths(current_user.id)
 
         # 3. Получаем подразделения целевого сотрудника
-        target_dept_paths = await self.repo.get_target_dept_paths(target_emp_id)
+        target_dept_paths = await self.emp_repo.get_target_dept_paths(target_emp_id)
 
         # 4. Проверка: является ли путь руководителя "префиксом" пути отдела сотрудника
         for leader_path in leader_dept_paths:
@@ -62,7 +64,7 @@ class EmployeeService:
         return False
 
     async def get_full_employee_info(self, emp_id: int) -> Optional[EmployeeDetailRead]:
-        employee = await self.repo.get_by_id(emp_id)
+        employee = await self.emp_repo.get_by_id(emp_id)
         if not employee:
             return None
 
@@ -81,9 +83,9 @@ class EmployeeService:
             raise HTTPException(status_code=403, detail="Нет прав в этом подразделении")
 
         # 1. Выполняем все операции записи
-        async with self.repo.db.begin():
-            new_emp = await self.repo.add_employee(data)
-            await self.repo.add_position(new_emp.id, data.position)
+        async with self.emp_repo.db.begin():
+            new_emp = await self.emp_repo.add_employee(data)
+            await self.emp_repo.add_position(new_emp.id, data.position)
 
             await self.doc_repo.upsert_system_employee(
                 id=new_emp.id,
@@ -96,7 +98,7 @@ class EmployeeService:
 
         # 2. ЧИСТОЕ РЕШЕНИЕ: Запрашиваем объект обратно с сервера
         # с заранее подгруженными позициями (selectinload)
-        return await self.repo.get_employee_with_positions(new_emp.id)
+        return await self.emp_repo.get_employee_with_positions(new_emp.id)
 
     async def can_manage_department(self, current_user: CurrentUser, target_dept_id: int) -> bool:
         # Админы управляют всем
@@ -104,10 +106,10 @@ class EmployeeService:
             return True
 
         # Получаем пути подразделений, которыми текущий пользователь руководит
-        leader_paths = await self.repo.get_leader_paths(current_user.id)
+        leader_paths = await self.emp_repo.get_leader_paths(current_user.id)
 
         # Получаем путь целевого подразделения
-        target_path = await self.repo.get_dept_path_by_id(target_dept_id)
+        target_path = await self.emp_repo.get_dept_path_by_id(target_dept_id)
 
         if not target_path:
             return False
@@ -121,10 +123,10 @@ class EmployeeService:
             raise HTTPException(status_code=400, detail="Нет данных для обновления")
 
         # 1. Обновляем данные
-        await self.repo.update_employee_profile(user_id, update_dict)
+        await self.emp_repo.update_employee_profile(user_id, update_dict)
 
         # 2. Перечитываем объект с уже загруженными позициями (selectinload)
-        return await self.repo.get_employee_with_positions(user_id)
+        return await self.emp_repo.get_employee_with_positions(user_id)
 
     async def update_employee_by_manager(self, manager_id: int, target_id: int, data: EmployeeFullUpdate):
         # 1. Проверка прав
@@ -132,24 +134,24 @@ class EmployeeService:
             raise HTTPException(status_code=403, detail="Нет прав на редактирование")
 
         # 2. Получаем текущие данные (как из HR, так и из системы прав)
-        current_emp = await self.repo.get_by_id(target_id)
+        current_emp = await self.emp_repo.get_by_id(target_id)
         current_sys = await self.doc_repo.get_system_employee_by_id(target_id)
 
         if not current_emp or not current_sys:
             raise HTTPException(status_code=404, detail="Сотрудник не найден")
 
-        async with self.repo.db.begin_nested():
+        async with self.emp_repo.db.begin_nested():
             # 3. Обновление HR-данных
             update_data = data.model_dump(
                 exclude={"position", "rights", "last_name", "first_name", "patronymic"},
                 exclude_unset=True
             )
             if update_data:
-                await self.repo.update_employee_profile(target_id, update_data)
+                await self.emp_repo.update_employee_profile(target_id, update_data)
 
             # 4. Обновление позиции
             if data.position:
-                await self.repo.update_employee_position(target_id, data.position)
+                await self.emp_repo.update_employee_position(target_id, data.position)
 
             # 5. Синхронизация всех полей с системой документов
             await self.doc_repo.upsert_system_employee(
@@ -161,7 +163,7 @@ class EmployeeService:
             )
 
         # 6. Возврат результата
-        updated_emp = await self.repo.get_employee_with_positions(target_id)
+        updated_emp = await self.emp_repo.get_employee_with_positions(target_id)
         # Собираем DetailRead для Pydantic
         return EmployeeDetailRead.model_validate({
             **updated_emp.__dict__,
@@ -188,9 +190,9 @@ class EmployeeService:
 
         # 4. Логика для обычных руководителей (иерархия)
         # Получаем пути подразделений менеджера
-        leader_paths = await self.repo.get_leader_paths(manager_id)
+        leader_paths = await self.emp_repo.get_leader_paths(manager_id)
         # Получаем пути подразделений целевого сотрудника
-        target_paths = await self.repo.get_target_dept_paths(target_id)
+        target_paths = await self.emp_repo.get_target_dept_paths(target_id)
 
         # Руководитель может управлять, если его путь является префиксом пути отдела сотрудника
         for leader_path in leader_paths:
@@ -202,11 +204,29 @@ class EmployeeService:
 
     # ЛОГИКА ПРАВ (Технический доступ)
     async def set_access_leadership(self, user: CurrentUser, emp_id: int, pos_id: int, is_leader: bool):
-        pos = await self.repo.get_position_by_id(pos_id)
+        pos = await self.emp_repo.get_position_by_id(pos_id)
         # Проверка иерархии (доступно руководителям)
         if not await self.can_manage_department(user, int(pos.department_id)):
             raise HTTPException(status_code=403, detail="Нет прав на управление этим отделом")
-        return await self.repo.update_is_leader(pos_id, is_leader)
+        return await self.emp_repo.update_is_leader(pos_id, is_leader)
 
-    async def set_department_head(self, user: CurrentUser, dept_id: int, new_head_id: int):
-        return await self.repo.update_department_head(dept_id, new_head_id)
+    async def set_department_head(self, current_user: CurrentUser, department_id: int, new_head_id: int):
+        # 1. Получаем департамент
+        old_dept = await self.org_repo.get_department_by_id(department_id)
+
+        # 2. Получаем ID
+        old_head_id = old_dept.head_employee_id
+
+        # 3. Обновление руководителя
+        await self.emp_repo.update_department_head(department_id, new_head_id)
+
+        # 4. Получаем позицию (используем точный тип)
+        position = await self.emp_repo.get_position_by_employee_and_dept(new_head_id, department_id)
+
+        if position:
+            await self.set_access_leadership(current_user, new_head_id, position.id, True)
+
+            if old_head_id and old_head_id != new_head_id:
+                old_pos = await self.emp_repo.get_position_by_employee_and_dept(old_head_id, department_id)
+                if old_pos:
+                    await self.set_access_leadership(current_user, old_head_id, old_pos.id, False)

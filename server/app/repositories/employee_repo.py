@@ -164,3 +164,12 @@ class EmployeesRepository:
         )
         await self.db.execute(stmt)
         await self.db.flush()
+
+    async def get_position_by_employee_and_dept(self, employee_id: int, department_id: int) -> Optional[
+        EmployeePosition]:
+        stmt = select(EmployeePosition).where(
+            EmployeePosition.employee_id == employee_id,
+            EmployeePosition.department_id == department_id
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
