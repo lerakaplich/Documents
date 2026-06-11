@@ -118,3 +118,12 @@ async def update_department_head(
 ):
     # Теперь сервис сам проверит, может ли current_user назначать руководителей в этот отдел
     return await service.set_department_head(current_user, department_id, new_head_id)
+
+@router.delete("/departments/{department_id}/head",
+               dependencies=[Depends(RoleChecker([AppRights.admin, AppRights.superadmin]))])
+async def remove_department_head(
+    department_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: EmployeeService = Depends(get_employee_service)
+):
+    return await service.remove_department_head(current_user, department_id)

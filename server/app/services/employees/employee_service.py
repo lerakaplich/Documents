@@ -230,3 +230,24 @@ class EmployeeService:
                 old_pos = await self.emp_repo.get_position_by_employee_and_dept(old_head_id, department_id)
                 if old_pos:
                     await self.set_access_leadership(current_user, old_head_id, old_pos.id, False)
+
+    async def remove_department_head(self, current_user: CurrentUser, department_id: int):
+        # ИСПОЛЬЗУЕМ ВАШ ГОТОВЫЙ МЕТОД:
+        if not await self.can_manage_department(current_user, department_id):
+            raise HTTPException(status_code=403, detail="Нет прав на управление этим подразделением")
+
+        # 2. Получаем текущего руководителя
+        dept = await self.org_repo.get_department_by_id(department_id)
+        if not dept or not dept.head_employee_id:
+            raise HTTPException(status_code=400, detail="Руководитель не назначен")
+
+        # 3. Снимаем технические права
+        old_pos = await self.emp_repo.get_position_by_employee_and_dept(dept.head_employee_id, department_id)
+        if old_pos:
+            # Здесь мы используем current_user, чтобы set_access_leadership прошел проверку прав
+            await self.set_access_leadership(current_user, dept.head_employee_id, old_pos.id, False)
+
+        # 4. Обнуляем руководителя
+        await self.emp_repo.update_department_head(department_id, None)
+
+        return {"message": "Руководитель успешно снят с должности"}
