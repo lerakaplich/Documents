@@ -7,14 +7,17 @@ from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
 from server.app.schemas.user_schemas.employee_dto import EmployeeRead, EmployeeListRead, CurrentUser, \
-    EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate
+    EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate, PositionCreate, \
+    PositionUpdate
+from server.app.services.security_service import SecurityService
 
 
 class EmployeeService:
-    def __init__(self, repo: EmployeesRepository, doc_repo: DocumentRepository, org_repo: OrgRepository):
+    def __init__(self, repo: EmployeesRepository, doc_repo: DocumentRepository, org_repo: OrgRepository, security: SecurityService):
         self.emp_repo = repo
-        self.org_repo = org_repo  # Добавляем доступ к репозиторию оргструктуры
+        self.org_repo = org_repo
         self.doc_repo = doc_repo
+        self.security = security # Внедряем сервис прав
 
     async def get_staff_by_department(
         self,
@@ -45,48 +48,37 @@ class EmployeeService:
             ) for r in employees_rows
         ]
 
-    async def can_view_employee(self, current_user: CurrentUser, target_emp_id: int) -> bool:
-        # 1. Админы видят всё
-        if current_user.rights in [AppRights.admin, AppRights.superadmin]:
-            return True
+    async def get_full_employee_info(self, current_user: CurrentUser, emp_id: int) -> Optional[EmployeeDetailRead]:
+        # 1. Сначала проверяем права!
+        await self.security.verify_employee_view_access(current_user, emp_id)
 
-        # 2. Получаем подразделения, где текущий пользователь - руководитель
-        leader_dept_paths = await self.emp_repo.get_leader_paths(current_user.id)
-
-        # 3. Получаем подразделения целевого сотрудника
-        target_dept_paths = await self.emp_repo.get_target_dept_paths(target_emp_id)
-
-        # 4. Проверка: является ли путь руководителя "префиксом" пути отдела сотрудника
-        for leader_path in leader_dept_paths:
-            for target_path in target_dept_paths:
-                if target_path.startswith(leader_path):
-                    return True
-        return False
-
-    async def get_full_employee_info(self, emp_id: int) -> Optional[EmployeeDetailRead]:
+        # 2. Потом берем данные
         employee = await self.emp_repo.get_by_id(emp_id)
         if not employee:
             return None
 
+        # 3. Собираем объект
         rights_data = await self.doc_repo.get_rights_map([emp_id])
         user_rights = rights_data.get(emp_id, "user")
 
-        # Конвертируем ORM объект в словарь, добавляя туда права
+        # Использование .model_dump() ORM-объекта (через SQLAlchemy Pydantic-плагин или просто словарем)
         emp_dict = employee.__dict__.copy()
         emp_dict["rights"] = user_rights
 
-        # Pydantic теперь получит все нужные поля, включая rights
         return EmployeeDetailRead.model_validate(emp_dict)
 
     async def create_employee(self, current_user: CurrentUser, data: EmployeeCreate):
-        if not await self.can_manage_department(current_user, data.position.department_id):
-            raise HTTPException(status_code=403, detail="Нет прав в этом подразделении")
+        # Одной строкой проверяем права
+        await self.security.verify_dept_access(current_user, data.position.department_id)
 
-        # 1. Выполняем все операции записи
         async with self.emp_repo.db.begin():
             new_emp = await self.emp_repo.add_employee(data)
-            await self.emp_repo.add_position(new_emp.id, data.position)
-
+            await self.emp_repo.add_position(
+                new_emp.id,
+                data.department_id,
+                data.position_name,
+                data.is_leader
+            )
             await self.doc_repo.upsert_system_employee(
                 id=new_emp.id,
                 last_name=data.last_name,
@@ -94,160 +86,133 @@ class EmployeeService:
                 patronymic=data.patronymic or "",
                 rights=data.rights
             )
-            # Завершаем транзакцию здесь (выход из блока with)
-
-        # 2. ЧИСТОЕ РЕШЕНИЕ: Запрашиваем объект обратно с сервера
-        # с заранее подгруженными позициями (selectinload)
         return await self.emp_repo.get_employee_with_positions(new_emp.id)
-
-    async def can_manage_department(self, current_user: CurrentUser, target_dept_id: int) -> bool:
-        # Админы управляют всем
-        if current_user.rights in [AppRights.admin, AppRights.superadmin]:
-            return True
-
-        # Получаем пути подразделений, которыми текущий пользователь руководит
-        leader_paths = await self.emp_repo.get_leader_paths(current_user.id)
-
-        # Получаем путь целевого подразделения
-        target_path = await self.emp_repo.get_dept_path_by_id(target_dept_id)
-
-        if not target_path:
-            return False
-
-        # Руководитель может управлять, если его путь является префиксом пути целевого отдела
-        return any(target_path.startswith(path) for path in leader_paths)
 
     async def update_own_profile(self, user_id: int, data: EmployeeProfileUpdate):
         update_dict = data.model_dump(exclude_unset=True)
         if not update_dict:
             raise HTTPException(status_code=400, detail="Нет данных для обновления")
 
-        # 1. Обновляем данные
         await self.emp_repo.update_employee_profile(user_id, update_dict)
 
-        # 2. Перечитываем объект с уже загруженными позициями (selectinload)
-        return await self.emp_repo.get_employee_with_positions(user_id)
+        return await self.emp_repo.get_by_id(user_id)
 
-    async def update_employee_by_manager(self, manager_id: int, target_id: int, data: EmployeeFullUpdate):
-        # 1. Проверка прав
-        if not await self.can_manage_employee(manager_id, target_id):
-            raise HTTPException(status_code=403, detail="Нет прав на редактирование")
+    async def update_employee_by_manager(
+            self,
+            manager_user: CurrentUser,
+            target_id: int,
+            data: EmployeeFullUpdate
+    ):
+        # 1. Проверка доступа к сотруднику (Иерархическая)
+        await self.security.verify_employee_view_access(manager_user, target_id)
 
-        # 2. Получаем текущие данные (как из HR, так и из системы прав)
+        # 2. Проверка эскалации прав (если менеджер меняет поле 'rights')
+        # Важно: если rights нет в данных (None), проверку пропускаем
+        if data.rights is not None:
+            await self.security.verify_can_update_rights(manager_user, data.rights)
+
+        # 3. Получение текущих данных
         current_emp = await self.emp_repo.get_by_id(target_id)
         current_sys = await self.doc_repo.get_system_employee_by_id(target_id)
-
         if not current_emp or not current_sys:
             raise HTTPException(status_code=404, detail="Сотрудник не найден")
 
+        # 4. Проверка переводов (если меняются позиции)
+        if data.positions is not None:
+            current_positions = await self.emp_repo.get_positions_by_employee(target_id)
+            current_dept_ids = {p.department_id for p in current_positions}
+
+            for pos in data.positions:
+                # Если отдел новый (или id отсутствует, значит новая позиция) — проверяем доступ
+                if pos.department_id not in current_dept_ids:
+                    await self.security.verify_dept_access(manager_user, pos.department_id)
+
+        # 5. Выполнение обновлений в транзакции
         async with self.emp_repo.db.begin_nested():
-            # 3. Обновление HR-данных
+            # А. Обновление профиля в HR базе (все кроме прав, ФИО и позиций)
             update_data = data.model_dump(
-                exclude={"position", "rights", "last_name", "first_name", "patronymic"},
+                exclude={"positions", "rights", "last_name", "first_name", "patronymic"},
                 exclude_unset=True
             )
             if update_data:
                 await self.emp_repo.update_employee_profile(target_id, update_data)
 
-            # 4. Обновление позиции
-            if data.position:
-                await self.emp_repo.update_employee_position(target_id, data.position)
+            # Б. Синхронизация должностей
+            if data.positions is not None:
+                await self.sync_employee_positions(target_id, data.positions)
 
-            # 5. Синхронизация всех полей с системой документов
+            # В. Синхронизация с системой документов (ФИО + ПРАВА)
+            # Если data.rights пришло None, берем текущие из системы (current_sys.rights)
+            new_rights = data.rights if data.rights is not None else current_sys.rights
+
             await self.doc_repo.upsert_system_employee(
                 id=target_id,
                 last_name=data.last_name or current_emp.last_name,
                 first_name=data.first_name or current_emp.first_name,
                 patronymic=data.patronymic if data.patronymic is not None else current_emp.patronymic,
-                rights=data.rights or current_sys.rights
+                rights=new_rights
             )
 
-        # 6. Возврат результата
+        # 6. Чтение обновленного объекта для ответа
         updated_emp = await self.emp_repo.get_employee_with_positions(target_id)
-        # Собираем DetailRead для Pydantic
-        return EmployeeDetailRead.model_validate({
-            **updated_emp.__dict__,
-            "rights": data.rights or current_sys.rights
-        })
 
-    async def can_manage_employee(self, manager_id: int, target_id: int) -> bool:
-        """
-        Проверяет, имеет ли менеджер право редактировать сотрудника.
-        """
-        # 1. Получаем системные данные менеджера (где хранятся права)
-        manager_sys = await self.doc_repo.get_system_employee_by_id(manager_id)
+        # Конвертация для ответа (включая права из системы)
+        result = updated_emp.__dict__.copy()
+        result["rights"] = data.rights or current_sys.rights
+        return EmployeeDetailRead.model_validate(result)
 
-        if not manager_sys:
-            return False
+    async def sync_employee_positions(self, employee_id: int, new_positions: List[PositionUpdate]):
+        # 1. Получаем текущие позиции
+        current_positions = await self.emp_repo.get_positions_by_employee(employee_id)
+        current_map = {p.id: p for p in current_positions}
+        new_ids = {p.id for p in new_positions if p.id is not None}
 
-        # 2. Если супер-админ, разрешаем всё
-        if manager_sys.rights == AppRights.superadmin:
-            return True
+        # 2. Удаляем те, которых больше нет в запросе
+        for p_id in current_map:
+            if p_id not in new_ids:
+                await self.emp_repo.delete_position(p_id)
 
-        # 3. Если просто админ, тоже разрешаем (или добавьте доп. логику)
-        if manager_sys.rights == AppRights.admin:
-            return True
+        # 3. Добавляем или обновляем
+        for pos_data in new_positions:
+            if pos_data.id and pos_data.id in current_map:
+                # Проверяем, изменились ли данные, чтобы не делать лишний апдейт
+                await self.emp_repo.update_position(pos_data)
+            else:
+                # Новая запись
+                await self.emp_repo.add_position(
+                    employee_id,
+                    pos_data.department_id,
+                    pos_data.position_name,
+                    pos_data.is_leader
+                )
 
-        # 4. Логика для обычных руководителей (иерархия)
-        # Получаем пути подразделений менеджера
-        leader_paths = await self.emp_repo.get_leader_paths(manager_id)
-        # Получаем пути подразделений целевого сотрудника
-        target_paths = await self.emp_repo.get_target_dept_paths(target_id)
+    async def add_employee_position(self, current_user: CurrentUser, emp_id: int, data: PositionCreate):
+        # 1. Проверка прав через SecurityService
+        await self.security.verify_dept_access(current_user, data.department_id)
 
-        # Руководитель может управлять, если его путь является префиксом пути отдела сотрудника
-        for leader_path in leader_paths:
-            for target_path in target_paths:
-                if target_path.startswith(leader_path):
-                    return True
+        # 2. Добавление
+        return await self.emp_repo.add_position(emp_id, data)
 
-        return False
+    async def remove_employee_position(self, current_user: CurrentUser, emp_id: int, pos_id: int):
+        # 1. Проверка количества позиций (бизнес-правило)
+        positions = await self.emp_repo.get_positions_by_employee(emp_id)
+        if len(positions) <= 1:
+            raise HTTPException(status_code=400, detail="Нельзя удалить единственную должность")
 
-    # ЛОГИКА ПРАВ (Технический доступ)
-    async def set_access_leadership(self, user: CurrentUser, emp_id: int, pos_id: int, is_leader: bool):
+        # 2. Поиск позиции и проверка прав на отдел, к которому она принадлежит
+        pos_to_delete = next((p for p in positions if p.id == pos_id), None)
+        if not pos_to_delete:
+            raise HTTPException(status_code=404, detail="Позиция не найдена")
+
+        # Проверка через SecurityService (вместо старого метода)
+        await self.security.verify_dept_access(current_user, pos_to_delete.department_id)
+
+        return await self.emp_repo.delete_position(pos_id)
+
+    async def set_access_leadership(self, user: CurrentUser, pos_id: int, is_leader: bool):
+        # 1. Проверяем доступ к отделу
         pos = await self.emp_repo.get_position_by_id(pos_id)
-        # Проверка иерархии (доступно руководителям)
-        if not await self.can_manage_department(user, int(pos.department_id)):
-            raise HTTPException(status_code=403, detail="Нет прав на управление этим отделом")
+        await self.security.verify_dept_access(user, pos.department_id)
+
+        # 2. Просто меняем флаг
         return await self.emp_repo.update_is_leader(pos_id, is_leader)
-
-    async def set_department_head(self, current_user: CurrentUser, department_id: int, new_head_id: int):
-        # 1. Получаем департамент
-        old_dept = await self.org_repo.get_department_by_id(department_id)
-
-        # 2. Получаем ID
-        old_head_id = old_dept.head_employee_id
-
-        # 3. Обновление руководителя
-        await self.emp_repo.update_department_head(department_id, new_head_id)
-
-        # 4. Получаем позицию (используем точный тип)
-        position = await self.emp_repo.get_position_by_employee_and_dept(new_head_id, department_id)
-
-        if position:
-            await self.set_access_leadership(current_user, new_head_id, position.id, True)
-
-            if old_head_id and old_head_id != new_head_id:
-                old_pos = await self.emp_repo.get_position_by_employee_and_dept(old_head_id, department_id)
-                if old_pos:
-                    await self.set_access_leadership(current_user, old_head_id, old_pos.id, False)
-
-    async def remove_department_head(self, current_user: CurrentUser, department_id: int):
-        # ИСПОЛЬЗУЕМ ВАШ ГОТОВЫЙ МЕТОД:
-        if not await self.can_manage_department(current_user, department_id):
-            raise HTTPException(status_code=403, detail="Нет прав на управление этим подразделением")
-
-        # 2. Получаем текущего руководителя
-        dept = await self.org_repo.get_department_by_id(department_id)
-        if not dept or not dept.head_employee_id:
-            raise HTTPException(status_code=400, detail="Руководитель не назначен")
-
-        # 3. Снимаем технические права
-        old_pos = await self.emp_repo.get_position_by_employee_and_dept(dept.head_employee_id, department_id)
-        if old_pos:
-            # Здесь мы используем current_user, чтобы set_access_leadership прошел проверку прав
-            await self.set_access_leadership(current_user, dept.head_employee_id, old_pos.id, False)
-
-        # 4. Обнуляем руководителя
-        await self.emp_repo.update_department_head(department_id, None)
-
-        return {"message": "Руководитель успешно снят с должности"}

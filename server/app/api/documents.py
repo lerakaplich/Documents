@@ -6,9 +6,11 @@ from datetime import date
 
 from server.app.database.document_models import DocStatus, DocDirection, AppRights
 from server.app.database.session import get_docs_db
-from server.app.deps import get_current_user, RoleChecker
+from server.app.deps import get_current_user, get_doc_service, get_registry_service, get_review_service, \
+    get_comment_service, get_workflow_service
 from server.app.repositories.comment_repo import CommentRepository
 from server.app.repositories.document_repo import DocumentRepository
+from server.app.role_checker import RoleChecker
 from server.app.schemas.doc_schemas.document_dto import (
     DocumentListItem, DocumentCreateForm, DocumentDetailRead,
     AdminMetadataUpdate, DocumentPaginationResponse, ToggleCompletionPayload, RedirectHistoryRead
@@ -23,33 +25,6 @@ from server.app.services.comment_service import CommentService
 from server.app.services.documents.workflow_service import DocumentWorkflowService
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
-
-
-# --- ФАБРИКИ ЗАВИСИМОСТЕЙ ДЛЯ СЕРВИСОВ ---
-
-def get_doc_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentService:
-    repo = DocumentRepository(db_docs)
-    return DocumentService(repo)
-
-def get_workflow_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentWorkflowService:
-    repo = DocumentRepository(db_docs)
-    return DocumentWorkflowService(repo)
-
-def get_review_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentReviewService:
-    doc_repo = DocumentRepository(db_docs)
-    comment_repo = CommentRepository(db_docs)
-
-    comment_svc = CommentService(comment_repo)
-
-    return DocumentReviewService(db_repo=doc_repo, comment_service=comment_svc)
-
-def get_registry_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentRegistryService:
-    repo = DocumentRepository(db_docs)
-    return DocumentRegistryService(repo)
-
-def get_comment_service(db_docs: AsyncSession = Depends(get_docs_db)) -> CommentService:
-    repo = CommentRepository(db_docs)
-    return CommentService(repo)
 
 
 # --- ЭНДПОИНТЫ КАРТОЧКИ ДОКУМЕНТА ---

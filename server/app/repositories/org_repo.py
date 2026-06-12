@@ -1,10 +1,10 @@
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from server.app.database.employee_models import Department, EmployeePosition, Employee
+from server.app.database.employee_models import Department, EmployeePosition, Employee, Organization
 from server.app.schemas.user_schemas.org_dto import DepartmentCreate
 
 
@@ -56,3 +56,19 @@ class OrgRepository:
         if dept:
             dept.hierarchy_path = path
             await self.db.commit()  # Или flush, в зависимости от вашей транзакционной модели
+
+    async def update_organization(self, org_id: int, data: dict) -> None:
+        stmt = (
+            update(Organization)
+            .where(Organization.id == org_id)
+            .values(**data)
+        )
+        await self.db.execute(stmt)
+        await self.db.flush()
+
+    async def get_dept_path_by_id(self, dept_id: int) -> Optional[str]:
+        """Быстрое получение пути департамента для проверки прав."""
+        result = await self.db.execute(
+            select(Department.hierarchy_path).where(Department.id == dept_id)
+        )
+        return result.scalar_one_or_none()

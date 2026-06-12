@@ -4,8 +4,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from server.app.database.document_models import SystemEmployee, AppRights
-from server.app.database.session import get_docs_db  # УБРАЛИ кадровый get_employees_db
+from server.app.database.session import get_docs_db, get_employees_db  # УБРАЛИ кадровый get_employees_db
+from server.app.repositories.comment_repo import CommentRepository
+from server.app.repositories.document_repo import DocumentRepository
+from server.app.repositories.employee_repo import EmployeesRepository
+from server.app.repositories.org_repo import OrgRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.services.comment_service import CommentService
+from server.app.services.documents import DocumentService
+from server.app.services.documents.registry_service import DocumentRegistryService
+from server.app.services.documents.review_service import DocumentReviewService
+from server.app.services.documents.workflow_service import DocumentWorkflowService
+from server.app.services.employees.employee_service import EmployeeService
+from server.app.services.employees.org_service import OrgService
+from server.app.services.security_service import SecurityService
 
 security = HTTPBearer()
 
@@ -56,21 +68,55 @@ async def get_current_user(
         service_number="N/A"
     )
 
+def get_security_service(
+    emp_db: AsyncSession = Depends(get_employees_db)
+) -> SecurityService:
+    emp_repo = EmployeesRepository(emp_db)
+    org_repo = OrgRepository(emp_db)
+    return SecurityService(emp_repo, org_repo)
 
-# --- ПРОВЕРКА РОЛЕЙ (RBAC) ---
+def get_org_service(
+    emp_db: AsyncSession = Depends(get_employees_db),
+    security: SecurityService = Depends(get_security_service) # Внедряем сервис прав
+) -> OrgService:
+    repo = OrgRepository(emp_db)
+    return OrgService(repo, security) # Передаем в конструктор OrgService
 
-class RoleChecker:
-    """
-    Класс-зависимость для фильтрации доступа по ролям.
-    Пример: Depends(RoleChecker([AppRights.admin, AppRights.superadmin]))
-    """
-    def __init__(self, allowed_rights: list[AppRights]):
-        self.allowed_rights = allowed_rights
+def get_employee_service(
+        emp_db: AsyncSession = Depends(get_employees_db),
+        doc_db: AsyncSession = Depends(get_docs_db),
+        security: SecurityService = Depends(get_security_service) # Внедряем сервис прав
+) -> EmployeeService:
+    emp_repo = EmployeesRepository(emp_db)
+    doc_repo = DocumentRepository(doc_db)
+    org_repo = OrgRepository(emp_db)
 
-    def __call__(self, current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
-        if current_user.rights not in self.allowed_rights:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Отказ в доступе. Недостаточно системных прав."
-            )
-        return current_user
+    return EmployeeService(emp_repo, doc_repo, org_repo, security)
+
+
+# --- ФАБРИКИ ЗАВИСИМОСТЕЙ ДЛЯ СЕРВИСОВ ---
+
+def get_doc_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentService:
+    repo = DocumentRepository(db_docs)
+    return DocumentService(repo)
+
+def get_workflow_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentWorkflowService:
+    repo = DocumentRepository(db_docs)
+    return DocumentWorkflowService(repo)
+
+def get_review_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentReviewService:
+    doc_repo = DocumentRepository(db_docs)
+    comment_repo = CommentRepository(db_docs)
+
+    comment_svc = CommentService(comment_repo)
+
+    return DocumentReviewService(db_repo=doc_repo, comment_service=comment_svc)
+
+def get_registry_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentRegistryService:
+    repo = DocumentRepository(db_docs)
+    return DocumentRegistryService(repo)
+
+def get_comment_service(db_docs: AsyncSession = Depends(get_docs_db)) -> CommentService:
+    repo = CommentRepository(db_docs)
+    return CommentService(repo)
+

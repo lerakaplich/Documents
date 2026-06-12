@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from server.app.api.auth_router import router as auth_router
 from server.app.api.documents import router as doc_router
 from server.app.api.org_router import router as org_router
+from server.app.api.positions import router as pos_router
 from sqlalchemy.ext.asyncio import AsyncSession
 from server.app.api.employees import router as employees_router # Импортируй роутер
 from server.app.api.errors import global_exception_handler, integrity_exception_handler
@@ -21,6 +22,7 @@ app = FastAPI(
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(doc_router, prefix="/api/v1")
 app.include_router(org_router, prefix="/api/v1")
+app.include_router(pos_router, prefix="/api/v1")
 app.include_router(employees_router, prefix="/api/v1/employees", tags=["Employees"])
 app.add_exception_handler(Exception, global_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)

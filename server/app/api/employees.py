@@ -1,34 +1,15 @@
-from typing import List, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from server.app.database.document_models import AppRights
-from server.app.database.session import get_employees_db, get_docs_db
-from server.app.deps import get_current_user, RoleChecker
-from server.app.repositories.document_repo import DocumentRepository
-from server.app.repositories.employee_repo import EmployeesRepository
-from server.app.repositories.org_repo import OrgRepository
+from server.app.deps import get_current_user, get_security_service, get_employee_service
+from server.app.role_checker import RoleChecker
 from server.app.schemas.user_schemas.employee_dto import EmployeeRead, EmployeeListRead, CurrentUser, \
     EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate
-from server.app.schemas.user_schemas.org_dto import DepartmentNode
 from server.app.services.employees.employee_service import EmployeeService
-from server.app.services.employees.org_service import OrgService
+from server.app.services.security_service import SecurityService
 
 router = APIRouter()
-
-def get_org_service(emp_db: AsyncSession = Depends(get_employees_db)) -> OrgService:
-    repo = OrgRepository(emp_db)
-    return OrgService(repo)
-
-def get_employee_service(
-        emp_db: AsyncSession = Depends(get_employees_db),
-        doc_db: AsyncSession = Depends(get_docs_db)
-) -> EmployeeService:
-    emp_repo = EmployeesRepository(emp_db)
-    doc_repo = DocumentRepository(doc_db)
-    org_repo = OrgRepository(emp_db)
-
-    return EmployeeService(emp_repo, doc_repo, org_repo)
 
 @router.get("/departments/{department_id}/staff", response_model=List[EmployeeRead])
 async def get_department_staff(
@@ -54,14 +35,8 @@ async def get_employee_detail(
         current_user: CurrentUser = Depends(get_current_user),
         service: EmployeeService = Depends(get_employee_service)
 ):
-    # Проверка прав: Админ или Руководитель выше по иерархии
-    if not await service.can_view_employee(current_user, emp_id):
-        raise HTTPException(
-            status_code=403,
-            detail="У вас нет прав на просмотр данных этого сотрудника."
-        )
+    employee = await service.get_full_employee_info(current_user, emp_id)
 
-    employee = await service.get_full_employee_info(emp_id)
     if not employee:
         raise HTTPException(status_code=404, detail="Сотрудник не найден")
 
@@ -94,36 +69,13 @@ async def update_employee_by_manager(
     current_user: CurrentUser = Depends(get_current_user),
     service: EmployeeService = Depends(get_employee_service)
 ):
-    return await service.update_employee_by_manager(current_user.id, employee_id, data)
+    return await service.update_employee_by_manager(current_user, employee_id, data)
 
-# 1. Управление техническими правами
 @router.patch("/{employee_id}/positions/{position_id}/toggle-access")
 async def toggle_access_leadership(
-    employee_id: int,
     position_id: int,
     is_leader: bool,
     current_user: CurrentUser = Depends(get_current_user),
     service: EmployeeService = Depends(get_employee_service)
 ):
-    # Передаем объект current_user целиком (уже так сделано в create_employee)
-    return await service.set_access_leadership(current_user, employee_id, position_id, is_leader)
-
-# 2. Управление формальной должностью
-@router.patch("/departments/{department_id}/head")
-async def update_department_head(
-    department_id: int,
-    new_head_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
-    service: EmployeeService = Depends(get_employee_service)
-):
-    # Теперь сервис сам проверит, может ли current_user назначать руководителей в этот отдел
-    return await service.set_department_head(current_user, department_id, new_head_id)
-
-@router.delete("/departments/{department_id}/head",
-               dependencies=[Depends(RoleChecker([AppRights.admin, AppRights.superadmin]))])
-async def remove_department_head(
-    department_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
-    service: EmployeeService = Depends(get_employee_service)
-):
-    return await service.remove_department_head(current_user, department_id)
+    return await service.set_access_leadership(current_user, position_id, is_leader)

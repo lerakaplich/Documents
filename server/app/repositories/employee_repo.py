@@ -4,9 +4,10 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload
+from sqlalchemy.sql.expression import delete
 
 from server.app.database.employee_models import Employee, EmployeePosition, Department
-from server.app.schemas.user_schemas.employee_dto import EmployeePositionCreate, EmployeeCreate
+from server.app.schemas.user_schemas.employee_dto import PositionCreate, EmployeeCreate, PositionUpdate
 
 
 class EmployeesRepository:
@@ -88,16 +89,22 @@ class EmployeesRepository:
         await self.db.flush()  # Получаем ID до commit
         return new_emp
 
-    async def add_position(self, emp_id: int, pos: EmployeePositionCreate):
+    async def add_position(self, employee_id: int, dept_id: int, name: str, is_leader: bool) -> EmployeePosition:
         new_pos = EmployeePosition(
-            employee_id=emp_id,
-            department_id=pos.department_id,
-            position_name=pos.position_name,
-            # SQLAlchemy автоматически возьмет значение из Enum.value
-            assignment_kind=pos.assignment_kind.value,
-            is_leader=pos.is_leader
+            employee_id=employee_id,
+            department_id=dept_id,
+            position_name=name,
+            is_leader=is_leader
         )
         self.db.add(new_pos)
+        await self.db.flush()
+        await self.db.refresh(new_pos)
+        return new_pos
+
+    async def delete_position(self, position_id: int) -> None:
+        stmt = delete(EmployeePosition).where(EmployeePosition.id == position_id)
+        await self.db.execute(stmt)
+        await self.db.flush()
 
     async def get_dept_path_by_id(self, dept_id: int) -> Optional[str]:
         stmt = select(Department.hierarchy_path).where(Department.id == dept_id)
@@ -125,7 +132,7 @@ class EmployeesRepository:
         await self.db.flush()
         return result.scalar_one()
 
-    async def update_employee_position(self, employee_id: int, position_data: EmployeePositionCreate):
+    async def update_employee_position(self, employee_id: int, position_data: PositionCreate):
         # Предполагаем, что у сотрудника одна активная позиция или нам нужно обновить конкретную
         stmt = (
             update(EmployeePosition)
@@ -173,3 +180,22 @@ class EmployeesRepository:
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_positions_by_employee(self, employee_id: int) -> List[EmployeePosition]:
+        stmt = select(EmployeePosition).where(EmployeePosition.employee_id == employee_id)
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def update_position(self, data: PositionUpdate) -> None:
+        # Используем update() для изменения полей записи по ID
+        stmt = (
+            update(EmployeePosition)
+            .where(EmployeePosition.id == data.id)
+            .values(
+                department_id=data.department_id,
+                position_name=data.position_name,
+                is_leader=data.is_leader
+            )
+        )
+        await self.db.execute(stmt)
+        await self.db.flush()

@@ -15,14 +15,17 @@ class EmployeeBase(BaseModel):
     birth_date: Optional[date] = None
     chat_id: Optional[int] = None
 
-class EmployeePositionCreate(BaseModel):
+class PositionData(BaseModel):
     department_id: int
     position_name: str
     is_leader: bool = False
 
+class PositionCreate(PositionData):
+    pass
+
 class EmployeeCreate(EmployeeBase):
     rights: AppRights  # Права в системе (user/admin/superadmin)
-    position: EmployeePositionCreate  # Данные о должности
+    position: PositionCreate  # Данные о должности
 
 class EmployeePositionRead(BaseModel):
     """Должностная позиция сотрудника (Где и кем работает)"""
@@ -32,6 +35,9 @@ class EmployeePositionRead(BaseModel):
     is_leader: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+class PositionUpdate(PositionData):
+    id: Optional[int] = None
 
 class EmployeeRead(EmployeeBase):
     id: int
@@ -84,7 +90,7 @@ class EmployeeFullUpdate(BaseModel):
     rights: Optional[AppRights] = None
     is_active: Optional[bool] = None
 
-    # Позиция
-    position: Optional[EmployeePositionCreate] = None
+    # Позиции
+    positions: List[PositionUpdate] # Список позиций
 
     model_config = ConfigDict(from_attributes=True)
