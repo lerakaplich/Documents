@@ -10,6 +10,33 @@ class SecurityService:
         self.emp_repo = emp_repo
         self.org_repo = org_repo
 
+    async def verify_is_admin(self, user: CurrentUser):
+        """Проверка, является ли пользователь администратором или суперадмином."""
+        if user.rights not in [AppRights.admin, AppRights.superadmin]:
+            raise HTTPException(
+                status_code=403,
+                detail="Недостаточно прав: требуется роль администратора"
+            )
+        return True
+
+    async def verify_is_superadmin(self, user: CurrentUser):
+        """Строгая проверка только на суперадмина."""
+        if user.rights != AppRights.superadmin:
+            raise HTTPException(
+                status_code=403,
+                detail="Недостаточно прав: требуется роль суперадмина"
+            )
+        return True
+
+    async def verify_is_at_least(self, user: CurrentUser, required_rights: list[AppRights]):
+        """Гибкая проверка: является ли пользователь хотя бы одним из списка."""
+        if user.rights not in required_rights:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Недостаточно прав. Требуется одна из ролей: {', '.join(required_rights)}"
+            )
+        return True
+
     async def verify_management_rights(self, current_user: CurrentUser, target_path: str):
         """Проверка: может ли юзер управлять объектом по пути target_path."""
         if current_user.rights in [AppRights.admin, AppRights.superadmin]:
@@ -21,6 +48,17 @@ class SecurityService:
         if not any(target_path.startswith(path) for path in leader_paths):
             raise HTTPException(status_code=403, detail="Недостаточно прав в иерархии")
         return True
+
+    async def verify_org_access(self, user: CurrentUser, org_id: int):
+        # 1. Если это суперадмин — пускаем везде
+        if user.rights == AppRights.superadmin:
+            return True
+
+        # 2. Если это админ организации, проверяем, что это ЕГО организация
+        if user.rights == AppRights.admin and user.org_id == org_id:
+            return True
+
+        raise HTTPException(status_code=403, detail="Нет прав на управление этой организацией")
 
     async def verify_dept_access(self, user: CurrentUser, dept_id: int):
         """Удобная обертка для проверки прав на департамент"""
@@ -81,3 +119,18 @@ class SecurityService:
         # 2. Менеджер должен иметь права на новый отдел (чтобы принять)
         await self.verify_dept_access(manager, new_dept_id)
         return True
+
+    async def verify_can_appoint_leader(self, user: CurrentUser, dept_id: int):
+        # 1. Глобальные права
+        if user.rights in [AppRights.superadmin, AppRights.admin]:
+            return True
+
+        # 2. Иерархические права:
+        dept = await self.org_repo.get_department_by_id(dept_id)
+        if not dept or not dept.parent_id:
+            # Если это корневой отдел и юзер не админ — запрещено
+            raise HTTPException(status_code=403,
+                                detail="Только администратор может назначать руководителя корневого подразделения")
+
+        # Проверяем, имеет ли юзер права менеджера на РОДИТЕЛЬСКИЙ отдел
+        return await self.verify_dept_access(user, dept.parent_id)

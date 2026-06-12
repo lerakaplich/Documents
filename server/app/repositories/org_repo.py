@@ -27,6 +27,7 @@ class OrgRepository:
             .where(Department.id == dept_id)
         )
         return result.scalar_one_or_none()
+
     async def get_employees_by_dept(self, dept_id: int) -> list[EmployeePosition]:
         """Получить всех сотрудников в отделе через таблицу позиций"""
         stmt = (
@@ -55,7 +56,7 @@ class OrgRepository:
         dept = await self.get_department_by_id(dept_id)
         if dept:
             dept.hierarchy_path = path
-            await self.db.commit()  # Или flush, в зависимости от вашей транзакционной модели
+            await self.db.flush()  # Или flush, в зависимости от вашей транзакционной модели
 
     async def update_organization(self, org_id: int, data: dict) -> None:
         stmt = (
@@ -72,3 +73,45 @@ class OrgRepository:
             select(Department.hierarchy_path).where(Department.id == dept_id)
         )
         return result.scalar_one_or_none()
+
+    async def get_organization_by_id(self, org_id: int) -> Optional[Organization]:
+        """Получить организацию по ID."""
+        result = await self.db.execute(
+            select(Organization).where(Organization.id == org_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def update_department(self, dept_id: int, data: dict) -> Department:
+        stmt = (
+            update(Department)
+            .where(Department.id == dept_id)
+            .values(**data)
+        )
+        await self.db.execute(stmt)
+        await self.db.flush()
+
+        return await self.get_department_by_id(dept_id)
+
+    async def update_department_head(self, dept_id: int, employee_id: Optional[int]):
+        """Обновляет ID руководителя подразделения."""
+        stmt = (
+            update(Department)
+            .where(Department.id == dept_id)
+            .values(head_employee_id=employee_id)
+        )
+        await self.db.execute(stmt)
+        await self.db.flush()
+
+    async def has_children(self, dept_id: int) -> bool:
+        """Проверяет, есть ли у департамента дочерние подразделения."""
+        result = await self.db.execute(
+            select(Department).where(Department.parent_id == dept_id).limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def delete_department(self, dept_id: int):
+        """Удаляет подразделение."""
+        from sqlalchemy import delete
+        stmt = delete(Department).where(Department.id == dept_id)
+        await self.db.execute(stmt)
+        await self.db.flush()
