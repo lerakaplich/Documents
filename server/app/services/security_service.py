@@ -134,3 +134,16 @@ class SecurityService:
 
         # Проверяем, имеет ли юзер права менеджера на РОДИТЕЛЬСКИЙ отдел
         return await self.verify_dept_access(user, dept.parent_id)
+
+    async def verify_is_leader_at_least_once(self, user: CurrentUser):
+        """
+        Переиспользуем метод, который уже ищет пути руководства пользователя.
+        Если список путей не пуст — значит, пользователь руководитель.
+        """
+        leader_paths = await self.emp_repo.get_leader_paths(user.id)
+        if not leader_paths:
+            raise HTTPException(
+                status_code=403,
+                detail="Действие доступно только руководителям подразделений"
+            )
+        return True
