@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from server.app.database.employee_models import Department, EmployeePosition, Employee, Organization
-from server.app.schemas.user_schemas.org_dto import DepartmentCreate
+from server.app.schemas.org import DepartmentCreate
 
 
 class OrgRepository:
@@ -115,3 +115,33 @@ class OrgRepository:
         stmt = delete(Department).where(Department.id == dept_id)
         await self.db.execute(stmt)
         await self.db.flush()
+
+    async def update_parent(self, dept_id: int, new_parent_id: Optional[int]):
+        """Обновляет родителя департамента."""
+        await self.db.execute(
+            update(Department)
+            .where(Department.id == dept_id)
+            .values(parent_id=new_parent_id)
+        )
+        await self.db.flush()
+
+    async def get_all_descendants(self, dept_id: int) -> list[Department]:
+        """Получает всех потомков (рекурсивно или по пути) для пересчета."""
+        # Для простоты используем поиск по path (это самый быстрый способ)
+        # Если путь '1/2/3', то все потомки начинаются с '1/2/3/'
+        path = await self.get_dept_path_by_id(dept_id)
+        result = await self.db.execute(
+            select(Department).where(Department.hierarchy_path.like(f"{path}%"))
+        )
+        return list(result.scalars().all())
+
+    async def get_department_detail(self, dept_id: int) -> Optional[Department]:
+        result = await self.db.execute(
+            select(Department)
+            .options(
+                joinedload(Department.department_type),
+                joinedload(Department.head_employee)
+            )
+            .where(Department.id == dept_id)
+        )
+        return result.scalar_one_or_none()

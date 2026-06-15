@@ -2,42 +2,19 @@ from fastapi import HTTPException
 
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
-from pydantic import BaseModel
 from typing import List, Optional
 
+from server.app.schemas.org import DepartmentNode, OrganizationUpdate, OrganizationRead, DepartmentUpdate, \
+    DepartmentRead, DepartmentCreate
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
-from server.app.schemas.user_schemas.org_dto import DepartmentNode, DepartmentCreate, DepartmentRead, \
-    OrganizationUpdate, OrganizationRead, DepartmentUpdate
+
 from server.app.services.security_service import SecurityService
 
-
-class OrgService:
+class DepartmentService:
     def __init__(self, repo: OrgRepository, emp_repo: EmployeesRepository, security: SecurityService):
         self.repo = repo
-        self.emp_repo = emp_repo # Добавляем это
+        self.emp_repo = emp_repo
         self.security = security
-
-    async def get_org_structure(self, org_id: int) -> List[DepartmentNode]:
-        depts = await self.repo.get_departments_by_org(org_id)
-
-        nodes = {
-            d.id: DepartmentNode(
-                id=d.id,
-                name=d.name,
-                type_name=d.department_type.name if d.department_type else None
-            ) for d in depts
-        }
-        root_nodes = []
-
-        for d in depts:
-            node = nodes[d.id]
-            if d.parent_id is None:
-                root_nodes.append(node)
-            else:
-                if d.parent_id in nodes:
-                    nodes[d.parent_id].children.append(node)
-
-        return root_nodes
 
     async def create_department(self, current_user: CurrentUser, data: DepartmentCreate) -> DepartmentRead:
         # 1. Проверка прав: используем SecurityService
@@ -61,26 +38,6 @@ class OrgService:
             await self.repo.update_path(new_dept.id, new_path)
 
         return DepartmentRead.model_validate(new_dept)
-
-    async def update_organization(
-            self,
-            current_user: CurrentUser,
-            org_id: int,
-            data: OrganizationUpdate
-    ) -> OrganizationRead:
-
-        await self.security.verify_org_access(current_user, org_id)
-        update_data = data.model_dump(exclude_unset=True)
-        if not update_data:
-            raise HTTPException(status_code=400, detail="Нет данных для обновления")
-
-        await self.repo.update_organization(org_id, update_data)
-
-        updated_org = await self.repo.get_organization_by_id(org_id)
-        if not updated_org:
-            raise HTTPException(status_code=404, detail="Организация не найдена")
-
-        return OrganizationRead.model_validate(updated_org)
 
     async def update_department(self, current_user: CurrentUser, dept_id: int,
                                 data: DepartmentUpdate) -> DepartmentRead:
@@ -140,6 +97,63 @@ class OrgService:
 
         return {"message": "Руководитель успешно снят с должности"}
 
+    async def delete_department(self, user: CurrentUser, dept_id: int):
+        # 1. Проверка прав
+        await self.security.verify_can_appoint_leader(user, dept_id)
+
+        # 2. Проверка детей
+        if await self.repo.has_children(dept_id):
+            raise HTTPException(status_code=400, detail="Нельзя удалить отдел, у которого есть дочерние подразделения")
+
+        # 3. Проверка сотрудников (важный этап!)
+        employees = await self.repo.get_employees_by_dept(dept_id)
+        if employees:
+            raise HTTPException(status_code=400, detail="Нельзя удалить отдел, в котором числятся сотрудники")
+
+        # 4. Удаление
+        await self.repo.delete_department(dept_id)
+        return {"message": "Подразделение успешно удалено"}
+
+    async def move_department(self, user: CurrentUser, dept_id: int, new_parent_id: Optional[int]):
+        if new_parent_id is None:
+            raise HTTPException(status_code=400, detail="Подразделение должно иметь родителя")
+
+        await self.security.verify_can_appoint_leader(user, dept_id)
+
+        # 1. Получаем нового родителя (чтобы узнать его путь)
+        new_parent_path = ""
+        if new_parent_id:
+            new_parent_path = await self.repo.get_dept_path_by_id(new_parent_id) or ""
+
+        # 2. Пересчитываем путь для перемещаемого отдела
+        new_path = f"{new_parent_path}/{dept_id}".strip("/")
+
+        async with self.repo.db.begin_nested():
+            # Обновляем сам отдел
+            await self.repo.update_parent(dept_id, new_parent_id)
+            await self.repo.update_path(dept_id, new_path)
+
+            # 3. Рекурсивное обновление потомков (если они есть)
+            descendants = await self.repo.get_all_descendants(dept_id)
+            for d in descendants:
+                if d.id == dept_id: continue
+                # Логика: заменяем старую часть пути на новую
+                # Это требует внимательности при работе со строками
+                old_path_part = await self.repo.get_dept_path_by_id(dept_id)
+                new_d_path = d.hierarchy_path.replace(old_path_part, new_path)
+                await self.repo.update_path(d.id, new_d_path)
+
+        return {"message": "Подразделение перемещено"}
+
+    async def get_department_by_id(self, dept_id: int) -> DepartmentRead:
+        dept = await self.repo.get_department_detail(dept_id)
+        if not dept:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Подразделение с ID {dept_id} не найдено"
+            )
+        return DepartmentRead.model_validate(dept)
+
     async def archive_department(self, user: CurrentUser, dept_id: int):
         # 1. Проверка прав (кто может архивировать)
         # Только глобальные админы или вышестоящее руководство
@@ -153,14 +167,3 @@ class OrgService:
         # 3. Архивируем
         await self.repo.update_department(dept_id, {"is_active": False})
         return {"message": "Подразделение успешно архивировано"}
-
-    async def delete_department(self, user: CurrentUser, dept_id: int):
-        # Проверяем права так же строго
-        await self.security.verify_can_appoint_leader(user, dept_id)
-
-        # Жесткая проверка: нет ли детей (вложенных отделов)?
-        if await self.repo.has_children(dept_id):
-            raise HTTPException(status_code=400, detail="Нельзя удалить отдел, имеющий подразделения")
-
-        await self.repo.delete_department(dept_id)
-        return {"message": "Подразделение удалено"}

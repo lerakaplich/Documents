@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from server.app.database.document_models import SystemEmployee, AppRights
+from server.app.database.document_models import SystemEmployee
 from server.app.database.session import get_docs_db, get_employees_db  # УБРАЛИ кадровый get_employees_db
 from server.app.repositories.comment_repo import CommentRepository
 from server.app.repositories.document_repo import DocumentRepository
@@ -16,7 +16,8 @@ from server.app.services.documents.registry_service import DocumentRegistryServi
 from server.app.services.documents.review_service import DocumentReviewService
 from server.app.services.documents.workflow_service import DocumentWorkflowService
 from server.app.services.employees.employee_service import EmployeeService
-from server.app.services.employees.org_service import OrgService
+from server.app.services.org.department_service import DepartmentService
+from server.app.services.org.org_service import OrgService
 from server.app.services.security_service import SecurityService
 
 security = HTTPBearer()
@@ -75,12 +76,12 @@ def get_security_service(
     org_repo = OrgRepository(emp_db)
     return SecurityService(emp_repo, org_repo)
 
-def get_org_service(
-    emp_db: AsyncSession = Depends(get_employees_db),
-    security: SecurityService = Depends(get_security_service) # Внедряем сервис прав
-) -> OrgService:
-    repo = OrgRepository(emp_db)
-    return OrgService(repo, security) # Передаем в конструктор OrgService
+
+def get_org_service(db: AsyncSession = Depends(get_employees_db), security: SecurityService = Depends(get_security_service)) -> OrgService:
+    return OrgService(OrgRepository(db), security)
+
+def get_dept_service(db: AsyncSession = Depends(get_employees_db), security: SecurityService = Depends(get_security_service)) -> DepartmentService:
+    return DepartmentService(OrgRepository(db), EmployeesRepository(db), security)
 
 def get_employee_service(
         emp_db: AsyncSession = Depends(get_employees_db),
