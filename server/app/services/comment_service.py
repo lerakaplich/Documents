@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from server.app.config import MSG_TEMPLATE_NEW_REVISION
 from server.app.database.document_models import Comment, EmployeeDocument, SystemEmployee
-from server.app.schemas.doc_schemas.document_dto import DocumentListItem
+from server.app.schemas.doc.document_dto import DocumentListItem
 from server.app.repositories.comment_repo import CommentRepository
 
 

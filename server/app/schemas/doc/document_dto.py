@@ -3,10 +3,10 @@ from typing import Optional, List
 from datetime import date, datetime
 
 from server.app.database.document_models import DocStatus, DocDirection
-from server.app.schemas.doc_schemas.doc_employee_dto import DocEmployeeItem
-from server.app.schemas.doc_schemas.tag_dto import TagRead
-from server.app.schemas.doc_schemas.attachment_dto import DocumentAttachmentRead
-from server.app.schemas.doc_schemas.receiver_dto import DocumentReceiverRead
+from server.app.schemas.doc.doc_employee_dto import DocEmployeeItem
+from server.app.schemas.doc.tag_dto import TagRead
+from server.app.schemas.doc.attachment_dto import DocumentAttachmentRead
+from server.app.schemas.doc.receiver_dto import DocumentReceiverRead
 
 
 class DocumentCreateForm(BaseModel):

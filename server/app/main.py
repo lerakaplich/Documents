@@ -6,6 +6,7 @@ from server.app.api.documents import router as doc_router
 from server.app.api.organization import router as org_router
 from server.app.api.department import router as dept_router
 from server.app.api.positions import router as pos_router
+from server.app.api.types import router as type_router
 from sqlalchemy.ext.asyncio import AsyncSession
 from server.app.api.employees import router as employees_router # Импортируй роутер
 from server.app.api.errors import global_exception_handler, integrity_exception_handler
@@ -25,6 +26,7 @@ app.include_router(doc_router, prefix="/api/v1")
 app.include_router(org_router, prefix="/api/v1")
 app.include_router(dept_router, prefix="/api/v1")
 app.include_router(pos_router, prefix="/api/v1")
+app.include_router(type_router, prefix="/api/v1")
 app.include_router(employees_router, prefix="/api/v1", tags=["Employees"])
 app.add_exception_handler(Exception, global_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)

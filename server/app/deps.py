@@ -6,11 +6,13 @@ from sqlalchemy import select
 from server.app.database.document_models import SystemEmployee
 from server.app.database.session import get_docs_db, get_employees_db  # УБРАЛИ кадровый get_employees_db
 from server.app.repositories.comment_repo import CommentRepository
+from server.app.repositories.doc_type_repo import DocTypeRepository
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.comment_service import CommentService
+from server.app.services.doc_type_service import DocTypeService
 from server.app.services.documents import DocumentService
 from server.app.services.documents.registry_service import DocumentRegistryService
 from server.app.services.documents.review_service import DocumentReviewService
@@ -76,6 +78,12 @@ def get_security_service(
     org_repo = OrgRepository(emp_db)
     return SecurityService(emp_repo, org_repo)
 
+def get_doc_type_service(
+    db: AsyncSession = Depends(get_docs_db),
+    security: SecurityService = Depends(get_security_service)
+) -> DocTypeService:
+    repo = DocTypeRepository(db)
+    return DocTypeService(db, security, repo)
 
 def get_org_service(db: AsyncSession = Depends(get_employees_db), security: SecurityService = Depends(get_security_service)) -> OrgService:
     return OrgService(OrgRepository(db), security)

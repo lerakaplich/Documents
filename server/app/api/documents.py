@@ -11,7 +11,7 @@ from server.app.deps import get_current_user, get_doc_service, get_registry_serv
 from server.app.repositories.comment_repo import CommentRepository
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.role_checker import RoleChecker
-from server.app.schemas.doc_schemas.document_dto import (
+from server.app.schemas.doc.document_dto import (
     DocumentListItem, DocumentCreateForm, DocumentDetailRead,
     AdminMetadataUpdate, DocumentPaginationResponse, ToggleCompletionPayload, RedirectHistoryRead
 )

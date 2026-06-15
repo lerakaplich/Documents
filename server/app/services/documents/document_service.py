@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from typing import Optional
 from server.app.database.document_models import Document, EmployeeDocument, DocumentRole, AppRights, Read
 from server.app.repositories.document_repo import DocumentRepository
-from server.app.schemas.doc_schemas.document_dto import DocumentCreateForm, AdminMetadataUpdate
+from server.app.schemas.doc.document_dto import DocumentCreateForm, AdminMetadataUpdate
 from sqlalchemy import select
 
 

@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from typing import List
 from server.app.database.document_models import DocumentRole
 from server.app.repositories.document_repo import DocumentRepository
-from server.app.schemas.doc_schemas.document_dto import RedirectHistoryRead
+from server.app.schemas.doc.document_dto import RedirectHistoryRead
 
 
 class DocumentWorkflowService:
