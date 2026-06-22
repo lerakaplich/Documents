@@ -1,8 +1,7 @@
-import enum
 from typing import Optional, List
 from datetime import date, time
 
-from sqlalchemy import Integer, String, Text, Boolean, Date, BigInteger, ForeignKey, UniqueConstraint, Time, Enum as SqlEnum
+from sqlalchemy import Integer, String, Text, Boolean, Date, BigInteger, ForeignKey, UniqueConstraint, Time
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -101,9 +100,8 @@ class Overtime(BaseEmployees):
     __tablename__ = "overtime"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    number: Mapped[int] = mapped_column(Integer, nullable=False) # Номер распоряжения/приказа
     employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
-    note_text: Mapped[Optional[str]] = mapped_column(Text) # Причина, например 'Деплой СЭД'
+    note_text: Mapped[Optional[str]] = mapped_column(Text)
     overtime_date: Mapped[date] = mapped_column(Date, nullable=False)
     overtime_start: Mapped[Optional[time]] = mapped_column(Time)
     overtime_end: Mapped[Optional[time]] = mapped_column(Time)

@@ -10,6 +10,7 @@ from server.app.repositories.doc_type_repo import DocTypeRepository
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
+from server.app.repositories.overtime_repo import OvertimeRepository
 from server.app.repositories.tag_repo import TagRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.comment_service import CommentService
@@ -21,6 +22,7 @@ from server.app.services.documents.workflow_service import DocumentWorkflowServi
 from server.app.services.employees.employee_service import EmployeeService
 from server.app.services.org.department_service import DepartmentService
 from server.app.services.org.org_service import OrgService
+from server.app.services.overtime.overtime import OvertimeService
 from server.app.services.security_service import SecurityService
 from server.app.services.tag_service import TagService
 
@@ -110,6 +112,13 @@ def get_employee_service(
     org_repo = OrgRepository(emp_db)
 
     return EmployeeService(emp_repo, doc_repo, org_repo, security)
+
+def get_overtime_service(
+    emp_db: AsyncSession = Depends(get_employees_db),
+    security: SecurityService = Depends(get_security_service)
+) -> OvertimeService:
+    repo = OvertimeRepository(emp_db)
+    return OvertimeService(security, repo)
 
 
 # --- ФАБРИКИ ЗАВИСИМОСТЕЙ ДЛЯ СЕРВИСОВ ---
