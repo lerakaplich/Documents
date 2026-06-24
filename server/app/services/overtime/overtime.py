@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from server.app.repositories.overtime_repo import OvertimeRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.schemas.user_schemas.overtime_dto import OvertimeCreate, OvertimeUpdate
-from server.app.services.security_service import SecurityService
+from server.app.services.common.security_service import SecurityService
 
 
 class OvertimeService:

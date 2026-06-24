@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from server.app.deps import get_current_user, get_doc_type_service
 from server.app.schemas.doc.doc_type import DocTypeRead, DocTypeCreate, DocTypeUpdate
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
-from server.app.services.doc_type_service import DocTypeService
+from server.app.services.documents.doc_type_service import DocTypeService
 
 router = APIRouter(prefix="/doc-types", tags=["Document Types"])
 

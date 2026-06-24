@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from server.app.repositories.doc_type_repo import DocTypeRepository
 from server.app.schemas.doc.doc_type import DocTypeCreate, DocTypeUpdate
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
-from server.app.services.security_service import SecurityService
+from server.app.services.common.security_service import SecurityService
 
 
 class DocTypeService:

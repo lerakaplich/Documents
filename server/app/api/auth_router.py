@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.database.session import get_employees_db, get_docs_db
 from server.app.repositories.session_repo import SessionRepository
-from server.app.services.auth_service import AuthService
+from server.app.services.common.auth_service import AuthService
 from server.app.schemas.user_schemas.auth_dto import AuthRequestCode, TokenResponse, AuthVerifyCode, TokenRefreshRequest
 
 router = APIRouter(prefix="/auth", tags=["Auth"])

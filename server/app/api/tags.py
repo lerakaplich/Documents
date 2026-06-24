@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from server.app.deps import get_current_user, get_tag_service
 from server.app.schemas.doc.tag_dto import TagRead, TagCreate, TagUpdate
-from server.app.services.tag_service import TagService
+from server.app.services.documents.tag_service import TagService
 
 router = APIRouter(prefix="/tag", tags=["Tags"])
 

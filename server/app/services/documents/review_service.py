@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from server.app.schemas.doc.document_dto import DocumentListItem
 from server.app.database.document_models import DocumentRole, DocStatus
 from server.app.repositories.document_repo import DocumentRepository
-from server.app.services.comment_service import CommentService
+from server.app.services.documents.comment_service import CommentService
 
 
 class DocumentReviewService:

@@ -1,14 +1,12 @@
 from fastapi import HTTPException
 
-from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
-from typing import List, Optional
+from typing import List
 
-from server.app.schemas.org import DepartmentNode, OrganizationUpdate, OrganizationRead, DepartmentUpdate, \
-    DepartmentRead, DepartmentCreate
+from server.app.schemas.org import DepartmentNode, OrganizationUpdate, OrganizationRead
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 
-from server.app.services.security_service import SecurityService
+from server.app.services.common.security_service import SecurityService
 
 
 class OrgService:

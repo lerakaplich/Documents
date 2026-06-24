@@ -4,7 +4,7 @@ from server.app.database.document_models import TagPriority
 from server.app.repositories.tag_repo import TagRepository
 from server.app.schemas.doc.tag_dto import TagCreate, TagUpdate
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
-from server.app.services.security_service import SecurityService
+from server.app.services.common.security_service import SecurityService
 
 
 class TagService:

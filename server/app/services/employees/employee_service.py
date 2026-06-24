@@ -2,14 +2,13 @@ from typing import List, Optional
 
 from fastapi import HTTPException
 
-from server.app.database.document_models import AppRights
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
 from server.app.schemas.user_schemas.employee_dto import EmployeeRead, EmployeeListRead, CurrentUser, \
     EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate, PositionCreate, \
     PositionUpdate
-from server.app.services.security_service import SecurityService
+from server.app.services.common.security_service import SecurityService
 
 
 class EmployeeService:

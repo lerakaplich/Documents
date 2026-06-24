@@ -13,8 +13,8 @@ from server.app.repositories.org_repo import OrgRepository
 from server.app.repositories.overtime_repo import OvertimeRepository
 from server.app.repositories.tag_repo import TagRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
-from server.app.services.comment_service import CommentService
-from server.app.services.doc_type_service import DocTypeService
+from server.app.services.documents.comment_service import CommentService
+from server.app.services.documents.doc_type_service import DocTypeService
 from server.app.services.documents import DocumentService
 from server.app.services.documents.registry_service import DocumentRegistryService
 from server.app.services.documents.review_service import DocumentReviewService
@@ -23,8 +23,8 @@ from server.app.services.employees.employee_service import EmployeeService
 from server.app.services.org.department_service import DepartmentService
 from server.app.services.org.org_service import OrgService
 from server.app.services.overtime.overtime import OvertimeService
-from server.app.services.security_service import SecurityService
-from server.app.services.tag_service import TagService
+from server.app.services.common.security_service import SecurityService
+from server.app.services.documents.tag_service import TagService
 
 security = HTTPBearer()
 

@@ -1,15 +1,12 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from server.app.database.document_models import AppRights
-from server.app.deps import get_current_user, get_security_service, get_employee_service
-from server.app.role_checker import RoleChecker
+from server.app.deps import get_current_user, get_employee_service
 from server.app.schemas.user_schemas.employee_dto import EmployeeRead, EmployeeListRead, CurrentUser, \
     EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate
 from server.app.services.employees.employee_service import EmployeeService
-from server.app.services.security_service import SecurityService
 
-router = APIRouter(prefix="/departments", tags=["Departments"])
+router = APIRouter(prefix="/departments", tags=["Employees"])
 
 @router.get("/departments/{department_id}/staff", response_model=List[EmployeeRead])
 async def get_department_staff(
