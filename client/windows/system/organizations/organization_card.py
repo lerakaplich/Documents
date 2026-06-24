@@ -40,8 +40,8 @@ class OrganizationCard(QFrame):
         """Возвращает путь к UI файлу"""
         # Путь относительно текущего файла
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        # Поднимаемся на уровень выше до client/windows/system/organisations/
-        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'organisations', 'organization_card.ui')
+        # Поднимаемся на уровень выше до client/windows/system/organizations/
+        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'organizations', 'organization_card.ui')
         return os.path.normpath(ui_path)
 
     def setup_card(self):

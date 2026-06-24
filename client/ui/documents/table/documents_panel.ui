@@ -13,7 +13,6 @@
   <property name="windowTitle">
    <string>DocumentsPanel</string>
   </property>
-  <!-- ДОБАВЬТЕ ЭТУ СТРОКУ - явный стиль для корневого виджета -->
   <property name="styleSheet">
    <string notr="true">#DocumentsPanel { background-color: white; }</string>
   </property>
@@ -38,6 +37,12 @@
      <property name="minimumSize">
       <size>
        <width>0</width>
+       <height>140</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
        <height>140</height>
       </size>
      </property>
@@ -283,19 +288,6 @@ QPushButton:hover {
       <property name="bottomMargin">
        <number>0</number>
       </property>
-      <item>
-       <spacer name="verticalSpacer">
-        <property name="orientation">
-         <enum>Qt::Orientation::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
      </layout>
     </widget>
    </item>

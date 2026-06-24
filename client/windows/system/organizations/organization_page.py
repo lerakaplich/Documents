@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.uic import loadUi
 
-from client.windows.system.organisations.organization_card import OrganizationCard
+from client.windows.system.organizations.organization_card import OrganizationCard
 from client.windows.animations.floating_action_button import FloatingActionButton
 
 
@@ -51,7 +51,7 @@ class OrganizationsPage(QWidget):
     def get_ui_path(self):
         """Возвращает путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'organisations', 'organization_page.ui')
+        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'organizations', 'organization_page.ui')
         return os.path.normpath(ui_path)
 
     def setup_connections(self):

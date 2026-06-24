@@ -13,7 +13,7 @@ from client.windows.system.departments.department_card import DepartmentCard
 from client.windows.system.departments.department_page import DepartmentPage
 from client.windows.system.document_types.document_type_page import DocumentTypesPage
 from client.windows.system.employees.employee_page import EmployeesPage
-from client.windows.system.organisations.organization_page import OrganizationsPage
+from client.windows.system.organizations.organization_page import OrganizationsPage
 from client.windows.system.tags.tag_page import TagsPage
 
 
