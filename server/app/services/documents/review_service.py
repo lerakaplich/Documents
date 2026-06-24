@@ -3,45 +3,39 @@ from datetime import datetime, timezone
 from server.app.schemas.doc.document_dto import DocumentListItem
 from server.app.database.document_models import DocumentRole, DocStatus
 from server.app.repositories.document_repo import DocumentRepository
+from server.app.services.common.security_service import SecurityService
 from server.app.services.documents.comment_service import CommentService
 
 
 class DocumentReviewService:
-    def __init__(self, db_repo: DocumentRepository, comment_service: CommentService):
-        self.repo = db_repo
+    def __init__(self, repo: DocumentRepository, comment_service: CommentService, security: SecurityService):
+        self.repo = repo
         self.comment_service = comment_service
+        self.security = security
 
     async def process_review(self, document_id: int, user_id: int, approved: bool, comment_text: str = None):
-        """Обработка решения согласующего лица (Утвердить / Отклонить)"""
+        # 1. Получаем связь
         relation = await self.repo.get_user_relation(document_id, user_id)
 
-        if not relation or relation.role not in [DocumentRole.recipient, DocumentRole.delegate]:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Ваша роль не требует согласования.")
+        # 2. Проверяем права через SecurityService
+        await self.security.verify_can_review_document(relation)
 
         if relation.is_approved is not None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail="Вы уже приняли решение по этому документу.")
+            raise HTTPException(status_code=400, detail="Решение уже принято.")
 
-        # Фиксируем решение
         relation.is_approved = approved
 
-        # Если при согласовании/отклонении был передан текстовый комментарий — сохраняем его
         if comment_text and comment_text.strip():
             await self.comment_service.create_comment(document_id, user_id, comment_text)
-            document = await self.repo.get_by_id(document_id)
-            if document:
-                document.last_comment_text = comment_text.strip()
+            await self.repo.update_last_comment(document_id, comment_text)
 
-        # Автоматический пересчет статуса всего документа
         await self._recalculate_document_status(document_id)
         await self.repo.db.commit()
 
     async def make_revisions(self, document_id: int, user_id: int, text: str) -> None:
         """Внесение замечаний (правок) к документу без вынесения финального решения"""
         relation = await self.repo.get_user_relation(document_id, user_id)
-        if not relation or relation.role not in [DocumentRole.recipient, DocumentRole.delegate]:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail="Оставлять правки могут только согласующие лица.")
+        await self.security.verify_can_review_document(relation)
 
         document = await self.repo.get_by_id(document_id)
         if not document:
@@ -49,9 +43,7 @@ class DocumentReviewService:
 
         # Создаем комментарий через CommentService
         await self.comment_service.create_comment(document_id, user_id, text)
-
-        # Денормализация: сохраняем быстрый текст последней правки в документ
-        document.last_comment_text = text.strip()
+        await self.repo.update_last_comment(document_id, text)
 
         try:
             await self.repo.db.commit()
@@ -59,22 +51,6 @@ class DocumentReviewService:
             await self.repo.db.rollback()
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                                 detail=f"Ошибка сохранения замечания: {str(e)}")
-
-        dto_document = DocumentListItem.model_validate(document)
-
-        # Отправляем уже валидный DTO
-        await self.comment_service.send_notification_stub(dto_document)
-
-    async def toggle_complete(self, doc_id: int, user_id: int, is_completed: bool) -> None:
-        """Переключение состояния задачи сотрудника (В работе / В архив)"""
-        relation = await self.repo.get_user_relation(doc_id, user_id)
-        if not relation:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail="Вы не являетесь участником этого документа.")
-
-        relation.is_completed = is_completed
-        relation.completed_at = datetime.now(timezone.utc) if is_completed else None
-        await self.repo.db.commit()
 
     async def _recalculate_document_status(self, document_id: int):
         """Внутренний конечный автомат пересчета статусов веток согласования"""

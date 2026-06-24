@@ -15,10 +15,11 @@ from server.app.repositories.tag_repo import TagRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.documents.comment_service import CommentService
 from server.app.services.documents.doc_type_service import DocTypeService
-from server.app.services.documents import DocumentService
+from server.app.services.documents.document_service import DocumentService
 from server.app.services.documents.registry_service import DocumentRegistryService
 from server.app.services.documents.review_service import DocumentReviewService
-from server.app.services.documents.workflow_service import DocumentWorkflowService
+from server.app.services.documents.delegation_service import DelegationService
+from server.app.services.documents.workflow_service import WorkflowService
 from server.app.services.employees.employee_service import EmployeeService
 from server.app.services.org.department_service import DepartmentService
 from server.app.services.org.org_service import OrgService
@@ -127,17 +128,34 @@ def get_doc_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentSer
     repo = DocumentRepository(db_docs)
     return DocumentService(repo)
 
-def get_workflow_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentWorkflowService:
+def get_delegation_service(
+    db_docs: AsyncSession = Depends(get_docs_db)
+) -> DelegationService:
     repo = DocumentRepository(db_docs)
-    return DocumentWorkflowService(repo)
+    return DelegationService(repo)
 
-def get_review_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentReviewService:
+def get_workflow_service(
+    db_docs: AsyncSession = Depends(get_docs_db),
+    delegation_svc: DelegationService = Depends(get_delegation_service)
+) -> WorkflowService:
+    repo = DocumentRepository(db_docs)
+    return WorkflowService(repo, delegation_svc)
+
+def get_review_service(
+    db_docs: AsyncSession = Depends(get_docs_db),
+    security: SecurityService = Depends(get_security_service)
+) -> DocumentReviewService:
+    # Инициализируем компоненты
     doc_repo = DocumentRepository(db_docs)
     comment_repo = CommentRepository(db_docs)
-
     comment_svc = CommentService(comment_repo)
 
-    return DocumentReviewService(db_repo=doc_repo, comment_service=comment_svc)
+    # Внедряем все три зависимости, как требует класс
+    return DocumentReviewService(
+        repo=doc_repo,
+        comment_service=comment_svc,
+        security=security
+    )
 
 def get_registry_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentRegistryService:
     repo = DocumentRepository(db_docs)

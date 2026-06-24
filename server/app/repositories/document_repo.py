@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, cast, String, desc, asc, exists, insert, delete
+from sqlalchemy import select, func, and_, or_, cast, String, desc, asc, exists, insert, delete, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from typing import List, Optional, Tuple
 from datetime import date
@@ -313,3 +313,12 @@ class DocumentRepository:
         """Получить запись о сотруднике по ID (для проверки прав)"""
         result = await self.db.execute(select(SystemEmployee).where(SystemEmployee.id == employee_id))
         return result.scalar_one_or_none()
+
+    async def update_last_comment(self, document_id: int, text: str):
+        """Обновляет денормализованный текст последнего комментария."""
+        stmt = (
+            update(Document)
+            .where(Document.id == document_id)
+            .values(last_comment_text=text.strip())
+        )
+        await self.db.execute(stmt)

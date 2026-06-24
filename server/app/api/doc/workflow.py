@@ -9,6 +9,7 @@ from server.app.schemas.user_schemas.employee_dto import CurrentUser
 
 # Импортируем обновленные сервисы СЭД
 from server.app.services.documents.review_service import DocumentReviewService
+from server.app.services.documents.workflow_service import WorkflowService
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -42,10 +43,10 @@ async def toggle_completion(
         document_id: int,
         payload: ToggleCompletionPayload,
         current_user: CurrentUser = Depends(get_current_user),
-        service: DocumentReviewService = Depends(get_review_service)
+        service: WorkflowService = Depends(get_review_service)
 ):
     """Переключение документа между вкладками 'В работе' и 'Архив'"""
-    await service.toggle_complete(document_id, current_user.id, payload.is_completed)
+    await service.toggle_completion(document_id, current_user.id, payload.is_completed)
     return {"status": "success", "message": "Статус отображения изменен"}
 
 

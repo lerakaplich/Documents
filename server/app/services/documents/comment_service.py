@@ -88,21 +88,3 @@ class CommentService:
 
         await self.repo.delete(comment_id)
         await self.repo.db.commit()  # Изолированная транзакция удаления
-
-    async def send_notification_stub(self, document: DocumentListItem):
-        """Заглушка рассылки уведомлений участникам документа"""
-        try:
-            query = select(EmployeeDocument.employee_id).where(
-                EmployeeDocument.document_id == document.id
-            )
-            result = await self.repo.db.execute(query)
-            participant_ids = result.scalars().all()
-
-            message_text = MSG_TEMPLATE_NEW_REVISION.format(
-                reg_number=document.reg_number or f"ID-{document.id}",
-                title=document.title or "Без названия"
-            )
-            print(f"[TG_BOT_LOG] Новые замечания к документу для участников {participant_ids}")
-            print(f"[TG_BOT_LOG] Текст: {message_text}")
-        except Exception as e:
-            print(f"[TG_BOT_ERROR] {str(e)}")

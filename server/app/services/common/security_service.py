@@ -1,5 +1,7 @@
+from typing import Optional, Any
+
 from fastapi import HTTPException
-from server.app.database.document_models import AppRights
+from server.app.database.document_models import AppRights, DocumentRole
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
@@ -47,6 +49,14 @@ class SecurityService:
         # Если хотя бы один путь руководителя является префиксом целевого пути
         if not any(target_path.startswith(path) for path in leader_paths):
             raise HTTPException(status_code=403, detail="Недостаточно прав в иерархии")
+        return True
+
+    async def verify_can_review_document(self, relation: Optional[Any]):
+        if not relation or relation.role not in [DocumentRole.recipient, DocumentRole.delegate]:
+            raise HTTPException(
+                status_code=403,
+                detail="Вы не являетесь согласующим лицом для данного документа."
+            )
         return True
 
     async def verify_org_access(self, user: CurrentUser, org_id: int):

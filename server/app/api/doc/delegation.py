@@ -8,7 +8,7 @@ from server.app.schemas.doc.document_dto import (
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 
 # Импортируем обновленные сервисы СЭД
-from server.app.services.documents.workflow_service import DocumentWorkflowService
+from server.app.services.documents.delegation_service import DelegationService
 
 router = APIRouter(prefix="/delegation", tags=["Documents"])
 
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/delegation", tags=["Documents"])
 async def get_redirect_history(
         document_id: int,
         current_user: CurrentUser = Depends(get_current_user),
-        service: DocumentWorkflowService = Depends(get_workflow_service)
+        service: DelegationService = Depends(get_workflow_service)
 ):
     """История движений документа"""
     return await service.get_history(document_id)
@@ -31,7 +31,7 @@ async def add_delegate(
         to_employee_id: int, # В теле запроса (Pydantic модель)
         message: Optional[str] = None,
         current_user: CurrentUser = Depends(get_current_user),
-        service: DocumentWorkflowService = Depends(get_workflow_service)
+        service: DelegationService = Depends(get_workflow_service)
 ):
     """Назначить сотрудника участником/делегатом"""
     await service.add_delegate(document_id, current_user.id, to_employee_id, message)
@@ -42,7 +42,7 @@ async def remove_delegate(
         document_id: int,
         emp_id: int,
         current_user: CurrentUser = Depends(get_current_user),
-        service: DocumentWorkflowService = Depends(get_workflow_service)
+        service: DelegationService = Depends(get_workflow_service)
 ):
     """Отозвать права участника (только если есть права на управление)"""
     await service.remove_delegate(document_id, current_user.id, emp_id)
