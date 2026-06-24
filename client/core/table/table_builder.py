@@ -10,7 +10,7 @@ from client.core.table.row_manager import RowManager
 from client.core.table.table_state import TableState
 
 
-class TableSetup:
+class TableBuilder:
     """Класс для настройки параметров таблицы"""
 
     def __init__(self, table_widget, columns_config):
@@ -28,7 +28,7 @@ class TableSetup:
         self.row_manager = None
         self.table_state = TableState()
 
-    def setup(self):
+    def setup(self, data_manager=None, updater=None):
         """Основная настройка таблицы"""
         try:
             self._setup_columns()
@@ -40,13 +40,17 @@ class TableSetup:
             # Инициализация менеджеров
             self.column_manager = ColumnManager(self.table_widget, self.columns_config)
             self.sorting_manager = SortingManager(self.table_widget, self.columns_config)
-            self.row_manager = RowManager(self.table_widget, self.table_widget.parent())
-            # НЕ вызываем apply_initial_pinning здесь!
-            # Закрепление будет применено после загрузки данных через update_order_after_load
 
-            print("[TableSetup] Setup completed successfully")
+            # Создаем RowManager с зависимостями
+            self.row_manager = RowManager(
+                self.table_widget,
+                data_manager,
+                updater
+            )
+
+            print("[TableBuilder] Setup completed successfully")
         except Exception as e:
-            print(f"[TableSetup] Error in setup: {e}")
+            print(f"[TableBuilder] Error in setup: {e}")
             import traceback
             traceback.print_exc()
             raise
@@ -132,3 +136,7 @@ class TableSetup:
     def get_row_manager(self):
         """Получение менеджера строк"""
         return self.row_manager
+
+    def set_row_manager(self, row_manager):
+        """Установка менеджера строк (для внедрения зависимостей)"""
+        self.row_manager = row_manager

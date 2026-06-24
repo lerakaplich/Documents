@@ -3,18 +3,20 @@
 """
 import sys
 from PyQt6.QtWidgets import (QWidget, QTableWidget, QApplication,
-                             QVBoxLayout, QMessageBox)
+                             QVBoxLayout)
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint
 
+from client.core.table.table_builder import TableBuilder
+from client.core.table.table_data_manager import TableDataManager
+from client.core.table.table_updater import TableUpdater
+from client.windows.documents.table.builders.row_filler import RowFiller
 from client.windows.documents.table.document_data import DocumentDataConfig
 from client.windows.documents.table.styles import TableStyles
-from client.windows.documents.table.table_setup import TableSetup
-from client.windows.documents.table.row_filler import RowFiller
 from client.windows.documents.table.context_menu import ContextMenu
 
 
 class DocumentsTable(QWidget):
-    """Таблица документов с поддержкой хэштегов, чекбоксов и контекстного меню"""
+    """Таблица документов"""
 
     document_action_triggered = pyqtSignal(str, dict)
     read_status_changed = pyqtSignal(int, bool)
@@ -49,15 +51,22 @@ class DocumentsTable(QWidget):
 
     def _init_components(self):
         """Инициализация компонентов"""
-        self.table_setup = TableSetup(self.tableWidget, self.config.COLUMNS_CONFIG)
-        self.table_setup.setup()
-
+        # Создаем компоненты в правильном порядке
         self.row_filler = RowFiller(self.tableWidget, self.config, self)
+        self.data_manager = TableDataManager(self.tableWidget, self.row_filler)
+        self.updater = TableUpdater(self.tableWidget)
+
+        # Создаем TableBuilder с зависимостями
+        self.table_builder = TableBuilder(self.tableWidget, self.config.COLUMNS_CONFIG)
+        self.table_builder.setup(self.data_manager, self.updater)
+
+        # Получаем RowManager
+        self.row_manager = self.table_builder.get_row_manager()
+
         self.context_menu_manager = ContextMenu(self)
 
     def _connect_signals(self):
         """Подключение сигналов"""
-        # Контекстное меню
         self.tableWidget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tableWidget.customContextMenuRequested.connect(self.show_context_menu)
 
@@ -92,18 +101,7 @@ class DocumentsTable(QWidget):
             lambda doc: self.toggle_pin_document(doc.get('id'))
         )
 
-        # Двойной клик
         self.tableWidget.doubleClicked.connect(self.on_double_click)
-
-    # ==================== Публичные методы ====================
-    def force_refresh(self):
-        """Принудительное обновление таблицы"""
-        self.tableWidget.viewport().update()
-        self.tableWidget.update()
-        self.tableWidget.repaint()
-
-    def get_row_manager(self):
-        return self.table_setup.get_row_manager()
 
     def load_test_data(self):
         """Загрузка тестовых данных"""
@@ -113,53 +111,30 @@ class DocumentsTable(QWidget):
                 doc['is_pinned'] = False
 
         # Загружаем данные
-        self.populate_table(self.config.TEST_DATA)
+        self.data_manager.load_data(self.config.TEST_DATA)
 
-        # ПОСЛЕ загрузки применяем закрепление
-        self._apply_pinning_after_load()
-
-    def populate_table(self, documents):
-        """Заполнение таблицы данными"""
-        self.tableWidget.setRowCount(0)
-        self.tableWidget.setRowCount(len(documents))
-
-        for row, doc in enumerate(documents):
-            # Не перезаписываем is_pinned, если он уже есть
-            if 'is_pinned' not in doc:
-                doc['is_pinned'] = False
-            self.row_filler.fill_row(row, doc)
-
-        self.tableWidget.resizeRowsToContents()
-
-    # ==================== Закрепление ====================
+        # Применяем закрепление
+        if self.row_manager:
+            self.row_manager._apply_pinning()
+            self._update_all_pin_icons()
 
     def toggle_pin_document(self, document_id: int):
         """Переключение закрепления документа"""
-        print(f"[DocumentsTable] toggle_pin_document: {document_id}")
-        row_manager = self.get_row_manager()
-        if row_manager:
-            row_manager.toggle_pin(document_id)
+        if self.row_manager:
+            self.row_manager.toggle_pin(document_id)
             self._update_document_pin_status(document_id)
-            is_pinned = row_manager.is_pinned(document_id)
+            is_pinned = self.row_manager.is_pinned(document_id)
             self.pin_status_changed.emit(document_id, is_pinned)
 
-            # ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ
-            self.tableWidget.viewport().update()
-            self.tableWidget.update()
-            self.tableWidget.repaint()
-            QApplication.processEvents()
-
     def is_document_pinned(self, document_id: int) -> bool:
-        row_manager = self.get_row_manager()
-        return row_manager.is_pinned(document_id) if row_manager else False
+        return self.row_manager.is_pinned(document_id) if self.row_manager else False
 
     def _update_document_pin_status(self, document_id: int):
         """Обновление is_pinned в данных и UI"""
-        row_manager = self.get_row_manager()
-        if not row_manager:
+        if not self.row_manager:
             return
 
-        is_pinned = row_manager.is_pinned(document_id)
+        is_pinned = self.row_manager.is_pinned(document_id)
 
         for row in range(self.tableWidget.rowCount()):
             item = self.tableWidget.item(row, 0)
@@ -173,20 +148,9 @@ class DocumentsTable(QWidget):
                     item.setText(display_text)
                     break
 
-    def _apply_pinning_after_load(self):
-        """Применение закрепления после загрузки"""
-        row_manager = self.get_row_manager()
-        if row_manager:
-            print("[DocumentsTable] === APPLYING PINNING AFTER LOAD ===")
-            print(f"[DocumentsTable] Pinned IDs: {row_manager.pinned_ids}")
-            row_manager.apply_initial_pinning()
-            self._update_all_pin_icons()
-            print("[DocumentsTable] Pinning applied successfully")
-
     def _update_all_pin_icons(self):
         """Обновление всех иконок закрепления"""
-        row_manager = self.get_row_manager()
-        if not row_manager:
+        if not self.row_manager:
             return
 
         for row in range(self.tableWidget.rowCount()):
@@ -195,14 +159,12 @@ class DocumentsTable(QWidget):
                 doc_data = item.data(Qt.ItemDataRole.UserRole)
                 if doc_data:
                     doc_id = doc_data.get("id")
-                    is_pinned = row_manager.is_pinned(doc_id)
+                    is_pinned = self.row_manager.is_pinned(doc_id)
                     doc_data["is_pinned"] = is_pinned
                     item.setData(Qt.ItemDataRole.UserRole, doc_data)
                     doc_id_str = str(doc_id)
                     display_text = f"📌 {doc_id_str}" if is_pinned else doc_id_str
                     item.setText(display_text)
-
-    # ==================== Контекстное меню ====================
 
     def show_context_menu(self, position):
         """Отображение контекстного меню"""
@@ -252,8 +214,6 @@ class DocumentsTable(QWidget):
         )
 
         self.show_context_menu(position)
-
-    # ==================== Вспомогательные методы ====================
 
     def get_selected_document(self):
         """Получение выделенного документа"""

@@ -7,8 +7,9 @@ from PyQt6.QtWidgets import QTableWidgetItem, QMessageBox
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QBrush
 
-from client.windows.documents.table.cell_builders import CellBuilderSignals, AttachmentCellBuilder, CommentsCellBuilder, \
+from client.windows.documents.table.builders.cell_builders import CellBuilderSignals, AttachmentCellBuilder, CommentsCellBuilder, \
     TagsCellBuilder, DelegatesCellBuilder, ReplyCellBuilder
+from client.windows.documents.table.widgets.read_checkbox import ReadCheckBox
 
 
 class RowFiller:
@@ -96,7 +97,6 @@ class RowFiller:
         return item
 
     def _setup_read_checkbox(self, row, col, document, bg_color):
-        from client.windows.documents.table.read_checkbox import ReadCheckBox
         read_widget = ReadCheckBox(document.get("id", 0), document.get("is_read", False))
         read_widget.state_changed.connect(self.signals.read_status_changed.emit)
         self.table_widget.setCellWidget(row, col, read_widget)
