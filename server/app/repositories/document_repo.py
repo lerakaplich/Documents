@@ -2,12 +2,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, cast, String, desc, asc, exists, insert, delete, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from typing import List, Optional, Tuple
-from datetime import date
+from datetime import date, datetime, timezone
+
+from sqlalchemy.orm import selectinload
 
 # ИСПРАВЛЕНО: Импортируем сущности строго из новой схемы db_documents
 from server.app.database.document_models import (
     Document, EmployeeDocument, SystemEmployee,
-    Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority, DocumentRole, RedirectHistory
+    Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority, DocumentRole, RedirectHistory, Read
 )
 
 
@@ -60,157 +62,7 @@ class DocumentRepository:
         ))
         return (await self.db.execute(query)).scalar() or False
 
-    async def get_paginated_list(
-            self,
-            user_id: int,
-            user_rights: AppRights,
-            is_completed: Optional[bool],
-            statuses: Optional[List[DocStatus]],
-            type_id: Optional[int],
-            direction: Optional[DocDirection],
-            tag_ids: Optional[List[int]],
-            date_from: Optional[date],
-            date_to: Optional[date],
-            search: Optional[str],
-            sort_by: str,
-            sort_order: str,
-            limit: int,
-            offset: int
-    ) -> Tuple[int, List[Document]]:
-        """
-        Выборка документов для главной таблицы PyQt6 с пагинацией.
-        Логика прав: Admin/Superadmin видят всё. User — только свои документы.
-        """
-        # Базовый запрос
-        query = select(Document)
 
-        # 1. ОГРАНИЧЕНИЕ ПРАВ И ОБЛАСТИ ВИДИМОСТИ (SCOPE)
-        if user_rights not in [AppRights.admin, AppRights.superadmin]:
-            # Обычный пользователь (User) жестко ограничен только своими документами через EXISTS
-            allowed_emp_stmt = select(1).where(
-                and_(
-                    EmployeeDocument.document_id == Document.id,
-                    EmployeeDocument.employee_id == user_id
-                )
-            )
-
-            # Фильтр выполнения задачи (В работе / Архив) для пользователя
-            if is_completed is not None:
-                allowed_emp_stmt = allowed_emp_stmt.where(EmployeeDocument.is_completed == is_completed)
-
-            query = query.where(allowed_emp_stmt.exists())
-
-        else:
-            # Для админов фильтр "В работе / Архив" применяется глобально ко всей таблице связей,
-            # если нужно отфильтровать документы, где хоть кто-то (или целевой маркер) завершил задачу
-            if is_completed is not None:
-                admin_archive_stmt = select(1).where(
-                    and_(
-                        EmployeeDocument.document_id == Document.id,
-                        EmployeeDocument.is_completed == is_completed
-                    )
-                )
-                query = query.where(admin_archive_stmt.exists())
-
-        # 2. БИЗНЕС-ФИЛЬТРЫ
-        if statuses:
-            query = query.where(Document.status.in_(statuses))
-        if type_id:
-            query = query.where(Document.type_id == type_id)
-        if direction:
-            query = query.where(Document.direction == direction)
-        if date_from:
-            query = query.where(Document.sent_date >= date_from)
-        if date_to:
-            query = query.where(Document.sent_date <= date_to)
-
-        # 3. УМНЫЕ ТЕГИ (С учетом нового Many-to-Many соответствия)
-        if tag_ids:
-            # Ищем приоритеты выбранных тегов
-            tag_data = (await self.db.execute(select(Tag.id, Tag.priority).where(Tag.id.in_(tag_ids)))).all()
-            critical_ids = [t.id for t in tag_data if t.priority in [TagPriority.urgent, TagPriority.important]]
-            normal_ids = [t.id for t in tag_data if t.priority == TagPriority.normal]
-
-            # Связываем через явный JOIN для пересечения
-            query = query.join(DocumentTag, Document.id == DocumentTag.document_id)
-            conditions = []
-            if normal_ids:
-                conditions.append(DocumentTag.tag_id.in_(normal_ids))
-            if critical_ids:
-                for crit_id in critical_ids:
-                    conditions.append(DocumentTag.tag_id == crit_id)
-            if conditions:
-                query = query.where(and_(*conditions))
-
-        # 4. ПОЛНОТЕКСТОВЫЙ ПОИСК (Поиск по словам)
-        if search and search.strip():
-            for word in search.strip().split():
-                pattern = f"%{word}%"
-
-                # Подзапрос поиска по тегам
-                tag_subquery = (
-                    select(DocumentTag.document_id)
-                    .join(Tag, Tag.id == DocumentTag.tag_id)
-                    .where(Tag.name.ilike(pattern))
-                    .scalar_subquery()
-                )
-
-                # Подзапрос поиска по участникам через локальную таблицу system_employees
-                emp_subquery = (
-                    select(EmployeeDocument.document_id)
-                    .join(SystemEmployee, SystemEmployee.id == EmployeeDocument.employee_id)
-                    .where(
-                        or_(
-                            SystemEmployee.last_name.ilike(pattern),
-                            SystemEmployee.first_name.ilike(pattern),
-                            SystemEmployee.patronymic.ilike(pattern)
-                        )
-                    )
-                    .scalar_subquery()
-                )
-
-                query = query.where(or_(
-                    Document.title.ilike(pattern),
-                    Document.about.ilike(pattern),
-                    Document.reg_number.ilike(pattern),
-                    Document.last_comment_text.ilike(pattern),
-                    cast(Document.sequence_number, String).ilike(pattern),
-                    Document.id.in_(tag_subquery),
-                    Document.id.in_(emp_subquery)
-                ))
-
-        # 5. ПОДСЧЕТ КОЛИЧЕСТВА ЗАПИСЕЙ (TOTAL) С ПОМОЩЬЮ СУБЗАПРОСА
-        count_query = select(func.count()).select_from(query.subquery())
-        total_count = (await self.db.execute(count_query)).scalar() or 0
-
-        # 6. СОРТИРОВКА (Сначала всегда Срочные/Важные, затем по выбору пользователя)
-        urgent_exists = select(1).where(
-            and_(
-                DocumentTag.document_id == Document.id,
-                DocumentTag.tag_id == Tag.id,
-                Tag.priority == TagPriority.urgent
-            )
-        ).exists()
-        query = query.order_by(desc(urgent_exists))
-
-        sorting_fields = {
-            "title": Document.title,
-            "about": Document.about,
-            "reg_number": Document.reg_number,
-            "sequence_number": Document.sequence_number,
-            "sent_date": Document.sent_date,
-            "deadline": Document.deadline,
-            "created_at": Document.created_at
-        }
-        target_field = sorting_fields.get(sort_by, Document.created_at)
-        query = query.order_by(asc(target_field) if sort_order.lower() == "asc" else desc(target_field))
-
-        # 7. СРЕЗ ПАГИНАЦИИ
-        query = query.limit(limit).offset(offset)
-
-        # 8. ВЫПОЛНЕНИЕ
-        result = await self.db.execute(query)
-        return total_count, list(result.scalars().all())
 
     async def assign_role_to_employee(self, doc_id: int, emp_id: int, role: DocumentRole):
         """Безопасное добавление участника"""
@@ -322,3 +174,125 @@ class DocumentRepository:
             .values(last_comment_text=text.strip())
         )
         await self.db.execute(stmt)
+
+    async def add_read_entry(self, doc_id: int, user_id: int):
+        """Добавляет запись в таблицу reads с защитой от дублей."""
+        stmt = pg_insert(Read).values(
+            document_id=doc_id,
+            employee_id=user_id,
+            read_at=datetime.now(timezone.utc)
+        )
+        # Если запись уже есть (CONSTRAINT unique_user_document_read), ничего не делаем
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=['employee_id', 'document_id']
+        )
+        await self.db.execute(stmt)
+
+    async def get_unread_counts_by_group(self, user_id: int):
+        """
+        Возвращает список кортежей: (type_id, direction, count)
+        """
+        # Считаем только те, где юзер есть в участниках, но нет в таблице reads
+        unread_subquery = (
+            select(EmployeeDocument.document_id)
+            .where(EmployeeDocument.employee_id == user_id)
+            .except_(
+                select(Read.document_id)
+                .where(Read.employee_id == user_id)
+            )
+        ).scalar_subquery()
+
+        query = (
+            select(
+                Document.type_id,
+                Document.direction,
+                func.count(Document.id).label("count")
+            )
+            .join(EmployeeDocument, Document.id == EmployeeDocument.document_id)
+            .where(Document.id.in_(unread_subquery))
+            .group_by(Document.type_id, Document.direction)
+        )
+
+        result = await self.db.execute(query)
+        return result.all()
+
+    def prepare_document_list_query(self):
+        """Создает начальный запрос с жадной загрузкой участников для предотвращения N+1."""
+        return select(Document).options(
+            selectinload(Document.employees).joinedload(EmployeeDocument.employee)
+        )
+
+    def apply_user_scope(self, query, user_id: int, is_completed: Optional[bool]):
+        """Ограничивает выборку документами пользователя."""
+        stmt = select(1).where(
+            and_(
+                EmployeeDocument.document_id == Document.id,
+                EmployeeDocument.employee_id == user_id
+            )
+        )
+        if is_completed is not None:
+            stmt = stmt.where(EmployeeDocument.is_completed == is_completed)
+        return query.where(stmt.exists())
+
+    def apply_admin_scope(self, query, is_completed: bool):
+        """Применяет глобальный фильтр для админа."""
+        return query.where(exists().where(
+            and_(
+                EmployeeDocument.document_id == Document.id,
+                EmployeeDocument.is_completed == is_completed
+            )
+        ))
+
+    def apply_filters(self, query, params: dict):
+        """Универсальное применение фильтров из словаря параметров."""
+        if params.get('statuses'): query = query.where(Document.status.in_(params['statuses']))
+        if params.get('type_id'): query = query.where(Document.type_id == params['type_id'])
+        if params.get('direction'): query = query.where(Document.direction == params['direction'])
+        if params.get('date_from'): query = query.where(Document.sent_date >= params['date_from'])
+        if params.get('date_to'): query = query.where(Document.sent_date <= params['date_to'])
+        return query
+
+    def apply_search(self, query, pattern: str):
+        """Добавляет условие полнотекстового поиска."""
+        return query.where(or_(
+            Document.title.ilike(pattern),
+            Document.about.ilike(pattern),
+            Document.reg_number.ilike(pattern),
+            Document.id.in_(select(DocumentTag.document_id).join(Tag).where(Tag.name.ilike(pattern)).scalar_subquery()),
+            Document.id.in_(select(EmployeeDocument.document_id).join(SystemEmployee).where(
+                or_(SystemEmployee.last_name.ilike(pattern), SystemEmployee.first_name.ilike(pattern))
+            ).scalar_subquery())
+        ))
+
+    def apply_sorting(self, query, sort_by: str, sort_order: str):
+        """Сортировка: Срочные документы всегда выше, далее по полю."""
+        urgent = exists().where(
+            and_(DocumentTag.document_id == Document.id, DocumentTag.tag_id == Tag.id,
+                 Tag.priority == TagPriority.urgent)
+        )
+        query = query.order_by(desc(urgent))
+
+        fields = {
+            "title": Document.title, "created_at": Document.created_at,
+            "sent_date": Document.sent_date, "deadline": Document.deadline,
+            "reg_number": Document.reg_number
+        }
+        target = fields.get(sort_by, Document.created_at)
+        return query.order_by(asc(target) if sort_order.lower() == "asc" else desc(target))
+
+    async def execute_query_with_participants(self, query) -> List[Document]:
+        """
+        Выполняет запрос и возвращает список документов с уже подгруженными участниками.
+        Использование .unique() необходимо, так как при JOIN'ах (с сотрудниками)
+        SQLAlchemy может вернуть дубликаты строк документа.
+        """
+        result = await self.db.execute(query)
+        # unique() гарантирует, что мы получим уникальные объекты Document,
+        # даже если у документа много сотрудников
+        return list(result.scalars().unique().all())
+
+    async def count_query(self, query):
+        """Подсчет общего количества записей (без учета limit/offset)."""
+        count_q = select(func.count()).select_from(query.subquery())
+        return (await self.db.execute(count_q)).scalar() or 0
+

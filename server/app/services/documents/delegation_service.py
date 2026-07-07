@@ -3,18 +3,30 @@ from typing import List
 from server.app.database.document_models import DocumentRole
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.schemas.doc.document_dto import RedirectHistoryRead
+from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.services.common.security_service import SecurityService
 
 
 class DelegationService:
-    def __init__(self, repo: DocumentRepository):
+    def __init__(self, repo: DocumentRepository, security: SecurityService):
         self.repo = repo
+        self.security = security
 
-    async def add_delegate(self, doc_id: int, actor_id: int, target_id: int, message: str = None):
+    async def _check_permissions(self, doc_id: int, actor: CurrentUser):
+        """Проверка: Администратор ИЛИ участник с правами управления."""
+
+        # 1. Пробуем проверить роль участника
+        relation = await self.repo.get_user_relation(doc_id, actor.id)
+        if relation and relation.role in [DocumentRole.sender, DocumentRole.recipient]:
+            return  # Успех: пользователь — владелец/получатель
+
+        # 2. Если не участник, проверяем админа
+        await self.security.verify_is_admin(actor)
+
+    async def add_delegate(self, doc_id: int, actor: CurrentUser, target_id: int, message: str = None):
         """Назначить сотрудника делегатом"""
         # 1. Проверяем права актора (только отправитель или текущий получатель могут назначать)
-        relation = await self.repo.get_user_relation(doc_id, actor_id)
-        if not relation or relation.role not in [DocumentRole.sender, DocumentRole.recipient]:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет прав на управление делегатами.")
+        await self._check_permissions(doc_id, actor)
 
         existing_participants = await self.repo.get_participants(doc_id)
         if target_id in [p.employee_id for p in existing_participants]:
@@ -33,20 +45,18 @@ class DelegationService:
             )
 
         # 3. Только если вставка удалась, пишем историю
-        await self.repo.add_redirect_history(doc_id, actor_id, target_id, message)
+        await self.repo.add_redirect_history(doc_id, actor.id, target_id, message)
         await self.repo.db.commit()
 
-    async def remove_delegate(self, doc_id: int, actor_id: int, target_id: int):
+    async def remove_delegate(self, doc_id: int, actor: CurrentUser, target_id: int):
         """Отозвать делегата"""
-        relation = await self.repo.get_user_relation(doc_id, actor_id)
-        if not relation or relation.role not in [DocumentRole.sender, DocumentRole.recipient]:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет прав на удаление участников.")
+        await self._check_permissions(doc_id, actor)
 
         # Удаляем делегата
         await self.repo.remove_employee_from_doc(doc_id, target_id)
 
         # 4. Фиксируем в истории факт отзыва (опционально, для аудита)
-        await self.repo.add_redirect_history(doc_id, actor_id, target_id, "Отозван доступ делегата")
+        await self.repo.add_redirect_history(doc_id, actor.id, target_id, "Отозван доступ делегата")
 
         await self.repo.db.commit()
 

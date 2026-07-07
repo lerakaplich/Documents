@@ -3,10 +3,11 @@ from typing import Optional, List
 from datetime import date, datetime
 
 from server.app.database.document_models import DocStatus, DocDirection
-from server.app.schemas.doc.doc_employee_dto import DocEmployeeItem
+from server.app.schemas.doc.doc_employee_dto import DocEmployeeItem, ParticipantItem
 from server.app.schemas.doc.tag_dto import TagRead
 from server.app.schemas.doc.attachment_dto import DocumentAttachmentRead
 from server.app.schemas.doc.receiver_dto import DocumentReceiverRead
+from server.app.schemas.user_schemas.doc_participants import ParticipantDTO
 
 
 class DocumentCreateForm(BaseModel):
@@ -38,6 +39,7 @@ class DocumentListItem(BaseModel):
     created_at: datetime
     deadline: Optional[date] = None
     last_comment_text: Optional[str] = None
+    participants: List[ParticipantItem] = []
 
     model_config = ConfigDict(from_attributes=True)
 

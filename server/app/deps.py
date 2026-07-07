@@ -128,11 +128,13 @@ def get_doc_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentSer
     repo = DocumentRepository(db_docs)
     return DocumentService(repo)
 
+
 def get_delegation_service(
-    db_docs: AsyncSession = Depends(get_docs_db)
+    db_docs: AsyncSession = Depends(get_docs_db),
+    security: SecurityService = Depends(get_security_service)
 ) -> DelegationService:
     repo = DocumentRepository(db_docs)
-    return DelegationService(repo)
+    return DelegationService(repo, security)
 
 def get_workflow_service(
     db_docs: AsyncSession = Depends(get_docs_db),

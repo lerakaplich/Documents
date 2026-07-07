@@ -5,6 +5,9 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 DOCUMENTS_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/documents"
 EMPLOYEES_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/employees"
 
+# Добавьте для asyncpg (слушателя):
+DOCS_DB_URL_RAW = "postgresql://postgres:admin@127.0.0.1:5432/documents"
+
 # 1. Создаем асинхронные движки
 engine_docs = create_async_engine(DOCUMENTS_DB_URL, echo=False, pool_pre_ping=True)
 engine_employees = create_async_engine(EMPLOYEES_DB_URL, echo=False, pool_pre_ping=True)

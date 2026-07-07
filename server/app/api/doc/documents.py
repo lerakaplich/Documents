@@ -67,7 +67,6 @@ async def get_documents(
     )
     return {"total": total, "limit": limit, "offset": offset, "items": items}
 
-
 @router.get("/{doc_id}", response_model=DocumentDetailRead)
 async def get_document_by_id(
         doc_id: int,

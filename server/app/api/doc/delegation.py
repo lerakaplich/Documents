@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from typing import List, Optional
 
-from server.app.deps import get_current_user, get_workflow_service
+from server.app.deps import get_current_user, get_workflow_service, get_delegation_service
 from server.app.schemas.doc.document_dto import (
     RedirectHistoryRead
 )
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/delegation", tags=["Documents"])
 async def get_redirect_history(
         document_id: int,
         current_user: CurrentUser = Depends(get_current_user),
-        service: DelegationService = Depends(get_workflow_service)
+        service: DelegationService = Depends(get_delegation_service)
 ):
     """История движений документа"""
     return await service.get_history(document_id)
@@ -31,10 +31,10 @@ async def add_delegate(
         to_employee_id: int, # В теле запроса (Pydantic модель)
         message: Optional[str] = None,
         current_user: CurrentUser = Depends(get_current_user),
-        service: DelegationService = Depends(get_workflow_service)
+        service: DelegationService = Depends(get_delegation_service)
 ):
     """Назначить сотрудника участником/делегатом"""
-    await service.add_delegate(document_id, current_user.id, to_employee_id, message)
+    await service.add_delegate(document_id, current_user, to_employee_id, message)
     return {"status": "success", "message": "Сотрудник добавлен в список участников"}
 
 @router.delete("/{document_id}/{emp_id}")
@@ -42,8 +42,8 @@ async def remove_delegate(
         document_id: int,
         emp_id: int,
         current_user: CurrentUser = Depends(get_current_user),
-        service: DelegationService = Depends(get_workflow_service)
+        service: DelegationService = Depends(get_delegation_service)
 ):
     """Отозвать права участника (только если есть права на управление)"""
-    await service.remove_delegate(document_id, current_user.id, emp_id)
+    await service.remove_delegate(document_id, current_user, emp_id)
     return {"status": "success", "message": "Сотрудник удален из списка участников"}

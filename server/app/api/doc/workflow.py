@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status, Form
 from typing import Optional
 
-from server.app.deps import get_current_user, get_review_service
+from server.app.deps import get_current_user, get_review_service, get_workflow_service
 from server.app.schemas.doc.document_dto import (
     ToggleCompletionPayload
 )
@@ -11,11 +11,7 @@ from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.documents.review_service import DocumentReviewService
 from server.app.services.documents.workflow_service import WorkflowService
 
-router = APIRouter(prefix="/documents", tags=["Documents"])
-
-
-# --- ЖИЗНЕННЫЙ ЦИКЛ, СОГЛАСОВАНИЕ И ЗАМЕЧАНИЯ ---
-
+router = APIRouter(prefix="/workflow", tags=["Documents"])
 
 
 @router.post("/{document_id}/review", response_model=dict)
@@ -35,7 +31,23 @@ async def process_document_review(
     )
     return {"status": "success", "message": "Ваше решение успешно зафиксировано"}
 
+@router.post("/{doc_id}/read")
+async def mark_read(
+    doc_id: int,
+    user: CurrentUser = Depends(get_current_user),
+    workflow: WorkflowService = Depends(get_workflow_service)
+):
+    # Ограничение: пользователь должен иметь доступ к документу (проверяется внутри workflow или repo)
+    await workflow.mark_document_as_read(doc_id, user.id)
+    return {"status": "ok"}
 
+@router.get("/unread-counts")
+async def get_unread_counts(
+    user: CurrentUser = Depends(get_current_user),
+    workflow: WorkflowService = Depends(get_workflow_service)
+):
+    # Ограничения: любой авторизованный пользователь может видеть свои счетчики
+    return await workflow.get_unread_counts(user.id)
 
 
 @router.post("/{document_id}/toggle-completion", status_code=status.HTTP_200_OK)

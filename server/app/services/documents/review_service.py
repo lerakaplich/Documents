@@ -1,6 +1,4 @@
 from fastapi import HTTPException, status
-from datetime import datetime, timezone
-from server.app.schemas.doc.document_dto import DocumentListItem
 from server.app.database.document_models import DocumentRole, DocStatus
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.services.common.security_service import SecurityService

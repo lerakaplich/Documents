@@ -13,3 +13,9 @@ class DocEmployeeItem(BaseModel):
     is_completed: bool = False
 
     model_config = ConfigDict(from_attributes=True)
+
+class ParticipantItem(BaseModel):
+    fio: str
+    role: DocumentRole
+
+    model_config = ConfigDict(from_attributes=True)
