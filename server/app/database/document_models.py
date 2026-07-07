@@ -119,6 +119,24 @@ class DocumentReceiver(BaseDocuments):
     target_official_text: Mapped[Optional[str]] = mapped_column(Text)
     delivery_status: Mapped[str] = mapped_column(String(50), server_default="pending", nullable=False)
 
+class DocumentArchive(BaseDocuments):
+    """Таблица персонального архива пользователей"""
+    __tablename__ = "document_archives"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    employee_id: Mapped[int] = mapped_column(
+        Integer, nullable=False  # ID сотрудника из db_employees
+    )
+    archived_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint('employee_id', 'document_id', name='unique_user_document_archive'),
+    )
 
 class DocumentAttachment(BaseDocuments):
     """Выделенная таблица вложений с поддержкой отсоединенной ЭЦП (Хранение в MinIO)"""
@@ -181,6 +199,10 @@ class Document(BaseDocuments):
 
     last_comment_text: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    archives: Mapped[List["DocumentArchive"]] = relationship(
+        cascade="all, delete-orphan"
+    )
 
     # Relationships (Внутри этой же БД)
     tags: Mapped[List["Tag"]] = relationship(

@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, status, Form
 from typing import Optional
 
-from server.app.deps import get_current_user, get_review_service, get_workflow_service
+from server.app.deps import get_current_user, get_review_service, get_workflow_service, get_registry_service
 from server.app.schemas.doc.document_dto import (
     ToggleCompletionPayload
 )
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.services.documents.registry_service import RegistryService
 
 # Импортируем обновленные сервисы СЭД
 from server.app.services.documents.review_service import DocumentReviewService
@@ -55,10 +56,29 @@ async def toggle_completion(
         document_id: int,
         payload: ToggleCompletionPayload,
         current_user: CurrentUser = Depends(get_current_user),
-        service: WorkflowService = Depends(get_review_service)
+        service: WorkflowService = Depends(get_workflow_service)
 ):
     """Переключение документа между вкладками 'В работе' и 'Архив'"""
     await service.toggle_completion(document_id, current_user.id, payload.is_completed)
     return {"status": "success", "message": "Статус отображения изменен"}
 
+@router.post("/{doc_id}/archive", status_code=status.HTTP_204_NO_CONTENT)
+async def archive_doc(
+    doc_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: WorkflowService = Depends(get_workflow_service)
+):
+    """Архивировать документ для текущего пользователя"""
+    await service.toggle_archive_status(doc_id, current_user.id, archive=True)
+    return None
+
+@router.delete("/{doc_id}/archive", status_code=status.HTTP_204_NO_CONTENT)
+async def unarchive_doc(
+    doc_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: WorkflowService = Depends(get_workflow_service)
+):
+    """Разархивировать документ для текущего пользователя"""
+    await service.toggle_archive_status(doc_id, current_user.id, archive=False)
+    return None
 

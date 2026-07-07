@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 from fastapi import HTTPException
+from starlette import status
+
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.services.documents.delegation_service import DelegationService
 
@@ -36,3 +38,22 @@ class WorkflowService:
             {"type_id": r.type_id, "direction": r.direction, "count": r.count}
             for r in rows
         ]
+
+    async def _verify_user_access(self, doc_id: int, user_id: int):
+        """Выбрасывает 403, если у пользователя нет доступа к документу."""
+        has_access = await self.repo.check_user_has_role(doc_id, user_id)
+        if not has_access:
+            # Уровень доступа: если нет роли, значит документ «чужой»
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="У вас нет прав для взаимодействия с этим документом."
+            )
+
+    async def toggle_archive_status(self, doc_id: int, user_id: int, archive: bool):
+        """Сервисный метод для переключения архива"""
+        await self._verify_user_access(doc_id, user_id)
+
+        if archive:
+            await self.repo.archive_document(doc_id, user_id)
+        else:
+            await self.repo.unarchive_document(doc_id, user_id)

@@ -6,7 +6,7 @@ from server.app.schemas.doc.doc_employee_dto import ParticipantItem
 from server.app.schemas.doc.document_dto import DocumentListItem, TagItem
 
 
-class DocumentRegistryService:
+class RegistryService:
     def __init__(self, db_repo: DocumentRepository):
         self.repo = db_repo
 

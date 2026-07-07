@@ -16,7 +16,7 @@ from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.documents.comment_service import CommentService
 from server.app.services.documents.doc_type_service import DocTypeService
 from server.app.services.documents.document_service import DocumentService
-from server.app.services.documents.registry_service import DocumentRegistryService
+from server.app.services.documents.registry_service import RegistryService
 from server.app.services.documents.review_service import DocumentReviewService
 from server.app.services.documents.delegation_service import DelegationService
 from server.app.services.documents.workflow_service import WorkflowService
@@ -159,9 +159,9 @@ def get_review_service(
         security=security
     )
 
-def get_registry_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentRegistryService:
+def get_registry_service(db_docs: AsyncSession = Depends(get_docs_db)) -> RegistryService:
     repo = DocumentRepository(db_docs)
-    return DocumentRegistryService(repo)
+    return RegistryService(repo)
 
 def get_comment_service(db_docs: AsyncSession = Depends(get_docs_db)) -> CommentService:
     repo = CommentRepository(db_docs)

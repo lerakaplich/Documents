@@ -9,7 +9,8 @@ from sqlalchemy.orm import selectinload
 # ИСПРАВЛЕНО: Импортируем сущности строго из новой схемы db_documents
 from server.app.database.document_models import (
     Document, EmployeeDocument, SystemEmployee,
-    Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority, DocumentRole, RedirectHistory, Read
+    Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority, DocumentRole, RedirectHistory, Read,
+    DocumentArchive
 )
 
 
@@ -317,3 +318,30 @@ class DocumentRepository:
         result = await self.db.execute(query)
         # unique() нужен, если в запросе есть JOIN по коллекции (tags/employees)
         return result.unique().all()
+
+    async def archive_document(self, doc_id: int, user_id: int):
+        stmt = pg_insert(DocumentArchive).values(
+            document_id=doc_id,
+            employee_id=user_id
+        ).on_conflict_do_nothing()
+
+        await self.db.execute(stmt)
+        await self.db.commit()
+
+    async def unarchive_document(self, doc_id: int, user_id: int):
+        stmt = delete(DocumentArchive).where(
+            DocumentArchive.document_id == doc_id,
+            DocumentArchive.employee_id == user_id
+        )
+        await self.db.execute(stmt)
+        await self.db.commit()
+
+    async def check_user_has_role(self, doc_id: int, user_id: int) -> bool:
+        """Проверяет, привязан ли пользователь к документу (есть ли у него любая роль)."""
+        stmt = select(func.count()).select_from(EmployeeDocument).where(
+            EmployeeDocument.document_id == doc_id,
+            EmployeeDocument.employee_id == user_id
+        )
+        result = await self.db.execute(stmt)
+        count = result.scalar()
+        return (count or 0) > 0

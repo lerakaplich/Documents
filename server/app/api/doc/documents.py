@@ -13,7 +13,7 @@ from server.app.schemas.user_schemas.employee_dto import CurrentUser
 
 # Импортируем обновленные сервисы СЭД
 from server.app.services.documents.document_service import DocumentService
-from server.app.services.documents.registry_service import DocumentRegistryService
+from server.app.services.documents.registry_service import RegistryService
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -46,7 +46,7 @@ async def get_documents(
         limit: int = Query(20, ge=1, le=100, description="Размер страницы"),
         offset: int = Query(0, ge=0, description="Смещение выборки"),
         current_user: CurrentUser = Depends(get_current_user),
-        service: DocumentRegistryService = Depends(get_registry_service)
+        service: RegistryService = Depends(get_registry_service)
 ):
     """Реестр документов с динамической фильтрацией и пагинацией для PyQt6 таблиц"""
     total, items = await service.get_all_paginated(
