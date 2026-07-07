@@ -14,6 +14,7 @@ class RegistryService:
         # 1. Начало сборки запроса
         query = self.repo.prepare_document_list_query()
         query = self.repo.apply_read_status(query, user_id)
+        query = self.repo.apply_archive_status(query, user_id)
 
         # 2. Применяем права доступа
         if user_rights not in [AppRights.admin, AppRights.superadmin]:
@@ -48,13 +49,14 @@ class RegistryService:
             rows = []
 
         items = []
-        for doc, is_read in rows:
+        for doc, is_read, is_archived in rows:
             # 1. Валидируем только те поля, которые есть в БД
             # (exclude_unset=True помогает избежать проблем, если какие-то поля None)
             item = DocumentListItem.model_validate(doc, from_attributes=True)
 
             # 2. Вручную заполняем поля, которых нет в модели БД
             item.is_read = is_read or False
+            item.is_archived = is_archived or False
             item.type_name = doc.type.name if doc.type else "Без типа"
 
             # 3. Заполняем вложенные списки

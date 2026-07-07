@@ -319,6 +319,12 @@ class DocumentRepository:
         # unique() нужен, если в запросе есть JOIN по коллекции (tags/employees)
         return result.unique().all()
 
+    async def execute_query_with_statuses(self, query):
+        """Выполнение запроса, возвращающего Document, is_read, is_archived"""
+        result = await self.db.execute(query)
+        # Используем unique() для корректной обработки JOIN'ов
+        return result.unique().all()
+
     async def archive_document(self, doc_id: int, user_id: int):
         stmt = pg_insert(DocumentArchive).values(
             document_id=doc_id,
@@ -345,3 +351,12 @@ class DocumentRepository:
         result = await self.db.execute(stmt)
         count = result.scalar()
         return (count or 0) > 0
+
+    def apply_archive_status(self, query, user_id: int):
+        # Убираем .scalar_subquery()
+        archive_exists = select(DocumentArchive.document_id).where(
+            DocumentArchive.document_id == Document.id,
+            DocumentArchive.employee_id == user_id
+        ).exists()
+
+        return query.add_columns(archive_exists.label("is_archived"))
