@@ -82,3 +82,19 @@ async def unarchive_doc(
     await service.toggle_archive_status(doc_id, current_user.id, archive=False)
     return None
 
+@router.post("/{doc_id}/pin", status_code=status.HTTP_204_NO_CONTENT)
+async def pin_doc(
+    doc_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: WorkflowService = Depends(get_workflow_service)
+):
+    await service.toggle_pin(doc_id, current_user.id, pin=True)
+
+@router.delete("/{doc_id}/pin", status_code=status.HTTP_204_NO_CONTENT)
+async def unpin_doc(
+    doc_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: WorkflowService = Depends(get_workflow_service)
+):
+    await service.toggle_pin(doc_id, current_user.id, pin=False)
+

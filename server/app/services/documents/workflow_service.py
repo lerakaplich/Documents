@@ -57,3 +57,13 @@ class WorkflowService:
             await self.repo.archive_document(doc_id, user_id)
         else:
             await self.repo.unarchive_document(doc_id, user_id)
+
+    async def toggle_pin(self, doc_id: int, user_id: int, pin: bool):
+        # 1. Логика проверки прав
+        await self._verify_user_access(doc_id, user_id)
+
+        # 2. Логика выполнения
+        if pin:
+            await self.repo.pin_document(doc_id, user_id)
+        else:
+            await self.repo.unpin_document(doc_id, user_id)

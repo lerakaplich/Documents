@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from server.app.database.document_models import (
     Document, EmployeeDocument, SystemEmployee,
     Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority, DocumentRole, RedirectHistory, Read,
-    DocumentArchive
+    DocumentArchive, DocumentPin
 )
 
 
@@ -282,17 +282,6 @@ class DocumentRepository:
         target = fields.get(sort_by, Document.created_at)
         return query.order_by(asc(target) if sort_order.lower() == "asc" else desc(target))
 
-    async def execute_query_with_participants(self, query) -> List[Document]:
-        """
-        Выполняет запрос и возвращает список документов с уже подгруженными участниками.
-        Использование .unique() необходимо, так как при JOIN'ах (с сотрудниками)
-        SQLAlchemy может вернуть дубликаты строк документа.
-        """
-        result = await self.db.execute(query)
-        # unique() гарантирует, что мы получим уникальные объекты Document,
-        # даже если у документа много сотрудников
-        return list(result.scalars().unique().all())
-
     async def count_query(self, query):
         """Подсчет общего количества записей (без учета limit/offset)."""
         count_q = select(func.count()).select_from(query.subquery())
@@ -313,16 +302,10 @@ class DocumentRepository:
             (Document.id.in_(read_alias)).label("is_read")
         )
 
-    async def execute_query_with_read_status(self, query):
+    async def execute_query(self, query):
         """Выполнение запроса, который возвращает пары (Document, is_read)."""
         result = await self.db.execute(query)
         # unique() нужен, если в запросе есть JOIN по коллекции (tags/employees)
-        return result.unique().all()
-
-    async def execute_query_with_statuses(self, query):
-        """Выполнение запроса, возвращающего Document, is_read, is_archived"""
-        result = await self.db.execute(query)
-        # Используем unique() для корректной обработки JOIN'ов
         return result.unique().all()
 
     async def archive_document(self, doc_id: int, user_id: int):
@@ -353,10 +336,28 @@ class DocumentRepository:
         return (count or 0) > 0
 
     def apply_archive_status(self, query, user_id: int):
-        # Убираем .scalar_subquery()
         archive_exists = select(DocumentArchive.document_id).where(
             DocumentArchive.document_id == Document.id,
             DocumentArchive.employee_id == user_id
         ).exists()
 
         return query.add_columns(archive_exists.label("is_archived"))
+
+    async def pin_document(self, doc_id: int, user_id: int):
+        stmt = pg_insert(DocumentPin).values(document_id=doc_id, employee_id=user_id).on_conflict_do_nothing()
+        await self.db.execute(stmt)
+        await self.db.commit()
+
+    async def unpin_document(self, doc_id: int, user_id: int):
+        stmt = delete(DocumentPin).where(DocumentPin.document_id == doc_id, DocumentPin.employee_id == user_id)
+        await self.db.execute(stmt)
+        await self.db.commit()
+
+    def apply_pin_status(self, query, user_id: int):
+        # Убедитесь, что вы возвращаете результат применения add_columns!
+        pin_exists = select(DocumentPin.document_id).where(
+            DocumentPin.document_id == Document.id,
+            DocumentPin.employee_id == user_id
+        ).exists()
+
+        return query.add_columns(pin_exists.label("is_pinned"))

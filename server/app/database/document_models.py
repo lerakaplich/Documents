@@ -138,6 +138,19 @@ class DocumentArchive(BaseDocuments):
         UniqueConstraint('employee_id', 'document_id', name='unique_user_document_archive'),
     )
 
+class DocumentPin(BaseDocuments):
+    """Таблица закрепленных документов"""
+    __tablename__ = "document_pins"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document_id: Mapped[int] = mapped_column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    employee_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    pinned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint('employee_id', 'document_id', name='unique_user_document_pin'),
+    )
+
 class DocumentAttachment(BaseDocuments):
     """Выделенная таблица вложений с поддержкой отсоединенной ЭЦП (Хранение в MinIO)"""
     __tablename__ = "document_attachments"
