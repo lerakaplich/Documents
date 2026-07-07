@@ -361,3 +361,16 @@ class DocumentRepository:
         ).exists()
 
         return query.add_columns(pin_exists.label("is_pinned"))
+
+    def apply_reply_status(self, query):
+        """
+        Выбирает ID первого попавшегося ответа на документ.
+        """
+        # 1. Создаем подзапрос для выборки ID документа-ответа
+        # Нам нужно найти дочерний документ, где parent_document_id равен ID текущего документа
+        reply_subquery = select(Document.id).where(
+            Document.parent_document_id == Document.id  # Коррелированный подзапрос
+        ).limit(1).scalar_subquery()  # Вот здесь .scalar_subquery() нужен, так как это SELECT
+
+        # 2. Добавляем колонку к основному запросу
+        return query.add_columns(reply_subquery.label("reply_id"))

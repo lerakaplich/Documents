@@ -41,6 +41,7 @@ class DocumentListItem(BaseModel):
     is_read: bool = False
     is_archived: bool = False
     is_pinned: bool = False
+    reply_id: Optional[int] = None
     sequence_number: Optional[int] = None
     type_name: str = "Без типа"
     title: Optional[str] = None
