@@ -6,7 +6,7 @@ from client.core.settings.settings_manager import SettingsManager
 
 
 class RowManager(QObject):
-    """Управление строками: закрепление, порядок"""
+    """Управление строками: закрепление, порядок, высота"""
 
     row_order_changed = pyqtSignal(list)
     pin_changed = pyqtSignal(int, bool)
@@ -20,6 +20,9 @@ class RowManager(QObject):
         self._updating = False
         self.pinned_ids = self.settings.get_pinned_ids()
         self._setup_row_behavior()
+
+        # Таймер для debounce сохранения высот
+        self._height_save_timer = None
 
     def _setup_row_behavior(self):
         """Настройка поведения строк"""
@@ -42,11 +45,15 @@ class RowManager(QObject):
         vertical_header.setSectionsClickable(True)
 
         vertical_header.sectionMoved.connect(self._on_section_moved)
+        vertical_header.sectionResized.connect(self._on_row_height_changed)
         self.table_widget.model().rowsMoved.connect(self._on_rows_moved)
 
     def toggle_pin(self, document_id: int):
         """Переключение закрепления"""
         print(f"[RowManager] Toggle pin: {document_id}")
+
+        # Сохраняем текущие высоты перед обновлением (привязанные к ID)
+        self.save_row_heights()
 
         # Обновляем список
         if document_id in self.pinned_ids:
@@ -61,6 +68,10 @@ class RowManager(QObject):
 
         # Применяем
         self._apply_pinning()
+
+        # Восстанавливаем высоты после обновления
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(200, self.restore_row_heights)
 
         # Сигнал
         self.pin_changed.emit(document_id, is_pinned)
@@ -146,6 +157,20 @@ class RowManager(QObject):
         except Exception as e:
             print(f"[RowManager] Error in _on_rows_moved: {e}")
 
+    def _on_row_height_changed(self, logical_index, old_size, new_size):
+        """Обработчик изменения высоты строки"""
+        if self._updating:
+            return
+        # Используем debounce для предотвращения частых сохранений
+        if self._height_save_timer is not None:
+            self._height_save_timer.stop()
+
+        from PyQt6.QtCore import QTimer
+        self._height_save_timer = QTimer()
+        self._height_save_timer.setSingleShot(True)
+        self._height_save_timer.timeout.connect(self.save_row_heights)
+        self._height_save_timer.start(500)
+
     def _get_documents_in_order(self) -> list:
         """Получение документов в текущем порядке строк"""
         documents = []
@@ -160,5 +185,58 @@ class RowManager(QObject):
     def _save_row_order(self, documents: list):
         """Сохранение порядка строк в настройки"""
         order_ids = [doc.get('id') for doc in documents]
-        self.settings.setValue("row_order", order_ids)
+        self.settings.set_row_order(order_ids)
         print(f"[RowManager] Saved row order: {order_ids}")
+
+    def save_row_heights(self):
+        """Сохранить высоты строк, привязанные к ID документа"""
+        try:
+            heights_by_id = {}
+            row_count = self.table_widget.rowCount()
+
+            for row in range(row_count):
+                # Получаем документ из ячейки
+                item = self.table_widget.item(row, 0)
+                if item:
+                    doc_data = item.data(Qt.ItemDataRole.UserRole)
+                    if doc_data:
+                        doc_id = doc_data.get('id')
+                        if doc_id is not None:
+                            height = self.table_widget.rowHeight(row)
+                            if height > 0:
+                                heights_by_id[str(doc_id)] = height
+
+            self.settings.set_row_heights(heights_by_id)
+            print(f"[RowManager] Saved row heights for {len(heights_by_id)} documents")
+        except Exception as e:
+            print(f"[RowManager] Error saving row heights: {e}")
+
+    def restore_row_heights(self):
+        """Восстановить высоты строк по ID документа"""
+        try:
+            heights_by_id = self.settings.get_row_heights()
+            if not heights_by_id:
+                print("[RowManager] No saved row heights")
+                return
+
+            restored_count = 0
+            row_count = self.table_widget.rowCount()
+
+            for row in range(row_count):
+                # Получаем документ из ячейки
+                item = self.table_widget.item(row, 0)
+                if item:
+                    doc_data = item.data(Qt.ItemDataRole.UserRole)
+                    if doc_data:
+                        doc_id = doc_data.get('id')
+                        if doc_id is not None:
+                            height_key = str(doc_id)
+                            if height_key in heights_by_id:
+                                height = heights_by_id[height_key]
+                                if height > 0:
+                                    self.table_widget.setRowHeight(row, height)
+                                    restored_count += 1
+
+            print(f"[RowManager] Restored row heights for {restored_count} documents")
+        except Exception as e:
+            print(f"[RowManager] Error restoring row heights: {e}")

@@ -48,12 +48,27 @@ class TableBuilder:
                 updater
             )
 
+            # ДОБАВИТЬ: Восстанавливаем высоты строк
+            self.row_manager.restore_row_heights()
+
+            # ДОБАВИТЬ: Подключаем сохранение высот при изменении
+            vertical_header = self.table_widget.verticalHeader()
+            vertical_header.sectionResized.connect(self._on_row_height_changed)
+
             print("[TableBuilder] Setup completed successfully")
+            return self
+
         except Exception as e:
             print(f"[TableBuilder] Error in setup: {e}")
             import traceback
             traceback.print_exc()
             raise
+
+    def _on_row_height_changed(self, logical_index, old_size, new_size):
+        """Обработчик изменения высоты строки"""
+        if self.row_manager:
+            # В RowManager уже есть логика сохранения с debounce
+            self.row_manager._on_row_height_changed(logical_index, old_size, new_size)
 
     def _setup_columns(self):
         """Установка колонок"""
@@ -70,7 +85,7 @@ class TableBuilder:
         header.setStretchLastSection(True)
         header.setMinimumSectionSize(60)
 
-        # ВЫРАВНИВАНИЕ ЗАГОЛОВКОВ ПО ЦЕНТРУ
+        # Выравнивание заголовков по центру
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Включаем сортировку
@@ -125,7 +140,7 @@ class TableBuilder:
             if col_name in widths:
                 self.table_widget.setColumnWidth(i, widths[col_name])
 
-    def get_column_manager(self):
+    def get_column_manager(self) -> ColumnManager:
         """Получение менеджера колонок"""
         return self.column_manager
 
@@ -133,7 +148,7 @@ class TableBuilder:
         """Получение менеджера сортировки"""
         return self.sorting_manager
 
-    def get_row_manager(self):
+    def get_row_manager(self) -> RowManager:
         """Получение менеджера строк"""
         return self.row_manager
 

@@ -59,136 +59,75 @@ class TagsCellBuilder:
 
         return container
 
-class CommentsCellBuilder:
-    """Построитель ячейки с комментариями"""
 
-    def __init__(self, even_color, odd_color, signals=None):
+# client/windows/documents/table/builders/cell_builders.py
+
+class CommentsCellBuilder:
+    """Билдер ячейки с комментариями"""
+
+    def __init__(self, even_color, odd_color, signals):
         self.even_color = even_color
         self.odd_color = odd_color
         self.signals = signals
 
     def build(self, row, document):
-        """
-        Создание виджета с комментариями
-
-        Args:
-            row: номер строки
-            document: данные документа
-
-        Returns:
-            QWidget: виджет с комментариями
-        """
-        container = QWidget()
-        container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        container.setStyleSheet("""
-            QWidget {
-                background-color: transparent;
-                border: none;
-            }
-        """)
-
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(2)
+        """Создание виджета с комментариями"""
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setSpacing(4)
 
         comments = document.get("comments", [])
-        doc_id = document.get("id", "")
+        last_comment_text = document.get("last_comment_text", "")
 
         if comments:
             # Берем последний комментарий
             last_comment = comments[-1]
 
-            # Создаем текст с именем автора и текстом комментария
-            comment_text = f"{last_comment['author']}: {last_comment['text']}"
+            # Поддержка обоих форматов: author или employee_id
+            if 'author' in last_comment:
+                author = last_comment['author']
+            elif 'employee_id' in last_comment:
+                # Здесь можно получить имя сотрудника по ID
+                # Пока используем заглушку
+                author = f"Сотрудник {last_comment['employee_id']}"
+            else:
+                author = "Автор"
 
-            # Создаем QLabel с текстом комментария
-            label = QLabel(comment_text)
-            label.setStyleSheet("""
-                QLabel {
-                    color: #1B232A;
-                    font-size: 12px;
-                    padding: 4px 6px;
-                    background-color: transparent;
-                    border: none;
-                }
-            """)
-            label.setWordWrap(True)
+            comment_text = last_comment.get('text', '')
 
-            # Добавляем тултип с полной информацией
-            tooltip_lines = ["Комментарии:"]
-            for comment in comments:
-                tooltip_lines.append(f"  {comment['author']}: {comment['text']}")
-                if 'date' in comment:
-                    tooltip_lines.append(f"    (Дата: {comment['date']})")
-            label.setToolTip("\n".join(tooltip_lines))
-
-            layout.addWidget(label)
-
-            # Если комментариев больше одного, добавляем индикатор
-            if len(comments) > 1:
-                count_label = QLabel(f"ещё {len(comments) - 1} коммент.")
-                count_label.setStyleSheet("""
+            # Если есть текст последнего комментария - показываем его
+            if last_comment_text:
+                label = QLabel(last_comment_text[:30] + "..." if len(last_comment_text) > 30 else last_comment_text)
+                # Делаем фон прозрачным
+                label.setStyleSheet("""
                     QLabel {
-                        color: #888888;
-                        font-size: 10px;
-                        padding: 0px 6px;
                         background-color: transparent;
                         border: none;
+                        color: #333;
+                        font-size: 11px;
                     }
                 """)
-                layout.addWidget(count_label)
-
+                label.setWordWrap(True)
+                layout.addWidget(label)
         else:
-            # Если комментариев нет - показываем кнопку "Добавить" в стиле "Открыть/Загрузить"
-            btn = QPushButton("Добавить")
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #F0FFF4;
-                    color: #4CAF50;
-                    border: 1px solid #4CAF50;
-                    border-radius: 5px;
-                    font-size: 11px;
-                    font-weight: 500;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #4CAF50;
-                    color: white;
-                }
-                QPushButton:pressed {
-                    background-color: #388E3C;
-                }
-            """)
-            btn.clicked.connect(
-                lambda checked, doc=document: self._on_add_comment(doc)
-            )
+            # Нет комментариев - добавляем пустой виджет для сохранения отступа
+            label = QLabel("")
+            label.setStyleSheet("background-color: transparent;")
+            layout.addWidget(label)
 
-            # Выравниваем кнопку по центру
-            button_layout = QHBoxLayout()
-            button_layout.addStretch()
-            button_layout.addWidget(btn)
-            button_layout.addStretch()
-            layout.addLayout(button_layout)
+        # Устанавливаем фон для всего виджета
+        bg_color = self.even_color if row % 2 == 0 else self.odd_color
+        widget.setStyleSheet(f"""
+            QWidget {{
+                background-color: {bg_color.name()};
+            }}
+            QWidget > QLabel {{
+                background-color: transparent;
+            }}
+        """)
 
-        return container
-
-    def _on_add_comment(self, document):
-        """
-        Обработчик добавления комментария
-
-        Args:
-            document: данные документа
-        """
-        if self.signals:
-            self.signals.comment_clicked.emit(document)
-        else:
-            # Если сигналы не переданы, показываем информационное сообщение
-            QMessageBox.information(
-                None,
-                "Добавление комментария",
-                f"Добавление комментария к документу '{document.get('name', '')}'"
-            )
-
+        return widget
 class AttachmentCellBuilder:
     """Построитель ячейки с вложениями"""
 
@@ -436,9 +375,6 @@ class DelegatesCellBuilder:
                 "Добавление делегата",
                 f"Добавление делегата к документу '{document.get('name', '')}'"
             )
-
-
-
 
 class ReplyCellBuilder:
     """Построитель ячейки с ответом"""

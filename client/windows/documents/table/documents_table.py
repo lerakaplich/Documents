@@ -2,13 +2,18 @@
 Основной модуль таблицы документов
 """
 import sys
+
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (QWidget, QTableWidget, QApplication,
                              QVBoxLayout)
-from PyQt6.QtCore import Qt, pyqtSignal, QPoint
+from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QSize
 
+from client.core.settings.settings_keys import SettingsKeys
+from client.core.settings.settings_manager import SettingsManager
 from client.core.table.table_builder import TableBuilder
 from client.core.table.table_data_manager import TableDataManager
 from client.core.table.table_updater import TableUpdater
+from client.core.utils.icon_manager import icon_manager
 from client.windows.documents.table.builders.row_filler import RowFiller
 from client.windows.documents.table.document_data import DocumentDataConfig
 from client.windows.documents.table.styles import TableStyles
@@ -51,7 +56,6 @@ class DocumentsTable(QWidget):
 
     def _init_components(self):
         """Инициализация компонентов"""
-        # Создаем компоненты в правильном порядке
         self.row_filler = RowFiller(self.tableWidget, self.config, self)
         self.data_manager = TableDataManager(self.tableWidget, self.row_filler)
         self.updater = TableUpdater(self.tableWidget)
@@ -62,6 +66,9 @@ class DocumentsTable(QWidget):
 
         # Получаем RowManager
         self.row_manager = self.table_builder.get_row_manager()
+
+        # Передаем RowManager в updater для восстановления высот
+        self.updater.set_row_manager(self.row_manager)
 
         self.context_menu_manager = ContextMenu(self)
 
@@ -118,6 +125,20 @@ class DocumentsTable(QWidget):
             self.row_manager._apply_pinning()
             self._update_all_pin_icons()
 
+        # Восстанавливаем размеры и высоты ПОСЛЕ загрузки данных
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(200, self._restore_sizes_after_load)
+
+    def _restore_sizes_after_load(self):
+        """Восстановление размеров после загрузки данных"""
+        print("[DocumentsTable] Restoring sizes after data load...")
+
+        if hasattr(self, 'table_builder') and hasattr(self.table_builder, 'column_manager'):
+            self.table_builder.column_manager.restore_column_sizes()
+
+        if hasattr(self, 'row_manager'):
+            self.row_manager.restore_row_heights()
+
     def toggle_pin_document(self, document_id: int):
         """Переключение закрепления документа"""
         if self.row_manager:
@@ -136,16 +157,29 @@ class DocumentsTable(QWidget):
 
         is_pinned = self.row_manager.is_pinned(document_id)
 
+        # Получаем индекс колонки "Номер документа"
+        col_map = {name: idx for idx, name in enumerate(self.config.COLUMNS_CONFIG.values())}
+        reg_number_col = col_map.get("Номер документа", 2)  # обычно это индекс 2
+
         for row in range(self.tableWidget.rowCount()):
-            item = self.tableWidget.item(row, 0)
+            # Обновляем в колонке "Номер документа"
+            item = self.tableWidget.item(row, reg_number_col)
             if item:
                 doc_data = item.data(Qt.ItemDataRole.UserRole)
                 if doc_data and doc_data.get("id") == document_id:
                     doc_data["is_pinned"] = is_pinned
                     item.setData(Qt.ItemDataRole.UserRole, doc_data)
-                    doc_id_str = str(document_id)
-                    display_text = f"📌 {doc_id_str}" if is_pinned else doc_id_str
-                    item.setText(display_text)
+
+                    # Обновляем текст (регистрационный номер)
+                    reg_number = doc_data.get("reg_number", "")
+                    item.setText(str(reg_number))
+
+                    # Обновляем иконку
+                    if is_pinned:
+                        pin_icon = icon_manager.get_icon('pin', QSize(16, 16))
+                        item.setIcon(pin_icon)
+                    else:
+                        item.setIcon(QIcon())
                     break
 
     def _update_all_pin_icons(self):
@@ -153,8 +187,13 @@ class DocumentsTable(QWidget):
         if not self.row_manager:
             return
 
+        # Получаем индекс колонки "Номер документа"
+        col_map = {name: idx for idx, name in enumerate(self.config.COLUMNS_CONFIG.values())}
+        reg_number_col = col_map.get("Номер документа", 2)
+
         for row in range(self.tableWidget.rowCount()):
-            item = self.tableWidget.item(row, 0)
+            # Обновляем в колонке "Номер документа"
+            item = self.tableWidget.item(row, reg_number_col)
             if item:
                 doc_data = item.data(Qt.ItemDataRole.UserRole)
                 if doc_data:
@@ -162,9 +201,17 @@ class DocumentsTable(QWidget):
                     is_pinned = self.row_manager.is_pinned(doc_id)
                     doc_data["is_pinned"] = is_pinned
                     item.setData(Qt.ItemDataRole.UserRole, doc_data)
-                    doc_id_str = str(doc_id)
-                    display_text = f"📌 {doc_id_str}" if is_pinned else doc_id_str
-                    item.setText(display_text)
+
+                    # Обновляем текст (регистрационный номер)
+                    reg_number = doc_data.get("reg_number", "")
+                    item.setText(str(reg_number))
+
+                    # Обновляем иконку
+                    if is_pinned:
+                        pin_icon = icon_manager.get_icon('pin', QSize(16, 16))
+                        item.setIcon(pin_icon)
+                    else:
+                        item.setIcon(QIcon())
 
     def show_context_menu(self, position):
         """Отображение контекстного меню"""
@@ -173,6 +220,7 @@ class DocumentsTable(QWidget):
             return
 
         row = index.row()
+        # Получаем данные из колонки ID (индекс 0)
         item = self.tableWidget.item(row, 0)
         if not item:
             return
@@ -238,6 +286,23 @@ class DocumentsTable(QWidget):
                     if read_widget and hasattr(read_widget, 'set_read_state'):
                         read_widget.set_read_state(is_read)
                     break
+
+    def closeEvent(self, event):
+        """Сохранение настроек при закрытии"""
+        try:
+            print("[DocumentsTable] Saving settings on close...")
+
+            if hasattr(self, 'row_manager'):
+                self.row_manager.save_row_heights()
+
+            if hasattr(self, 'table_builder') and hasattr(self.table_builder, 'column_manager'):
+                self.table_builder.column_manager.save_all()
+
+            print("[DocumentsTable] Settings saved successfully")
+        except Exception as e:
+            print(f"[DocumentsTable] Error saving settings: {e}")
+
+        super().closeEvent(event)
 
 
 if __name__ == "__main__":

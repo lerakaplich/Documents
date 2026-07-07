@@ -62,3 +62,9 @@ class TableUpdater(QObject):
             QApplication.processEvents()
         except Exception as e:
             print(f"[TableUpdater] Error in extra update: {e}")
+
+
+
+    def set_row_manager(self, row_manager):
+        """Установить менеджер строк для восстановления высот"""
+        self._row_manager = row_manager
