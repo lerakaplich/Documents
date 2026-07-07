@@ -219,7 +219,8 @@ class DocumentRepository:
     def prepare_document_list_query(self):
         """Создает начальный запрос с жадной загрузкой участников для предотвращения N+1."""
         return select(Document).options(
-            selectinload(Document.employees).joinedload(EmployeeDocument.employee)
+            selectinload(Document.employees).joinedload(EmployeeDocument.employee),
+            selectinload(Document.type)  # Убедитесь, что в модели Document есть связь 'type'
         )
 
     def apply_user_scope(self, query, user_id: int, is_completed: Optional[bool]):

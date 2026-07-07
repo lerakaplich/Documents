@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import date, datetime
 
-from server.app.database.document_models import DocStatus, DocDirection
+from server.app.database.document_models import DocStatus, DocDirection, TagPriority
 from server.app.schemas.doc.doc_employee_dto import DocEmployeeItem, ParticipantItem
 from server.app.schemas.doc.tag_dto import TagRead
 from server.app.schemas.doc.attachment_dto import DocumentAttachmentRead
@@ -28,17 +28,26 @@ class DocumentCreateForm(BaseModel):
     recipients: List[int] = []  # ID сотрудников
     tag_ids: List[int] = []
 
+class TagItem(BaseModel):
+    name: str
+    priority: TagPriority
+    color: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 class DocumentListItem(BaseModel):
     """Усеченная модель для отображения в главной таблице PyQt6"""
     id: int
+    sequence_number: Optional[int] = None
+    type_name: str
     title: Optional[str] = None
     reg_number: Optional[str] = None
     status: DocStatus = DocStatus.under_review
     direction: DocDirection
-    created_at: datetime
+    sent_date: Optional[date] = None
     deadline: Optional[date] = None
     last_comment_text: Optional[str] = None
+    tags: List[TagItem] = []
     participants: List[ParticipantItem] = []
 
     model_config = ConfigDict(from_attributes=True)

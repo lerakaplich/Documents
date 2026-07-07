@@ -3,7 +3,7 @@ from datetime import date
 from server.app.database.document_models import Document, AppRights, DocStatus, DocDirection
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.schemas.doc.doc_employee_dto import ParticipantItem
-from server.app.schemas.doc.document_dto import DocumentListItem
+from server.app.schemas.doc.document_dto import DocumentListItem, TagItem
 
 
 class DocumentRegistryService:
@@ -45,19 +45,31 @@ class DocumentRegistryService:
 
         items = []
         for doc in docs:
-            # Превращаем объект БД в Pydantic-модель
-            item = DocumentListItem.model_validate(doc)
-
-            # Наполняем участников данными из подгруженной связи employees
-            item.participants = [
-                ParticipantItem(
-                    fio=self._format_fio(ed.employee),
-                    role=ed.role
-                )
-                for ed in doc.employees
-            ]
+            item = DocumentListItem(
+                id=doc.id,
+                sequence_number=doc.sequence_number,
+                type_name=doc.type.name if doc.type else "Без типа",
+                title=doc.title,
+                reg_number=doc.reg_number,
+                status=doc.status,
+                direction=doc.direction,
+                sent_date=doc.sent_date,
+                deadline=doc.deadline,
+                last_comment_text=doc.last_comment_text,
+                participants=[
+                    ParticipantItem(fio=self._format_fio(ed.employee), role=ed.role)
+                    for ed in doc.employees
+                ],
+                tags=[
+                    TagItem(
+                        name=tag.name,
+                        priority=tag.priority,
+                        color=tag.color
+                    )
+                    for tag in doc.tags
+                ]
+            )
             items.append(item)
-
         return total, items
 
     def _format_fio(self, emp) -> str:

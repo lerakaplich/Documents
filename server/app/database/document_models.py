@@ -198,6 +198,8 @@ class Document(BaseDocuments):
         lazy="selectin"
     )
 
+    type: Mapped["DocumentType"] = relationship("DocumentType")
+
 
 # ============================================================================
 # ИСТОРИЯ, СЕССИИ И АВТОРИЗАЦИЯ (РАБОТА С SYSTEM_EMPLOYEES)
