@@ -16,20 +16,6 @@ from client.windows.documents.table.widgets.read_checkbox import ReadCheckBox
 class RowFiller:
     """Класс для заполнения строк таблицы данными"""
 
-    # Маппинг статусов из БД в русский язык
-    STATUS_MAPPING = {
-        "under_review": "На рассмотрении",
-        "partially_approved": "Частично утвержден",
-        "approved": "Утвержден",
-        "rejected": "Отклонен"
-    }
-
-    # Маппинг направлений из БД в русский язык
-    DIRECTION_MAPPING = {
-        "internal": "Внутреннее",
-        "external": "Внешнее"
-    }
-
     def __init__(self, table_widget, config, signals):
         self.table_widget = table_widget
         self.config = config
@@ -62,36 +48,24 @@ class RowFiller:
 
         self.table_widget.setRowHeight(row, 60)
 
-        # ID - просто номер без иконки
+        # ID с иконкой закрепления
         doc_id = str(document.get("id", ""))
+        is_pinned = document.get("is_pinned", False)
 
-        # Создаем QTableWidgetItem для ID
+        # Создаем QTableWidgetItem с иконкой
         item_id = QTableWidgetItem(doc_id)
         item_id.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         item_id.setBackground(QBrush(bg_color))
         item_id.setForeground(QBrush(self.config.TEXT_COLOR))
         item_id.setFlags(item_id.flags() & ~Qt.ItemFlag.ItemIsEditable)
-        item_id.setData(Qt.ItemDataRole.UserRole, document)
-        self.table_widget.setItem(row, col_map["ID"], item_id)
-
-        # Номер документа с иконкой закрепления
-        is_pinned = document.get("is_pinned", False)
-        reg_number = document.get("reg_number", "")
-
-        # Создаем QTableWidgetItem для номера документа
-        item_reg_number = QTableWidgetItem(reg_number)
-        item_reg_number.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        item_reg_number.setBackground(QBrush(bg_color))
-        item_reg_number.setForeground(QBrush(self.config.TEXT_COLOR))
-        item_reg_number.setFlags(item_reg_number.flags() & ~Qt.ItemFlag.ItemIsEditable)
 
         # Если закреплен - добавляем иконку
         if is_pinned:
             pin_icon = icon_manager.get_icon('pin', QSize(16, 16))
-            item_reg_number.setIcon(pin_icon)
+            item_id.setIcon(pin_icon)
 
-        item_reg_number.setData(Qt.ItemDataRole.UserRole, document)
-        self.table_widget.setItem(row, col_map["Номер документа"], item_reg_number)
+        item_id.setData(Qt.ItemDataRole.UserRole, document)
+        self.table_widget.setItem(row, col_map["ID"], item_id)
 
         # Прочитано
         self._setup_read_checkbox(row, col_map["Прочитано"], document, bg_color)
@@ -138,6 +112,7 @@ class RowFiller:
     def _fill_text_columns(self, row, document, bg_color, col_map):
         """Все текстовые поля"""
         text_fields = {
+            "Номер документа": "reg_number",
             "Тема": "title",
             "Тип": "type",
             "Дата": "date",
@@ -151,14 +126,6 @@ class RowFiller:
 
         for col_name, key in text_fields.items():
             value = document.get(key, "") or document.get(key.lower(), "")
-
-            # Преобразуем статус в русский язык
-            if key == "status":
-                value = self.STATUS_MAPPING.get(value, value)
-            # Преобразуем направление в русский язык
-            elif key == "direction":
-                value = self.DIRECTION_MAPPING.get(value, value)
-
             item = self._create_item(str(value), bg_color)
             self.table_widget.setItem(row, col_map.get(col_name, -1), item)
 

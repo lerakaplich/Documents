@@ -13,20 +13,24 @@ from client.core.table.table_state import TableState
 class TableBuilder:
     """Класс для настройки параметров таблицы"""
 
-    def __init__(self, table_widget, columns_config):
+    def __init__(self, table_widget, columns_config, doc_type: str = None):
         """
         Инициализация настройщика таблицы
 
         Args:
             table_widget: виджет таблицы
             columns_config: конфигурация колонок
+            doc_type: тип документа для настроек
         """
         self.table_widget = table_widget
         self.columns_config = columns_config
+        self.doc_type = doc_type or "default"
         self.column_manager = None
         self.sorting_manager = None
         self.row_manager = None
         self.table_state = TableState()
+
+        print(f"[TableBuilder] Initialized for doc_type: {self.doc_type}")
 
     def setup(self, data_manager=None, updater=None):
         """Основная настройка таблицы"""
@@ -37,25 +41,26 @@ class TableBuilder:
             self._setup_appearance()
             self._set_column_widths()
 
-            # Инициализация менеджеров
-            self.column_manager = ColumnManager(self.table_widget, self.columns_config)
+            # Инициализация менеджеров с doc_type
+            self.column_manager = ColumnManager(self.table_widget, self.columns_config, self.doc_type)
             self.sorting_manager = SortingManager(self.table_widget, self.columns_config)
 
-            # Создаем RowManager с зависимостями
+            # Создаем RowManager с doc_type
             self.row_manager = RowManager(
                 self.table_widget,
                 data_manager,
-                updater
+                updater,
+                self.doc_type  # <-- ПЕРЕДАЕМ doc_type
             )
 
-            # ДОБАВИТЬ: Восстанавливаем высоты строк
+            # Восстанавливаем высоты строк
             self.row_manager.restore_row_heights()
 
-            # ДОБАВИТЬ: Подключаем сохранение высот при изменении
+            # Подключаем сохранение высот при изменении
             vertical_header = self.table_widget.verticalHeader()
             vertical_header.sectionResized.connect(self._on_row_height_changed)
 
-            print("[TableBuilder] Setup completed successfully")
+            print(f"[TableBuilder] Setup completed for doc_type: {self.doc_type}")
             return self
 
         except Exception as e:
@@ -67,7 +72,6 @@ class TableBuilder:
     def _on_row_height_changed(self, logical_index, old_size, new_size):
         """Обработчик изменения высоты строки"""
         if self.row_manager:
-            # В RowManager уже есть логика сохранения с debounce
             self.row_manager._on_row_height_changed(logical_index, old_size, new_size)
 
     def _setup_columns(self):
@@ -80,19 +84,15 @@ class TableBuilder:
         """Настройка заголовков"""
         header = self.table_widget.horizontalHeader()
 
-        # Разрешаем перемещение и изменение размера колонок
         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         header.setStretchLastSection(True)
         header.setMinimumSectionSize(60)
 
-        # Выравнивание заголовков по центру
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Включаем сортировку
         header.setSectionsClickable(True)
         header.setSortIndicatorShown(False)
 
-        # Настройка вертикальных заголовков (номера строк)
         vertical_header = self.table_widget.verticalHeader()
         vertical_header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         vertical_header.setDefaultSectionSize(50)
@@ -152,6 +152,7 @@ class TableBuilder:
         """Получение менеджера строк"""
         return self.row_manager
 
-    def set_row_manager(self, row_manager):
-        """Установка менеджера строк (для внедрения зависимостей)"""
-        self.row_manager = row_manager
+    def set_doc_type(self, doc_type: str):
+        """Обновить тип документа"""
+        self.doc_type = doc_type or "default"
+        print(f"[TableBuilder] Updated doc_type to: {self.doc_type}")

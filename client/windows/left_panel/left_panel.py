@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal
 from PyQt6.uic import loadUi
 
+from client.core.data.document_data import DocumentDataConfig
 from client.windows.left_panel.direction_group import DirectionGroup
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -17,7 +18,8 @@ class LeftPanel(QWidget):
     """Левая панель с динамическими группами направлений и анимацией сворачивания"""
 
     # Сигналы
-    direction_clicked = pyqtSignal(str, str)
+    direction_clicked = pyqtSignal(str, str)  # (direction_name, group_name)
+    type_clicked = pyqtSignal(int, str)  # (type_id, type_name)
     profile_clicked = pyqtSignal()
     all_documents_clicked = pyqtSignal()
     system_clicked = pyqtSignal()
@@ -58,7 +60,8 @@ class LeftPanel(QWidget):
         self.collapse_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self.collapse_animation.finished.connect(self.on_animation_finished)
 
-        self.load_test_data()
+        # Загружаем данные из DocumentDataConfig
+        self.load_from_data()
 
     def create_fallback_ui(self):
         """Создает UI с разделением на верхнюю и нижнюю части"""
@@ -223,9 +226,16 @@ class LeftPanel(QWidget):
         return group
 
     def add_direction(self, group_name: str, direction_name: str, metadata: Dict[str, Any] = None):
-        """Добавляет направление в указанную группу"""
+        """Добавляет направление (тип документа) в указанную группу"""
         group = self.add_group(group_name)
-        group.add_direction(direction_name, lambda name: self.on_direction_clicked(name, group_name))
+
+        # Сохраняем type_id в метаданных для передачи при клике
+        type_id = metadata.get("type_id") if metadata else None
+
+        def on_click(name):
+            self.on_direction_clicked(name, group_name, type_id)
+
+        group.add_direction(direction_name, on_click)
 
     def clear_all_directions(self):
         """Очищает все направления и группы"""
@@ -238,8 +248,14 @@ class LeftPanel(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-    def load_from_data(self, data: List[Dict[str, Any]]):
-        """Загружает направления из данных"""
+    def load_from_data(self, data: List[Dict[str, Any]] = None):
+        """
+        Загружает направления из данных.
+        Если данные не переданы, использует DocumentDataConfig.get_directions_data()
+        """
+        if data is None:
+            data = DocumentDataConfig.get_directions_data()
+
         self.clear_all_directions()
 
         for group_data in data:
@@ -247,42 +263,15 @@ class LeftPanel(QWidget):
             directions = group_data.get("directions", [])
 
             for direction in directions:
-                direction_name = direction.get("name") or direction.get("enam")
+                direction_name = direction.get("name")
                 if direction_name:
                     self.add_direction(group_name, direction_name, direction)
 
-    def load_test_data(self):
-        """Загружает тестовые данные"""
-        test_data = [
-            {
-                "group": "Внешние документы",
-                "directions": [
-                    {"name": "Входящие документы", "type": "incoming"},
-                    {"name": "Исходящие документы", "type": "outgoing"},
-                    {"name": "Договоры", "type": "contract"},
-                ]
-            },
-            {
-                "group": "Внутренние документы",
-                "directions": [
-                    {"name": "Приказы", "type": "order"},
-                    {"name": "Распоряжения", "type": "command"},
-                    {"name": "Акты", "type": "act"},
-                    {"name": "Протоколы", "type": "protocol"},
-                    {"name": "Служебные записки", "type": "memo"},
-                ]
-            },
-            {
-                "group": "Финансовые документы",
-                "directions": [
-                    {"name": "Счета", "type": "invoice"},
-                    {"name": "Накладные", "type": "waybill"},
-                    {"name": "Акты сверки", "type": "reconciliation"},
-                ]
-            }
-        ]
+        print(f"LeftPanel: загружено {len(data)} групп, {sum(len(g.get('directions', [])) for g in data)} направлений")
 
-        self.load_from_data(test_data)
+    def load_test_data(self):
+        """Загружает тестовые данные из DocumentDataConfig"""
+        self.load_from_data()
 
     # ========== АНИМАЦИЯ ==========
 
@@ -344,7 +333,6 @@ class LeftPanel(QWidget):
 
         if hasattr(self, 'hidePanelBtn'):
             self.hidePanelBtn.setText("◀ Скрыть панель" if visible else "▶")
-            # Применяем специальный стиль для свернутого состояния
             if visible:
                 self.hidePanelBtn.setStyleSheet(self._get_collapse_button_style())
             else:
@@ -389,10 +377,16 @@ class LeftPanel(QWidget):
         print("Нажата кнопка системы")
         self.system_clicked.emit()
 
-    def on_direction_clicked(self, direction_name: str, group_name: str):
-        """Обработчик клика по направлению"""
-        print(f"Выбрано направление: {direction_name} (группа: {group_name})")
-        self.direction_clicked.emit(direction_name, group_name)
+    def on_direction_clicked(self, direction_name: str, group_name: str, type_id: int = None):
+        """Обработчик клика по направлению (типу документа)"""
+        print(f"Выбрано направление: {direction_name} (группа: {group_name}, type_id: {type_id})")
+
+        if type_id is not None:
+            # Это тип документа - отправляем сигнал с type_id
+            self.type_clicked.emit(type_id, direction_name)
+        else:
+            # Это обычное направление - отправляем старый сигнал
+            self.direction_clicked.emit(direction_name, group_name)
 
     # ========== УПРАВЛЕНИЕ ГРУППАМИ ==========
 
@@ -417,6 +411,10 @@ class LeftPanel(QWidget):
         """Свернуть панель программно"""
         if self.is_expanded:
             self.toggle_panel()
+
+    def get_group_by_name(self, group_name: str) -> DirectionGroup:
+        """Получить группу по имени"""
+        return self.groups.get(group_name)
 
 
 # Для тестирования

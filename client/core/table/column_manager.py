@@ -3,10 +3,9 @@
 """
 from PyQt6.QtWidgets import QHeaderView
 from PyQt6.QtCore import Qt
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from client.core.settings.settings_manager import SettingsManager
-from client.core.settings.settings_keys import SettingsKeys
 
 
 class ColumnManager:
@@ -39,16 +38,13 @@ class ColumnManager:
         """Включение всех возможностей управления колонками"""
         header = self.table_widget.horizontalHeader()
 
-        # Разрешаем перемещение колонок
         header.setSectionsMovable(True)
         header.setDragEnabled(True)
         header.setDragDropMode(QHeaderView.DragDropMode.InternalMove)
         header.setDropIndicatorShown(True)
 
-        # Разрешаем изменение размера колонок
         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
 
-        # Подключаем сигналы
         header.sectionMoved.connect(self._on_section_moved)
         header.sectionResized.connect(self._on_section_resized)
 
@@ -65,7 +61,7 @@ class ColumnManager:
     # ============ СОХРАНЕНИЕ ПОРЯДКА КОЛОНОК ============
 
     def save_column_order(self):
-        """Сохранение порядка колонок"""
+        """Сохранение порядка колонок для текущего типа документа"""
         try:
             header = self.table_widget.horizontalHeader()
             column_order = []
@@ -83,7 +79,6 @@ class ColumnManager:
         except Exception as e:
             print(f"[ColumnManager] Error saving column order: {e}")
 
-
     def restore_column_order(self):
         """Восстановление порядка колонок для текущего типа документа"""
         try:
@@ -95,21 +90,8 @@ class ColumnManager:
 
             header = self.table_widget.horizontalHeader()
 
-            # Проверяем формат данных
             if isinstance(column_order, list) and len(column_order) > 0:
-                if isinstance(column_order[0], str):
-                    # Старый формат: список имен колонок
-                    name_to_index = {name: idx for idx, name in self.columns_config.items()}
-                    for new_visual_idx, col_name in enumerate(column_order):
-                        if col_name in name_to_index:
-                            logical_idx = name_to_index[col_name]
-                            if logical_idx < header.count():
-                                current_visual = header.visualIndex(logical_idx)
-                                if current_visual != new_visual_idx:
-                                    header.moveSection(current_visual, new_visual_idx)
-                    print(f"[ColumnManager] Restored column order from old format")
-                elif isinstance(column_order[0], dict):
-                    # Новый формат: список словарей
+                if isinstance(column_order[0], dict):
                     for new_visual_idx, col_info in enumerate(column_order):
                         logical_idx = col_info.get('logical_index')
                         if logical_idx is not None and logical_idx < header.count():
@@ -149,7 +131,6 @@ class ColumnManager:
                 self.reset_column_sizes()
                 return
 
-            # Используем QTimer для отложенного применения
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(100, lambda: self._apply_column_sizes(column_sizes))
 
@@ -208,27 +189,15 @@ class ColumnManager:
                 self.save_column_visibility()
                 return
 
-            if not hidden_columns:
-                return
-
             header = self.table_widget.horizontalHeader()
 
-            if isinstance(hidden_columns, list) and len(hidden_columns) > 0:
-                if isinstance(hidden_columns[0], dict):
-                    for col_info in hidden_columns:
-                        if isinstance(col_info, dict):
-                            logical_idx = col_info.get('logical_index')
-                            is_visible = col_info.get('visible', True)
-                            if logical_idx is not None and logical_idx < header.count():
-                                header.setSectionHidden(logical_idx, not is_visible)
-                    print(f"[ColumnManager] Restored visibility from old format")
-                elif isinstance(hidden_columns[0], int):
-                    for logical_idx in range(header.count()):
-                        header.setSectionHidden(logical_idx, False)
-                    for logical_idx in hidden_columns:
-                        if isinstance(logical_idx, int) and logical_idx < header.count():
-                            header.setSectionHidden(logical_idx, True)
-                    print(f"[ColumnManager] Restored hidden columns for '{self.doc_type}': {len(hidden_columns)}")
+            if isinstance(hidden_columns, list):
+                for logical_idx in range(header.count()):
+                    header.setSectionHidden(logical_idx, False)
+                for logical_idx in hidden_columns:
+                    if isinstance(logical_idx, int) and logical_idx < header.count():
+                        header.setSectionHidden(logical_idx, True)
+                print(f"[ColumnManager] Restored hidden columns for '{self.doc_type}': {len(hidden_columns)}")
         except Exception as e:
             print(f"[ColumnManager] Error restoring column visibility: {e}")
 
@@ -251,28 +220,6 @@ class ColumnManager:
         print(f"[ColumnManager] Save completed for '{self.doc_type}'")
 
     # ============ ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ============
-
-    def get_column_visual_order(self) -> List[str]:
-        """Получение текущего визуального порядка колонок"""
-        header = self.table_widget.horizontalHeader()
-        visual_order = []
-
-        for visual_idx in range(header.count()):
-            logical_idx = header.logicalIndex(visual_idx)
-            column_name = self.columns_config.get(logical_idx, str(logical_idx))
-            visual_order.append(column_name)
-
-        return visual_order
-
-    def reset_all(self):
-        """Сброс всех настроек колонок для текущего типа документа"""
-        self.reset_column_sizes()
-        self.reset_column_order()
-        self.reset_column_visibility()
-
-        # Очищаем сохраненные настройки для текущего типа
-        self.settings.clear_document_type_settings(self.doc_type)
-        print(f"[ColumnManager] Reset all settings for '{self.doc_type}'")
 
     def reset_column_sizes(self):
         """Сброс размеров колонок к значениям по умолчанию"""
@@ -322,21 +269,3 @@ class ColumnManager:
         for logical_idx in range(header.count()):
             header.setSectionHidden(logical_idx, False)
         print(f"[ColumnManager] Reset column visibility for '{self.doc_type}'")
-
-    def toggle_column_visibility(self, logical_index: int):
-        """Переключить видимость колонки"""
-        header = self.table_widget.horizontalHeader()
-        is_hidden = header.isSectionHidden(logical_index)
-        header.setSectionHidden(logical_index, not is_hidden)
-        self.save_column_visibility()
-
-    def set_column_visible(self, logical_index: int, visible: bool):
-        """Установить видимость колонки"""
-        header = self.table_widget.horizontalHeader()
-        header.setSectionHidden(logical_index, not visible)
-        self.save_column_visibility()
-
-    def is_column_visible(self, logical_index: int) -> bool:
-        """Проверить видимость колонки"""
-        header = self.table_widget.horizontalHeader()
-        return not header.isSectionHidden(logical_index)
