@@ -297,3 +297,23 @@ class DocumentRepository:
         count_q = select(func.count()).select_from(query.subquery())
         return (await self.db.execute(count_q)).scalar() or 0
 
+    def apply_read_status(self, query, user_id: int):
+        """
+        Присоединяет информацию о прочтении.
+        Если запись в таблице reads найдена, is_read будет TRUE, иначе NULL (превращаем в False).
+        """
+        from sqlalchemy import outerjoin
+
+        # Создаем алиас для таблицы reads для конкретного пользователя
+        read_alias = select(Read.document_id).where(Read.employee_id == user_id).scalar_subquery()
+
+        # Добавляем вычисляемое поле в запрос
+        return query.add_columns(
+            (Document.id.in_(read_alias)).label("is_read")
+        )
+
+    async def execute_query_with_read_status(self, query):
+        """Выполнение запроса, который возвращает пары (Document, is_read)."""
+        result = await self.db.execute(query)
+        # unique() нужен, если в запросе есть JOIN по коллекции (tags/employees)
+        return result.unique().all()

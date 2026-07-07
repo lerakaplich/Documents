@@ -38,8 +38,9 @@ class TagItem(BaseModel):
 class DocumentListItem(BaseModel):
     """Усеченная модель для отображения в главной таблице PyQt6"""
     id: int
+    is_read: bool = False
     sequence_number: Optional[int] = None
-    type_name: str
+    type_name: str = "Без типа"
     title: Optional[str] = None
     reg_number: Optional[str] = None
     status: DocStatus = DocStatus.under_review

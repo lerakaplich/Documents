@@ -13,6 +13,7 @@ class DocumentRegistryService:
     async def get_all_paginated(self, user_id: int, user_rights: AppRights, **params) -> Tuple[int, List[Document]]:
         # 1. Начало сборки запроса
         query = self.repo.prepare_document_list_query()
+        query = self.repo.apply_read_status(query, user_id)
 
         # 2. Применяем права доступа
         if user_rights not in [AppRights.admin, AppRights.superadmin]:
@@ -41,35 +42,33 @@ class DocumentRegistryService:
         query = query.limit(params.get('limit', 20)).offset(params.get('offset', 0))
 
         # 7. Выполнение
-        docs = await self.repo.execute_query_with_participants(query)
+        rows = await self.repo.execute_query_with_read_status(query)
+
+        if rows is None:
+            rows = []
 
         items = []
-        for doc in docs:
-            item = DocumentListItem(
-                id=doc.id,
-                sequence_number=doc.sequence_number,
-                type_name=doc.type.name if doc.type else "Без типа",
-                title=doc.title,
-                reg_number=doc.reg_number,
-                status=doc.status,
-                direction=doc.direction,
-                sent_date=doc.sent_date,
-                deadline=doc.deadline,
-                last_comment_text=doc.last_comment_text,
-                participants=[
-                    ParticipantItem(fio=self._format_fio(ed.employee), role=ed.role)
-                    for ed in doc.employees
-                ],
-                tags=[
-                    TagItem(
-                        name=tag.name,
-                        priority=tag.priority,
-                        color=tag.color
-                    )
-                    for tag in doc.tags
-                ]
-            )
+        for doc, is_read in rows:
+            # 1. Валидируем только те поля, которые есть в БД
+            # (exclude_unset=True помогает избежать проблем, если какие-то поля None)
+            item = DocumentListItem.model_validate(doc, from_attributes=True)
+
+            # 2. Вручную заполняем поля, которых нет в модели БД
+            item.is_read = is_read or False
+            item.type_name = doc.type.name if doc.type else "Без типа"
+
+            # 3. Заполняем вложенные списки
+            item.participants = [
+                ParticipantItem(fio=self._format_fio(ed.employee), role=ed.role)
+                for ed in doc.employees
+            ]
+            item.tags = [
+                TagItem(name=tag.name, priority=tag.priority, color=tag.color)
+                for tag in doc.tags
+            ]
+
             items.append(item)
+
         return total, items
 
     def _format_fio(self, emp) -> str:
