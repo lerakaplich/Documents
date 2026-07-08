@@ -4,6 +4,7 @@
 from PyQt6.QtGui import QColor
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
+import copy
 
 
 class DocumentDataConfig:
@@ -17,6 +18,8 @@ class DocumentDataConfig:
             "fields": [
                 {"name": "basis", "type": "text", "label": "Основание"}
             ],
+            # Какие поля с пользователями доступны для этого типа
+            "user_fields": ["senders", "receivers", "executors", "delegates"],
             "auto_num": True,
             "smdo_code_type": None
         },
@@ -26,6 +29,7 @@ class DocumentDataConfig:
             "fields": [
                 {"name": "control_date", "type": "date", "label": "Срок контроля"}
             ],
+            "user_fields": ["senders", "receivers", "executors"],
             "auto_num": True,
             "smdo_code_type": None
         },
@@ -33,6 +37,7 @@ class DocumentDataConfig:
             "id": 3,
             "name": "Официальное письмо",
             "fields": [],
+            "user_fields": ["senders", "receivers"],
             "auto_num": False,
             "smdo_code_type": "1.1.2.5"
         },
@@ -40,23 +45,21 @@ class DocumentDataConfig:
             "id": 4,
             "name": "Циркулярное письмо",
             "fields": [],
+            "user_fields": ["senders", "receivers", "executors", "delegates"],
             "auto_num": True,
             "smdo_code_type": "1.1.2.1"
         }
     ]
 
     # ============ НАПРАВЛЕНИЯ (DIRECTIONS) ============
-    # Маппинг направлений из БД в человекочитаемый вид
     DIRECTION_MAPPING = {
         "internal": "Внутренние документы",
         "external": "Внешние документы"
     }
 
-    # Группировка типов документов по направлениям
-    # Определяем, какие типы относятся к каким направлениям
     TYPE_DIRECTION_MAPPING = {
-        "internal": [1, 2],  # Служебная записка, Приказ генерального директора
-        "external": [3, 4]   # Официальное письмо (Входящее СМДО), Циркулярное письмо (Исходящее СМДО)
+        "internal": [1, 2],
+        "external": [3, 4]
     }
 
     # ============ СТАТУСЫ ============
@@ -104,252 +107,445 @@ class DocumentDataConfig:
         "TIFF (*.tif)"
     )
 
-    # ============ ТЕСТОВЫЕ ДАННЫЕ ============
-    TEST_DATA = [
-        {
-            "id": 1,
-            "type_id": 2,
+    # ============ ТЕСТОВЫЕ ДАННЫЕ (БАЗОВЫЕ ШАБЛОНЫ) ============
+    # Базовые данные для каждого типа документа
+    _BASE_DOCUMENTS = {
+        1: {  # Служебная записка
+            "type_name": "Служебная записка",
+            "direction": "internal",
+            "titles": [
+                "Служебная записка о закупке оборудования",
+                "Заявка на командировку",
+                "Служебная записка о премировании",
+                "Запрос на согласование бюджета"
+            ],
+            "abouts": [
+                "Закупка нового оборудования для отдела разработки",
+                "Командировка в Минск для участия в конференции",
+                "Премирование сотрудников по итогам квартала",
+                "Согласование бюджета на следующий квартал"
+            ],
+            "senders": [["Петров П.П."], ["Морозов М.М.", "Петров А.А."], ["Сидоров С.С."], ["Иванов И.И."]],
+            "senders_ids": [[8], [6, 2], [5], [1]],
+            "receivers": [["Отдел закупок"], ["Отдел кадров", "Бухгалтерия", "Руководство"], ["Финансовый отдел"], ["Плановый отдел"]],
+            "receivers_ids": [[9], [3, 4, 1], [13], [14]],
+            "executors": [["Морозов М.М.", "Сидоров С.С."], ["Иванов И.И.", "Сидоров С.С."], ["Петров А.А."], ["Козлов К.К."]],
+            "executors_ids": [[6, 5], [1, 5], [2], [7]],
+            "delegates": [[], ["Петров А.А.", "Козлов К.К."], ["Морозов М.М."], []],
+            "delegates_ids": [[], [2, 7], [6], []],
+            "extra_fields": {
+                "basis": ["Для закупки оборудования", "Для командировки", "Для премирования", "Для бюджета"]
+            }
+        },
+        2: {  # Приказ генерального директора
             "type_name": "Приказ генерального директора",
             "direction": "internal",
-            "status": "under_review",
-            "title": "О внесении изменений в план работы",
-            "about": "Внесение корректировок в план работы на 2-е полугодие",
-            "reg_number": "01-15/123",
-            "sequence_number": 123,
-            "sent_date": "2026-06-10",
-            "deadline": "2026-07-10",
-            "incoming_number": None,
-            "incoming_date": None,
-            "global_msg_id": "uuid-123-456-789",
-            "parent_document_id": None,
-            "confident_flag": 0,
-            "clearance_id": None,
-            "clearance_name": None,
-            "numcopy": "01",
-            "senders": ["Иванов И.И.", "Петров А.А."],
-            "senders_ids": [1, 2],
-            "receivers": ["Отдел кадров", "Бухгалтерия"],
-            "receivers_ids": [3, 4],
-            "executors": ["Сидоров С.С.", "Морозов М.М."],
-            "executors_ids": [5, 6],
-            "delegates": ["Козлов К.К."],
-            "delegates_ids": [7],
-            "tags": [
+            "titles": [
+                "О внесении изменений в план работы",
+                "О назначении ответственных лиц",
+                "Об утверждении новой структуры",
+                "О проведении инвентаризации"
+            ],
+            "abouts": [
+                "Внесение корректировок в план работы на 2-е полугодие",
+                "Назначение ответственных за реализацию проекта",
+                "Утверждение новой организационной структуры",
+                "Проведение ежегодной инвентаризации"
+            ],
+            "senders": [["Иванов И.И.", "Петров А.А."], ["Иванов И.И."], ["Петров А.А."], ["Иванов И.И.", "Сидоров С.С."]],
+            "senders_ids": [[1, 2], [1], [2], [1, 5]],
+            "receivers": [["Отдел кадров", "Бухгалтерия"], ["Все подразделения"], ["Отдел кадров"], ["Бухгалтерия", "Склад"]],
+            "receivers_ids": [[3, 4], [15], [3], [4, 16]],
+            "executors": [["Сидоров С.С.", "Морозов М.М."], ["Козлов К.К."], ["Морозов М.М."], ["Сидоров С.С."]],
+            "executors_ids": [[5, 6], [7], [6], [5]],
+            "delegates": [],  # У приказов нет делегатов в этом примере
+            "delegates_ids": [],
+            "extra_fields": {
+                "control_date": ["2026-07-10", "2026-06-30", "2026-08-15", "2026-07-20"]
+            }
+        },
+        3: {  # Официальное письмо
+            "type_name": "Официальное письмо (Входящее СМДО)",
+            "direction": "external",
+            "titles": [
+                "Письмо о сотрудничестве от ООО Партнер",
+                "Запрос от АО Технологии",
+                "Предложение от ИП Смирнов",
+                "Уведомление от ООО СтройИнвест"
+            ],
+            "abouts": [
+                "Предложение о долгосрочном сотрудничестве",
+                "Запрос на участие в тендере",
+                "Коммерческое предложение",
+                "Уведомление о проведении аудита"
+            ],
+            "senders": [["ООО Партнер"], ["АО Технологии"], ["ИП Смирнов"], ["ООО СтройИнвест"]],
+            "senders_ids": [[10], [17], [18], [19]],
+            "receivers": [["Юридический отдел", "Отдел продаж"], ["Отдел закупок"], ["Отдел развития"], ["Бухгалтерия"]],
+            "receivers_ids": [[11, 12], [9], [20], [4]],
+            "executors": [],  # У официальных писем нет исполнителей
+            "executors_ids": [],
+            "delegates": [],  # У официальных писем нет делегатов
+            "delegates_ids": [],
+            "extra_fields": {}
+        },
+        4: {  # Циркулярное письмо
+            "type_name": "Циркулярное письмо (Исходящее СМДО)",
+            "direction": "external",
+            "titles": [
+                "Циркулярное письмо о внедрении новой системы",
+                "Циркуляр о новых правилах документооборота",
+                "Циркуляр о изменении графика работы",
+                "Циркуляр о проведении обучения"
+            ],
+            "abouts": [
+                "Уведомление о внедрении новой системы документооборота",
+                "Информирование о новых правилах работы с документами",
+                "Изменение графика работы в праздничные дни",
+                "Проведение обязательного обучения персонала"
+            ],
+            "senders": [["Руководство МАЗ"], ["Департамент управления"], ["Руководство МАЗ"], ["Отдел кадров"]],
+            "senders_ids": [[1], [21], [1], [3]],
+            "receivers": [["Все структурные подразделения"], ["Все отделы"], ["Все сотрудники"], ["Все подразделения"]],
+            "receivers_ids": [[], [], [], []],
+            "executors": [["Козлов К.К.", "Морозов М.М."], ["Сидоров С.С."], ["Петров А.А."], ["Морозов М.М."]],
+            "executors_ids": [[7, 6], [5], [2], [6]],
+            "delegates": [[], ["Козлов К.К."], [], ["Петров А.А."]],
+            "delegates_ids": [[], [7], [], [2]],
+            "extra_fields": {}
+        }
+    }
+
+    # ============ ГЕНЕРАЦИЯ ТЕСТОВЫХ ДАННЫХ ============
+    @classmethod
+    def _generate_document(cls, type_id: int, index: int, status: str, is_read: bool, is_completed: bool,
+                          reg_number: str, sequence_number: int, sent_date: str, deadline: str,
+                          incoming_number: str = None, incoming_date: str = None,
+                          parent_document_id: int = None, confident_flag: int = 0,
+                          clearance_id: int = None, clearance_name: str = None,
+                          attachments: list = None, reply_file: dict = None,
+                          has_reply: bool = False, source_employee_id: int = None,
+                          source_organization_id: int = 1, source_official_text: str = "",
+                          extra_values: dict = None) -> dict:
+        """Генерирует документ на основе шаблона типа"""
+
+        base = cls._BASE_DOCUMENTS.get(type_id, cls._BASE_DOCUMENTS[1])
+        extra_values = extra_values or {}
+
+        # Базовые поля
+        doc = {
+            "id": index,
+            "type_id": type_id,
+            "type_name": base["type_name"],
+            "direction": base["direction"],
+            "status": status,
+            "title": base["titles"][index % len(base["titles"])],
+            "about": base["abouts"][index % len(base["abouts"])],
+            "reg_number": reg_number,
+            "sequence_number": sequence_number,
+            "sent_date": sent_date,
+            "deadline": deadline,
+            "incoming_number": incoming_number,
+            "incoming_date": incoming_date,
+            "global_msg_id": f"uuid-{index}-{type_id}-{sequence_number}",
+            "parent_document_id": parent_document_id,
+            "confident_flag": confident_flag,
+            "clearance_id": clearance_id,
+            "clearance_name": clearance_name,
+            "numcopy": f"{index:02d}",
+            "is_read": is_read,
+            "is_completed": is_completed,
+            "created_at": f"{sent_date}T{'08:00:00Z' if index % 2 == 0 else '14:30:00Z'}",
+            "source_employee_id": source_employee_id,
+            "source_organization_id": source_organization_id,
+            "source_official_text": source_official_text,
+        }
+
+        # Добавляем поля пользователей только если они есть в типе
+        user_fields = cls.get_document_type_by_id(type_id).get("user_fields", [])
+
+        if "senders" in user_fields:
+            senders_list = base["senders"][index % len(base["senders"])]
+            doc["senders"] = senders_list
+            doc["senders_ids"] = base["senders_ids"][index % len(base["senders_ids"])]
+        else:
+            doc["senders"] = []
+            doc["senders_ids"] = []
+
+        if "receivers" in user_fields:
+            receivers_list = base["receivers"][index % len(base["receivers"])]
+            doc["receivers"] = receivers_list
+            doc["receivers_ids"] = base["receivers_ids"][index % len(base["receivers_ids"])]
+        else:
+            doc["receivers"] = []
+            doc["receivers_ids"] = []
+
+        if "executors" in user_fields:
+            executors_list = base["executors"][index % len(base["executors"])] if base["executors"] else []
+            doc["executors"] = executors_list
+            doc["executors_ids"] = base["executors_ids"][index % len(base["executors_ids"])] if base["executors_ids"] else []
+        else:
+            doc["executors"] = []
+            doc["executors_ids"] = []
+
+        if "delegates" in user_fields:
+            delegates_list = base["delegates"][index % len(base["delegates"])] if base["delegates"] else []
+            doc["delegates"] = delegates_list
+            doc["delegates_ids"] = base["delegates_ids"][index % len(base["delegates_ids"])] if base["delegates_ids"] else []
+        else:
+            doc["delegates"] = []
+            doc["delegates_ids"] = []
+
+        # Добавляем теги
+        doc["tags"] = cls._generate_tags(index)
+
+        # Добавляем комментарии
+        doc["comments"] = cls._generate_comments(index, status)
+        doc["last_comment_text"] = doc["comments"][-1]["text"] if doc["comments"] else ""
+
+        # Добавляем вложения
+        doc["attachments"] = attachments or cls._generate_attachments(index, type_id)
+
+        # Добавляем ответ
+        doc["reply_file"] = reply_file
+        doc["has_reply"] = has_reply
+
+        # Добавляем дополнительные поля из типа
+        type_info = cls.get_document_type_by_id(type_id)
+        if type_info and type_info.get("fields"):
+            for field in type_info["fields"]:
+                field_name = field["name"]
+                if field_name in base.get("extra_fields", {}):
+                    values = base["extra_fields"][field_name]
+                    doc[field_name] = values[index % len(values)] if values else None
+                elif field_name in extra_values:
+                    doc[field_name] = extra_values[field_name]
+                else:
+                    doc[field_name] = None
+
+        return doc
+
+    @classmethod
+    def _generate_tags(cls, index: int) -> list:
+        """Генерирует теги для документа"""
+        tags_map = {
+            0: [
                 {"id": 1, "name": "Срочно", "color": "#D22730", "priority": "urgent"},
                 {"id": 2, "name": "Кадры", "color": "#4A90E2", "priority": "normal"}
             ],
-            "comments": [
+            1: [
+                {"id": 3, "name": "Закупки", "color": "#50C878", "priority": "normal"},
+                {"id": 4, "name": "Важно", "color": "#FF8C00", "priority": "important"}
+            ],
+            2: [
+                {"id": 5, "name": "Партнеры", "color": "#9B59B6", "priority": "normal"}
+            ],
+            3: [
+                {"id": 6, "name": "Системные", "color": "#3498DB", "priority": "urgent"}
+            ],
+            4: [
+                {"id": 7, "name": "Командировки", "color": "#E67E22", "priority": "normal"},
+                {"id": 1, "name": "Срочно", "color": "#D22730", "priority": "urgent"}
+            ]
+        }
+        return tags_map.get(index % 5, [])
+
+    @classmethod
+    def _generate_comments(cls, index: int, status: str) -> list:
+        """Генерирует комментарии для документа"""
+        comments_map = {
+            0: [
                 {"id": 1, "employee_id": 1, "text": "Прошу рассмотреть в кратчайшие сроки", "created_at": "2026-06-10T10:00:00Z"},
                 {"id": 2, "employee_id": 2, "text": "Согласовано", "created_at": "2026-06-11T11:30:00Z"},
                 {"id": 3, "employee_id": 5, "text": "Требуется доработка раздела 3", "created_at": "2026-06-11T14:20:00Z"}
             ],
-            "last_comment_text": "Требуется доработка раздела 3",
-            "attachments": [
-                {"id": 1, "file_name": "Приказ_№123.pdf", "file_size": 245760, "storage_path": "/attachments/order_123.pdf"},
-                {"id": 2, "file_name": "Приложение_1.docx", "file_size": 102400, "storage_path": "/attachments/appendix_1.docx"}
-            ],
-            "reply_file": {"id": 1, "file_name": "Ответ_на_приказ.pdf", "file_size": 156672, "storage_path": "/replies/reply_123.pdf"},
-            "has_reply": True,
-            "is_read": False,
-            "is_completed": False,
-            "created_at": "2026-06-10T08:00:00Z",
-            "source_employee_id": 1,
-            "source_organization_id": 1,
-            "source_official_text": "Генеральный директор Иванов И.И."
-        },
-        {
-            "id": 2,
-            "type_id": 1,
-            "type_name": "Служебная записка",
-            "direction": "internal",
-            "status": "approved",
-            "title": "Служебная записка о закупке оборудования",
-            "about": "Закупка нового оборудования для отдела разработки",
-            "reg_number": "01-15/124",
-            "sequence_number": 124,
-            "sent_date": "2026-06-09",
-            "deadline": "2026-06-30",
-            "incoming_number": None,
-            "incoming_date": None,
-            "global_msg_id": "uuid-123-456-790",
-            "parent_document_id": None,
-            "confident_flag": 0,
-            "clearance_id": None,
-            "clearance_name": None,
-            "numcopy": "02",
-            "senders": ["Петров П.П."],
-            "senders_ids": [8],
-            "receivers": ["Отдел закупок"],
-            "receivers_ids": [9],
-            "executors": ["Морозов М.М.", "Сидоров С.С."],
-            "executors_ids": [6, 5],
-            "delegates": [],
-            "delegates_ids": [],
-            "tags": [
-                {"id": 3, "name": "Закупки", "color": "#50C878", "priority": "normal"},
-                {"id": 4, "name": "Важно", "color": "#FF8C00", "priority": "important"}
-            ],
-            "comments": [
+            1: [
                 {"id": 4, "employee_id": 6, "text": "Оборудование заказано", "created_at": "2026-06-10T09:00:00Z"}
             ],
-            "last_comment_text": "Оборудование заказано",
-            "attachments": [],
-            "reply_file": None,
-            "has_reply": False,
-            "is_read": True,
-            "is_completed": True,
-            "created_at": "2026-06-09T15:30:00Z",
-            "source_employee_id": 8,
-            "source_organization_id": 1,
-            "source_official_text": "Начальник отдела Петров П.П."
-        },
-        {
-            "id": 3,
-            "type_id": 3,
-            "type_name": "Официальное письмо (Входящее СМДО)",
-            "direction": "external",
-            "status": "partially_approved",
-            "title": "Письмо о сотрудничестве от ООО Партнер",
-            "about": "Предложение о долгосрочном сотрудничестве",
-            "reg_number": "01-15/125",
-            "sequence_number": 125,
-            "sent_date": "2026-06-08",
-            "deadline": "2026-07-15",
-            "incoming_number": "ИН-2026-456",
-            "incoming_date": "2026-06-08",
-            "global_msg_id": "uuid-123-456-791",
-            "parent_document_id": None,
-            "confident_flag": 0,
-            "clearance_id": None,
-            "clearance_name": None,
-            "numcopy": "03",
-            "senders": ["ООО Партнер"],
-            "senders_ids": [10],
-            "receivers": ["Юридический отдел", "Отдел продаж"],
-            "receivers_ids": [11, 12],
-            "executors": ["Петров А.А."],
-            "executors_ids": [2],
-            "delegates": ["Козлов К.К.", "Морозов М.М."],
-            "delegates_ids": [7, 6],
-            "tags": [
-                {"id": 5, "name": "Партнеры", "color": "#9B59B6", "priority": "normal"}
-            ],
-            "comments": [
+            2: [
                 {"id": 5, "employee_id": 5, "text": "Необходимо согласовать условия", "created_at": "2026-06-08T10:00:00Z"},
                 {"id": 6, "employee_id": 2, "text": "Отправил на согласование юристам", "created_at": "2026-06-09T11:30:00Z"}
             ],
-            "last_comment_text": "Отправил на согласование юристам",
-            "attachments": [
-                {"id": 3, "file_name": "Договор_проект.pdf", "file_size": 512000, "storage_path": "/attachments/contract_draft.pdf"}
-            ],
-            "reply_file": None,
-            "has_reply": False,
-            "is_read": False,
-            "is_completed": False,
-            "created_at": "2026-06-08T09:45:00Z",
-            "source_employee_id": None,
-            "source_organization_id": 2,
-            "source_official_text": "ООО Партнер, директор Смирнов С.С."
-        },
-        {
-            "id": 4,
-            "type_id": 4,
-            "type_name": "Циркулярное письмо (Исходящее СМДО)",
-            "direction": "external",
-            "status": "approved",
-            "title": "Циркулярное письмо о внедрении новой системы",
-            "about": "Уведомление о внедрении новой системы документооборота",
-            "reg_number": "01-15/126",
-            "sequence_number": 126,
-            "sent_date": "2026-06-07",
-            "deadline": "2026-08-01",
-            "incoming_number": None,
-            "incoming_date": None,
-            "global_msg_id": "uuid-123-456-792",
-            "parent_document_id": None,
-            "confident_flag": 1,
-            "clearance_id": 1,
-            "clearance_name": "Для служебного пользования",
-            "numcopy": "04",
-            "senders": ["Руководство МАЗ"],
-            "senders_ids": [1],
-            "receivers": ["Все структурные подразделения"],
-            "receivers_ids": [],
-            "executors": ["Козлов К.К.", "Морозов М.М."],
-            "executors_ids": [7, 6],
-            "delegates": [],
-            "delegates_ids": [],
-            "tags": [
-                {"id": 6, "name": "Системные", "color": "#3498DB", "priority": "urgent"}
-            ],
-            "comments": [
+            3: [
                 {"id": 7, "employee_id": 7, "text": "Письмо отправлено всем подразделениям", "created_at": "2026-06-07T16:00:00Z"},
                 {"id": 8, "employee_id": 1, "text": "Утверждено", "created_at": "2026-06-08T09:00:00Z"}
             ],
-            "last_comment_text": "Утверждено",
-            "attachments": [
+            4: [
+                {"id": 9, "employee_id": 6, "text": "Прошу согласовать командировку", "created_at": "2026-06-06T08:00:00Z"},
+                {"id": 10, "employee_id": 1, "text": "Отклонено", "created_at": "2026-06-07T10:00:00Z"}
+            ]
+        }
+        return comments_map.get(index % 5, [])
+
+    @classmethod
+    def _generate_attachments(cls, index: int, type_id: int) -> list:
+        """Генерирует вложения для документа"""
+        attachments_map = {
+            0: [
+                {"id": 1, "file_name": "Приказ_№123.pdf", "file_size": 245760, "storage_path": "/attachments/order_123.pdf"},
+                {"id": 2, "file_name": "Приложение_1.docx", "file_size": 102400, "storage_path": "/attachments/appendix_1.docx"}
+            ],
+            1: [],
+            2: [
+                {"id": 3, "file_name": "Договор_проект.pdf", "file_size": 512000, "storage_path": "/attachments/contract_draft.pdf"}
+            ],
+            3: [
                 {"id": 4, "file_name": "Циркуляр.pdf", "file_size": 1024000, "storage_path": "/attachments/circular.pdf"},
                 {"id": 5, "file_name": "Приложение_А.xlsx", "file_size": 256000, "storage_path": "/attachments/appendix_a.xlsx"}
             ],
-            "reply_file": None,
-            "has_reply": False,
-            "is_read": True,
-            "is_completed": True,
-            "created_at": "2026-06-07T14:20:00Z",
-            "source_employee_id": 1,
-            "source_organization_id": 1,
-            "source_official_text": "Генеральный директор Иванов И.И."
-        },
-        {
-            "id": 5,
-            "type_id": 1,
-            "type_name": "Служебная записка",
-            "direction": "internal",
-            "status": "rejected",
-            "title": "Заявка на командировку",
-            "about": "Командировка в Минск для участия в конференции",
-            "reg_number": "01-15/127",
-            "sequence_number": 127,
-            "sent_date": "2026-06-06",
-            "deadline": "2026-06-20",
-            "incoming_number": None,
-            "incoming_date": None,
-            "global_msg_id": "uuid-123-456-793",
-            "parent_document_id": 2,
-            "confident_flag": 0,
-            "clearance_id": None,
-            "clearance_name": None,
-            "numcopy": "05",
-            "senders": ["Морозов М.М.", "Петров А.А."],
-            "senders_ids": [6, 2],
-            "receivers": ["Отдел кадров", "Бухгалтерия", "Руководство"],
-            "receivers_ids": [3, 4, 1],
-            "executors": ["Иванов И.И.", "Сидоров С.С."],
-            "executors_ids": [1, 5],
-            "delegates": ["Петров А.А.", "Козлов К.К."],
-            "delegates_ids": [2, 7],
-            "tags": [
-                {"id": 7, "name": "Командировки", "color": "#E67E22", "priority": "normal"},
-                {"id": 1, "name": "Срочно", "color": "#D22730", "priority": "urgent"}
-            ],
-            "comments": [
-                {"id": 9, "employee_id": 6, "text": "Прошу согласовать командировку", "created_at": "2026-06-06T08:00:00Z"},
-                {"id": 10, "employee_id": 1, "text": "Отклонено", "created_at": "2026-06-07T10:00:00Z"}
-            ],
-            "last_comment_text": "Отклонено",
-            "attachments": [
+            4: [
                 {"id": 6, "file_name": "Заявка_командировка.docx", "file_size": 45600, "storage_path": "/attachments/business_trip.docx"}
-            ],
-            "reply_file": None,
-            "has_reply": False,
-            "is_read": False,
-            "is_completed": True,
-            "created_at": "2026-06-06T07:30:00Z",
-            "source_employee_id": 6,
-            "source_organization_id": 1,
-            "source_official_text": "Ведущий специалист Морозов М.М."
+            ]
         }
-    ]
+        return attachments_map.get(index % 5, [])
+
+    # ============ ИНИЦИАЛИЗАЦИЯ ТЕСТОВЫХ ДАННЫХ ============
+    TEST_DATA = []
+
+    @classmethod
+    def _initialize_test_data(cls):
+        """Инициализирует тестовые данные на основе конфигурации типов"""
+        if cls.TEST_DATA:
+            return cls.TEST_DATA
+
+        # Параметры для генерации документов
+        doc_configs = [
+            # (type_id, status, is_read, is_completed, reg_number, seq_num, sent_date, deadline, extra)
+            {
+                "type_id": 2,
+                "status": "under_review",
+                "is_read": False,
+                "is_completed": False,
+                "reg_number": "01-15/123",
+                "seq_num": 123,
+                "sent_date": "2026-06-10",
+                "deadline": "2026-07-10",
+                "incoming_number": None,
+                "incoming_date": None,
+                "parent_document_id": None,
+                "confident_flag": 0,
+                "clearance_id": None,
+                "clearance_name": None,
+                "attachments": None,
+                "reply_file": {"id": 1, "file_name": "Ответ_на_приказ.pdf", "file_size": 156672, "storage_path": "/replies/reply_123.pdf"},
+                "has_reply": True,
+                "source_employee_id": 1,
+                "source_official_text": "Генеральный директор Иванов И.И."
+            },
+            {
+                "type_id": 1,
+                "status": "approved",
+                "is_read": True,
+                "is_completed": True,
+                "reg_number": "01-15/124",
+                "seq_num": 124,
+                "sent_date": "2026-06-09",
+                "deadline": "2026-06-30",
+                "incoming_number": None,
+                "incoming_date": None,
+                "parent_document_id": None,
+                "confident_flag": 0,
+                "clearance_id": None,
+                "clearance_name": None,
+                "attachments": [],
+                "reply_file": None,
+                "has_reply": False,
+                "source_employee_id": 8,
+                "source_official_text": "Начальник отдела Петров П.П."
+            },
+            {
+                "type_id": 3,
+                "status": "partially_approved",
+                "is_read": False,
+                "is_completed": False,
+                "reg_number": "01-15/125",
+                "seq_num": 125,
+                "sent_date": "2026-06-08",
+                "deadline": "2026-07-15",
+                "incoming_number": "ИН-2026-456",
+                "incoming_date": "2026-06-08",
+                "parent_document_id": None,
+                "confident_flag": 0,
+                "clearance_id": None,
+                "clearance_name": None,
+                "attachments": None,
+                "reply_file": None,
+                "has_reply": False,
+                "source_employee_id": None,
+                "source_organization_id": 2,
+                "source_official_text": "ООО Партнер, директор Смирнов С.С."
+            },
+            {
+                "type_id": 4,
+                "status": "approved",
+                "is_read": True,
+                "is_completed": True,
+                "reg_number": "01-15/126",
+                "seq_num": 126,
+                "sent_date": "2026-06-07",
+                "deadline": "2026-08-01",
+                "incoming_number": None,
+                "incoming_date": None,
+                "parent_document_id": None,
+                "confident_flag": 1,
+                "clearance_id": 1,
+                "clearance_name": "Для служебного пользования",
+                "attachments": None,
+                "reply_file": None,
+                "has_reply": False,
+                "source_employee_id": 1,
+                "source_official_text": "Генеральный директор Иванов И.И."
+            },
+            {
+                "type_id": 1,
+                "status": "rejected",
+                "is_read": False,
+                "is_completed": True,
+                "reg_number": "01-15/127",
+                "seq_num": 127,
+                "sent_date": "2026-06-06",
+                "deadline": "2026-06-20",
+                "incoming_number": None,
+                "incoming_date": None,
+                "parent_document_id": 2,
+                "confident_flag": 0,
+                "clearance_id": None,
+                "clearance_name": None,
+                "attachments": None,
+                "reply_file": None,
+                "has_reply": False,
+                "source_employee_id": 6,
+                "source_official_text": "Ведущий специалист Морозов М.М."
+            }
+        ]
+
+        for idx, config in enumerate(doc_configs, start=1):
+            doc = cls._generate_document(
+                type_id=config["type_id"],
+                index=idx,
+                status=config["status"],
+                is_read=config["is_read"],
+                is_completed=config["is_completed"],
+                reg_number=config["reg_number"],
+                sequence_number=config["seq_num"],
+                sent_date=config["sent_date"],
+                deadline=config["deadline"],
+                incoming_number=config.get("incoming_number"),
+                incoming_date=config.get("incoming_date"),
+                parent_document_id=config.get("parent_document_id"),
+                confident_flag=config.get("confident_flag", 0),
+                clearance_id=config.get("clearance_id"),
+                clearance_name=config.get("clearance_name"),
+                attachments=config.get("attachments"),
+                reply_file=config.get("reply_file"),
+                has_reply=config.get("has_reply", False),
+                source_employee_id=config.get("source_employee_id"),
+                source_organization_id=config.get("source_organization_id", 1),
+                source_official_text=config.get("source_official_text", "")
+            )
+            cls.TEST_DATA.append(doc)
+
+        return cls.TEST_DATA
 
     # ============ ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ============
 
@@ -366,6 +562,7 @@ class DocumentDataConfig:
     @classmethod
     def get_document_by_id(cls, doc_id: int) -> dict:
         """Получить документ по ID"""
+        cls._initialize_test_data()
         for doc in cls.TEST_DATA:
             if doc.get("id") == doc_id:
                 return doc
@@ -387,11 +584,13 @@ class DocumentDataConfig:
     @classmethod
     def get_documents_by_type(cls, type_id: int) -> list:
         """Получить документы по типу"""
+        cls._initialize_test_data()
         return [doc for doc in cls.TEST_DATA if doc.get("type_id") == type_id]
 
     @classmethod
     def get_documents_by_direction(cls, direction: str) -> list:
         """Получить документы по направлению"""
+        cls._initialize_test_data()
         return [doc for doc in cls.TEST_DATA if doc.get("direction") == direction]
 
     @classmethod
@@ -402,10 +601,7 @@ class DocumentDataConfig:
 
     @classmethod
     def get_directions_data(cls) -> list:
-        """
-        Получить данные для левой панели на основе типов документов.
-        Группировка: внутренние и внешние документы.
-        """
+        """Получить данные для левой панели на основе типов документов."""
         directions_data = []
 
         for direction_key, direction_label in cls.DIRECTION_MAPPING.items():
@@ -418,6 +614,7 @@ class DocumentDataConfig:
                         "name": doc_type["name"],
                         "type_id": doc_type["id"],
                         "fields": doc_type.get("fields", []),
+                        "user_fields": doc_type.get("user_fields", []),
                         "auto_num": doc_type.get("auto_num", False),
                         "smdo_code_type": doc_type.get("smdo_code_type")
                     }
@@ -430,15 +627,15 @@ class DocumentDataConfig:
 
     @classmethod
     def get_documents_with_type_info(cls) -> list:
-        """
-        Получить документы с полной информацией о типе.
-        """
+        """Получить документы с полной информацией о типе."""
+        cls._initialize_test_data()
         docs_with_types = []
         for doc in cls.TEST_DATA:
             doc_copy = doc.copy()
             type_info = cls.get_document_type_by_id(doc.get("type_id"))
             if type_info:
                 doc_copy["type_fields"] = type_info.get("fields", [])
+                doc_copy["type_user_fields"] = type_info.get("user_fields", [])
                 doc_copy["type_auto_num"] = type_info.get("auto_num", False)
                 doc_copy["type_smdo_code"] = type_info.get("smdo_code_type")
             docs_with_types.append(doc_copy)
@@ -448,33 +645,59 @@ class DocumentDataConfig:
     def get_columns_for_type(cls, type_id: int) -> dict:
         """
         Получить конфигурацию колонок для конкретного типа документа.
-        Базовые колонки всегда есть, дополнительные добавляются из fields.
+        Базовые колонки всегда есть, пользовательские и дополнительные добавляются из конфигурации.
         """
         # Базовые колонки для всех типов
         base_columns = {
             0: "ID",
             1: "Прочитано",
             2: "Номер документа",
+            3: "Тема",
+            4: "Тип",
             5: "Дата создания",
+            6: "Статус",
+            7: "Направление",
+            12: "Хэштеги",
             13: "Комментарии",
             14: "Вложение",
+            15: "Ответ",
+            16: "Краткое содержание",
+            17: "Срок исполнения"
         }
 
-        # Если есть дополнительные поля - добавляем их
+        # Добавляем пользовательские поля в зависимости от типа
         type_info = cls.get_document_type_by_id(type_id)
-        if type_info and type_info.get("fields"):
-            fields = type_info["fields"]
-            for idx, field in enumerate(fields, start=20):
-                field_name = field.get("label", field.get("name", f"Поле_{idx}"))
-                base_columns[idx] = field_name
+        if type_info:
+            user_fields = type_info.get("user_fields", [])
 
-        return base_columns
+            # Маппинг имен полей на индексы колонок
+            user_field_mapping = {
+                "senders": 8,
+                "receivers": 9,
+                "executors": 10,
+                "delegates": 11
+            }
+
+            for field_name in user_fields:
+                if field_name in user_field_mapping:
+                    col_index = user_field_mapping[field_name]
+                    col_label = cls.COLUMNS_CONFIG.get(col_index, field_name)
+                    base_columns[col_index] = col_label
+
+            # Добавляем дополнительные поля из fields
+            if type_info.get("fields"):
+                fields = type_info["fields"]
+                for idx, field in enumerate(fields, start=20):
+                    field_name = field.get("label", field.get("name", f"Поле_{idx}"))
+                    base_columns[idx] = field_name
+
+        # Сортируем колонки по индексу
+        return dict(sorted(base_columns.items()))
 
     @classmethod
     def get_documents_response(cls, type_id: int = None, direction: str = None) -> dict:
-        """
-        Получить ответ в формате API с пагинацией.
-        """
+        """Получить ответ в формате API с пагинацией."""
+        cls._initialize_test_data()
         items = cls.TEST_DATA.copy()
 
         if type_id is not None:
@@ -483,41 +706,106 @@ class DocumentDataConfig:
         if direction is not None:
             items = [doc for doc in items if doc.get("direction") == direction]
 
+        # Фильтруем поля для каждого документа в соответствии с типом
+        filtered_items = []
+        for doc in items:
+            type_info = cls.get_document_type_by_id(doc.get("type_id"))
+            if type_info:
+                user_fields = type_info.get("user_fields", [])
+                # Создаем копию документа с только нужными полями
+                filtered_doc = {k: v for k, v in doc.items()
+                               if k not in ["senders", "senders_ids", "receivers", "receivers_ids",
+                                          "executors", "executors_ids", "delegates", "delegates_ids"]}
+                # Добавляем только разрешенные пользовательские поля
+                for field in user_fields:
+                    if field in doc:
+                        filtered_doc[field] = doc[field]
+                        # Добавляем ID если есть
+                        id_field = f"{field}_ids"
+                        if id_field in doc:
+                            filtered_doc[id_field] = doc[id_field]
+                filtered_items.append(filtered_doc)
+            else:
+                filtered_items.append(doc)
+
         return {
-            "total": len(items),
+            "total": len(filtered_items),
             "limit": 20,
             "offset": 0,
-            "items": items
+            "items": filtered_items
         }
-
-    # client/core/data/document_data.py - добавляем метод
 
     @classmethod
-    def get_columns_for_type(cls, type_id: int) -> dict:
+    def get_document_schema(cls, type_id: int) -> dict:
         """
-        Получить конфигурацию колонок для конкретного типа документа.
-        Базовые колонки всегда есть, дополнительные добавляются из fields.
+        Получить схему документа для конкретного типа.
+        Возвращает структуру с описанием всех полей.
         """
-        # Базовые колонки для всех типов
-        base_columns = {
-            0: "ID",
-            1: "Прочитано",
-            2: "Номер документа",
-            3: "Тема",
-            5: "Дата создания",
-            6: "Статус",
-            13: "Комментарии",
-            14: "Вложение",
-            17: "Срок исполнения"
+        type_info = cls.get_document_type_by_id(type_id)
+        if not type_info:
+            return {}
+
+        schema = {
+            "id": {"type": "integer", "required": True},
+            "type_id": {"type": "integer", "required": True},
+            "type_name": {"type": "string", "required": True},
+            "direction": {"type": "string", "required": True},
+            "status": {"type": "string", "required": True},
+            "title": {"type": "string", "required": True},
+            "about": {"type": "string", "required": False},
+            "reg_number": {"type": "string", "required": False},
+            "sequence_number": {"type": "integer", "required": False},
+            "sent_date": {"type": "date", "required": False},
+            "deadline": {"type": "date", "required": False},
+            "incoming_number": {"type": "string", "required": False},
+            "incoming_date": {"type": "date", "required": False},
+            "global_msg_id": {"type": "string", "required": False},
+            "parent_document_id": {"type": "integer", "required": False},
+            "confident_flag": {"type": "integer", "required": False},
+            "clearance_id": {"type": "integer", "required": False},
+            "clearance_name": {"type": "string", "required": False},
+            "numcopy": {"type": "string", "required": False},
+            "is_read": {"type": "boolean", "required": True},
+            "is_completed": {"type": "boolean", "required": True},
+            "created_at": {"type": "datetime", "required": True},
+            "source_employee_id": {"type": "integer", "required": False},
+            "source_organization_id": {"type": "integer", "required": False},
+            "source_official_text": {"type": "string", "required": False},
         }
 
-        # Если есть дополнительные поля - добавляем их
-        type_info = cls.get_document_type_by_id(type_id)
-        if type_info and type_info.get("fields"):
-            fields = type_info["fields"]
-            # Добавляем поля начиная с индекса 20
-            for idx, field in enumerate(fields, start=20):
-                field_name = field.get("label", field.get("name", f"Поле_{idx}"))
-                base_columns[idx] = field_name
+        # Добавляем пользовательские поля
+        user_fields = type_info.get("user_fields", [])
+        user_field_schema = {
+            "senders": {"type": "array", "items": "string", "required": False},
+            "senders_ids": {"type": "array", "items": "integer", "required": False},
+            "receivers": {"type": "array", "items": "string", "required": False},
+            "receivers_ids": {"type": "array", "items": "integer", "required": False},
+            "executors": {"type": "array", "items": "string", "required": False},
+            "executors_ids": {"type": "array", "items": "integer", "required": False},
+            "delegates": {"type": "array", "items": "string", "required": False},
+            "delegates_ids": {"type": "array", "items": "integer", "required": False},
+        }
 
-        return base_columns
+        for field in user_fields:
+            if field in user_field_schema:
+                schema[field] = user_field_schema[field]
+                # Добавляем соответствующие ID поля
+                id_field = f"{field}_ids"
+                if id_field in user_field_schema:
+                    schema[id_field] = user_field_schema[id_field]
+
+        # Добавляем дополнительные поля
+        for field in type_info.get("fields", []):
+            field_name = field["name"]
+            field_type = field.get("type", "string")
+            schema[field_name] = {
+                "type": field_type,
+                "label": field.get("label", field_name),
+                "required": False
+            }
+
+        return schema
+
+
+# Инициализируем тестовые данные при загрузке модуля
+DocumentDataConfig._initialize_test_data()

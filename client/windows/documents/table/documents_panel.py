@@ -42,6 +42,7 @@ class DocumentsPanel(QWidget):
         self.current_direction = None
         self.current_query = ""
         self.current_title = "Все документы"
+        self.current_view_mode = "all"  # "all", "type", "direction"
 
         # Загружаем UI
         ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "table", "documents_panel.ui")
@@ -175,28 +176,23 @@ class DocumentsPanel(QWidget):
 
     # ========== ЗАГРУЗКА ДАННЫХ ==========
 
-    def load_all_documents(self):
-        """Загрузить все документы"""
-        documents = self.repository.get_all_documents()
-        self.current_type_id = None
-        self.current_direction = None
-        self.current_title = "Все документы"
-        # ЯВНО ПЕРЕДАЕМ "default" ДЛЯ ВСЕХ ДОКУМЕНТОВ
-        self._update_table(documents, "default", "Все документы")
-        self.data_loaded.emit(len(documents))
+    # documents_panel.py - обновить методы загрузки
+
+    # documents_panel.py - обновить методы загрузки
 
     def load_documents_by_type(self, type_id: int):
         """Загрузить документы по типу"""
         documents = self.repository.get_documents_by_type(type_id)
         self.current_type_id = type_id
         self.current_direction = None
+        self.current_view_mode = "type"
 
         type_info = self.repository.get_document_type_by_id(type_id)
         title = type_info.get('name', f"Тип {type_id}") if type_info else f"Тип {type_id}"
         self.current_title = title
 
-        # Передаем type_id как doc_type для сохранения настроек
-        self._update_table(documents, str(type_id), title)
+        # ПЕРЕДАЕМ doc_type = str(type_id) для сохранения настроек отдельно
+        self._update_table(documents, str(type_id), title, view_mode="type")
         self.type_changed.emit(type_id)
         self.data_loaded.emit(len(documents))
 
@@ -205,18 +201,31 @@ class DocumentsPanel(QWidget):
         documents = self.repository.get_documents_by_direction(direction)
         self.current_direction = direction
         self.current_type_id = None
+        self.current_view_mode = "direction"
 
         if title is None:
             title = DocumentDataConfig.DIRECTION_MAPPING.get(direction, direction)
         self.current_title = title
 
-        # Для направления используем "default" или направление как doc_type
-        doc_type = direction if direction in ["internal", "external"] else "default"
-        self._update_table(documents, doc_type, title)
+        # ПЕРЕДАЕМ doc_type = direction для сохранения настроек отдельно
+        # Например: "incoming", "outgoing", "internal"
+        doc_type = direction if direction in ["incoming", "outgoing", "internal"] else "default"
+        self._update_table(documents, doc_type, title, view_mode="direction")
         self.direction_changed.emit(direction)
         self.data_loaded.emit(len(documents))
 
-    def _update_table(self, documents: list, doc_type: str = None, title: str = None):
+    def load_all_documents(self):
+        """Загрузить все документы"""
+        documents = self.repository.get_all_documents()
+        self.current_type_id = None
+        self.current_direction = None
+        self.current_title = "Все документы"
+        self.current_view_mode = "all"
+        # Для "всех документов" используем "default"
+        self._update_table(documents, "default", "Все документы", view_mode="all")
+        self.data_loaded.emit(len(documents))
+
+    def _update_table(self, documents: list, doc_type: str = None, title: str = None, view_mode: str = None):
         """
         Обновить таблицу
 
@@ -224,19 +233,25 @@ class DocumentsPanel(QWidget):
             documents: Список документов
             doc_type: Тип документа для настроек (если None - "default")
             title: Заголовок
+            view_mode: Режим отображения ("all", "type", "direction")
         """
         try:
             # Если doc_type пустой - используем "default"
             if not doc_type:
                 doc_type = "default"
 
-            # Загружаем данные в таблицу с указанием типа
-            self.documents_table.load_documents(documents, doc_type, title)
+            # Загружаем данные в таблицу с указанием типа и режима просмотра
+            self.documents_table.load_documents(
+                documents,
+                doc_type,
+                title,
+                view_mode=view_mode or self.current_view_mode
+            )
 
             if title and hasattr(self, 'labelTitle'):
                 self.labelTitle.setText(title)
 
-            print(f"[DocumentsPanel] Table updated: {len(documents)} documents, doc_type: {doc_type}")
+            print(f"[DocumentsPanel] Table updated: {len(documents)} documents, doc_type: {doc_type}, view_mode: {view_mode}")
 
         except Exception as e:
             print(f"[DocumentsPanel] Error updating table: {e}")

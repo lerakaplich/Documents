@@ -229,8 +229,9 @@ class ColumnManager:
             "Номер документа": 130,
             "Тема": 250,
             "Тип": 100,
-            "Дата": 90,
+            "Дата создания": 120,
             "Статус": 120,
+            "Направление": 120,
             "Отправители": 150,
             "Получатели": 150,
             "Исполнители": 150,
@@ -240,10 +241,7 @@ class ColumnManager:
             "Вложение": 100,
             "Ответ": 100,
             "Краткое содержание": 200,
-            "Срок исполнения": 120,
-            "Направление": 120,
-            "Входящий номер": 120,
-            "Входящая дата": 120,
+            "Срок исполнения": 120
         }
 
         header = self.table_widget.horizontalHeader()
@@ -269,3 +267,26 @@ class ColumnManager:
         for logical_idx in range(header.count()):
             header.setSectionHidden(logical_idx, False)
         print(f"[ColumnManager] Reset column visibility for '{self.doc_type}'")
+
+    # column_manager.py - добавить метод
+
+    # column_manager.py
+
+    def set_doc_type(self, doc_type: str):
+        """Обновить тип документа и перезагрузить настройки"""
+        doc_type = doc_type or "default"
+
+        if self.doc_type == doc_type:
+            return
+
+        # Сохраняем старые настройки
+        self.save_all()
+
+        # Обновляем тип
+        self.doc_type = doc_type
+        self.settings.set_current_document_type(doc_type)
+
+        # Загружаем настройки нового типа
+        self.restore_all()
+
+        print(f"[ColumnManager] Updated doc_type to: {doc_type}")

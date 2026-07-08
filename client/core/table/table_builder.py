@@ -2,7 +2,7 @@
 Модуль настройки таблицы документов
 """
 from PyQt6.QtWidgets import QHeaderView, QAbstractItemView
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 
 from client.core.sorting.manager import SortingManager
 from client.core.table.column_manager import ColumnManager
@@ -13,7 +13,7 @@ from client.core.table.table_state import TableState
 class TableBuilder:
     """Класс для настройки параметров таблицы"""
 
-    def __init__(self, table_widget, columns_config, doc_type: str = None):
+    def __init__(self, table_widget, columns_config, doc_type: str = None, view_mode: str = "all"):
         """
         Инициализация настройщика таблицы
 
@@ -21,16 +21,18 @@ class TableBuilder:
             table_widget: виджет таблицы
             columns_config: конфигурация колонок
             doc_type: тип документа для настроек
+            view_mode: режим просмотра ("all", "type", "direction")
         """
         self.table_widget = table_widget
         self.columns_config = columns_config
         self.doc_type = doc_type or "default"
+        self.view_mode = view_mode or "all"
         self.column_manager = None
         self.sorting_manager = None
         self.row_manager = None
         self.table_state = TableState()
 
-        print(f"[TableBuilder] Initialized for doc_type: {self.doc_type}")
+        print(f"[TableBuilder] Initialized for doc_type: {self.doc_type}, view_mode: {self.view_mode}")
 
     def setup(self, data_manager=None, updater=None):
         """Основная настройка таблицы"""
@@ -50,17 +52,14 @@ class TableBuilder:
                 self.table_widget,
                 data_manager,
                 updater,
-                self.doc_type  # <-- ПЕРЕДАЕМ doc_type
+                self.doc_type
             )
-
-            # Восстанавливаем высоты строк
-            self.row_manager.restore_row_heights()
 
             # Подключаем сохранение высот при изменении
             vertical_header = self.table_widget.verticalHeader()
             vertical_header.sectionResized.connect(self._on_row_height_changed)
 
-            print(f"[TableBuilder] Setup completed for doc_type: {self.doc_type}")
+            print(f"[TableBuilder] Setup completed for doc_type: {self.doc_type}, view_mode: {self.view_mode}")
             return self
 
         except Exception as e:
@@ -68,6 +67,41 @@ class TableBuilder:
             import traceback
             traceback.print_exc()
             raise
+
+    def update_doc_type(self, doc_type: str):
+        """
+        Обновить тип документа и перезагрузить настройки.
+        Вызывается при смене типа документа.
+        """
+        doc_type = doc_type or "default"
+
+        if self.doc_type == doc_type:
+            return
+
+        # Сохраняем настройки старого типа
+        if self.column_manager:
+            self.column_manager.save_all()
+        if self.row_manager:
+            self.row_manager.save_row_heights()
+
+        # Обновляем тип
+        self.doc_type = doc_type
+
+        # Обновляем в менеджерах
+        if self.column_manager:
+            self.column_manager.doc_type = self.doc_type
+            self.column_manager.settings.set_current_document_type(self.doc_type)
+            # Загружаем настройки нового типа
+            self.column_manager.restore_all()
+
+        if self.row_manager:
+            self.row_manager.doc_type = self.doc_type
+            self.row_manager.pinned_ids = self.row_manager.settings.get_pinned_by_type(self.doc_type)
+            # Переприменяем закрепление для нового типа
+            self.row_manager._apply_pinning()
+            QTimer.singleShot(200, self.row_manager.restore_row_heights)
+
+        print(f"[TableBuilder] Updated doc_type to: {self.doc_type}")
 
     def _on_row_height_changed(self, logical_index, old_size, new_size):
         """Обработчик изменения высоты строки"""
@@ -119,8 +153,9 @@ class TableBuilder:
             "Номер документа": 130,
             "Тема": 250,
             "Тип": 100,
-            "Дата": 90,
+            "Дата создания": 120,
             "Статус": 120,
+            "Направление": 120,
             "Отправители": 150,
             "Получатели": 150,
             "Исполнители": 150,
@@ -130,10 +165,7 @@ class TableBuilder:
             "Вложение": 100,
             "Ответ": 100,
             "Краткое содержание": 200,
-            "Срок исполнения": 120,
-            "Направление": 120,
-            "Входящий номер": 120,
-            "Входящая дата": 120,
+            "Срок исполнения": 120
         }
 
         for i, col_name in enumerate(self.columns_config.values()):
@@ -156,3 +188,12 @@ class TableBuilder:
         """Обновить тип документа"""
         self.doc_type = doc_type or "default"
         print(f"[TableBuilder] Updated doc_type to: {self.doc_type}")
+
+    def set_view_mode(self, view_mode: str):
+        """Обновить режим просмотра"""
+        self.view_mode = view_mode or "all"
+        print(f"[TableBuilder] Updated view_mode to: {self.view_mode}")
+
+
+# table_builder.py
+

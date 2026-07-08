@@ -13,13 +13,20 @@ from client.windows.documents.table.builders.cell_builders import CellBuilderSig
 from client.windows.documents.table.widgets.read_checkbox import ReadCheckBox
 
 
+# row_filler.py
+
+# row_filler.py
+
 class RowFiller:
     """Класс для заполнения строк таблицы данными"""
 
-    def __init__(self, table_widget, config, signals):
+    def __init__(self, table_widget, config, signals, columns_config=None):
         self.table_widget = table_widget
         self.config = config
         self.signals = signals
+
+        # Сохраняем актуальную конфигурацию колонок
+        self._columns_config = columns_config or config.COLUMNS_CONFIG
 
         cell_signals = CellBuilderSignals()
         cell_signals.attachment_clicked.connect(self._on_attachment_clicked)
@@ -41,59 +48,122 @@ class RowFiller:
             config.EVEN_ROW_COLOR, config.ODD_ROW_COLOR, cell_signals
         )
 
+    def update_columns_config(self, columns_config: dict):
+        """Обновить конфигурацию колонок при смене типа/режима"""
+        self._columns_config = columns_config
+        print(f"[RowFiller] Updated columns config: {len(columns_config)} columns")
+
     def fill_row(self, row, document):
         """Заполнение одной строки таблицы"""
         bg_color = self.config.EVEN_ROW_COLOR if row % 2 == 0 else self.config.ODD_ROW_COLOR
-        col_map = {name: idx for idx, name in enumerate(self.config.COLUMNS_CONFIG.values())}
+
+        # Используем актуальную конфигурацию колонок
+        col_map = {name: idx for idx, name in enumerate(self._columns_config.values())}
 
         self.table_widget.setRowHeight(row, 60)
 
-        # ID с иконкой закрепления
-        doc_id = str(document.get("id", ""))
-        is_pinned = document.get("is_pinned", False)
+        # ========== ID - СКРЫВАЕМ ==========
+        if "ID" in col_map:
+            self.table_widget.setColumnHidden(col_map["ID"], True)
 
-        # Создаем QTableWidgetItem с иконкой
-        item_id = QTableWidgetItem(doc_id)
-        item_id.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        item_id.setBackground(QBrush(bg_color))
-        item_id.setForeground(QBrush(self.config.TEXT_COLOR))
-        item_id.setFlags(item_id.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        # ========== НОМЕР ДОКУМЕНТА С ИКОНКОЙ ЗАКРЕПЛЕНИЯ ==========
+        if "Номер документа" in col_map:
+            reg_number = document.get("reg_number", "")
+            is_pinned = document.get("is_pinned", False)
 
-        # Если закреплен - добавляем иконку
-        if is_pinned:
-            pin_icon = icon_manager.get_icon('pin', QSize(16, 16))
-            item_id.setIcon(pin_icon)
+            item_reg = QTableWidgetItem(str(reg_number) if reg_number else "")
+            item_reg.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            item_reg.setBackground(QBrush(bg_color))
+            item_reg.setForeground(QBrush(self.config.TEXT_COLOR))
+            item_reg.setFlags(item_reg.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            item_reg.setData(Qt.ItemDataRole.UserRole, document)
 
-        item_id.setData(Qt.ItemDataRole.UserRole, document)
-        self.table_widget.setItem(row, col_map["ID"], item_id)
+            if is_pinned:
+                pin_icon = icon_manager.get_icon('pin', QSize(16, 16))
+                item_reg.setIcon(pin_icon)
 
-        # Прочитано
-        self._setup_read_checkbox(row, col_map["Прочитано"], document, bg_color)
+            self.table_widget.setItem(row, col_map["Номер документа"], item_reg)
 
-        # Текстовые колонки (все возможные)
+        # ========== ПРОЧИТАНО ==========
+        if "Прочитано" in col_map:
+            self._setup_read_checkbox(row, col_map["Прочитано"], document, bg_color)
+
+        # ========== ТЕКСТОВЫЕ КОЛОНКИ ==========
         self._fill_text_columns(row, document, bg_color, col_map)
 
-        # Списковые колонки (отправители, получатели, исполнители)
+        # ========== СПИСКОВЫЕ КОЛОНКИ ==========
         self._fill_list_columns(row, document, bg_color, col_map)
 
-        # Специальные колонки
-        self.table_widget.setCellWidget(
-            row, col_map["Хэштеги"], self.tags_builder.build(row, document.get("tags", []))
-        )
-        self.table_widget.setCellWidget(
-            row, col_map["Комментарии"], self.comments_builder.build(row, document)
-        )
-        self.table_widget.setCellWidget(
-            row, col_map["Вложение"], self.attachment_builder.build(row, document)
-        )
-        self.table_widget.setCellWidget(
-            row, col_map["Ответ"], self.reply_builder.build(row, document)
-        )
+        # ========== СПЕЦИАЛЬНЫЕ КОЛОНКИ ==========
+        if "Хэштеги" in col_map:
+            self.table_widget.setCellWidget(
+                row, col_map["Хэштеги"], self.tags_builder.build(row, document.get("tags", []))
+            )
+        if "Комментарии" in col_map:
+            self.table_widget.setCellWidget(
+                row, col_map["Комментарии"], self.comments_builder.build(row, document)
+            )
+        if "Вложение" in col_map:
+            self.table_widget.setCellWidget(
+                row, col_map["Вложение"], self.attachment_builder.build(row, document)
+            )
+        if "Ответ" in col_map:
+            self.table_widget.setCellWidget(
+                row, col_map["Ответ"], self.reply_builder.build(row, document)
+            )
+        if "Делегаты" in col_map:
+            self.table_widget.setCellWidget(
+                row, col_map["Делегаты"], self.delegates_builder.build(row, document)
+            )
 
-        # Делегаты - используем специальный билдер с кнопкой
-        self.table_widget.setCellWidget(
-            row, col_map["Делегаты"], self.delegates_builder.build(row, document)
-        )
+    def _fill_text_columns(self, row, document, bg_color, col_map):
+        """Все текстовые поля"""
+        text_fields = {
+            "Тема": "title",
+            "Тип": "type",
+            "Дата создания": "date",
+            "Статус": "status",
+            "Краткое содержание": "about",
+            "Срок исполнения": "deadline",
+            "Направление": "direction",
+        }
+
+        for col_name, key in text_fields.items():
+            if col_name not in col_map:
+                continue
+
+            value = document.get(key, "") or document.get(key.lower(), "")
+
+            if key == "status":
+                from client.core.data.document_data import DocumentDataConfig
+                value = DocumentDataConfig.get_status_text(value) if value else ""
+            elif key == "direction":
+                from client.core.data.document_data import DocumentDataConfig
+                value = DocumentDataConfig.get_direction_text(value) if value else ""
+
+            item = self._create_item(str(value), bg_color)
+            self.table_widget.setItem(row, col_map[col_name], item)
+
+    def _fill_list_columns(self, row, document, bg_color, col_map):
+        """Отправители, Получатели, Исполнители"""
+        list_columns = {
+            "Отправители": "senders",
+            "Получатели": "receivers",
+            "Исполнители": "executors"
+        }
+
+        for col_name, key in list_columns.items():
+            if col_name not in col_map:
+                continue
+
+            values = document.get(key, [])
+            if isinstance(values, list):
+                text = ", ".join(str(v) for v in values) if values else "-"
+            else:
+                text = str(values) if values else "-"
+            item = self._create_item(text, bg_color)
+            item.setToolTip(text)
+            self.table_widget.setItem(row, col_map[col_name], item)
 
     def _create_item(self, text, bg_color, alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter):
         item = QTableWidgetItem(text)
@@ -108,44 +178,6 @@ class RowFiller:
         read_widget.state_changed.connect(self.signals.read_status_changed.emit)
         self.table_widget.setCellWidget(row, col, read_widget)
         self._set_cell_background(row, col, bg_color)
-
-    def _fill_text_columns(self, row, document, bg_color, col_map):
-        """Все текстовые поля"""
-        text_fields = {
-            "Номер документа": "reg_number",
-            "Тема": "title",
-            "Тип": "type",
-            "Дата": "date",
-            "Статус": "status",
-            "Краткое содержание": "about",
-            "Срок исполнения": "deadline",
-            "Направление": "direction",
-            "Входящий номер": "incoming_number",
-            "Входящая дата": "incoming_date",
-        }
-
-        for col_name, key in text_fields.items():
-            value = document.get(key, "") or document.get(key.lower(), "")
-            item = self._create_item(str(value), bg_color)
-            self.table_widget.setItem(row, col_map.get(col_name, -1), item)
-
-    def _fill_list_columns(self, row, document, bg_color, col_map):
-        """Отправители, Получатели, Исполнители"""
-        list_columns = {
-            "Отправители": "senders",
-            "Получатели": "receivers",
-            "Исполнители": "executors"
-        }
-
-        for col_name, key in list_columns.items():
-            values = document.get(key, [])
-            if isinstance(values, list):
-                text = ", ".join(str(v) for v in values) if values else "-"
-            else:
-                text = str(values) if values else "-"
-            item = self._create_item(text, bg_color)
-            item.setToolTip(text)
-            self.table_widget.setItem(row, col_map.get(col_name, -1), item)
 
     def _set_cell_background(self, row, col, color):
         widget = self.table_widget.cellWidget(row, col)

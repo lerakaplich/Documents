@@ -21,7 +21,7 @@ class RowManager(QObject):
         self._updating = False
 
         # Получаем закрепленные для этого типа
-        self.pinned_ids = self.settings.get_pinned_ids(self.doc_type)
+        self.pinned_ids = self.settings.get_pinned_by_type(self.doc_type)
         self._setup_row_behavior()
 
         # Таймер для debounce сохранения высот
@@ -70,7 +70,7 @@ class RowManager(QObject):
             is_pinned = True
 
         # Сохраняем для текущего типа
-        self.settings.set_pinned_ids(self.pinned_ids, self.doc_type)
+        self.settings.set_pinned_by_type(self.pinned_ids, self.doc_type)
 
         # Применяем
         self._apply_pinning()
@@ -113,8 +113,8 @@ class RowManager(QObject):
                     pinned_sorted.append(doc)
                     break
 
-        # Восстанавливаем порядок незакрепленных (глобально)
-        saved_order = self.settings.get_row_order()
+        # Восстанавливаем порядок незакрепленных (из настроек для типа)
+        saved_order = self.settings.get_row_order_by_type(self.doc_type)
         if saved_order:
             unpinned_dict = {doc.get('id'): doc for doc in unpinned}
             unpinned_sorted = []
@@ -140,8 +140,8 @@ class RowManager(QObject):
         # Обновляем UI
         self.updater.force_update()
 
-        # Сохраняем порядок (глобально)
-        self.settings.set_row_order([d.get('id') for d in sorted_documents])
+        # Сохраняем порядок для типа
+        self.settings.set_row_order_by_type([d.get('id') for d in sorted_documents], self.doc_type)
 
     def _on_section_moved(self, logical_index, old_visual_index, new_visual_index):
         if self._updating:
@@ -164,7 +164,7 @@ class RowManager(QObject):
             print(f"[RowManager] Error in _on_rows_moved: {e}")
 
     def _on_row_height_changed(self, logical_index, old_size, new_size):
-        """Обработчик изменения высоты строки - сохраняем по ID документа"""
+        """Обработчик изменения высоты строки - сохраняем по индексу для типа"""
         if self._updating:
             return
         if self._height_save_timer is not None:
@@ -179,47 +179,52 @@ class RowManager(QObject):
     def _get_documents_in_order(self) -> list:
         """Получение документов в текущем порядке строк"""
         documents = []
+        # Ищем колонку с данными
         for row in range(self.table_widget.rowCount()):
-            item = self.table_widget.item(row, 0)
-            if item:
-                doc_data = item.data(Qt.ItemDataRole.UserRole)
-                if doc_data:
-                    documents.append(doc_data)
-        return documents
-
-    def _save_row_order(self, documents: list):
-        """Сохранение порядка строк в настройки (глобально) - сохраняем ID документов"""
-        order_ids = [doc.get('id') for doc in documents]
-        self.settings.set_row_order(order_ids)
-        print(f"[RowManager] Saved row order (IDs): {order_ids}")
-
-    def save_row_heights(self):
-        """
-        Сохранить высоты строк для текущего типа документа по ID документа.
-        Формат: {str(document_id): height}
-        Сохраняется в ключ row_heights_{doc_type}
-        """
-        try:
-            heights_by_id = {}
-            row_count = self.table_widget.rowCount()
-            print(f"[RowManager] Saving row heights for {row_count} rows, doc_type: {self.doc_type}")
-
-            for row in range(row_count):
+            # Пробуем найти данные в любой колонке
+            found = False
+            for col in range(self.table_widget.columnCount()):
+                item = self.table_widget.item(row, col)
+                if item:
+                    doc_data = item.data(Qt.ItemDataRole.UserRole)
+                    if doc_data:
+                        documents.append(doc_data)
+                        found = True
+                        break
+            if not found:
+                # Если не нашли, пробуем первую колонку
                 item = self.table_widget.item(row, 0)
                 if item:
                     doc_data = item.data(Qt.ItemDataRole.UserRole)
                     if doc_data:
-                        doc_id = doc_data.get('id')
-                        if doc_id is not None:
-                            height = self.table_widget.rowHeight(row)
-                            if height > 0:
-                                heights_by_id[str(doc_id)] = height
-                                print(f"  Row {row}: doc_id={doc_id}, height={height}")
+                        documents.append(doc_data)
+        return documents
 
-            if heights_by_id:
-                # Сохраняем для текущего типа документа
-                self.settings.set_row_heights(heights_by_id, self.doc_type)
-                print(f"[RowManager] Saved row heights for {len(heights_by_id)} documents, type: {self.doc_type}")
+    def _save_row_order(self, documents: list):
+        """Сохранение порядка строк в настройки для типа"""
+        order_ids = [doc.get('id') for doc in documents if doc.get('id') is not None]
+        self.settings.set_row_order_by_type(order_ids, self.doc_type)
+        print(f"[RowManager] Saved row order for type '{self.doc_type}': {order_ids}")
+
+    def save_row_heights(self):
+        """
+        Сохранить высоты строк для текущего типа документа по индексу строки.
+        Формат: {str(row_index): height}
+        """
+        try:
+            heights_by_index = {}
+            row_count = self.table_widget.rowCount()
+            print(f"[RowManager] Saving row heights for {row_count} rows, doc_type: {self.doc_type}")
+
+            for row in range(row_count):
+                height = self.table_widget.rowHeight(row)
+                if height > 0:
+                    heights_by_index[str(row)] = height
+                    print(f"  Row {row}: height={height}")
+
+            if heights_by_index:
+                self.settings.set_row_heights_by_type(heights_by_index, self.doc_type)
+                print(f"[RowManager] Saved row heights for {len(heights_by_index)} rows, type: {self.doc_type}")
             else:
                 print("[RowManager] No row heights to save")
         except Exception as e:
@@ -229,37 +234,57 @@ class RowManager(QObject):
 
     def restore_row_heights(self):
         """
-        Восстановить высоты строк для текущего типа документа по ID документа.
-        Ищем в ключе row_heights_{doc_type}
+        Восстановить высоты строк для текущего типа документа по индексу.
         """
         try:
-            # Получаем высоты для текущего типа документа
-            heights_by_id = self.settings.get_row_heights(self.doc_type)
-            if not heights_by_id:
+            row_count = self.table_widget.rowCount()
+            if row_count == 0:
+                print(f"[RowManager] No rows to restore, skipping")
+                return
+
+            heights_by_index = self.settings.get_row_heights_by_type(self.doc_type)
+            if not heights_by_index:
                 print(f"[RowManager] No saved row heights for type: {self.doc_type}")
                 return
 
             restored_count = 0
-            row_count = self.table_widget.rowCount()
             print(f"[RowManager] Restoring row heights for {row_count} rows, type: {self.doc_type}")
 
             for row in range(row_count):
-                item = self.table_widget.item(row, 0)
-                if item:
-                    doc_data = item.data(Qt.ItemDataRole.UserRole)
-                    if doc_data:
-                        doc_id = doc_data.get('id')
-                        if doc_id is not None:
-                            height_key = str(doc_id)
-                            if height_key in heights_by_id:
-                                height = heights_by_id[height_key]
-                                if height > 0:
-                                    self.table_widget.setRowHeight(row, height)
-                                    restored_count += 1
-                                    print(f"  Row {row}: doc_id={doc_id}, height={height}")
+                row_key = str(row)
+                if row_key in heights_by_index:
+                    height = heights_by_index[row_key]
+                    if height > 0:
+                        self.table_widget.setRowHeight(row, height)
+                        restored_count += 1
 
-            print(f"[RowManager] Restored row heights for {restored_count} documents, type: {self.doc_type}")
+            print(f"[RowManager] Restored row heights for {restored_count} rows, type: {self.doc_type}")
         except Exception as e:
             print(f"[RowManager] Error restoring row heights: {e}")
             import traceback
             traceback.print_exc()
+
+    # row_manager.py
+
+    def set_doc_type(self, doc_type: str):
+        """Обновить тип документа и перезагрузить настройки"""
+        doc_type = doc_type or "default"
+
+        if self.doc_type == doc_type:
+            return
+
+        # Сохраняем старые настройки
+        self.save_row_heights()
+
+        # Обновляем тип
+        self.doc_type = doc_type
+
+        # Загружаем настройки нового типа
+        self.pinned_ids = self.settings.get_pinned_by_type(self.doc_type)
+        self._apply_pinning()
+
+        # Восстанавливаем высоты
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(200, self.restore_row_heights)
+
+        print(f"[RowManager] Updated doc_type to: {doc_type}")
