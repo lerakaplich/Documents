@@ -1,5 +1,5 @@
 """
-Управление данными таблицы - связь между репозиторием и UI
+Управление данными таблицы - только данные, без UI логики
 """
 from PyQt6.QtCore import QObject, pyqtSignal
 from typing import List, Dict, Any, Optional
@@ -9,27 +9,29 @@ class TableDataManager(QObject):
     """
     Управление данными в таблице.
     Хранит текущий список документов и управляет их отображением.
+    Единый источник истины для данных.
     """
 
     data_changed = pyqtSignal()
     document_selected = pyqtSignal(dict)
 
-    def __init__(self, table_widget, row_filler):
+    def __init__(self, table_widget, row_renderer):
         super().__init__()
-        self.table_widget = table_widget
-        self.row_filler = row_filler
+        self._table_widget = table_widget
+        self._row_renderer = row_renderer
         self._documents: List[Dict[str, Any]] = []
         self._selected_document: Optional[Dict[str, Any]] = None
         self._current_doc_type: str = "default"
+        self._columns_config: dict = {}
+
+    def set_columns_config(self, columns_config: dict):
+        """Обновить конфигурацию колонок"""
+        self._columns_config = columns_config
+        if self._row_renderer:
+            self._row_renderer.update_columns_config(columns_config)
 
     def load_data(self, documents: List[Dict[str, Any]], doc_type: str = "default"):
-        """
-        Загрузка данных с указанием типа документа
-
-        Args:
-            documents: список документов
-            doc_type: тип документа для настроек
-        """
+        """Загрузка данных с указанием типа документа"""
         self._documents = documents
         self._current_doc_type = doc_type
         self._update_table()
@@ -43,14 +45,14 @@ class TableDataManager(QObject):
         self.data_changed.emit()
 
     def _update_table(self):
-        """Обновление таблицы"""
-        self.table_widget.setRowCount(0)
-        self.table_widget.setRowCount(len(self._documents))
+        """Обновление таблицы - единственное место взаимодействия с UI"""
+        self._table_widget.setRowCount(0)
+        self._table_widget.setRowCount(len(self._documents))
 
         for row, doc in enumerate(self._documents):
-            self.row_filler.fill_row(row, doc)
+            self._row_renderer.render_row(row, doc)
 
-        self.table_widget.resizeRowsToContents()
+        self._table_widget.resizeRowsToContents()
 
     def get_documents(self) -> List[Dict[str, Any]]:
         """Получить все документы"""
@@ -76,7 +78,7 @@ class TableDataManager(QObject):
                 return idx
         return -1
 
-    def select_document(self, doc_id: int):
+    def select_document(self, doc_id: int) -> bool:
         """Выбрать документ по ID"""
         doc = self.get_document_by_id(doc_id)
         if doc:
