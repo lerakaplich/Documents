@@ -153,6 +153,9 @@ class RowManager(QObject):
         # Обновляем данные
         self._data_manager.update_data(sorted_documents)
 
+        # ОБНОВЛЯЕМ МАППИНГ ДЛЯ ВЫСОТ
+        self._height_manager.update_document_map(sorted_documents)
+
         if self._updater:
             self._updater.force_update()
 
@@ -160,7 +163,7 @@ class RowManager(QObject):
         order_ids = [d.get('id') for d in sorted_documents if d.get('id') is not None]
         self._order_manager.save_order(order_ids)
 
-    # ========== DOC TYPE ==========
+    # В методе set_doc_type:
 
     def set_doc_type(self, doc_type: str):
         """Обновить тип документа"""
@@ -175,8 +178,12 @@ class RowManager(QObject):
         self._height_manager.set_doc_type(doc_type)
 
         self._apply_pinning()
-        QTimer.singleShot(200, self._height_manager.restore_heights)
 
+        # Обновляем маппинг перед восстановлением высот
+        documents = self._data_manager.get_documents()
+        self._height_manager.update_document_map(documents)
+
+        QTimer.singleShot(200, self._height_manager.restore_heights)
     # ========== HELPERS ==========
 
     def find_reg_number_column(self) -> int:
@@ -186,3 +193,6 @@ class RowManager(QObject):
             if header_item and header_item.text() == "Номер документа":
                 return col
         return None
+
+        # В методе _apply_pinning добавляем обновление маппинга:
+

@@ -4,39 +4,28 @@ class SettingsKeys:
     """Ключи для локальных настроек (хранятся в JSON файле)"""
 
     # ============ ГЛОБАЛЬНЫЕ НАСТРОЙКИ ============
-    ROW_ORDER = "row_order"  # Порядок строк (глобально)
-    ROW_HEIGHTS = "row_heights"  # Высоты строк (глобально)
-    PINNED = "pinned"  # Закрепленные документы (глобально)
-    HIDDEN_ROWS = "hidden_rows"  # Скрытые строки (глобально)
+    ROW_ORDER = "row_order"
+    ROW_HEIGHTS = "row_heights"  # Устаревает, используем ROW_HEIGHTS_BY_ID
+    ROW_HEIGHTS_BY_ID = "row_heights_by_id"  # НОВЫЙ КЛЮЧ - по ID
+    PINNED = "pinned"
+    HIDDEN_ROWS = "hidden_rows"
 
     # ============ НАСТРОЙКИ ПО ТИПУ ДОКУМЕНТА ============
-    # Колонки
-    COLUMN_WIDTHS = "column_widths"  # Ширина колонок
-    HIDDEN_COLUMNS = "hidden_columns"  # Скрытые колонки
-    COLUMN_ORDER = "column_order"  # Порядок колонок
+    COLUMN_WIDTHS = "column_widths"
+    HIDDEN_COLUMNS = "hidden_columns"
+    COLUMN_ORDER = "column_order"
 
-    # Строки
-    ROW_HEIGHTS_TYPE = "row_heights"  # Высоты строк для типа
-    ROW_ORDER_TYPE = "row_order"  # Порядок строк для типа
-    PINNED_TYPE = "pinned"  # Закрепленные для типа
-    HIDDEN_ROWS_TYPE = "hidden_rows"  # Скрытые строки для типа
+    ROW_HEIGHTS_TYPE = "row_heights"  # Устаревает
+    ROW_HEIGHTS_BY_ID_TYPE = "row_heights_by_id"  # НОВЫЙ КЛЮЧ
+    ROW_ORDER_TYPE = "row_order"
+    PINNED_TYPE = "pinned"
+    HIDDEN_ROWS_TYPE = "hidden_rows"
 
-    # ============ СПЕЦИАЛЬНЫЕ ТИПЫ ============
-    DEFAULT_TYPE = "default"  # Настройки по умолчанию
-    EMPTY_TYPE = "{}"  # Особый режим (пустой/новый документ)
+    DEFAULT_TYPE = "default"
+    EMPTY_TYPE = "{}"
 
     @staticmethod
     def get_type_key(base_key: str, doc_type: str) -> str:
-        """
-        Получить ключ с типом документа
-
-        Args:
-            base_key: базовый ключ (например, COLUMN_ORDER)
-            doc_type: тип документа (например, "1", "2", "default", "{}")
-
-        Returns:
-            str: ключ с типом документа (например, "column_order_1")
-        """
         if not doc_type or doc_type == SettingsKeys.DEFAULT_TYPE:
             return base_key
         return f"{base_key}_{doc_type}"

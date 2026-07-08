@@ -263,21 +263,22 @@ class SettingsManager:
 
     def get_row_heights_by_doc_type(self, doc_type: str = None) -> dict:
         """
-        Получить высоты строк для типа документа.
-        Если для типа нет настроек - возвращает default.
+        Получить высоты строк (совместимость).
+        Сначала пытается получить новый формат (по ID),
+        если нет - старый (по индексу).
         """
         doc_type = doc_type or self.get_current_document_type()
 
-        # Проверяем настройки для конкретного типа
-        key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, doc_type)
-        heights = self.get(key, None)
+        # Сначала пробуем новый формат
+        new_key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_BY_ID_TYPE, doc_type)
+        heights = self.get(new_key, None)
 
         if heights is not None:
             return heights
 
-        # Если нет - возвращаем default
-        default_key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, "default")
-        return self.get(default_key, {})
+        # Если нет - пробуем старый
+        old_key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, doc_type)
+        return self.get(old_key, {})
 
     def set_row_heights_by_doc_type(self, heights: dict, doc_type: str = None):
         """Сохранить высоты строк для типа документа"""
@@ -341,3 +342,47 @@ class SettingsManager:
         doc_type = doc_type or self.get_current_document_type()
         key = self._get_type_key(SettingsKeys.HIDDEN_ROWS_TYPE, doc_type)
         self.set(key, rows)
+
+    # client/core/settings/settings_manager.py
+
+    # Добавить методы в класс SettingsManager:
+
+    # ============ ВЫСОТЫ СТРОК ПО ID ============
+
+    def get_row_heights_by_id(self, doc_type: str = None) -> dict:
+        """Получить высоты строк по ID документа"""
+        key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_BY_ID_TYPE, doc_type)
+        return self.get(key, {})
+
+    def set_row_heights_by_id(self, heights: dict, doc_type: str = None):
+        """Сохранить высоты строк по ID документа"""
+        key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_BY_ID_TYPE, doc_type)
+        self.set(key, heights)
+
+    def remove_row_heights_by_type(self, doc_type: str = None):
+        """Удалить старые высоты строк для типа"""
+        key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, doc_type)
+        if key in self._settings:
+            del self._settings[key]
+            self._save_settings()
+
+    # ============ СОВМЕСТИМОСТЬ СО СТАРЫМ КОДОМ ============
+
+    def get_row_heights_by_doc_type(self, doc_type: str = None) -> dict:
+        """
+        Получить высоты строк (совместимость).
+        Сначала пытается получить новый формат (по ID),
+        если нет - старый (по индексу).
+        """
+        doc_type = doc_type or self.get_current_document_type()
+
+        # Сначала пробуем новый формат
+        new_key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_BY_ID_TYPE, doc_type)
+        heights = self.get(new_key, None)
+
+        if heights is not None:
+            return heights
+
+        # Если нет - пробуем старый
+        old_key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, doc_type)
+        return self.get(old_key, {})
