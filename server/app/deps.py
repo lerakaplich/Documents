@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from server.app.database.document_models import SystemEmployee
 from server.app.database.session import get_docs_db, get_employees_db  # УБРАЛИ кадровый get_employees_db
+from server.app.repositories.attachment_repo import AttachmentRepository
 from server.app.repositories.comment_repo import CommentRepository
 from server.app.repositories.doc_type_repo import DocTypeRepository
 from server.app.repositories.document_repo import DocumentRepository
@@ -13,6 +14,8 @@ from server.app.repositories.org_repo import OrgRepository
 from server.app.repositories.overtime_repo import OvertimeRepository
 from server.app.repositories.tag_repo import TagRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.services.common.tiff_converter import DocumentProcessor
+from server.app.services.documents.attachment_service import AttachmentService
 from server.app.services.documents.comment_service import CommentService
 from server.app.services.documents.doc_type_service import DocTypeService
 from server.app.services.documents.document_service import DocumentService
@@ -121,12 +124,21 @@ def get_overtime_service(
     repo = OvertimeRepository(emp_db)
     return OvertimeService(security, repo)
 
+def get_attachment_service(db_docs: AsyncSession = Depends(get_docs_db)) -> AttachmentService:
+    repo = AttachmentRepository(db_docs)
+    processor = DocumentProcessor()
+    return AttachmentService(repo, processor)
+
 
 # --- ФАБРИКИ ЗАВИСИМОСТЕЙ ДЛЯ СЕРВИСОВ ---
 
-def get_doc_service(db_docs: AsyncSession = Depends(get_docs_db)) -> DocumentService:
+def get_doc_service(
+    db_docs: AsyncSession = Depends(get_docs_db),
+    attachment_svc: AttachmentService = Depends(get_attachment_service)
+) -> DocumentService:
     repo = DocumentRepository(db_docs)
-    return DocumentService(repo)
+    # Теперь передаем в конструктор сервиса вложений
+    return DocumentService(repo, attachment_svc)
 
 
 def get_delegation_service(

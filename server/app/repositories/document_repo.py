@@ -1,3 +1,4 @@
+from pymupdf import pymupdf
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, cast, String, desc, asc, exists, insert, delete, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert

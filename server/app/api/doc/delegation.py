@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from typing import List, Optional
 
-from server.app.deps import get_current_user, get_workflow_service, get_delegation_service
+from server.app.deps import get_current_user, get_delegation_service
 from server.app.schemas.doc.document_dto import (
     RedirectHistoryRead
 )
