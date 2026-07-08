@@ -4,8 +4,8 @@
 from PyQt6.QtWidgets import QHeaderView, QAbstractItemView
 from PyQt6.QtCore import Qt, QTimer
 
-from client.core.table.managers.column_manager import ColumnManager
-from client.core.table.managers.row_manager import RowManager
+from client.core.table.managers.column.column_manager import ColumnManager
+from client.core.table.managers.row.row_manager import RowManager
 from client.core.table.managers.table_data_manager import TableDataManager
 from client.core.table.table_facade import TableFacade
 

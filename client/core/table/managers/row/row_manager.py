@@ -5,9 +5,9 @@ from PyQt6.QtCore import QObject, pyqtSignal, QTimer, Qt
 from PyQt6.QtWidgets import QHeaderView
 
 from client.core.table.managers.pin_manager import PinManager
-from client.core.table.managers.row_order_manager import RowOrderManager
-from client.core.table.managers.row_height_manager import RowHeightManager
-from client.core.table.managers.row_behavior_manager import RowBehaviorManager
+from client.core.table.managers.row.row_order_manager import RowOrderManager
+from client.core.table.managers.row.row_height_manager import RowHeightManager
+from client.core.table.managers.row.row_behavior_manager import RowBehaviorManager
 
 
 class RowManager(QObject):
