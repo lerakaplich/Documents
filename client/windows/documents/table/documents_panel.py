@@ -1,18 +1,17 @@
-
 """
 Панель документов - управление данными и UI
 """
 import os
 import sys
-from PyQt6.QtWidgets import QWidget, QMenu, QApplication
+from PyQt6.QtWidgets import QWidget, QApplication
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QAction
 from PyQt6.uic import loadUi
 
 from client.windows.documents.table.documents_table import DocumentsTable
-from client.windows.documents.table.styles import TableStyles
-from client.core.data.document_repository import document_repository
-from client.core.data.document_data import DocumentDataConfig
+from client.windows.documents.table.menus.column_menu import ColumnsMenu
+from client.windows.documents.table.menus.filter_menu import FilterMenu
+from client.windows.documents.table.menus.status_menu import StatusesMenu
+from client.core.table.documents_panel_controller import DocumentsPanelController
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
@@ -38,9 +37,11 @@ class DocumentsPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.repository = document_repository
+        # Контроллер логики (вынесен в core)
+        self.controller = DocumentsPanelController()
 
-        # Текущее состояние
+        # Текущее состояние (дублируется для удобства доступа извне,
+        # но основное состояние хранится в контроллере)
         self.current_type_id = None
         self.current_direction = None
         self.current_query = ""
@@ -74,80 +75,23 @@ class DocumentsPanel(QWidget):
             self.layout().addWidget(self.documents_table)
 
     def _setup_buttons(self):
-        """Настройка кнопок и их меню"""
-        menu_style = TableStyles.get_menu_style()
-
+        """Настройка кнопок и их меню (с использованием новых классов меню)"""
         if hasattr(self, 'columnsBtn'):
-            self.columnsBtn.setMenu(self._create_columns_menu(menu_style))
+            # Исправлено: передаём parent по ключевому слову
+            self.columns_menu = ColumnsMenu(parent=self)
+            self.columnsBtn.setMenu(self.columns_menu)
+
         if hasattr(self, 'filterBtn'):
-            self.filterBtn.setMenu(self._create_filter_menu(menu_style))
+            self.filter_menu = FilterMenu(self)
+            self.filterBtn.setMenu(self.filter_menu)
+
         if hasattr(self, 'statusesBtn'):
-            self.statusesBtn.setMenu(self._create_statuses_menu(menu_style))
+            self.statuses_menu = StatusesMenu(self)
+            self.statusesBtn.setMenu(self.statuses_menu)
+            self.statuses_menu.connect_clear_signal(self.statuses_menu.clear_selection)
+
         if hasattr(self, 'searchEdit'):
             self.searchEdit.textChanged.connect(self.on_search_changed)
-
-    def _create_columns_menu(self, menu_style):
-        """Меню выбора столбцов"""
-        menu = QMenu(self)
-        menu.setStyleSheet(menu_style)
-
-        columns = ["ID", "Номер документа", "Тема", "Тип", "Дата", "Статус", "Отправитель", "Хэштеги"]
-        for col in columns:
-            action = QAction(col, menu)
-            action.setCheckable(True)
-            action.setChecked(True)
-            menu.addAction(action)
-
-        return menu
-
-    def _create_filter_menu(self, menu_style):
-        """Меню фильтрации"""
-        menu = QMenu(self)
-        menu.setStyleSheet(menu_style)
-
-        unread_action = QAction("Непрочитанные", menu)
-        unread_action.setCheckable(True)
-        menu.addAction(unread_action)
-
-        read_action = QAction("Прочитанные", menu)
-        read_action.setCheckable(True)
-        menu.addAction(read_action)
-
-        menu.addSeparator()
-
-        my_docs_action = QAction("Мои документы", menu)
-        my_docs_action.setCheckable(True)
-        menu.addAction(my_docs_action)
-
-        all_docs_action = QAction("Все документы", menu)
-        all_docs_action.setCheckable(True)
-        all_docs_action.setChecked(True)
-        menu.addAction(all_docs_action)
-
-        menu.addSeparator()
-
-        by_date_action = QAction("По дате (сначала новые)", menu)
-        by_date_action.setCheckable(True)
-        menu.addAction(by_date_action)
-
-        return menu
-
-    def _create_statuses_menu(self, menu_style):
-        """Меню статусов"""
-        menu = QMenu(self)
-        menu.setStyleSheet(menu_style)
-
-        statuses = ["Черновик", "На рассмотрении", "На подписи", "Подписан", "Завершен"]
-        for status in statuses:
-            action = QAction(status, menu)
-            action.setCheckable(True)
-            menu.addAction(action)
-
-        menu.addSeparator()
-        clear_action = QAction("Сбросить фильтр статусов", menu)
-        menu.addAction(clear_action)
-
-        return menu
 
     def _connect_signals(self):
         """Подключение сигналов"""
@@ -169,50 +113,26 @@ class DocumentsPanel(QWidget):
 
     def load_all_documents(self):
         """Загрузить все документы"""
-        documents = self.repository.get_all_documents()
-        self.current_type_id = None
-        self.current_direction = None
-        self.current_title = "Все документы"
-        self.current_view_mode = "all"
-
-        self._update_table(documents, "default", "Все документы", "all")
+        documents, title, view_mode, doc_type = self.controller.load_all_documents()
+        self._sync_state_from_controller()
+        self._update_table(documents, doc_type, title, view_mode)
         self.data_loaded.emit(len(documents))
-
-    # documents_panel.py - исправленный метод
 
     def load_documents_by_type(self, type_id: int):
         """Загрузить документы по типу - оптимизированно"""
-        documents = self.repository.get_documents_by_type(type_id)
-        self.current_type_id = type_id
-        self.current_direction = None
-        self.current_view_mode = "type"
-
-        type_info = self.repository.get_document_type_by_id(type_id)
-        title = type_info.get('name', f"Тип {type_id}") if type_info else f"Тип {type_id}"
-        self.current_title = title
-
-        # Используем оптимизированную загрузку
-        self._update_table(documents, str(type_id), title, "type")
+        documents, title, view_mode, doc_type = self.controller.load_documents_by_type(type_id)
+        self._sync_state_from_controller()
+        self._update_table(documents, doc_type, title, view_mode)
         self.type_changed.emit(type_id)
         self.data_loaded.emit(len(documents))
 
     def load_documents_by_direction(self, direction: str, title: str = None):
         """Загрузить документы по направлению"""
-        documents = self.repository.get_documents_by_direction(direction)
-        self.current_direction = direction
-        self.current_type_id = None
-        self.current_view_mode = "direction"
-
-        if title is None:
-            title = DocumentDataConfig.DIRECTION_MAPPING.get(direction, direction)
-        self.current_title = title
-
-        doc_type = direction if direction in ["incoming", "outgoing", "internal"] else "default"
-        self._update_table(documents, doc_type, title, "direction")
+        documents, title, view_mode, doc_type = self.controller.load_documents_by_direction(direction, title)
+        self._sync_state_from_controller()
+        self._update_table(documents, doc_type, title, view_mode)
         self.direction_changed.emit(direction)
         self.data_loaded.emit(len(documents))
-
-    # В documents_panel.py обновить методы загрузки
 
     def _update_table(self, documents: list, doc_type: str = None, title: str = None, view_mode: str = None):
         """Обновить таблицу"""
@@ -231,24 +151,32 @@ class DocumentsPanel(QWidget):
             import traceback
             traceback.print_exc()
 
+    def _sync_state_from_controller(self):
+        """Синхронизация локального состояния с контроллером (для обратной совместимости)"""
+        self.current_type_id = self.controller.current_type_id
+        self.current_direction = self.controller.current_direction
+        self.current_query = self.controller.current_query
+        self.current_title = self.controller.current_title
+        self.current_view_mode = self.controller.current_view_mode
+
     # ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
 
     def on_search_changed(self, text):
         """Обработка поиска"""
         self.current_query = text
         self.search_requested.emit(text)
-
-        if text and len(text) >= 3:
-            results = self.repository.search_documents(text)
-            self._update_table(results, f"Поиск: {text}")
-        elif not text:
-            self.load_all_documents()
+        documents, title, view_mode, doc_type = self.controller.search_documents(text)
+        self._update_table(documents, doc_type, title, view_mode)
+        # Синхронизируем состояние после поиска
+        self.current_title = title
+        self.current_view_mode = view_mode
 
     def update_title(self, title):
         """Обновление заголовка"""
         if hasattr(self, 'labelTitle'):
             self.labelTitle.setText(title)
         self.current_title = title
+        self.controller.current_title = title   # поддерживаем синхронизацию
 
     def get_documents_table(self):
         """Получение объекта таблицы"""
@@ -256,14 +184,9 @@ class DocumentsPanel(QWidget):
 
     def refresh(self):
         """Обновить текущие данные"""
-        if self.current_type_id is not None:
-            self.load_documents_by_type(self.current_type_id)
-        elif self.current_direction is not None:
-            self.load_documents_by_direction(self.current_direction)
-        else:
-            self.load_all_documents()
-
-
+        documents, title, view_mode, doc_type = self.controller.refresh()
+        self._sync_state_from_controller()
+        self._update_table(documents, doc_type, title, view_mode)
 
 
 if __name__ == "__main__":

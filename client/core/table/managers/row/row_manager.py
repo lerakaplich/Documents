@@ -186,13 +186,10 @@ class RowManager(QObject):
         QTimer.singleShot(200, self._height_manager.restore_heights)
     # ========== HELPERS ==========
 
-    def find_reg_number_column(self) -> int:
+    def find_reg_number_column(self) -> int | None:
         """Найти колонку 'Номер документа'"""
         for col in range(self._table.columnCount()):
             header_item = self._table.horizontalHeaderItem(col)
             if header_item and header_item.text() == "Номер документа":
                 return col
         return None
-
-        # В методе _apply_pinning добавляем обновление маппинга:
-
