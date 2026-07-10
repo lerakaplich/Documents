@@ -44,3 +44,9 @@ class AttachmentRepository:
         stmt = select(Document.sent_date).where(Document.id == doc_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_by_id(self, attach_id: int):
+        """Получает запись вложения по его ID."""
+        stmt = select(DocumentAttachment).where(DocumentAttachment.id == attach_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()

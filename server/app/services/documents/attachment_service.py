@@ -117,4 +117,60 @@ class AttachmentService:
         finally:
             shutil.rmtree(work_dir)
 
+    async def get_attachments_info(self, doc_id: int):
+        attachments = await self.repo.get_all_by_doc(doc_id)
+        return [
+            {
+                "id": attach.id,
+                "file_name": attach.file_name,
+                "file_size": attach.file_size,
+                "preview_url": f"/attachments/{attach.id}/preview",
+                "uploaded_at": attach.uploaded_at.isoformat() if attach.uploaded_at else None
+            }
+            for attach in attachments
+        ]
 
+    async def delete_attachment(self, doc_id: int, attach_id: int):
+        # 1. Проверка бизнес-логики: можно ли удалять?
+        # Сначала получаем информацию об объекте, чтобы знать путь к архиву
+        attachment = await self.repo.get_by_id(attach_id)
+        if not attachment:
+            raise HTTPException(status_code=404, detail="Вложение не найдено")
+
+        # БЕЗОПАСНАЯ РАЗБОРКА ПУТИ
+        if '#' not in attachment.storage_path:
+            # Если разделителя нет, значит данные повреждены или путь старого формата
+            raise HTTPException(status_code=500, detail="Ошибка формата пути к файлу в БД")
+
+        if attachment.document_id != doc_id:
+            raise HTTPException(status_code=403, detail="Вложение не принадлежит этому документу")
+
+        attachments_count = await self.repo.count_by_doc(doc_id)
+        if attachments_count <= 1:
+            raise HTTPException(status_code=400, detail="Нельзя удалить последнее вложение")
+
+        # 2. Удаление файла из ZIP
+        # storage_path имеет формат "storage/YYYY/MM/DD/doc_id/attachments.zip#file_id.tiff"
+        archive_path, file_name = attachment.storage_path.split('#')
+
+        # Создаем временную папку для пересборки архива
+        work_dir = os.path.join(os.path.dirname(archive_path), f"temp_del_{uuid.uuid4().hex}")
+        os.makedirs(work_dir, exist_ok=True)
+
+        try:
+            # Распаковываем всё, кроме удаляемого файла
+            with zipfile.ZipFile(archive_path, 'r') as zipf:
+                for member in zipf.namelist():
+                    if member != file_name and member != file_name.replace('.tiff', '_thumb.jpg'):
+                        zipf.extract(member, work_dir)
+
+            # Пересобираем архив
+            with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for f in os.listdir(work_dir):
+                    zipf.write(os.path.join(work_dir, f), f)
+
+            # 3. Удаление записи из БД
+            await self.repo.delete(attach_id)
+
+        finally:
+            shutil.rmtree(work_dir)
