@@ -7,10 +7,10 @@ from PyQt6.QtWidgets import QWidget, QApplication
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.uic import loadUi
 
+from client.windows.documents.menus.column_menu import ColumnsMenu
+from client.windows.documents.menus.filter_menu import FilterMenu
+from client.windows.documents.menus.status_menu import StatusesMenu
 from client.windows.documents.table.documents_table import DocumentsTable
-from client.windows.documents.table.menus.column_menu import ColumnsMenu
-from client.windows.documents.table.menus.filter_menu import FilterMenu
-from client.windows.documents.table.menus.status_menu import StatusesMenu
 from client.core.table.documents_panel_controller import DocumentsPanelController
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))

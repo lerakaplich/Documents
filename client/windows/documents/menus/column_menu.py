@@ -1,4 +1,5 @@
-from .base_menu import BaseMenu
+from client.windows.documents.menus.base_menu import BaseMenu
+
 
 class ColumnsMenu(BaseMenu):
     """Меню для включения/отключения колонок таблицы."""

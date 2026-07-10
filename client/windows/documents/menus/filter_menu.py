@@ -1,6 +1,6 @@
 # client/windows/documents/table/menus/filter_menu.py
 from PyQt6.QtCore import pyqtSignal
-from .base_menu import BaseMenu
+from client.windows.documents.menus.base_menu import BaseMenu
 
 class FilterMenu(BaseMenu):
     """Меню фильтров документов."""

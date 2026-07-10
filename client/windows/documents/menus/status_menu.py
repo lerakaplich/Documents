@@ -1,6 +1,6 @@
 from PyQt6.QtGui import QAction
 
-from .base_menu import BaseMenu
+from client.windows.documents.menus.base_menu import BaseMenu
 
 class StatusesMenu(BaseMenu):
     """Меню выбора статусов документов."""

@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RedirectDialog</class>
+ <widget class="QDialog" name="RedirectDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1025</width>
+    <height>555</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Перенаправление документа</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+* {
+    font-family: 'Segoe UI', Arial;
+}
+
+QDialog {
+    background-color: #F5F5F7;
+    color: black;
+}
+
+/* Красная шапка */
+QFrame#headerFrame {
+    background-color: #D22730;
+    margin: 0px;
+    padding: 0px;
+    border: none;
+}
+
+
+
+QLabel#titleLabel {
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    background-color: transparent;
+    padding: 10px;
+	color: black;
+}
+
+/* Белая карточка */
+QFrame#contentFrame {
+    background-color: white;
+    border: 1px solid #E0E0E0;
+    border-radius: 12px;
+    margin: 6px 8px 6px 8px;
+    padding: 16px;
+}
+
+/* Поясняющие надписи */
+QLabel#instructionLabel {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    background-color: transparent;
+    padding-bottom: 4px;
+}
+QLabel#commentLabel {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    background-color: transparent;
+    padding-bottom: 4px;
+}
+
+/* Поле поиска */
+
+
+QLineEdit {
+    border: 1px solid #D0D0D0;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 14px;
+    background-color: white;
+}
+QLineEdit:focus {
+    border: 2px solid #D22730;
+}
+
+
+/* Список сотрудников */
+QListWidget {
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    background-color: white;
+    color: black;
+    font-size: 15px;
+    padding: 4px;
+}
+QListWidget::item {
+    padding: 8px 6px;
+}
+QListWidget::item:selected {
+    background-color: #ccab6e;
+    color: white;
+border: none;
+}
+
+/* Поле комментария */
+QTextEdit {
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 14px;
+    color: black;
+    background-color: white;
+}
+QTextEdit:focus {
+border: 2px solid #D22730;
+}
+
+
+/* Кнопка Отправить (золотая) */
+QPushButton#sendButton {
+    background-color: #ccab6e;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-size: 18px;
+    font-weight: bold;
+}
+QPushButton#sendButton:hover {
+    background-color: #998664;
+}
+QPushButton#sendButton:pressed {
+    background-color: #7a6a50;
+}
+/* Вертикальная полоса прокрутки */
+            QScrollBar:vertical {
+                background: #F5F5F5;
+                width: 8px;
+                border-radius: 4px;
+                margin: 0px;
+                border: none;
+            }
+
+            QScrollBar::handle:vertical {
+                background: #C1C1C1;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+
+            QScrollBar::handle:vertical:hover {
+                background: #A0A0A0;
+            }
+
+            QScrollBar::handle:vertical:pressed {
+                background: #888888;
+            }
+
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+                width: 0px;
+                height: 0px;
+            }
+
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background: none;
+            }
+   </string>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QVBoxLayout" name="mainContentLayout">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>16</number>
+     </property>
+     <property name="topMargin">
+      <number>16</number>
+     </property>
+     <property name="rightMargin">
+      <number>16</number>
+     </property>
+     <property name="bottomMargin">
+      <number>16</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="titleLabel">
+       <property name="minimumSize">
+        <size>
+         <width>60</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>60</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Перенаправление документа</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <widget class="QFrame" name="contentFrame">
+         <property name="frameShape">
+          <enum>QFrame::Shape::StyledPanel</enum>
+         </property>
+         <layout class="QHBoxLayout" name="contentLayout">
+          <property name="spacing">
+           <number>12</number>
+          </property>
+          <property name="leftMargin">
+           <number>16</number>
+          </property>
+          <property name="topMargin">
+           <number>16</number>
+          </property>
+          <property name="rightMargin">
+           <number>16</number>
+          </property>
+          <property name="bottomMargin">
+           <number>16</number>
+          </property>
+          <item>
+           <layout class="QVBoxLayout" name="leftLayout">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="instructionLabel">
+              <property name="text">
+               <string>Выберите сотрудников, которым будет перенаправлен документ:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="searchEdit">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>80</height>
+               </size>
+              </property>
+              <property name="placeholderText">
+               <string>Поиск сотрудников...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QListWidget" name="employeesListWidget">
+              <property name="minimumSize">
+               <size>
+                <width>520</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="rightLayout">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="commentLabel">
+              <property name="text">
+               <string>Комментарий (будет отправлен в Telegram):</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QTextEdit" name="commentTextEdit">
+              <property name="placeholderText">
+               <string>Введите текст комментария...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="sendButton">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string>Отправить</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

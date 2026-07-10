@@ -196,6 +196,7 @@ if __name__ == "__main__":
     try:
         print("\n" + "=" * 50)
         print("Запуск приложения...")
+
         print("=" * 50)
 
         app = QApplication(sys.argv)
