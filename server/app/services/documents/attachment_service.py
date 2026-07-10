@@ -1,3 +1,4 @@
+import io
 import os
 import uuid
 from datetime import date, datetime
@@ -174,3 +175,37 @@ class AttachmentService:
 
         finally:
             shutil.rmtree(work_dir)
+
+    async def get_page_count(self, attach_id: int) -> int:
+        attachment = await self.repo.get_by_id(attach_id)
+        archive_path, file_name = attachment.storage_path.split('#')
+
+        # 1. Убедимся, что папка temp существует
+        os.makedirs("temp", exist_ok=True)
+
+        temp_path = f"temp/view_{attach_id}_{uuid.uuid4().hex}"
+        with zipfile.ZipFile(archive_path, 'r') as zipf:
+            with open(temp_path, "wb") as f:
+                f.write(zipf.read(file_name))
+
+        try:
+            return self.processor.get_page_count(temp_path)
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    async def get_page_as_stream(self, attach_id: int, page_num: int) -> io.BytesIO:
+        attachment = await self.repo.get_by_id(attach_id)
+        archive_path, file_name = attachment.storage_path.split('#')
+
+        temp_path = f"temp/view_{attach_id}_{uuid.uuid4().hex}"
+        with zipfile.ZipFile(archive_path, 'r') as zipf:
+            with open(temp_path, "wb") as f:
+                f.write(zipf.read(file_name))
+
+        try:
+            return self.processor.get_page_as_stream(temp_path, page_num)
+        finally:
+            # Важно: удаляем временный файл после отправки
+            # Если нужно, можно использовать BackgroundTasks в эндпоинте
+            os.remove(temp_path)

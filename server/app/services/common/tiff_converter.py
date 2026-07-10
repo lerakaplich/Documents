@@ -1,3 +1,4 @@
+import io
 import os
 import uuid
 import fitz as pymupdf
@@ -131,6 +132,37 @@ class DocumentProcessor:
         # Если картинок много, а текста мало — это 100% скан
         # Возвращаем процент "картиночности"
         return total_images_size, total_page_area
+
+    def get_page_as_stream(self, file_path: str, page_num: int) -> io.BytesIO:
+        """Извлекает страницу из TIFF или PDF и отдает как JPEG-поток"""
+        ext = os.path.splitext(file_path)[1].lower()
+
+        if ext == '.pdf':
+            doc = pymupdf.open(file_path)
+            page = doc.load_page(page_num)
+            pix = page.get_pixmap(matrix=pymupdf.Matrix(2, 2))  # DPI=144
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            doc.close()
+        else:  # Предполагаем TIFF
+            img = Image.open(file_path)
+            img.seek(page_num)
+            img = img.convert("RGB")
+
+        stream = io.BytesIO()
+        img.save(stream, format="JPEG", quality=80)
+        stream.seek(0)
+        return stream
+
+    def get_page_count(self, file_path: str) -> int:
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext == '.pdf':
+            doc = pymupdf.open(file_path)
+            count = len(doc)
+            doc.close()
+            return count
+        else:
+            img = Image.open(file_path)
+            return img.n_frames
 
 
 # =========================================================
