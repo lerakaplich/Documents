@@ -10,7 +10,6 @@ from PyQt6.QtGui import QAction, QFont
 import os
 
 from client.windows.documents.table.widgets.hashtag_widget import HashtagWidget
-from client.windows.documents.table.widgets.read_checkbox import ReadCheckBox
 
 
 class CellBuilderSignals(QObject):

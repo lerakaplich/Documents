@@ -24,13 +24,15 @@ class ReadCheckBox(QWidget):
         self.readCheckBox.stateChanged.connect(self.on_state_changed)
         layout.addWidget(self.readCheckBox)
 
-        # Применяем стили с прозрачным фоном
+        # Применяем стили с прозрачным фоном для контейнера
         self.setStyleSheet("""
             QWidget {
                 background: transparent;
             }
         """)
 
+        # ИСПРАВЛЕННЫЕ СТИЛИ: Используем ваши локальные картинки
+        # Обратите внимание на прямые слеши (/) вместо обратных (\)
         self.readCheckBox.setStyleSheet("""
             QCheckBox {
                 color: #1B232A;
@@ -42,24 +44,26 @@ class ReadCheckBox(QWidget):
             QCheckBox::indicator {
                 width: 18px;
                 height: 18px;
-                border: 2px solid #B0B0B0;
-                border-radius: 3px;
-                background-color: transparent;
+                /* Картинка для НЕнажатого состояния */
+                image: url("D:/Documents/client/images/cb_unchecked.png");
             }
 
             QCheckBox::indicator:checked {
-                background-color: #CCAB6E;
-                border-color: #CCAB6E;
+                /* Картинка для НАЖАТОГО состояния */
+                image: url("D:/Documents/client/images/cb_checked.png");
             }
 
+            /* Если хотите добавить эффект при наведении, можно использовать другой файл,
+               либо убрать этот блок, чтобы при наведении ничего не менялось */
             QCheckBox::indicator:hover {
-                border-color: #CCAB6E;
+                /* image: url("D:/Documents/client/images/cb_hover.png"); */
             }
         """)
 
     def on_state_changed(self, state):
         """Обработка изменения состояния чекбокса"""
-        is_checked = state == 2  # Qt.Checked = 2
+        # В PyQt6 state может быть объектом Qt.CheckState, приводим к bool через сравнение
+        is_checked = state == Qt.CheckState.Checked.value or state == Qt.CheckState.Checked
         self.state_changed.emit(self.document_id, is_checked)
 
     def set_read_state(self, is_read):

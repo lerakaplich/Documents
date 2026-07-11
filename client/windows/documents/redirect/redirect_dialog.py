@@ -1,11 +1,8 @@
-"""
-Диалоговое окно перенаправления документа.
-Единый список сотрудников с чекбоксами, поиск и поле комментария.
-"""
 import os
 import sys
-from PyQt6.QtWidgets import (QDialog, QListWidgetItem, QApplication)
-from PyQt6.QtCore import pyqtSignal, Qt, QFile
+from PyQt6.QtWidgets import (QDialog, QListWidgetItem, QApplication,
+                             QWidget, QHBoxLayout, QLabel, QFrame)
+from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from PyQt6.uic import loadUi
 
 
@@ -14,15 +11,9 @@ class RedirectDialog(QDialog):
     redirect_confirmed = pyqtSignal(list, str)
 
     def __init__(self, current_recipients: list, all_employees: list, parent=None):
-        """
-        :param current_recipients: список словарей {'id': int, 'name': str} – уже назначенные
-        :param all_employees: полный список словарей {'id': int, 'name': str} – все сотрудники
-        """
         super().__init__(parent)
-        # Создаём удобные структуры
         self.recipient_ids = {emp['id'] for emp in current_recipients}
         self.all_employees = {emp['id']: emp for emp in all_employees}
-        # Убедимся, что все текущие получатели есть в общем списке (на всякий случай)
         for emp in current_recipients:
             self.all_employees.setdefault(emp['id'], emp)
 
@@ -32,13 +23,6 @@ class RedirectDialog(QDialog):
 
     def _init_ui(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        # Сохраняем исходный base_dir для картинок (D:\Documents\client)
-        # Если ваш файл лежит, например, в D:\Documents\client\windows, то один переход вверх:
-        # project_dir = os.path.dirname(base_dir)
-        # Но судя по циклу ниже, вы поднимаетесь на 4 уровня вверх.
-        # Давайте найдем точный путь к images на основе вашей структуры:
-
-        # Вычисляем корень проекта, как у вас в коде:
         root_dir = base_dir
         for _ in range(4):
             root_dir = os.path.dirname(root_dir)
@@ -46,40 +30,67 @@ class RedirectDialog(QDialog):
         ui_path = os.path.join(root_dir, "client", "ui", "documents", "redirect", "redirect_dialog.ui")
         loadUi(ui_path, self)
 
-        # --- НАЧАЛО БЛОКА ДЛЯ КРАСИВЫХ ЧЕКБОКСОВ ---
-        # Формируем точный абсолютный путь к папке с картинками
-        # Заменяем обратные слэши \ на прямые /, так как Qt Stylesheets требуют именно их
         images_dir = os.path.join(root_dir, "client", "images").replace("\\", "/")
 
-        # Применяем стили конкретно к списку, подставляя вычисленные пути к файлам
         self.employeesListWidget.setStyleSheet(f"""
             QListWidget::indicator {{
                 width: 18px;
                 height: 18px;
+                background-color: transparent;
             }}
             QListWidget::indicator:unchecked {{
                 image: url('{images_dir}/cb_unchecked.png');
+                background-color: transparent;
             }}
             QListWidget::indicator:checked {{
                 image: url('{images_dir}/cb_checked.png');
+                background-color: transparent;
             }}
         """)
-        # --- КОНЕЦ БЛОКА ---
 
     def _connect_signals(self):
         self.searchEdit.textChanged.connect(self._on_search_text_changed)
         self.employeesListWidget.itemChanged.connect(self._on_item_changed)
         self.sendButton.clicked.connect(self._on_send)
 
+    def _create_separator(self, text: str) -> QWidget:
+        """Создает аккуратный виджет-разделитель: линия | текст | линия"""
+        container = QWidget()
+        # Фиксируем высоту контейнера, чтобы Qt не сжимал его в 0 пикселей
+        container.setFixedHeight(16)
+
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setSpacing(12)
+
+        # Левая линия
+        line_left = QFrame()
+        line_left.setFrameShape(QFrame.Shape.HLine)
+        line_left.setStyleSheet("color: #dcdcdc; background-color: #dcdcdc; max-height: 1px;")
+
+        # Текст по центру
+        label = QLabel(text)
+        label.setStyleSheet("color: #888888; font-size: 12px; font-weight: normal; background: transparent;")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Правая линия
+        line_right = QFrame()
+        line_right.setFrameShape(QFrame.Shape.HLine)
+        line_right.setStyleSheet("color: #dcdcdc; background-color: #dcdcdc; max-height: 1px;")
+
+        layout.addWidget(line_left, 1)
+        layout.addWidget(label, 0)
+        layout.addWidget(line_right, 1)
+
+        return container
+
     # ---------- Заполнение списка ----------
     def _rebuild_list(self, filter_text: str = ""):
         """
-        Полностью перестраивает список с учётом текущего состояния чекбоксов и фильтра.
-        Сортировка: сначала отмеченные (по алфавиту), затем неотмеченные (по алфавиту).
+        Полностью перестраивает список с добавлением полноценных разделительных линий.
         """
         filter_lower = filter_text.lower().strip()
 
-        # Разделяем всех сотрудников на две группы
         checked = []
         unchecked = []
         for emp in self.all_employees.values():
@@ -90,45 +101,62 @@ class RedirectDialog(QDialog):
             else:
                 unchecked.append(emp)
 
-        # Сортировка по имени
         checked.sort(key=lambda x: x['name'])
         unchecked.sort(key=lambda x: x['name'])
 
-        # Заполняем виджет
         self.employeesListWidget.blockSignals(True)
         self.employeesListWidget.clear()
 
-        for emp in checked:
-            item = QListWidgetItem(emp['name'])
-            item.setData(Qt.ItemDataRole.UserRole, emp['id'])
-            item.setCheckState(Qt.CheckState.Checked)
-            self.employeesListWidget.addItem(item)
+        # 1. Добавляем группу "Документ перенаправлен"
+        if checked:
+            sep_checked = QListWidgetItem()
+            sep_checked.setFlags(Qt.ItemFlag.NoItemFlags)
+            # Задаем размер элемента списка вручную через QSize
+            sep_checked.setSizeHint(QSize(10, 28))
 
-        for emp in unchecked:
-            item = QListWidgetItem(emp['name'])
-            item.setData(Qt.ItemDataRole.UserRole, emp['id'])
-            item.setCheckState(Qt.CheckState.Unchecked)
-            self.employeesListWidget.addItem(item)
+            self.employeesListWidget.addItem(sep_checked)
+            self.employeesListWidget.setItemWidget(sep_checked, self._create_separator("Перенаправлено (выполнено)"))
+
+            for emp in checked:
+                item = QListWidgetItem(emp['name'])
+                item.setData(Qt.ItemDataRole.UserRole, emp['id'])
+                item.setCheckState(Qt.CheckState.Checked)
+                self.employeesListWidget.addItem(item)
+
+        # 2. Добавляем группу "Список сотрудников"
+        if unchecked:
+            sep_unchecked = QListWidgetItem()
+            sep_unchecked.setFlags(Qt.ItemFlag.NoItemFlags)
+            # Задаем размер элемента списка вручную через QSize
+            sep_unchecked.setSizeHint(QSize(10, 28))
+
+            self.employeesListWidget.addItem(sep_unchecked)
+            self.employeesListWidget.setItemWidget(sep_unchecked, self._create_separator("Ожидают перенаправления"))
+
+            for emp in unchecked:
+                item = QListWidgetItem(emp['name'])
+                item.setData(Qt.ItemDataRole.UserRole, emp['id'])
+                item.setCheckState(Qt.CheckState.Unchecked)
+                self.employeesListWidget.addItem(item)
 
         self.employeesListWidget.blockSignals(False)
 
-    # ---------- Поиск ----------
     def _on_search_text_changed(self, text: str):
         self._rebuild_list(text)
 
-    # ---------- Изменение чекбокса ----------
     def _on_item_changed(self, item: QListWidgetItem):
         emp_id = item.data(Qt.ItemDataRole.UserRole)
+        if emp_id is None:
+            return
+
         if item.checkState() == Qt.CheckState.Checked:
             self.recipient_ids.add(emp_id)
         else:
             self.recipient_ids.discard(emp_id)
 
-        # Перестраиваем список с сохранением текущего текста поиска
         current_filter = self.searchEdit.text()
         self._rebuild_list(current_filter)
 
-    # ---------- Отправка ----------
     def _on_send(self):
         recipient_ids = list(self.recipient_ids)
         comment = self.commentTextEdit.toPlainText().strip()
@@ -136,15 +164,12 @@ class RedirectDialog(QDialog):
         self.accept()
 
 
-# ---------- Тестовый запуск ----------
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    # Пример: текущие получатели (уже назначены)
     current = [
         {"id": 1, "name": "Иванов И.И."},
         {"id": 2, "name": "Петров П.П."}
     ]
-    # Все сотрудники организации
     all_emp = [
         {"id": 1, "name": "Иванов И.И."},
         {"id": 2, "name": "Петров П.П."},
@@ -158,11 +183,11 @@ if __name__ == "__main__":
 
     dialog = RedirectDialog(current, all_emp)
 
+
     def on_confirm(ids, comment):
         print("Отмеченные получатели (ID):", ids)
         print("Комментарий:", comment)
 
+
     dialog.redirect_confirmed.connect(on_confirm)
     dialog.exec()
-
-    sys.exit(app.exec())

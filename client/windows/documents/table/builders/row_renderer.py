@@ -13,6 +13,10 @@ from client.windows.documents.table.builders.cell_builders import (
 from client.windows.documents.table.widgets.read_checkbox import ReadCheckBox
 
 
+# Если классы в разных файлах, импорт ниже остается актуальным
+# from client.windows.documents.table.widgets.read_checkbox import ReadCheckBox
+
+
 class RowRenderer:
     """
     Преобразователь данных документа в UI элементы таблицы.
