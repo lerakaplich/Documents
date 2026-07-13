@@ -166,6 +166,42 @@ class DocumentAttachment(BaseDocuments):
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+class DocumentStatusHistory(BaseDocuments):
+    """История изменений статусов документов для бизнес-мониторинга"""
+    __tablename__ = "document_status_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    old_status: Mapped[Optional[DocStatus]] = mapped_column(
+        SqlEnum(DocStatus, name="doc_status"),
+        nullable=True
+    )
+    new_status: Mapped[DocStatus] = mapped_column(
+        SqlEnum(DocStatus, name="doc_status"),
+        nullable=False
+    )
+
+    changed_by_employee_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("system_employees.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+    comment: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Связи (Relationships)
+    document: Mapped["Document"] = relationship(back_populates="status_history")
+    employee: Mapped[Optional["SystemEmployee"]] = relationship()
+
 # ============================================================================
 # ГЛАВНАЯ СУЩНОСТЬ: ДОКУМЕНТ
 # ============================================================================
@@ -231,6 +267,12 @@ class Document(BaseDocuments):
     attachments: Mapped[List["DocumentAttachment"]] = relationship(
         cascade="all, delete-orphan",
         lazy="selectin"
+    )
+    status_history: Mapped[List["DocumentStatusHistory"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="DocumentStatusHistory.changed_at.asc()"
     )
 
     type: Mapped["DocumentType"] = relationship("DocumentType")

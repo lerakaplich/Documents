@@ -124,10 +124,13 @@ def get_overtime_service(
     repo = OvertimeRepository(emp_db)
     return OvertimeService(security, repo)
 
-def get_attachment_service(db_docs: AsyncSession = Depends(get_docs_db)) -> AttachmentService:
+def get_attachment_service(
+    db_docs: AsyncSession = Depends(get_docs_db),
+    security_svc: SecurityService = Depends(get_security_service)
+) -> AttachmentService:
     repo = AttachmentRepository(db_docs)
     processor = DocumentProcessor()
-    return AttachmentService(repo, processor)
+    return AttachmentService(repo, processor, security_svc)
 
 
 # --- ФАБРИКИ ЗАВИСИМОСТЕЙ ДЛЯ СЕРВИСОВ ---

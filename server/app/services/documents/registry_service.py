@@ -17,6 +17,7 @@ class RegistryService:
         query = self.repo.apply_archive_status(query, user_id)
         query = self.repo.apply_pin_status(query, user_id)
         query = self.repo.apply_reply_status(query)
+        query = self.repo.apply_attachments_status(query)
 
 
         # 2. Применяем права доступа
@@ -52,7 +53,7 @@ class RegistryService:
             rows = []
 
         items = []
-        for doc, is_read, is_archived, is_pinned, reply_id in rows:
+        for doc, is_read, is_archived, is_pinned, reply_id, has_attachments in rows:
             # 1. Валидируем только те поля, которые есть в БД
             # (exclude_unset=True помогает избежать проблем, если какие-то поля None)
             item = DocumentListItem.model_validate(doc, from_attributes=True)
@@ -62,6 +63,7 @@ class RegistryService:
             item.is_archived = is_archived or False
             item.is_pinned = is_pinned or False
             item.reply_id = reply_id
+            item.has_attachments = has_attachments or False
             item.type_name = doc.type.name if doc.type else "Без типа"
 
             # 3. Заполняем вложенные списки

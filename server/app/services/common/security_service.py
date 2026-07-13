@@ -39,6 +39,26 @@ class SecurityService:
             )
         return True
 
+    async def verify_document_access(self, user: CurrentUser, doc_id: int, repo: Any) -> bool:
+        """
+        Универсальная проверка доступа к документу:
+        Пропускает, если пользователь Admin/Superadmin ИЛИ является участником (sender, recipient и др.).
+        """
+        # 1. Админы и суперадмины имеют полный доступ ко всем документам
+        if user.rights in [AppRights.admin, AppRights.superadmin]:
+            return True
+
+        # 2. Проверяем связь пользователя с документом через репозиторий
+        # Метод get_user_relation должен быть реализован в вашем репозитории
+        relation = await repo.get_user_relation(doc_id, user.id)
+        if relation and relation.role in [DocumentRole.sender, DocumentRole.recipient, DocumentRole.delegate]:
+            return True
+
+        raise HTTPException(
+            status_code=403,
+            detail="Доступ запрещен: вы не являетесь участником этого документа и не имеете прав администратора."
+        )
+
     async def verify_management_rights(self, current_user: CurrentUser, target_path: str):
         """Проверка: может ли юзер управлять объектом по пути target_path."""
         if current_user.rights in [AppRights.admin, AppRights.superadmin]:

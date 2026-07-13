@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from server.app.database.document_models import (
     Document, EmployeeDocument, SystemEmployee,
     Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority, DocumentRole, RedirectHistory, Read,
-    DocumentArchive, DocumentPin
+    DocumentArchive, DocumentPin, DocumentAttachment, DocumentStatusHistory
 )
 
 
@@ -303,6 +303,17 @@ class DocumentRepository:
             (Document.id.in_(read_alias)).label("is_read")
         )
 
+    def apply_attachments_status(self, query):
+        """
+        Присоединяет информацию о наличии вложений.
+        has_attachments будет True, если в таблице Attachment есть записи для данного документа.
+        """
+        attachments_exist = select(DocumentAttachment.document_id).where(
+            DocumentAttachment.document_id == Document.id
+        ).exists()
+
+        return query.add_columns(attachments_exist.label("has_attachments"))
+
     async def execute_query(self, query):
         """Выполнение запроса, который возвращает пары (Document, is_read)."""
         result = await self.db.execute(query)
@@ -375,3 +386,23 @@ class DocumentRepository:
 
         # 2. Добавляем колонку к основному запросу
         return query.add_columns(reply_subquery.label("reply_id"))
+
+    async def add_status_history(self, history_entry: DocumentStatusHistory) -> None:
+        """Сохранение записи об изменении статуса документа в базу данных"""
+        self.db.add(history_entry)
+
+    async def get_current_timestamp(self):
+        """Вспомогательный метод для получения текущего времени сервера бэкенда"""
+        from datetime import datetime, timezone
+        return datetime.now(timezone.utc)
+
+    async def get_status_history_by_doc_id(self, document_id: int) -> List[DocumentStatusHistory]:
+        """Получение хронологической истории изменения статусов документа"""
+        query = (
+            select(DocumentStatusHistory)
+            .where(DocumentStatusHistory.document_id == document_id)
+            .order_by(DocumentStatusHistory.changed_at.asc())
+            .options(selectinload(DocumentStatusHistory.employee))  # Сразу подгружаем ФИО сотрудника
+        )
+        result = await self.db.execute(query)
+        return list(result.scalars().all())

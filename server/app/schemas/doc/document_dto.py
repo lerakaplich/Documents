@@ -40,6 +40,7 @@ class DocumentListItem(BaseModel):
     id: int
     is_read: bool = False
     is_archived: bool = False
+    has_attachments: bool = False
     is_pinned: bool = False
     reply_id: Optional[int] = None
     sequence_number: Optional[int] = None
