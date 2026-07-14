@@ -69,6 +69,7 @@ class Employee(BaseEmployees):
     work_number: Mapped[Optional[str]] = mapped_column(String(50))
     email: Mapped[Optional[str]] = mapped_column(Text)
     birth_date: Mapped[Optional[date]] = mapped_column(Date)
+    password_hash = mapped_column(String(255), nullable=True, default=None)
     chat_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
 
