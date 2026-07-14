@@ -59,6 +59,8 @@ QLabel#sectionLabel {
     padding-bottom: 4px;
 }
 
+
+
 /* Список комментариев */
 QListWidget {
     border: 1px solid #E0E0E0;
@@ -66,18 +68,22 @@ QListWidget {
     background-color: #FAFAFA;
     color: black;
     font-size: 14px;
-    padding: 4px;
+    padding: 6px 0px; /* Делаем небольшие отступы сверху и снизу внутри списка */
+    outline: 0;
 }
+
 QListWidget::item {
-    padding: 8px 10px;
-    border-bottom: 1px solid #F0F0F0;
+    padding: 0px;
+    margin: 0px;
+    background-color: transparent;
 }
-QListWidget::item:selected {
-    background-color: #E3F2FD;
-    color: #1B232A;
-}
-QListWidget::item:hover {
-    background-color: #F5F5F5;
+
+QListWidget::item:selected, 
+QListWidget::item:hover, 
+QListWidget::item:active {
+    background-color: transparent;
+    border: none;
+    outline: none;
 }
 
 /* Поле ввода комментария */

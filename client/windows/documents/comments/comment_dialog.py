@@ -8,9 +8,11 @@ from typing import List, Dict, Any, Optional
 
 from PyQt6 import uic
 from PyQt6.QtCore import pyqtSignal, Qt, QEvent
-from PyQt6.QtWidgets import QListWidgetItem, QDialog, QMessageBox, QApplication
+from PyQt6.QtWidgets import (
+    QDialog, QMessageBox, QApplication,
+    QScrollArea, QVBoxLayout, QWidget, QSizePolicy, QFrame, QLabel
+)
 
-from client.core.utils.icon_manager import icon_manager
 from client.windows.documents.comments.comment_widget import CommentWidget
 
 
@@ -55,6 +57,9 @@ class CommentsDialog(QDialog):
         doc_subject = document_data.get('subject', '')
         self.docInfoLabel.setText(f"Документ: №{doc_number} - {doc_subject}")
 
+        # Заменяем QListWidget на QScrollArea с контейнером
+        self.setup_scroll_area()
+
         # Заполнение списка комментариев
         self.populate_comments()
 
@@ -66,34 +71,109 @@ class CommentsDialog(QDialog):
 
         self.setModal(True)
 
+    def setup_scroll_area(self):
+        """Настройка скролл-области вместо QListWidget"""
+        # Получаем родительский лейаут
+        parent_layout = self.commentsListWidget.parent().layout()
+
+        # Сохраняем индекс виджета в лейауте
+        index = parent_layout.indexOf(self.commentsListWidget)
+
+        # Удаляем QListWidget
+        parent_layout.removeWidget(self.commentsListWidget)
+        self.commentsListWidget.deleteLater()
+
+        # Создаем QScrollArea
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        # Стилизация скролла
+        self.scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: 1px solid #E0E0E0;
+                border-radius: 8px;
+                background-color: #FAFAFA;
+            }
+            QScrollBar:vertical {
+                background: #F5F5F5;
+                width: 8px;
+                border-radius: 4px;
+                margin: 0px;
+                border: none;
+            }
+            QScrollBar::handle:vertical {
+                background: #C1C1C1;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #A0A0A0;
+            }
+            QScrollBar::handle:vertical:pressed {
+                background: #888888;
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+                width: 0px;
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background: none;
+            }
+        """)
+
+        # Создаем контейнер для комментариев
+        # Создаем контейнер для комментариев
+        self.comments_container = QWidget()
+        self.comments_container.setStyleSheet("background-color: transparent;")
+
+        # ВАЖНО: Добавляем выравнивание Qt.AlignmentFlag.AlignTop
+        self.comments_layout = QVBoxLayout(self.comments_container)
+        self.comments_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.comments_layout.setSpacing(10)  # Можно вернуть небольшой отступ между блоками
+        self.comments_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.scroll_area.setWidget(self.comments_container)
+        parent_layout.insertWidget(index, self.scroll_area)
+
     def populate_comments(self):
         """Заполнение списка комментариев"""
-        self.commentsListWidget.clear()
+        # Очищаем контейнер (включая старые пружины/растяжки)
+        while self.comments_layout.count() > 0:
+            item = self.comments_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            # Удаляем элементы без виджетов (например, stretch)
+            elif item.spacerItem():
+                pass
 
         if not self.comments:
-            # Добавляем сообщение об отсутствии комментариев
-            item = QListWidgetItem("Нет комментариев")
-            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            item.setForeground(Qt.GlobalColor.gray)
-            self.commentsListWidget.addItem(item)
+            no_comments_label = QLabel("Нет комментариев")
+            no_comments_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            no_comments_label.setStyleSheet("color: gray; padding: 20px;")
+            self.comments_layout.addWidget(no_comments_label)
             return
 
-        # Сортируем комментарии по времени (старые сверху)
         sorted_comments = sorted(
             self.comments,
             key=lambda x: x.get('created_at', ''),
             reverse=False
         )
 
+        # Добавляем комментарии
         for comment in sorted_comments:
-            # Создаем виджет комментария
             comment_widget = CommentWidget(comment)
+            self.comments_layout.addWidget(comment_widget)
 
-            # Создаем элемент списка
-            item = QListWidgetItem()
-            item.setSizeHint(comment_widget.sizeHint())
-            self.commentsListWidget.addItem(item)
-            self.commentsListWidget.setItemWidget(item, comment_widget)
+        # ВАЖНО: Добавляем stretch в самый конец, чтобы комментарии не растягивались по высоте
+        self.comments_layout.addStretch()
 
     def add_comment(self):
         """Добавление нового комментария"""
@@ -140,7 +220,9 @@ class CommentsDialog(QDialog):
         self.comment_added.emit(comment_data)
 
         # Прокручиваем к последнему комментарию
-        self.commentsListWidget.scrollToBottom()
+        self.scroll_area.verticalScrollBar().setValue(
+            self.scroll_area.verticalScrollBar().maximum()
+        )
 
     def eventFilter(self, obj, event):
         """Обработка событий (Ctrl+Enter)"""
@@ -166,24 +248,20 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     # Тестовые данные в формате API
+    test_comments = []
+    for i in range(5):
+        test_comments.append({
+            "id": i + 1,
+            "text": f"Комментарий #{i + 1}: " + "Это тестовый комментарий с разной длиной текста. " * (i % 3 + 1),
+            "created_at": f"2026-05-{28 + i % 3:02d}T{7 + i % 12:02d}:{i % 60:02d}:00Z",
+            "author_fio": f"Автор {i + 1}"
+        })
+
     test_doc = {
         'id': 1,
         'number': '12-3-5/001',
         'subject': 'Тестовый документ',
-        'comments': [
-            {
-                "id": 1,
-                "text": "Развернула RabbitMQ в тестовом контейнере Docker, пропускная способность LSTM выросла. Нужен продуктовый Redis.",
-                "created_at": "2026-05-28T07:20:00Z",
-                "author_fio": "Шершнева Е.И."
-            },
-            {
-                "id": 2,
-                "text": "Проверяю конфигурацию брокера. Конфиг очередей RabbitMQ нужно вынести в ENV-файлы микросервиса.",
-                "created_at": "2026-05-29T08:15:00Z",
-                "author_fio": "Овчинников И.И."
-            }
-        ]
+        'comments': test_comments
     }
 
     current_user = {
@@ -197,4 +275,3 @@ if __name__ == "__main__":
     dialog = CommentsDialog(test_doc, current_user=current_user)
     dialog.comment_added.connect(lambda data: print(f"Добавлен комментарий: {data}"))
     dialog.exec()
-    sys.exit(app.exec())
