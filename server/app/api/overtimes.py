@@ -1,8 +1,14 @@
-from fastapi import APIRouter, Depends, status
-from server.app.deps import get_current_user, get_overtime_service
+from datetime import date
+from typing import Optional
+
+from fastapi import APIRouter, Depends, status, UploadFile, File, Query
+from starlette.responses import StreamingResponse
+
+from server.app.deps import get_current_user, get_overtime_service, get_overtime_import_service
 
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.schemas.user_schemas.overtime_dto import OvertimeRead, OvertimeCreate, OvertimeUpdate
+from server.app.services.overtime.overtime_import import OvertimeImportService
 
 router = APIRouter(prefix="/overtime", tags=["Overtime"])
 
@@ -61,3 +67,51 @@ async def delete_overtime(
     service = Depends(get_overtime_service)
 ):
     await service.delete_by_admin(current_user, ot_id)
+
+
+@router.post("/import-excel", status_code=status.HTTP_200_OK)
+async def import_overtimes_from_excel(
+        file: UploadFile = File(..., description="Excel файл выгрузки СКУД"),
+        current_user: CurrentUser = Depends(get_current_user),
+        import_service: OvertimeImportService = Depends(get_overtime_import_service)
+):
+    """Эндпоинт для пакетного импорта переработок сотрудников из Excel файлов"""
+
+
+    # 2. Передаем бинарный поток напрямую в сервис
+    # file.file - это и есть файловый объект (File-like object), который ожидает pandas
+    import_result = await import_service.import_from_excel_file(file.file)
+
+    return {
+        "status": "completed",
+        "data": import_result
+    }
+
+
+@router.get("/export-excel", response_class=StreamingResponse)
+async def export_overtime_to_excel(
+        dept_id: Optional[int] = Query(None, description="ID департамента для фильтрации"),
+        start_date: Optional[date] = Query(None, description="Начало периода"),
+        end_date: Optional[date] = Query(None, description="Конец периода"),
+        current_user: CurrentUser = Depends(get_current_user),
+        export_service: OvertimeExportService = Depends(get_overtime_export_service)
+):
+    """
+    Эндпоинт генерирует и отдаёт Excel-файл со сводным отчетом по переработкам
+    """
+    # 1. Проверяем права пользователя на выгрузку отчетов внутри сервиса безопасности
+    await export_service.security.verify_can_export(current_user, dept_id)
+
+    # 2. Генерируем Excel в байтовый поток в памяти (BytesIO)
+    file_buffer, filename = await export_service.generate_report_buffer(
+        dept_id=dept_id,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+    # 3. Отдаем файл клиенту напрямую
+    return StreamingResponse(
+        file_buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

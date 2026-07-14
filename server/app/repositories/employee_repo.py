@@ -14,6 +14,12 @@ class EmployeesRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def get_all_active(self) -> List[Employee]:
+        """Возвращает список всех работающих сотрудников для кэширования при импорте"""
+        stmt = select(Employee).where(Employee.is_active == True)
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_by_id(self, emp_id: int):
         stmt = (
             select(Employee)

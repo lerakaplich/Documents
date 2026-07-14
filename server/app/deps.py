@@ -14,6 +14,7 @@ from server.app.repositories.org_repo import OrgRepository
 from server.app.repositories.overtime_repo import OvertimeRepository
 from server.app.repositories.tag_repo import TagRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.services.overtime.overtime_import import OvertimeImportService
 from server.app.services.common.tiff_converter import DocumentProcessor
 from server.app.services.documents.attachment_service import AttachmentService
 from server.app.services.documents.comment_service import CommentService
@@ -123,6 +124,19 @@ def get_overtime_service(
 ) -> OvertimeService:
     repo = OvertimeRepository(emp_db)
     return OvertimeService(security, repo)
+
+
+def get_overtime_import_service(
+        emp_db: AsyncSession = Depends(get_employees_db),
+        security: SecurityService = Depends(get_security_service)
+) -> OvertimeImportService:
+    overtime_repo = OvertimeRepository(emp_db)
+    employee_repo = EmployeesRepository(emp_db)
+    return OvertimeImportService(
+        overtime_repo=overtime_repo,
+        employee_repo=employee_repo,
+        security=security
+    )
 
 def get_attachment_service(
     db_docs: AsyncSession = Depends(get_docs_db),

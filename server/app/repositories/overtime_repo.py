@@ -1,3 +1,5 @@
+from datetime import date, time
+
 from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -62,3 +64,31 @@ class OvertimeRepository:
         )
         await self.db.commit()
         return result.scalar_one_or_none()
+
+    async def check_exists(self, employee_id: int, overtime_date: date, start_time: time, end_time: time) -> bool:
+        """Проверяет, существует ли уже переработка у сотрудника на эту дату и время"""
+        stmt = (
+            select(Overtime)
+            .where(
+                Overtime.employee_id == employee_id,
+                Overtime.overtime_date == overtime_date,
+                Overtime.overtime_start == start_time,
+                Overtime.overtime_end == end_time
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
+    async def create_overtime_direct(self, employee_id: int, overtime_date: date, start_time: time, end_time: time,
+                                     description: str):
+        """Прямая запись переработки (используется при автоимпорте)"""
+        new_record = Overtime(
+            employee_id=employee_id,
+            overtime_date=overtime_date,
+            overtime_start=start_time,
+            overtime_end=end_time,
+            note_text=description
+        )
+        self.db.add(new_record)
+        # commit() здесь делать НЕ НАДО, сервис импорта сделает один общий commit в конце файла
+        return new_record

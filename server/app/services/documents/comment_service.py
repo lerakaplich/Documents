@@ -53,8 +53,8 @@ class CommentService:
             author = authors_map.get(comment.employee_id)
 
             if author:
-                init_f = f"{author.first_name}." if author.first_name else ""
-                init_p = f" {author.patronymic}." if author.patronymic else ""
+                init_f = f"{author.first_name[0].upper()}." if author.first_name else ""
+                init_p = f"{author.patronymic[0].upper()}." if author.patronymic else ""
                 author_fio = f"{author.last_name} {init_f}{init_p}".strip()
             else:
                 author_fio = "Неизвестный сотрудник"
