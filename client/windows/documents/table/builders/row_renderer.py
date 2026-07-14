@@ -29,25 +29,41 @@ class RowRenderer:
         self._signals = signals
         self._columns = columns_config or config.COLUMNS_CONFIG
 
-        cell_signals = CellBuilderSignals()
-        cell_signals.attachment_clicked.connect(self._on_attachment_clicked)
-        cell_signals.attachment_upload.connect(self._on_attachment_upload)
-        cell_signals.reply_clicked.connect(self._on_reply_clicked)
-        cell_signals.reply_upload.connect(self._on_reply_upload)
+        # Создаем ОДИН общий экземпляр сигналов для всех билдеров ячеек
+        self.cell_signals = CellBuilderSignals()
+        self.cell_signals.attachment_clicked.connect(self._on_attachment_clicked)
+        self.cell_signals.attachment_upload.connect(self._on_attachment_upload)
+        self.cell_signals.reply_clicked.connect(self._on_reply_clicked)
+        self.cell_signals.reply_upload.connect(self._on_reply_upload)
+        self.cell_signals.redirect_requested.connect(self._on_redirect_requested)
 
+        # Передаем self.cell_signals во ВСЕ построители ячеек
         self._tags_builder = TagsCellBuilder(config.EVEN_ROW_COLOR, config.ODD_ROW_COLOR)
-        self._comments_builder = CommentsCellBuilder(config.EVEN_ROW_COLOR, config.ODD_ROW_COLOR, cell_signals)
+
+        self._comments_builder = CommentsCellBuilder(
+            config.EVEN_ROW_COLOR, config.ODD_ROW_COLOR, self.cell_signals
+        )
         self._attachment_builder = AttachmentCellBuilder(
             config.EVEN_ROW_COLOR, config.ODD_ROW_COLOR,
-            config.SUPPORTED_FORMATS, cell_signals
+            config.SUPPORTED_FORMATS, self.cell_signals
         )
         self._reply_builder = ReplyCellBuilder(
             config.EVEN_ROW_COLOR, config.ODD_ROW_COLOR,
-            config.SUPPORTED_FORMATS, cell_signals
+            config.SUPPORTED_FORMATS, self.cell_signals
         )
         self._delegates_builder = DelegatesCellBuilder(
-            config.EVEN_ROW_COLOR, config.ODD_ROW_COLOR, cell_signals
+            even_color=config.EVEN_ROW_COLOR,
+            odd_color=config.ODD_ROW_COLOR,
+            signals=self.cell_signals
         )
+    def _on_redirect_requested(self, doc_id: int, delegates: list):
+        """Срабатывает при клике на делегатов в ячейке"""
+        document_data = {
+            "id": doc_id,
+            "delegates": delegates
+        }
+        if hasattr(self._signals, "document_action_triggered"):
+            self._signals.document_action_triggered.emit("redirect", document_data)
 
     def update_columns_config(self, columns_config: dict):
         """Обновить конфигурацию колонок"""
@@ -118,7 +134,7 @@ class RowRenderer:
             return
 
         read_widget = ReadCheckBox(document.get("id", 0), document.get("is_read", False))
-        read_widget.state_changed.connect(self._signals.read_status_changed.emit)
+        # read_widget.state_changed.connect(self._signals.read_status_changed.emit)
         self._table.setCellWidget(row, col, read_widget)
 
         # Устанавливаем фон

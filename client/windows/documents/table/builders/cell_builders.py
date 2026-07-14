@@ -10,7 +10,8 @@ from PyQt6.QtGui import QAction, QFont
 import os
 
 from client.windows.documents.table.widgets.hashtag_widget import HashtagWidget
-
+import logging
+logger = logging.getLogger("AppDebug")
 
 class CellBuilderSignals(QObject):
     """Сигналы для построителей ячеек"""
@@ -19,6 +20,8 @@ class CellBuilderSignals(QObject):
     reply_clicked = pyqtSignal(dict)  # reply_file
     reply_upload = pyqtSignal(int, str)  # document_id, file_path
     comment_clicked = pyqtSignal(dict)  # document_data
+    delegate_added = pyqtSignal(dict)
+    redirect_requested = pyqtSignal(int, list)
 
 
 class TagsCellBuilder:
@@ -280,6 +283,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QBrush
 
 
+# client/windows/documents/table/builders/cell_builders.py
 
 class DelegatesCellBuilder:
     """Построитель ячейки с делегатами"""
@@ -314,10 +318,19 @@ class DelegatesCellBuilder:
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         delegates = document.get("delegates", [])
+        doc_id = document.get("id", 0)
 
         if delegates:
-            # Показываем делегатов через запятую
-            delegates_text = ", ".join(str(d) for d in delegates)
+            # Превращаем элементы (строки или словари) в читаемые имена
+            processed_names = []
+            for d in delegates:
+                if isinstance(d, dict):
+                    processed_names.append(d.get("name", ""))
+                else:
+                    processed_names.append(str(d))
+
+            delegates_text = ", ".join(filter(None, processed_names)) if processed_names else "-"
+
             label = QLabel(delegates_text)
             label.setStyleSheet("""
                 QLabel {
@@ -331,8 +344,19 @@ class DelegatesCellBuilder:
             label.setWordWrap(True)
             label.setToolTip(f"Делегаты: {delegates_text}")
             layout.addWidget(label)
+
+            container.setCursor(Qt.CursorShape.PointingHandCursor)
+
+            # Явный безопасный обработчик события мыши
+            def on_cell_pressed(event):
+                if event.button() == Qt.MouseButton.LeftButton:
+                    if self.signals and hasattr(self.signals, 'redirect_requested'):
+                        self.signals.redirect_requested.emit(doc_id, delegates)
+                    event.accept()
+
+            container.mousePressEvent = on_cell_pressed
         else:
-            # Если делегатов нет - показываем кнопку "Добавить"
+            # Если делегатов нет - показываем вашу оригинальную кнопку "Добавить"
             btn = QPushButton("Добавить")
             btn.setStyleSheet("""
                 QPushButton {
@@ -353,27 +377,12 @@ class DelegatesCellBuilder:
                 }
             """)
             btn.clicked.connect(
-                lambda checked, doc=document: self._on_add_delegate(doc)
+                lambda checked: self.signals.redirect_requested.emit(doc_id, [])
             )
             layout.addWidget(btn)
 
         return container
 
-    def _on_add_delegate(self, document):
-        """
-        Обработчик добавления делегата
-
-        Args:
-            document: данные документа
-        """
-        if self.signals and hasattr(self.signals, 'delegate_added'):
-            self.signals.delegate_added.emit(document)
-        else:
-            QMessageBox.information(
-                None,
-                "Добавление делегата",
-                f"Добавление делегата к документу '{document.get('name', '')}'"
-            )
 
 class ReplyCellBuilder:
     """Построитель ячейки с ответом"""

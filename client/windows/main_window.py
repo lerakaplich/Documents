@@ -10,6 +10,8 @@ from client.windows.profile.profile_window import ProfileForm
 from client.windows.system.tab_system import SystemTab
 
 
+
+
 class MainWindow(QMainWindow):
     """Главное окно приложения - ТОЛЬКО НАВИГАЦИЯ"""
 
@@ -17,9 +19,9 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         try:
-            print("=" * 50)
+
             print("Инициализация MainWindow...")
-            print("=" * 50)
+
 
             self.setWindowTitle("Система документооборота МАЗ")
             self.setGeometry(100, 100, 1200, 800)
@@ -194,10 +196,8 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     try:
-        print("\n" + "=" * 50)
         print("Запуск приложения...")
 
-        print("=" * 50)
 
         app = QApplication(sys.argv)
         window = MainWindow()

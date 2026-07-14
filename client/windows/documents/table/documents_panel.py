@@ -15,7 +15,6 @@ from client.core.table.documents_panel_controller import DocumentsPanelControlle
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
-
 class DocumentsPanel(QWidget):
     """
     Панель документов - контейнер с UI элементами.
@@ -54,6 +53,7 @@ class DocumentsPanel(QWidget):
 
         # Загружаем все документы по умолчанию
         self.load_all_documents()
+        self.documents_table.document_action_triggered.connect(self._on_document_action)
 
     def _init_ui(self):
         """Загрузка UI из .ui файла"""
@@ -188,7 +188,45 @@ class DocumentsPanel(QWidget):
         self._sync_state_from_controller()
         self._update_table(documents, doc_type, title, view_mode)
 
+    def _on_document_action(self, action_type: str, document_data: dict):
+        if action_type == "redirect":
+            self._handle_redirect(document_data)
 
+    def _handle_redirect(self, document_data: dict):
+        try:
+            from client.windows.documents.redirect.redirect_dialog import RedirectDialog
+
+            current_recipients = document_data.get("delegates", [])
+            doc_id = document_data.get("id")
+
+
+
+            # ИЛИ если это пока заглушка, сделайте временный хардкод для проверки работы UI:
+            all_employees = [
+                {"id": 1, "name": "Иванов И.И."},
+                {"id": 2, "name": "Петров П.П."},
+                {"id": 3, "name": "Морозов М.М."},
+                {"id": 4, "name": "Сидоров С.С."}
+            ]
+
+            dialog = RedirectDialog(current_recipients, all_employees, parent=self)
+            dialog.redirect_confirmed.connect(
+                lambda ids, comment: self._confirm_redirect(doc_id, ids, comment)
+            )
+
+            result = dialog.exec()
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+
+    def _confirm_redirect(self, document_id: int, recipient_ids: list, comment: str):
+        """Отправка сохраненных изменений в репозиторий данных"""
+        # Вызываем метод бизнес-логики в контроллере
+        success = self.controller.redirect_document(document_id, recipient_ids, comment)
+        if success:
+            # Обновляем таблицу, чтобы перерисовать ячейку с новыми делегатами
+            self.refresh()
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = DocumentsPanel()

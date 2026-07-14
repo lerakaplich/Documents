@@ -12,10 +12,26 @@ class RedirectDialog(QDialog):
 
     def __init__(self, current_recipients: list, all_employees: list, parent=None):
         super().__init__(parent)
-        self.recipient_ids = {emp['id'] for emp in current_recipients}
+
+        # Индексируем всех сотрудников по ID и по Имени для быстрого поиска
         self.all_employees = {emp['id']: emp for emp in all_employees}
+        name_to_emp = {emp['name'].strip(): emp for emp in all_employees}
+
+        self.recipient_ids = set()
         for emp in current_recipients:
-            self.all_employees.setdefault(emp['id'], emp)
+            if isinstance(emp, dict):
+                # Если пришел словарь (правильный формат)
+                self.recipient_ids.add(emp['id'])
+                self.all_employees.setdefault(emp['id'], emp)
+            elif isinstance(emp, str):
+                # Если пришла просто строка с именем (ваш текущий случай)
+                emp_cleaned = emp.strip()
+                if emp_cleaned in name_to_emp:
+                    # Нашли сотрудника по имени и взяли его ID
+                    self.recipient_ids.add(name_to_emp[emp_cleaned]['id'])
+                else:
+                    # Если сотрудника нет в общем списке, можно временно сгенерировать фейковый ID или пропустить
+                    print(f"[WARN] Текущий делегат '{emp_cleaned}' не найден в общем списке сотрудников!")
 
         self._init_ui()
         self._rebuild_list()
