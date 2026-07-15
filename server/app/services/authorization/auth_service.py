@@ -2,6 +2,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
+import httpx
 import jwt
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +12,10 @@ from server.app.config import ACCESS_TOKEN_EXPIRE_MINUTES, JWT_SECRET_KEY, JWT_A
 from server.app.database.document_models import UserSession
 from server.app.database.employee_models import Employee, EmployeePosition
 from server.app.repositories.session_repo import SessionRepository
-from server.app.schemas.user_schemas.auth_dto import TokenResponse, TokenRefreshRequest, UserLoginRequest
+from server.app.schemas.user_schemas.auth_dto import TokenResponse, TokenRefreshRequest, UserLoginRequest, \
+    PasswordChangeRequest, ResetPasswordConfirm
 
+reset_codes_storage = {}
 
 class AuthService:
     def __init__(self, db_emp: AsyncSession, session_repo: SessionRepository):
@@ -127,3 +130,79 @@ class AuthService:
         if session:
             await self.session_repo.delete(session)
             await self.session_repo.db.commit()
+
+    async def change_user_password(self, employee_id: int, payload: PasswordChangeRequest) -> None:
+        # Получаем сотрудника
+        result = await self.db_emp.execute(select(Employee).where(Employee.id == employee_id))
+        employee = result.scalar_one_or_none()
+
+        if not employee:
+            raise HTTPException(status_code=404, detail="Сотрудник не найден.")
+
+        # Проверяем старый пароль
+        if not self._verify_password(payload.old_password, employee.password_hash):
+            raise HTTPException(status_code=400, detail="Неверно указан старый пароль.")
+
+        # Хэшируем новый и сохраняем
+        hashed_new = bcrypt.hashpw(payload.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        employee.password_hash = hashed_new
+
+        # Закрываем все активные сессии пользователя на других устройствах ради безопасности!
+        await self.session_repo.delete_all_for_employee(employee_id)
+        await self.db_emp.commit()
+
+    async def send_reset_code(self, phone_number: str) -> None:
+        result = await self.db_emp.execute(select(Employee).where(Employee.phone_number == phone_number))
+        employee = result.scalar_one_or_none()
+
+        if not employee:
+            raise HTTPException(status_code=404, detail="Пользователь с таким телефоном не найден.")
+        if not employee.chat_id:
+            raise HTTPException(status_code=400, detail="Для восстановления пароля активируйте бота в Telegram.")
+
+        # Генерируем 6-значный код
+        reset_code = str(secrets.randbelow(900000) + 100000)
+
+        # Сохраняем в наш простой словарь вместо otp_storage
+        reset_codes_storage[phone_number] = {
+            "code": reset_code,
+            "employee_id": int(employee.id)
+        }
+
+        # Отправка HTTP-запроса в Telegram
+        BOT_TOKEN = "8108629062:AAFFRoG-fmL_X2UNM4JZUQCRLL200Qt61Hc"
+        tg_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(tg_url, json={
+                    "chat_id": int(employee.chat_id),
+                    "text": f"🔐 Запрос на сброс пароля в СЭД.\n\nВаш код подтверждения: {reset_code}"
+                })
+                if response.status_code != 200:
+                    raise HTTPException(status_code=500, detail="Ошибка отправки сообщения через Telegram-бот.")
+            except Exception:
+                raise HTTPException(status_code=500, detail="Не удалось связаться с Telegram-ботом.")
+
+    async def reset_password_by_code(self, payload: ResetPasswordConfirm) -> None:
+        # Достаем данные из нашего словаря
+        cached_data = reset_codes_storage.get(payload.phone_number)
+
+        if not cached_data or cached_data["code"] != payload.code:
+            raise HTTPException(status_code=400, detail="Неверный код сброса или срок его действия истек.")
+
+        employee_id = cached_data["employee_id"]
+        # Удаляем код, чтобы его нельзя было использовать дважды
+        reset_codes_storage.pop(payload.phone_number, None)
+
+        result = await self.db_emp.execute(select(Employee).where(Employee.id == employee_id))
+        employee = result.scalar_one_or_none()
+
+        if not employee:
+            raise HTTPException(status_code=404, detail="Сотрудник не найден.")
+
+        hashed_new = bcrypt.hashpw(payload.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        employee.password_hash = hashed_new
+
+        await self.session_repo.delete_all_for_employee(employee_id)
+        await self.db_emp.commit()

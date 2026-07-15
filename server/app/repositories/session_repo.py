@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from server.app.database.document_models import UserSession
 
 
@@ -23,3 +23,9 @@ class SessionRepository:
     async def delete(self, session_obj: UserSession) -> None:
         """Удаление сессии"""
         await self.db.delete(session_obj)
+
+    async def delete_all_for_employee(self, employee_id: int) -> None:
+        """Удаление всех сессий конкретного сотрудника (например, при смене пароля)"""
+        await self.db.execute(
+            delete(UserSession).where(UserSession.employee_id == employee_id)
+        )

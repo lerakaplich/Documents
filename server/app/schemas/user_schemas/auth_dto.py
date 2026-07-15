@@ -44,3 +44,27 @@ class TokenResponse(BaseModel):
 class TokenRefreshRequest(BaseModel):
     """Запрос на обновление access токена по refresh-токену"""
     refresh_token: str = Field(..., description="Действующий refresh токен")
+
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str = Field(..., description="Текущий пароль")
+    new_password: str = Field(..., min_length=6, description="Новый надежный пароль")
+
+
+class ForgotPasswordRequest(BaseModel):
+    phone_number: str
+
+    @field_validator("phone_number")
+    @classmethod
+    def normalize(cls, v: str) -> str:
+        return clean_and_normalize_phone(v)
+
+class ResetPasswordConfirm(BaseModel):
+    phone_number: str
+    code: str = Field(..., min_length=4, max_length=8)
+    new_password: str = Field(..., min_length=6)
+
+    @field_validator("phone_number")
+    @classmethod
+    def normalize(cls, v: str) -> str:
+        return clean_and_normalize_phone(v)
