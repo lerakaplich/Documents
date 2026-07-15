@@ -7,14 +7,21 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from sqlalchemy import select
 
 from server.app.database.employee_models import Department, Overtime, Employee
+from server.app.repositories.employee_repo import EmployeesRepository
+from server.app.repositories.overtime_repo import OvertimeRepository
+from server.app.services.common.security_service import SecurityService
 
-
-# Твои импорты моделей и зависимостей СЭД
-# from server.app.database.employee_models import Overtime, Employee, Department
 
 class OvertimeExportService:
-    def __init__(self, db_session):
-        self.db = db_session
+    def __init__(
+        self,
+        overtime_repo: OvertimeRepository,
+        employee_repo: EmployeesRepository,
+        security: SecurityService
+    ):
+        self.overtime_repo = overtime_repo
+        self.employee_repo = employee_repo
+        self.security = security
 
     async def get_department_name(self, dept_id: int) -> str:
         """Получить название департамента по ID"""

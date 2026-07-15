@@ -1,21 +1,46 @@
-from pydantic import BaseModel
+import re
 from typing import Optional
+from pydantic import BaseModel, Field, field_validator
 
-class AuthRequestCode(BaseModel):
-    """Шаг 1: Запрос OTP кода по номеру телефона в Telegram-бот"""
-    phone_number: str
+def clean_and_normalize_phone(v: str) -> str:
+    """Унифицирует телефонные номера под формат +375XXXXXXXXX (Беларусь)"""
+    digits = "".join(re.findall(r"\d", v))
 
-class AuthVerifyCode(BaseModel):
-    """Шаг 2: Проверка кода и выдача токенов"""
-    phone_number: str
-    code: str
-    remember_me: bool = False
-    device_info: Optional[str] = None  # Например, "MAZ-WORKSTATION-402"
+    if digits.startswith("80") and len(digits) == 11:
+        digits = "375" + digits[2:]
+    elif len(digits) == 9 and (
+        digits.startswith("29") or digits.startswith("44") or
+        digits.startswith("33") or digits.startswith("25")
+    ):
+        digits = "375" + digits
+
+    if not digits.startswith("375") or len(digits) != 12:
+        raise ValueError(
+            "Номер телефона должен быть в международном формате (например, +375XXXXXXXXX)"
+        )
+    return f"+{digits}"
+
+
+class UserLoginRequest(BaseModel):
+    """Схема для входа по номеру телефона и паролю"""
+    phone_number: str = Field(..., description="Номер телефона пользователя")
+    password: str = Field(..., description="Пароль, полученный через Telegram")
+    remember_me: bool = Field(False, description="Флаг 'Запомнить меня'")
+    device_info: Optional[str] = Field(None, description="Информация об устройстве для истории сессий")
+
+    @field_validator("phone_number")
+    @classmethod
+    def normalize_phone_number(cls, v: str) -> str:
+        return clean_and_normalize_phone(v)
+
 
 class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: Optional[str] = None
-    token_type: str = "bearer"
+    """Ответ с токенами при успешном входе или обновлении"""
+    access_token: str = Field(..., description="JWT access токен")
+    refresh_token: Optional[str] = Field(None, description="Сессионный refresh токен")
+    token_type: str = Field("bearer", description="Тип токена")
+
 
 class TokenRefreshRequest(BaseModel):
-    refresh_token: str
+    """Запрос на обновление access токена по refresh-токену"""
+    refresh_token: str = Field(..., description="Действующий refresh токен")

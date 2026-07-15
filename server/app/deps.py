@@ -1,8 +1,10 @@
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from server.app.config import JWT_SECRET_KEY, JWT_ALGORITHM
 from server.app.database.document_models import SystemEmployee
 from server.app.database.session import get_docs_db, get_employees_db  # УБРАЛИ кадровый get_employees_db
 from server.app.repositories.attachment_repo import AttachmentRepository
@@ -12,8 +14,11 @@ from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
 from server.app.repositories.overtime_repo import OvertimeRepository
+from server.app.repositories.session_repo import SessionRepository
 from server.app.repositories.tag_repo import TagRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.services.authorization.auth_service import AuthService
+from server.app.services.overtime.overtime_export import OvertimeExportService
 from server.app.services.overtime.overtime_import import OvertimeImportService
 from server.app.services.common.tiff_converter import DocumentProcessor
 from server.app.services.documents.attachment_service import AttachmentService
@@ -39,29 +44,36 @@ async def get_current_user(
         db_docs: AsyncSession = Depends(get_docs_db)
 ) -> CurrentUser:
     """
-    Основная зависимость авторизации СЭД.
-    Работает ИСКЛЮЧИТЕЛЬНО с локальной базой db_documents ради микросервисной изоляции.
+    Декодирует реальный JWT-токен и проверяет пользователя в локальной базе документов.
     """
     token = credentials.credentials
 
-    # Парсинг нашего тестового токена (на проде здесь будет jwt.decode)
-    if not token.startswith("access_secret_jwt_for_id_"):
+    try:
+        # Декодируем НАСТОЯЩИЙ JWT-токен, полученный от AuthService
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Некорректный токен: отсутствует sub."
+            )
+        user_id = int(user_id_str)
+
+    except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Невалидный сессионный токен.",
+            detail="Срок действия access-токена истек. Обновите его через /auth/refresh",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except (jwt.PyJWTError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Невалидный или искаженный сессионный токен.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    try:
-        user_id_str = token.replace("access_secret_jwt_for_id_", "")
-        user_id = int(user_id_str)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Искаженный токен авторизации.",
-        )
-
-    # Запрашиваем данные пользователя из ЛОКАЛЬНОЙ таблицы system_employees базы СЭД
+    # Запрашиваем данные пользователя из ЛОКАЛЬНОЙ таблицы system_employees базы документов
     sys_result = await db_docs.execute(select(SystemEmployee).where(SystemEmployee.id == user_id))
     system_user = sys_result.scalar_one_or_none()
 
@@ -72,13 +84,20 @@ async def get_current_user(
         )
 
     return CurrentUser(
-        id=system_user.id,
+        id=int(system_user.id),  # Заворачиваем в int для спокойствия линтера
         last_name=system_user.last_name,
         first_name=system_user.first_name,
         patronymic=system_user.patronymic,
         rights=system_user.rights,
         service_number="N/A"
     )
+
+def get_auth_service(
+    db_emp: AsyncSession = Depends(get_employees_db),
+    db_docs: AsyncSession = Depends(get_docs_db)
+) -> AuthService:
+    session_repo = SessionRepository(db_docs)
+    return AuthService(db_emp=db_emp, session_repo=session_repo)
 
 def get_security_service(
     emp_db: AsyncSession = Depends(get_employees_db)
@@ -133,6 +152,18 @@ def get_overtime_import_service(
     overtime_repo = OvertimeRepository(emp_db)
     employee_repo = EmployeesRepository(emp_db)
     return OvertimeImportService(
+        overtime_repo=overtime_repo,
+        employee_repo=employee_repo,
+        security=security
+    )
+
+def get_overtime_export_service(
+    emp_db: AsyncSession = Depends(get_employees_db),
+    security: SecurityService = Depends(get_security_service)
+) -> OvertimeExportService:
+    overtime_repo = OvertimeRepository(emp_db)
+    employee_repo = EmployeesRepository(emp_db)
+    return OvertimeExportService(
         overtime_repo=overtime_repo,
         employee_repo=employee_repo,
         security=security
