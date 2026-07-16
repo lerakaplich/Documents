@@ -352,30 +352,43 @@ class DocumentDataConfig:
 
     @classmethod
     def _generate_comments(cls, index: int, status: str) -> list:
-        """Генерирует комментарии для документа"""
-        comments_map = {
+        """Генерирует комментарии для документа в правильном формате"""
+        base_comments = {
             0: [
-                {"id": 1, "employee_id": 1, "text": "Прошу рассмотреть в кратчайшие сроки", "created_at": "2026-06-10T10:00:00Z"},
-                {"id": 2, "employee_id": 2, "text": "Согласовано", "created_at": "2026-06-11T11:30:00Z"},
-                {"id": 3, "employee_id": 5, "text": "Требуется доработка раздела 3", "created_at": "2026-06-11T14:20:00Z"}
+                {"id": 1, "author_fio": "Иванов И.И.", "text": "Прошу рассмотреть в кратчайшие сроки",
+                 "created_at": "2026-06-10T10:00:00Z"},
+                {"id": 2, "author_fio": "Петров П.П.", "text": "Согласовано", "created_at": "2026-06-11T11:30:00Z"},
+                {"id": 3, "author_fio": "Сидоров С.С.", "text": "Требуется доработка раздела 3",
+                 "created_at": "2026-06-11T14:20:00Z"}
             ],
             1: [
-                {"id": 4, "employee_id": 6, "text": "Оборудование заказано", "created_at": "2026-06-10T09:00:00Z"}
+                {"id": 4, "author_fio": "Морозов М.М.", "text": "Оборудование заказано",
+                 "created_at": "2026-06-10T09:00:00Z"}
             ],
-            2: [
-                {"id": 5, "employee_id": 5, "text": "Необходимо согласовать условия", "created_at": "2026-06-08T10:00:00Z"},
-                {"id": 6, "employee_id": 2, "text": "Отправил на согласование юристам", "created_at": "2026-06-09T11:30:00Z"}
-            ],
-            3: [
-                {"id": 7, "employee_id": 7, "text": "Письмо отправлено всем подразделениям", "created_at": "2026-06-07T16:00:00Z"},
-                {"id": 8, "employee_id": 1, "text": "Утверждено", "created_at": "2026-06-08T09:00:00Z"}
+            3: [  # ← Документ 3
+                {"id": 7, "author_fio": "Неизвестный", "text": "Письмо отправлено всем подразделениям",
+                 "created_at": "2026-06-07T16:00:00Z"},
+                {"id": 8, "author_fio": "Неизвестный", "text": "Утверждено", "created_at": "2026-06-08T09:00:00Z"}
             ],
             4: [
-                {"id": 9, "employee_id": 6, "text": "Прошу согласовать командировку", "created_at": "2026-06-06T08:00:00Z"},
-                {"id": 10, "employee_id": 1, "text": "Отклонено", "created_at": "2026-06-07T10:00:00Z"}
+                {"id": 9, "author_fio": "Козлов К.К.", "text": "Прошу согласовать командировку",
+                 "created_at": "2026-06-06T08:00:00Z"},
+                {"id": 10, "author_fio": "Иванов И.И.", "text": "Отклонено", "created_at": "2026-06-07T10:00:00Z"}
             ]
         }
-        return comments_map.get(index % 5, [])
+
+        # Для всех остальных документов добавляем хотя бы один комментарий
+        if index not in base_comments:
+            return [
+                {
+                    "id": 100 + index,
+                    "author_fio": "Сидоров С.С.",
+                    "text": f"Тестовый комментарий к документу #{index}",
+                    "created_at": "2026-06-01T12:00:00Z"
+                }
+            ]
+
+        return base_comments.get(index, [])
 
     @classmethod
     def _generate_attachments(cls, index: int, type_id: int) -> list:

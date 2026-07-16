@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QWidget, QApplication
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.uic import loadUi
 
+from client.core.data.document_data import DocumentDataConfig
 from client.windows.documents.menus.column_menu import ColumnsMenu
 from client.windows.documents.menus.filter_menu import FilterMenu
 from client.windows.documents.menus.status_menu import StatusesMenu
@@ -77,7 +78,6 @@ class DocumentsPanel(QWidget):
     def _setup_buttons(self):
         """Настройка кнопок и их меню (с использованием новых классов меню)"""
         if hasattr(self, 'columnsBtn'):
-            # Исправлено: передаём parent по ключевому слову
             self.columns_menu = ColumnsMenu(parent=self)
             self.columnsBtn.setMenu(self.columns_menu)
 
@@ -140,7 +140,6 @@ class DocumentsPanel(QWidget):
             doc_type = doc_type or "default"
             view_mode = view_mode or self.current_view_mode or "all"
 
-            # Используем switch_doc_type для более эффективного переключения
             self.documents_table._controller.switch_doc_type(doc_type, documents, view_mode)
 
             if title and hasattr(self, 'labelTitle'):
@@ -167,7 +166,6 @@ class DocumentsPanel(QWidget):
         self.search_requested.emit(text)
         documents, title, view_mode, doc_type = self.controller.search_documents(text)
         self._update_table(documents, doc_type, title, view_mode)
-        # Синхронизируем состояние после поиска
         self.current_title = title
         self.current_view_mode = view_mode
 
@@ -176,7 +174,7 @@ class DocumentsPanel(QWidget):
         if hasattr(self, 'labelTitle'):
             self.labelTitle.setText(title)
         self.current_title = title
-        self.controller.current_title = title   # поддерживаем синхронизацию
+        self.controller.current_title = title
 
     def get_documents_table(self):
         """Получение объекта таблицы"""
@@ -188,20 +186,23 @@ class DocumentsPanel(QWidget):
         self._sync_state_from_controller()
         self._update_table(documents, doc_type, title, view_mode)
 
+    # ========== ОБРАБОТЧИКИ ДЕЙСТВИЙ ==========
+
     def _on_document_action(self, action_type: str, document_data: dict):
+        """Обработка действий из таблицы"""
         if action_type == "redirect":
             self._handle_redirect(document_data)
+        elif action_type == "comment":
+            self._handle_comment(document_data)
 
     def _handle_redirect(self, document_data: dict):
+        """Открытие диалога перенаправления"""
         try:
             from client.windows.documents.redirect.redirect_dialog import RedirectDialog
 
             current_recipients = document_data.get("delegates", [])
             doc_id = document_data.get("id")
 
-
-
-            # ИЛИ если это пока заглушка, сделайте временный хардкод для проверки работы UI:
             all_employees = [
                 {"id": 1, "name": "Иванов И.И."},
                 {"id": 2, "name": "Петров П.П."},
@@ -214,19 +215,90 @@ class DocumentsPanel(QWidget):
                 lambda ids, comment: self._confirm_redirect(doc_id, ids, comment)
             )
 
-            result = dialog.exec()
+            dialog.exec()
 
         except Exception as e:
             import traceback
             traceback.print_exc()
 
     def _confirm_redirect(self, document_id: int, recipient_ids: list, comment: str):
-        """Отправка сохраненных изменений в репозиторий данных"""
-        # Вызываем метод бизнес-логики в контроллере
+        """Подтверждение перенаправления"""
         success = self.controller.redirect_document(document_id, recipient_ids, comment)
         if success:
-            # Обновляем таблицу, чтобы перерисовать ячейку с новыми делегатами
             self.refresh()
+
+    def _handle_comment(self, document_data: dict):
+        """Открытие диалога комментариев"""
+        try:
+            from client.windows.documents.comments.comment_dialog import CommentDialog
+            from client.core.data.document_data import DocumentDataConfig
+
+            doc_id = document_data.get("id")
+
+            # Получаем документ из данных
+            full_doc = DocumentDataConfig.get_document_by_id(doc_id)
+
+            if full_doc:
+                document_to_pass = full_doc.copy()
+                print(f"[DocumentsPanel] Loaded document {doc_id} with {len(document_to_pass.get('comments', []))} comments")
+            else:
+                document_to_pass = document_data.copy()
+                print(f"[DocumentsPanel] Using partial document data for {doc_id}")
+
+            # Нормализация ключей
+            if "reg_number" in document_to_pass and "number" not in document_to_pass:
+                document_to_pass["number"] = document_to_pass.get("reg_number", "")
+            if "title" in document_to_pass and "subject" not in document_to_pass:
+                document_to_pass["subject"] = document_to_pass.get("title", "")
+
+            current_user = self._get_current_user()
+
+            dialog = CommentDialog(
+                document_data=document_to_pass,
+                parent=self,
+                current_user=current_user
+            )
+
+            dialog.comment_added.connect(
+                lambda comment: self._on_comment_added(doc_id, comment)
+            )
+
+            dialog.exec()
+
+        except Exception as e:
+            import traceback
+            print(f"[DocumentsPanel] Error opening comment dialog: {e}")
+            traceback.print_exc()
+
+    def _on_comment_added(self, document_id: int, new_comment: dict):
+        """Обработка добавления комментария"""
+        try:
+            from client.core.data.document_data import DocumentDataConfig
+
+            doc = DocumentDataConfig.get_document_by_id(document_id)
+            if doc:
+                if 'comments' not in doc:
+                    doc['comments'] = []
+                doc['comments'].append(new_comment)
+                doc['last_comment_text'] = new_comment.get('text', '')
+
+            self.refresh()
+            print(f"[DocumentsPanel] Комментарий добавлен к документу {document_id}")
+
+        except Exception as e:
+            print(f"[DocumentsPanel] Error saving comment: {e}")
+
+    def _get_current_user(self) -> dict:
+        """Возвращает текущего пользователя (для разработки)"""
+        return {
+            'id': 2,
+            'full_name': 'Сидоров С.С.',
+            'last_name': 'Сидоров',
+            'first_name': 'Сергей',
+            'middle_name': 'Сергеевич'
+        }
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = DocumentsPanel()

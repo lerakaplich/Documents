@@ -23,7 +23,6 @@ class CellBuilderSignals(QObject):
     delegate_added = pyqtSignal(dict)
     redirect_requested = pyqtSignal(int, list)
 
-
 class TagsCellBuilder:
     """Построитель ячейки с хэштегами"""
 
@@ -64,6 +63,58 @@ class TagsCellBuilder:
 
 # client/windows/documents/table/builders/cell_builders.py
 
+class ElidedLabel(QLabel):
+    """QLabel с автоматическим обрезанием текста при изменении размера"""
+
+    def __init__(self, text="", parent=None):
+        super().__init__(text, parent)
+        self._full_text = text
+        self.setWordWrap(False)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred
+        )
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.setStyleSheet("""
+            QLabel {
+                background-color: transparent;
+                border: none;
+                color: #1B232A;
+                font-size: 12px;
+                padding: 4px 6px;
+            }
+        """)
+
+    def set_full_text(self, text):
+        """Установить полный текст"""
+        self._full_text = text
+        self.update_elided_text()
+
+    def update_elided_text(self):
+        """Обновить текст с эллипсисом"""
+        if not self._full_text:
+            self.setText("")
+            return
+
+        # Получаем доступную ширину
+        available_width = self.width() - 12  # Отступы
+        if available_width <= 0:
+            available_width = 100  # Минимальная ширина
+
+        font_metrics = self.fontMetrics()
+        elided_text = font_metrics.elidedText(
+            self._full_text,
+            Qt.TextElideMode.ElideRight,
+            available_width
+        )
+        self.setText(elided_text)
+
+    def resizeEvent(self, event):
+        """При изменении размера обновляем текст"""
+        super().resizeEvent(event)
+        self.update_elided_text()
+
+
 class CommentsCellBuilder:
     """Билдер ячейки с комментариями"""
 
@@ -75,61 +126,68 @@ class CommentsCellBuilder:
     def build(self, row, document):
         """Создание виджета с комментариями"""
         widget = QWidget()
+        widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        widget.setStyleSheet("""
+            QWidget {
+                background-color: transparent;
+                border: none;
+            }
+        """)
+
         layout = QHBoxLayout(widget)
-        layout.setContentsMargins(4, 2, 4, 2)
-        layout.setSpacing(4)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         comments = document.get("comments", [])
         last_comment_text = document.get("last_comment_text", "")
 
         if comments:
-            # Берем последний комментарий
-            last_comment = comments[-1]
+            text_to_show = last_comment_text
+            if not text_to_show and comments:
+                text_to_show = comments[-1].get('text', '')
 
-            # Поддержка обоих форматов: author или employee_id
-            if 'author' in last_comment:
-                author = last_comment['author']
-            elif 'employee_id' in last_comment:
-                # Здесь можно получить имя сотрудника по ID
-                # Пока используем заглушку
-                author = f"Сотрудник {last_comment['employee_id']}"
-            else:
-                author = "Автор"
+            # Используем кастомный ElidedLabel
+            label = ElidedLabel()
+            label.set_full_text(text_to_show)
+            label.setToolTip(f"Последний комментарий: {text_to_show}")
 
-            comment_text = last_comment.get('text', '')
-
-            # Если есть текст последнего комментария - показываем его
-            if last_comment_text:
-                label = QLabel(last_comment_text[:30] + "..." if len(last_comment_text) > 30 else last_comment_text)
-                # Делаем фон прозрачным
-                label.setStyleSheet("""
-                    QLabel {
-                        background-color: transparent;
-                        border: none;
-                        color: #333;
-                        font-size: 11px;
-                    }
-                """)
-                label.setWordWrap(True)
-                layout.addWidget(label)
-        else:
-            # Нет комментариев - добавляем пустой виджет для сохранения отступа
-            label = QLabel("")
-            label.setStyleSheet("background-color: transparent;")
             layout.addWidget(label)
+            widget.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        # Устанавливаем фон для всего виджета
-        bg_color = self.even_color if row % 2 == 0 else self.odd_color
-        widget.setStyleSheet(f"""
-            QWidget {{
-                background-color: {bg_color.name()};
-            }}
-            QWidget > QLabel {{
-                background-color: transparent;
-            }}
-        """)
+            def on_cell_pressed(event):
+                if event.button() == Qt.MouseButton.LeftButton:
+                    if self.signals and hasattr(self.signals, 'comment_clicked'):
+                        self.signals.comment_clicked.emit(document)
+                    event.accept()
+
+            widget.mousePressEvent = on_cell_pressed
+        else:
+            btn = QPushButton("Добавить")
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #F0FDF4;
+                    color: #16A34A;
+                    border: 1px solid #16A34A;
+                    border-radius: 5px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    padding: 4px 12px;
+                }
+                QPushButton:hover {
+                    background-color: #16A34A;
+                    color: white;
+                }
+                QPushButton:pressed {
+                    background-color: #15803D;
+                }
+            """)
+            btn.clicked.connect(
+                lambda checked: self.signals.comment_clicked.emit(document)
+            )
+            layout.addWidget(btn)
 
         return widget
+
 class AttachmentCellBuilder:
     """Построитель ячейки с вложениями"""
 
@@ -294,16 +352,7 @@ class DelegatesCellBuilder:
         self.signals = signals
 
     def build(self, row, document):
-        """
-        Создание виджета с делегатами
-
-        Args:
-            row: номер строки
-            document: данные документа
-
-        Returns:
-            QWidget: виджет с делегатами
-        """
+        """Создание виджета с делегатами"""
         container = QWidget()
         container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         container.setStyleSheet("""
@@ -321,7 +370,6 @@ class DelegatesCellBuilder:
         doc_id = document.get("id", 0)
 
         if delegates:
-            # Превращаем элементы (строки или словари) в читаемые имена
             processed_names = []
             for d in delegates:
                 if isinstance(d, dict):
@@ -331,23 +379,14 @@ class DelegatesCellBuilder:
 
             delegates_text = ", ".join(filter(None, processed_names)) if processed_names else "-"
 
-            label = QLabel(delegates_text)
-            label.setStyleSheet("""
-                QLabel {
-                    color: #1B232A;
-                    font-size: 12px;
-                    padding: 4px 6px;
-                    background-color: transparent;
-                    border: none;
-                }
-            """)
-            label.setWordWrap(True)
+            # Используем ElidedLabel
+            label = ElidedLabel()
+            label.set_full_text(delegates_text)
             label.setToolTip(f"Делегаты: {delegates_text}")
-            layout.addWidget(label)
 
+            layout.addWidget(label)
             container.setCursor(Qt.CursorShape.PointingHandCursor)
 
-            # Явный безопасный обработчик события мыши
             def on_cell_pressed(event):
                 if event.button() == Qt.MouseButton.LeftButton:
                     if self.signals and hasattr(self.signals, 'redirect_requested'):
@@ -356,7 +395,6 @@ class DelegatesCellBuilder:
 
             container.mousePressEvent = on_cell_pressed
         else:
-            # Если делегатов нет - показываем вашу оригинальную кнопку "Добавить"
             btn = QPushButton("Добавить")
             btn.setStyleSheet("""
                 QPushButton {
