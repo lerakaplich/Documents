@@ -7,7 +7,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from server.bot.config import bot_settings
-from server.bot.handlers.common import router
+from server.bot.handlers import main_router
 from server.bot.scheduler import setup_scheduler
 from server.app.database.session import get_employees_db  # Твой генератор сессий БД
 
@@ -36,7 +36,7 @@ async def main():
 
     # Регистрируем Middleware и роутер с обработчиками команд
     dp.update.middleware(DbSessionMiddleware())
-    dp.include_router(router)
+    dp.include_router(main_router)
 
     # 2. Инициализация планировщика APScheduler (утренняя статистика)
     scheduler = setup_scheduler()

@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.database.employee_models import Employee
-from server.bot.keyboads.menu_kb import get_main_menu
+from server.bot.keyboards.menu_kb import get_main_menu
 from server.bot.services import messages as msg
 from server.bot.services.utils import hash_password
 

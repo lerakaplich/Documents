@@ -14,6 +14,9 @@ class BotSettings(BaseModel):
     # Часовой пояс
     BOT_TIMEZONE: str = os.getenv("BOT_TIMEZONE", "Europe/Minsk")
 
+    # Чат поддержки
+    SUPPORT_CHAT_ID: int = int(os.getenv("SUPPORT_CHAT_ID", -1004416230667))
+
 
 bot_settings = BotSettings()
 

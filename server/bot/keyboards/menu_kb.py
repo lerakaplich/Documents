@@ -4,12 +4,12 @@ def get_main_menu() -> ReplyKeyboardMarkup:
     """Генерирует главное меню для авторизованного сотрудника"""
     keyboard = [
         [
-            KeyboardButton(text="📄 Новый документ"),
-            KeyboardButton(text="📸 Распознать по фото")
+            KeyboardButton(text="Новый документ"),
+            KeyboardButton(text="Распознать по фото")
         ],
         [
-            KeyboardButton(text="⏳ Мои переработки"),
-            KeyboardButton(text="🆘 Поддержка")
+            KeyboardButton(text="Мои переработки"),
+            KeyboardButton(text="Поддержка")
         ]
     ]
     return ReplyKeyboardMarkup(
