@@ -1,6 +1,8 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
+from aiogram.exceptions import TelegramNetworkError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -14,23 +16,37 @@ logger = logging.getLogger("bot_scheduler")
 
 
 async def send_morning_stats_job():
-    """Фоновая задача сбора и отправки статистики"""
+    """Фоновая задача сбора и отправки статистики с логикой повторных попыток"""
     logger.info("Запуск ежедневной утренней рассылки статистики...")
 
-    # Так как get_docs_db() и get_employees_db() — это скорее всего асинхронные контекст-менеджеры
-    # (или зависимости FastAPI), мы используем их через async with.
-    try:
-        async with asynccontextmanager(get_employees_db)() as emp_session:
-            async with asynccontextmanager(get_docs_db)() as doc_session:
-                tg_client = TelegramClient(token=bot_settings.TELEGRAM_BOT_TOKEN)
-                service = StatsNotificationService(emp_session, doc_session, tg_client)
+    max_retries = 3
+    retry_delay = 5 * 60
 
-                await service.run_daily_broadcast()
-                logger.info("Утренняя рассылка успешно завершена.")
+    for attempt in range(1, max_retries + 1):
+        try:
+            async with asynccontextmanager(get_employees_db)() as emp_session:
+                async with asynccontextmanager(get_docs_db)() as doc_session:
+                    tg_client = TelegramClient(token=bot_settings.TELEGRAM_BOT_TOKEN)
+                    service = StatsNotificationService(emp_session, doc_session, tg_client)
 
-    except Exception as e:
-        logger.error(f"Критическая ошибка при выполнении рассылки: {e}", exc_info=True)
+                    await service.run_daily_broadcast()
+                    logger.info("Утренняя рассылка успешно завершена.")
+                    return
 
+        except TelegramNetworkError as net_err:
+            # Ловим именно сетевые проблемы Telegram
+            logger.warning(
+                f"[Попытка {attempt}/{max_retries}] Ошибка сети при рассылке: {net_err}. "
+                f"Повтор через {retry_delay // 60} минут..."
+            )
+            if attempt < max_retries:
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error("Все попытки утренней рассылки исчерпаны из-за сбоев сети.")
+
+        except Exception as e:
+            logger.error(f"Критическая бизнес-ошибка в коде рассылки: {e}", exc_info=True)
+            return
 
 def setup_scheduler() -> AsyncIOScheduler:
     """Инициализация и настройка планировщика"""
