@@ -7,7 +7,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from server.bot.config import bot_settings
-from server.bot.handlers import router
+from server.bot.handlers.common import router
 from server.bot.scheduler import setup_scheduler
 from server.app.database.session import get_employees_db  # Твой генератор сессий БД
 

@@ -1,4 +1,6 @@
 import logging
+from contextlib import asynccontextmanager
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -18,8 +20,8 @@ async def send_morning_stats_job():
     # Так как get_docs_db() и get_employees_db() — это скорее всего асинхронные контекст-менеджеры
     # (или зависимости FastAPI), мы используем их через async with.
     try:
-        async with get_employees_db() as emp_session:
-            async with get_docs_db() as doc_session:
+        async with asynccontextmanager(get_employees_db)() as emp_session:
+            async with asynccontextmanager(get_docs_db)() as doc_session:
                 tg_client = TelegramClient(token=bot_settings.TELEGRAM_BOT_TOKEN)
                 service = StatsNotificationService(emp_session, doc_session, tg_client)
 

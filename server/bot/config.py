@@ -9,7 +9,7 @@ class BotSettings(BaseModel):
 
     # Время рассылки статистики (по умолчанию 09:00)
     STATS_SEND_HOUR: int = int(os.getenv("STATS_SEND_HOUR", 9))
-    STATS_SEND_MINUTE: int = int(os.getenv("STATS_SEND_MINUTE", 0))
+    STATS_SEND_MINUTE: int = int(os.getenv("STATS_SEND_MINUTE", 18))
 
     # Часовой пояс
     BOT_TIMEZONE: str = os.getenv("BOT_TIMEZONE", "Europe/Minsk")

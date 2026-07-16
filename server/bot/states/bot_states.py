@@ -1,0 +1,1 @@
+# Классы состояний (например, DocumentCreateStates)
