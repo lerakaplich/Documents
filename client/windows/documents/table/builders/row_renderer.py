@@ -2,7 +2,7 @@ from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QBrush, QColor
 from PyQt6.QtWidgets import QTableWidgetItem
 
-from client.windows.documents.table.builders.TableCellItem import CellData, TableCellItem
+from client.windows.documents.table.builders.table_cell_item import CellData, TableCellItem
 
 
 class RowRenderer:
