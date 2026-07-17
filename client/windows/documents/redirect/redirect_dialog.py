@@ -46,7 +46,7 @@ class RedirectDialog(QDialog):
         ui_path = os.path.join(root_dir, "client", "ui", "documents", "redirect", "redirect_dialog.ui")
         loadUi(ui_path, self)
 
-        images_dir = os.path.join(root_dir, "client", "images").replace("\\", "/")
+        images_dir = os.path.join(root_dir, "client", "icons").replace("\\", "/")
 
         self.employeesListWidget.setStyleSheet(f"""
             QListWidget::indicator {{

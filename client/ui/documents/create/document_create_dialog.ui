@@ -1,0 +1,1184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DocumentCreate</class>
+ <widget class="QWidget" name="DocumentCreate">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>351</width>
+    <height>803</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>351</width>
+    <height>0</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>351</width>
+    <height>16777215</height>
+   </size>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+QWidget {
+    background-color: #FFFFFF;
+}
+QLabel {
+    color: #1B232A;
+}
+QLabel[bold="true"] {
+    font-weight: bold;
+    color: #1B232A;
+}
+QComboBox, QTextEdit, QDateEdit, QTextBrowser {
+    border-radius: 10px;
+    border: 1px solid #CCAB6E;
+    padding: 5px;
+    background-color: white;
+    color: #1B232A;
+}
+QComboBox:hover, QTextEdit:hover, QDateEdit:hover, QTextBrowser:hover {
+    border: 1px solid #998664;
+}
+QComboBox:focus, QTextEdit:focus, QDateEdit:focus, QTextBrowser:focus {
+    border: 2px solid #CCAB6E;
+}
+
+/* Стили для выпадающего контейнера QComboBox */
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+}
+
+/* Настройки зоны drop-down для QDateEdit */
+QDateEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+}
+
+/* Иконка календаря вместо стрелочки */
+QDateEdit::down-arrow {
+    image: url(D:/Documents/client/icons/calendar_date.png);
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+}
+
+QComboBox::down-arrow {
+    image: url(D:/Documents/client/icons/down_arrow_combo.svg);
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+}
+
+/* ===== СТИЛИ ДЛЯ КНОПОК С ПЛЮСОМ ===== */
+QPushButton#btnAddSender, QPushButton#btnAddExecutor,
+QPushButton#btnAddReceiver, QPushButton#btnAddTag {
+    border-radius: 18px;
+    background-color: #CCAB6E;
+    border: none;
+    min-width: 36px;
+    min-height: 36px;
+    max-width: 36px;
+    max-height: 36px;
+    padding: 0px;
+}
+
+QPushButton#btnAddSender:hover, QPushButton#btnAddExecutor:hover,
+QPushButton#btnAddReceiver:hover, QPushButton#btnAddTag:hover {
+    background-color: #998664;
+}
+
+QPushButton#btnAddSender:pressed, QPushButton#btnAddExecutor:pressed,
+QPushButton#btnAddReceiver:pressed, QPushButton#btnAddTag:pressed {
+    background-color: #7A6A50;
+}
+
+/* Иконка плюса - белая, с прозрачным фоном */
+QPushButton#btnAddSender::icon, QPushButton#btnAddExecutor::icon,
+QPushButton#btnAddReceiver::icon, QPushButton#btnAddTag::icon {
+    width: 24px;
+    height: 24px;
+}
+
+/* Отключаем затемнение иконки при наведении */
+QPushButton#btnAddSender::icon:hover, QPushButton#btnAddExecutor::icon:hover,
+QPushButton#btnAddReceiver::icon:hover, QPushButton#btnAddTag::icon:hover {
+    background-color: transparent;
+}
+
+/* ===== СТИЛИ ДЛЯ ВЫПАДАЮЩИХ СПИСКОВ QComboBox ===== */
+QComboBox QAbstractItemView {
+    border-radius: 6px;
+    background-color: white;
+    color: #1B232A;
+    padding: 4px;
+    outline: none;
+    border: 1px solid #CCAB6E;
+}
+
+QComboBox QAbstractItemView::item {
+    padding: 8px;
+    color: #1B232A;
+    border: none;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+QComboBox QAbstractItemView::item:focus {
+    outline: none;
+    border: none;
+}
+
+/* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ QCalendarWidget ===== */
+QCalendarWidget {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #CCAB6E;
+}
+
+/* Месяц/год - белый фон, черный текст */
+QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background-color: white;
+    color: #1B232A;
+    border-radius: 8px 8px 0 0;
+}
+
+/* Контейнер навигации */
+QCalendarWidget QWidget {
+    background-color: white;
+    color: #1B232A;
+}
+
+/* Кнопки навигации (стрелки) - черные, без фона */
+QCalendarWidget QToolButton#qt_calendar_prevmonth,
+QCalendarWidget QToolButton#qt_calendar_nextmonth {
+    background-color: transparent;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
+QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
+    background-color: #e3f2fd;
+}
+
+QCalendarWidget QToolButton#qt_calendar_prevmonth:pressed,
+QCalendarWidget QToolButton#qt_calendar_nextmonth:pressed {
+    background-color: #d0d0d0;
+}
+
+/* Кнопка с месяцем (для выбора месяца) */
+QCalendarWidget QToolButton#qt_calendar_monthbutton {
+    background-color: white;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QCalendarWidget QToolButton#qt_calendar_monthbutton:hover {
+    background-color: #e3f2fd;
+}
+
+/* Кнопка с годом (для выбора года) */
+QCalendarWidget QToolButton#qt_calendar_yearbutton {
+    background-color: white;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
+    background-color: #e3f2fd;
+}
+
+/* Меню выбора месяца/года */
+QCalendarWidget QMenu {
+    background-color: white;
+    border: 1px solid #CCAB6E;
+    border-radius: 6px;
+    color: #1B232A;
+}
+
+QCalendarWidget QMenu::item {
+    padding: 6px 20px;
+    border-radius: 4px;
+}
+
+QCalendarWidget QMenu::item:selected {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+/* Дни недели (шапка) - золотой фон, белый текст */
+QCalendarWidget QWidget#qt_calendar_weekday {
+    color: white;
+    font-weight: bold;
+    background-color: #CCAB6E;
+    padding: 4px;
+}
+
+/* Ячейки дней */
+QCalendarWidget QToolButton#qt_calendar_day {
+    border: none;
+    border-radius: 4px;
+    padding: 4px;
+    color: #1B232A;
+    background-color: transparent;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:hover {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+/* Выбранная дата - золотой фон, белый текст */
+QCalendarWidget QToolButton#qt_calendar_day:checked {
+    background-color: #CCAB6E;
+    color: white;
+    border-radius: 4px;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
+    background-color: #998664;
+}
+
+/* Дни других месяцев - серый текст */
+QCalendarWidget QToolButton#qt_calendar_day:disabled {
+    color: #B0B0B0;
+}
+
+/* Сегодняшняя дата - красный фон, белый текст */
+QCalendarWidget QToolButton#qt_calendar_day[property="isToday"] {
+    background-color: #D22730;
+    color: white;
+    border-radius: 4px;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:hover {
+    background-color: #862633;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:pressed {
+    background-color: #6a1e29;
+}
+
+/* Если сегодняшняя дата выбрана - приоритет у выбранной */
+QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checked {
+    background-color: #CCAB6E;
+    color: white;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checked:hover {
+    background-color: #998664;
+}
+
+/* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ В QDateEdit (попап) ===== */
+QDateEdit QCalendarWidget {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #CCAB6E;
+}
+
+/* Навигационная панель в попапе */
+QDateEdit QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background-color: white;
+    color: #1B232A;
+    border-radius: 8px 8px 0 0;
+}
+
+QDateEdit QCalendarWidget QWidget {
+    background-color: white;
+    color: #1B232A;
+}
+
+/* Стрелки навигации в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth {
+    background-color: transparent;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
+    background-color: #e3f2fd;
+}
+
+/* Кнопка месяца в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton {
+    background-color: white;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton:hover {
+    background-color: #e3f2fd;
+}
+
+/* Кнопка года в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton {
+    background-color: white;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
+    background-color: #e3f2fd;
+}
+
+/* Дни недели в попапе - золотой фон, белый текст */
+QDateEdit QCalendarWidget QWidget#qt_calendar_weekday {
+    color: white;
+    font-weight: bold;
+    background-color: #CCAB6E;
+    padding: 4px;
+}
+
+/* Ячейки дней в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day {
+    border: none;
+    border-radius: 4px;
+    padding: 4px;
+    color: #1B232A;
+    background-color: transparent;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:hover {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+/* Выбранная дата в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked {
+    background-color: #CCAB6E;
+    color: white;
+    border-radius: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
+    background-color: #998664;
+}
+
+/* Дни других месяцев в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:disabled {
+    color: #B0B0B0;
+}
+
+/* Сегодняшняя дата в попапе - красный фон, белый текст */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"] {
+    background-color: #D22730;
+    color: white;
+    border-radius: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:hover {
+    background-color: #862633;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:pressed {
+    background-color: #6a1e29;
+}
+
+/* Если сегодняшняя дата выбрана в попапе - приоритет у выбранной */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checked {
+    background-color: #CCAB6E;
+    color: white;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checked:hover {
+    background-color: #998664;
+}
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_3">
+   <property name="spacing">
+    <number>12</number>
+   </property>
+   <property name="leftMargin">
+    <number>8</number>
+   </property>
+   <property name="topMargin">
+    <number>8</number>
+   </property>
+   <property name="rightMargin">
+    <number>8</number>
+   </property>
+   <property name="bottomMargin">
+    <number>8</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="labelBasic">
+     <property name="font">
+      <font>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #1B232A; font-weight: bold;</string>
+     </property>
+     <property name="text">
+      <string>Основные реквизиты</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="direction_box">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>335</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>335</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="placeholderText">
+      <string>Выберите направление</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayoutDates_2">
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayoutDate_2">
+       <item>
+        <widget class="QLabel" name="labelIndexNumber">
+         <property name="styleSheet">
+          <string notr="true">color: #1B232A;</string>
+         </property>
+         <property name="text">
+          <string>Порядковый номер</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTextEdit" name="index_number_edit">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>36</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>36</height>
+          </size>
+         </property>
+         <property name="placeholderText">
+          <string>Порядковый номер</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayoutDeadline_2">
+       <item>
+        <widget class="QLabel" name="labelNumber">
+         <property name="styleSheet">
+          <string notr="true">color: #1B232A;</string>
+         </property>
+         <property name="text">
+          <string>Номер документа</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTextEdit" name="number_edit">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>36</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>36</height>
+          </size>
+         </property>
+         <property name="placeholderText">
+          <string>Номер документа</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayoutDates">
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayoutDate">
+       <item>
+        <widget class="QLabel" name="labelDate">
+         <property name="styleSheet">
+          <string notr="true">color: #1B232A;</string>
+         </property>
+         <property name="text">
+          <string>Дата отправки</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QDateEdit" name="date_edit">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>36</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>36</height>
+          </size>
+         </property>
+         <property name="calendarPopup">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayoutDeadline">
+       <item>
+        <widget class="QLabel" name="labelDeadline">
+         <property name="styleSheet">
+          <string notr="true">color: #1B232A;</string>
+         </property>
+         <property name="text">
+          <string>Срок ответа</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QDateEdit" name="date_deadline">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>36</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>36</height>
+          </size>
+         </property>
+         <property name="calendarPopup">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelContent">
+     <property name="font">
+      <font>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #1B232A; font-weight: bold;</string>
+     </property>
+     <property name="text">
+      <string>Содержание</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTextEdit" name="regarding_edit">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>335</width>
+       <height>50</height>
+      </size>
+     </property>
+     <property name="placeholderText">
+      <string>Касается</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTextEdit" name="topic_edit">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>335</width>
+       <height>50</height>
+      </size>
+     </property>
+     <property name="placeholderText">
+      <string>Тема</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelParticipants">
+     <property name="font">
+      <font>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #1B232A; font-weight: bold;</string>
+     </property>
+     <property name="text">
+      <string>Участники</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayoutSender">
+     <item>
+      <widget class="QComboBox" name="sender_box">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="placeholderText">
+        <string>Выберите отправителя</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnAddSender">
+       <property name="minimumSize">
+        <size>
+         <width>36</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>36</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+QPushButton {
+    border-radius: 18px;
+    background-color: #CCAB6E;
+    border: none;
+}
+QPushButton:hover {
+    background-color: #998664;
+}
+QPushButton:pressed {
+    background-color: #7A6A50;
+}
+        </string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>D:/Documents/client/icons/plus.svg</normaloff>D:/Documents/client/icons/plus.svg</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>24</width>
+         <height>24</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayoutReceiver">
+     <item>
+      <widget class="QPushButton" name="btn_receiver">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+QPushButton {
+    border-radius: 10px;
+    border: 1px solid #CCAB6E;
+    padding: 5px;
+    text-align: left;
+    background-color: white;
+    color: #1B232A;
+}
+QPushButton:hover {
+    border: 1px solid #998664;
+    background-color: #FDFBF7;
+}
+QPushButton:focus {
+    border: 2px solid #CCAB6E;
+}
+        </string>
+       </property>
+       <property name="text">
+        <string>Выберите получателя</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnAddExecutor">
+       <property name="minimumSize">
+        <size>
+         <width>36</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>36</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+QPushButton {
+    border-radius: 18px;
+    background-color: #CCAB6E;
+    border: none;
+}
+QPushButton:hover {
+    background-color: #998664;
+}
+QPushButton:pressed {
+    background-color: #7A6A50;
+}
+        </string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>D:/Documents/client/icons/plus.svg</normaloff>D:/Documents/client/icons/plus.svg</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>24</width>
+         <height>24</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayoutExecutor">
+     <item>
+      <widget class="QPushButton" name="btnExecutor">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+QPushButton {
+    border-radius: 10px;
+    border: 1px solid #CCAB6E;
+    padding: 5px;
+    text-align: left;
+    background-color: white;
+    color: #1B232A;
+}
+QPushButton:hover {
+    border: 1px solid #998664;
+    background-color: #FDFBF7;
+}
+QPushButton:focus {
+    border: 2px solid #CCAB6E;
+}
+        </string>
+       </property>
+       <property name="text">
+        <string>Выберите исполнителя</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnAddReceiver">
+       <property name="minimumSize">
+        <size>
+         <width>36</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>36</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+QPushButton {
+    border-radius: 18px;
+    background-color: #CCAB6E;
+    border: none;
+}
+QPushButton:hover {
+    background-color: #998664;
+}
+QPushButton:pressed {
+    background-color: #7A6A50;
+}
+        </string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>D:/Documents/client/icons/plus.svg</normaloff>D:/Documents/client/icons/plus.svg</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>24</width>
+         <height>24</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelTags">
+     <property name="font">
+      <font>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #1B232A; font-weight: bold;</string>
+     </property>
+     <property name="text">
+      <string>Классификация</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayoutTags">
+     <item>
+      <widget class="QPushButton" name="btn_tag">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+QPushButton {
+    border-radius: 10px;
+    border: 1px solid #CCAB6E;
+    padding: 5px;
+    text-align: left;
+    background-color: white;
+    color: #1B232A;
+}
+QPushButton:hover {
+    border: 1px solid #998664;
+    background-color: #FDFBF7;
+}
+QPushButton:focus {
+    border: 2px solid #CCAB6E;
+}
+        </string>
+       </property>
+       <property name="text">
+        <string>Выберите теги</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnAddTag">
+       <property name="minimumSize">
+        <size>
+         <width>36</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>36</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+QPushButton {
+    border-radius: 18px;
+    background-color: #CCAB6E;
+    border: none;
+}
+QPushButton:hover {
+    background-color: #998664;
+}
+QPushButton:pressed {
+    background-color: #7A6A50;
+}
+        </string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>D:/Documents/client/icons/plus.svg</normaloff>D:/Documents/client/icons/plus.svg</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>24</width>
+         <height>24</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QComboBox" name="select_box">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>335</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="placeholderText">
+      <string>Выберите способ создания документа</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTextBrowser" name="namedoc_browser">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>335</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>335</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="placeholderText">
+      <string>Название файла</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="QPushButton" name="btn_attach">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>44</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>44</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">
+QPushButton {
+    border-radius: 10px;
+    background-color: #CCAB6E;
+    color: white;
+    border: none;
+    font-weight: bold;
+    font-size: 13px;
+}
+QPushButton:hover {
+    background-color: #998664;
+}
+QPushButton:pressed {
+    background-color: #7A6A50;
+}
+      </string>
+     </property>
+     <property name="text">
+      <string>Сохранить документ</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
