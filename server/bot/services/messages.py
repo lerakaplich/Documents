@@ -49,7 +49,61 @@ SUPPORT_REPLY_FAILED = "Не удалось доставить ответ (во�
 def get_support_ticket_header(full_name: str, username: str, user_id: int) -> str:
     """Генерирует информационную шапку обращения для канала поддержки"""
     return (
-        f"**Новое обращение!**\n"
+        f"<b>Новое обращение!</b>\n"
         f"От: {full_name} ({username})\n"
-        f"ID: `{user_id}`\n\n"
+        f"ID: <code>{user_id}</code>\n\n"
+    )
+
+
+# Сообщения для переработок
+
+OVERTIME_CHOOSE_PERIOD = f"<b>Ваши переработки</b>\nВыберете расчетный период для просмотра:"
+OVERTIME_NO_RECORDS = "За период <b>{period_name}</b> переработок не найдено."
+
+
+def format_overtime_duration(start, end) -> float:
+    """Вычисляет разницу в часах между началом и концом переработки"""
+    if not start or not end:
+        return 0.0
+    # Переводим в минуты для точности
+    start_minutes = start.hour * 60 + start.minute
+    end_minutes = end.hour * 60 + end.minute
+    return round((end_minutes - start_minutes) / 60.0, 1)
+
+
+def get_overtime_list_text(period_name: str, start_date, end_date, overtimes_page: list,
+                           total_hours: float, page: int, total_pages: int) -> str:
+    """Форматирует список переработок за период для конкретной страницы пагинации"""
+    text = (
+        f"<b>Переработки за период: {period_name}</b>\n"
+        f"Интервал: {start_date.strftime('%d.%m.%Y')} — {end_date.strftime('%d.%m.%Y')}\n"
+        f"Всего отработано: {total_hours} ч.\n\n"
+        f"Страница {page} из {total_pages}:\n"
+    )
+
+    for idx, ov in enumerate(overtimes_page, 1):
+        status_emoji = "🟢" if ov.note_text else "🟡"
+        duration = format_overtime_duration(ov.overtime_start, ov.overtime_end)
+        note_preview = f"«{ov.note_text[:25]}...»" if ov.note_text else "⚠️ <b>Описание не добавлено</b>"
+
+        text += f"{status_emoji} <b>{idx}. {ov.overtime_date.strftime('%d.%m')}</b> — {duration} ч.\n"
+        text += f"   └ {note_preview}\n\n"
+
+    text += "Выберете номер переработки ниже, чтобы управлять описанием."
+    return text
+
+
+def get_overtime_detail_text(ov) -> str:
+    """Форматирует карточку конкретной переработки"""
+    duration = format_overtime_duration(ov.overtime_start, ov.overtime_end)
+    time_str = f"{ov.overtime_start.strftime('%H:%M')} - {ov.overtime_end.strftime('%H:%M')}" \
+        if ov.overtime_start else "Не указано"
+
+    note = ov.note_text if ov.note_text else "❌ Описание отсутствует"
+
+    return (
+        f"Детали переработки за {ov.overtime_date.strftime('%d.%m.%Y')}\n\n"
+        f"Длительность: {duration} ч. ({time_str})\n"
+        f"Текущее описание:\n{note}\n\n"
+        f"Чтобы изменить или добавить описание, просто отправьте текст следующим сообщением!"
     )

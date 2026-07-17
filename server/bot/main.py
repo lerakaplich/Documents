@@ -4,6 +4,7 @@ import sys
 from contextlib import asynccontextmanager
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from server.bot.config import bot_settings
@@ -31,7 +32,10 @@ async def main():
     logger.info("Запуск инфраструктуры Telegram Bot...")
 
     # 1. Инициализация Bot и Dispatcher
-    bot = Bot(token=bot_settings.TELEGRAM_BOT_TOKEN)
+    bot = Bot(
+        token=bot_settings.TELEGRAM_BOT_TOKEN,
+        default=DefaultBotProperties(parse_mode="HTML")  # <--- Устанавливаем дефолт здесь!
+    )
     dp = Dispatcher(storage=MemoryStorage())
 
     # Регистрируем Middleware и роутер с обработчиками команд

@@ -20,7 +20,7 @@ class SupportStates(StatesGroup):
     waiting_for_issue = State()  # Ожидание описания проблемы
 
 
-@router.message(F.chat.type == "private", F.text == "🆘 Поддержка")
+@router.message(F.chat.type == "private", F.text == "Поддержка")
 async def start_support_request(message: Message, state: FSMContext):
     """Вход в сценарий отправки обращения в поддержку"""
     await state.set_state(SupportStates.waiting_for_issue)
