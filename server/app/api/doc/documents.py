@@ -7,7 +7,7 @@ from server.app.deps import get_current_user, get_doc_service, get_registry_serv
 from server.app.role_checker import RoleChecker
 from server.app.schemas.doc.document_dto import (
     DocumentListItem, DocumentCreateForm, DocumentDetailRead,
-    AdminMetadataUpdate, DocumentPaginationResponse
+    AdminMetadataUpdate, DocumentPaginationResponse, ProposedNumberResponse
 )
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 
@@ -27,8 +27,23 @@ async def create_document(
         service: DocumentService = Depends(get_doc_service)
 ):
     """Создание новой карточки документа во внутреннем контуре"""
-    return await service.create(payload, current_user.id)
+    return await service.create(payload, current_user)
 
+@router.get("/proposed-number", response_model=ProposedNumberResponse)
+async def get_proposed_document_number(
+        type_id: int = Query(..., description="ID типа документа"),
+        direction: DocDirection = Query(..., description="Направление документа (internal/external/etc.)"),
+        current_user: CurrentUser = Depends(get_current_user),
+        service: DocumentService = Depends(get_doc_service)
+):
+    """
+    Возвращает проект регистрационного номера документа для текущего пользователя.
+    """
+    return await service.generate_proposed_number(
+        type_id=type_id,
+        direction=direction,
+        user_id=current_user.id
+    )
 
 @router.get("/", response_model=DocumentPaginationResponse)
 async def get_documents(

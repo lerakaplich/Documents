@@ -205,3 +205,33 @@ class EmployeesRepository:
         )
         await self.db.execute(stmt)
         await self.db.flush()
+
+    async def get_department_codes_for_employee(self, employee_id: int) -> tuple[str, str]:
+        """
+        Возвращает (код_высшего_подразделения, код_отдела) для сотрудника.
+        """
+        # Получаем подразделение сотрудника с подгрузкой Department
+        stmt = (
+            select(Department)
+            .join(EmployeePosition, EmployeePosition.department_id == Department.id)
+            .where(EmployeePosition.employee_id == employee_id)
+        )
+        result = await self.db.execute(stmt)
+        dept = result.scalar_one_or_none()
+
+        if not dept:
+            return "00", "00"
+
+        sub_dept_code = str(dept.number) if getattr(dept, 'number', None) is not None else dept.name
+
+        # Если у нас есть hierarchy_path (например "1/4/12"), извлекаем корень
+        if hasattr(dept, 'hierarchy_path') and dept.hierarchy_path:
+            top_dept_id = int(dept.hierarchy_path.split('/')[0])
+            top_res = await self.db.execute(select(Department).where(Department.id == top_dept_id))
+            top_dept = top_res.scalar_one_or_none()
+            top_dept_code = (str(top_dept.number) if top_dept and getattr(top_dept, 'number',
+                                                                          None) is not None else top_dept.name) if top_dept else sub_dept_code
+        else:
+            top_dept_code = sub_dept_code
+
+        return top_dept_code, sub_dept_code

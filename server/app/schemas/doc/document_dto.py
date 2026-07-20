@@ -140,3 +140,7 @@ class RedirectHistoryRead(BaseModel):
 
     class Config:
         from_attributes = True # Позволяет создавать схему из ORM-объектов
+
+class ProposedNumberResponse(BaseModel):
+    proposed_number: str
+    sequence_number: int

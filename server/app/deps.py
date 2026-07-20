@@ -180,13 +180,19 @@ def get_attachment_service(
 
 # --- ФАБРИКИ ЗАВИСИМОСТЕЙ ДЛЯ СЕРВИСОВ ---
 
-def get_doc_service(
-    db_docs: AsyncSession = Depends(get_docs_db),
-    attachment_svc: AttachmentService = Depends(get_attachment_service)
+async def get_doc_service(
+        db_docs: AsyncSession = Depends(get_docs_db),
+        db_emp: AsyncSession = Depends(get_employees_db),
+        attachment_svc: AttachmentService = Depends(get_attachment_service)
 ) -> DocumentService:
-    repo = DocumentRepository(db_docs)
-    # Теперь передаем в конструктор сервиса вложений
-    return DocumentService(repo, attachment_svc)
+    doc_repo = DocumentRepository(db_docs)
+    emp_repo = EmployeesRepository(db_emp)
+
+    return DocumentService(
+        repo=doc_repo,
+        emp_repo=emp_repo,
+        attachment_service=attachment_svc
+    )
 
 
 def get_delegation_service(

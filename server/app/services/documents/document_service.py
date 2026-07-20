@@ -1,19 +1,22 @@
 from fastapi import HTTPException, status, UploadFile
 from typing import Optional, List
-from server.app.database.document_models import Document, EmployeeDocument, DocumentRole, AppRights, Read
+from server.app.database.document_models import Document, EmployeeDocument, DocumentRole, AppRights, Read, DocDirection
 from server.app.repositories.document_repo import DocumentRepository
-from server.app.schemas.doc.document_dto import DocumentCreateForm, AdminMetadataUpdate
+from server.app.repositories.employee_repo import EmployeesRepository
+from server.app.schemas.doc.document_dto import DocumentCreateForm, AdminMetadataUpdate, ProposedNumberResponse
 from sqlalchemy import select
 
+from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.documents.attachment_service import AttachmentService
 
 
 class DocumentService:
-    def __init__(self, repo: DocumentRepository, attachment_service: AttachmentService):
+    def __init__(self, repo: DocumentRepository, emp_repo: EmployeesRepository, attachment_service: AttachmentService):
         self.repo = repo
+        self.emp_repo = emp_repo
         self.attachment_service = attachment_service
 
-    async def create(self, payload: DocumentCreateForm, user_id: int, files: Optional[List[UploadFile]] = None) -> Document:
+    async def create(self, payload: DocumentCreateForm, user: CurrentUser, files: Optional[List[UploadFile]] = None) -> Document:
         """Создание документа с привязкой участников и тегов"""
         # 1. Создаем базовую карточку документа (без file_path, вложения теперь в отдельной таблице)
         async with self.repo.db.begin():
@@ -34,7 +37,7 @@ class DocumentService:
 
             # 2. Формируем матрицу участников внутреннего согласования МАЗа
             self.repo.db.add(
-                EmployeeDocument(document_id=new_doc.id, employee_id=user_id, role=DocumentRole.sender, is_approved=True))
+                EmployeeDocument(document_id=new_doc.id, employee_id=user.id, role=DocumentRole.sender, is_approved=True))
 
             for emp_id in payload.executors:
                 self.repo.db.add(EmployeeDocument(document_id=new_doc.id, employee_id=emp_id, role=DocumentRole.executor,
@@ -56,6 +59,7 @@ class DocumentService:
                     await self.attachment_service.add_attachment(
                         doc_id=new_doc.id,
                         file=file,
+                        current_user=user,
                         sent_date=new_doc.created_at  # Или из payload
                     )
 
@@ -112,3 +116,35 @@ class DocumentService:
         except Exception as e:
             await self.repo.db.rollback()
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Ошибка обновления: {str(e)}")
+
+    async def generate_proposed_number(
+        self,
+        type_id: int,
+        direction: DocDirection,
+        user_id: int
+    ) -> ProposedNumberResponse:
+        """
+        Генерирует регистрационный номер по маске:
+        [Высшее подразделение]-[Код направления]-[Отдел]/[Порядковый номер]
+        """
+        # 1. Проверяем автонумерацию для типа документа
+        auto_num_enabled = await self.repo.is_auto_num_enabled(type_id)
+        if not auto_num_enabled:
+            return ProposedNumberResponse(proposed_number="", sequence_number=0)
+
+        # 2. Получаем коды подразделений из базы кадров через self.emp_repo
+        top_dept_code, sub_dept_code = await self.emp_repo.get_department_codes_for_employee(user_id)
+
+        # 3. Получаем следующий порядковый номер типа
+        next_seq = await self.repo.get_next_sequence_number(type_id)
+
+        # 4. Код направления (у DocDirection используем .code)
+        direction_code = direction.code
+
+        # 5. Сборка маски
+        proposed_str = f"{top_dept_code}-{direction_code}-{sub_dept_code}/{next_seq}"
+
+        return ProposedNumberResponse(
+            proposed_number=proposed_str,
+            sequence_number=next_seq
+        )

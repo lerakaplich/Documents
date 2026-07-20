@@ -11,8 +11,9 @@ from sqlalchemy.orm import selectinload
 from server.app.database.document_models import (
     Document, EmployeeDocument, SystemEmployee,
     Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority, DocumentRole, RedirectHistory, Read,
-    DocumentArchive, DocumentPin, DocumentAttachment, DocumentStatusHistory
+    DocumentArchive, DocumentPin, DocumentAttachment, DocumentStatusHistory, DocumentType
 )
+from server.app.database.employee_models import Department, EmployeePosition
 
 
 class DocumentRepository:
@@ -406,3 +407,56 @@ class DocumentRepository:
         )
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+    async def get_next_sequence_number(self, type_id: int) -> int:
+        """Глобально вычисляет следующий порядковый номер для типа документа"""
+        query = (
+            select(func.max(Document.sequence_number))
+            .where(Document.type_id == type_id)
+        )
+
+        res = await self.db.execute(query)
+        max_num = res.scalar_one_or_none()
+
+        return (max_num + 1) if max_num is not None else 1
+
+    async def is_auto_num_enabled(self, type_id: int) -> bool:
+        """Проверяет, включена ли автонумерация для типа документа"""
+        query = select(DocumentType.auto_num).where(DocumentType.id == type_id)
+        res = await self.db.execute(query)
+        return res.scalar_one_or_none() or False
+
+    async def get_employee_department_codes(cadre_db: AsyncSession, employee_id: int) -> tuple[str, str]:
+        """
+        Возвращает (код_высшего_подразделения, код_отдела) для сотрудника.
+        Пример ответа: ("10", "102") или ("УИТ", "ОАСУP")
+        """
+        # 1. Находим должность и отдел сотрудника
+        stmt = (
+            select(Department)
+            .join(EmployeePosition, EmployeePosition.department_id == Department.id)
+            .where(EmployeePosition.employee_id == employee_id)
+        )
+        res = await cadre_db.execute(stmt)
+        current_dept = res.scalar_one_or_none()
+
+        if not current_dept:
+            return "00", "00"
+
+        # В качестве кода отдела берем number (если есть) или name
+        sub_dept_code = str(current_dept.number) if current_dept.number else current_dept.name
+
+        # 2. Поднимаемся к корневому подразделению (где parent_id IS NULL)
+        top_dept = current_dept
+        while top_dept.parent_id is not None:
+            parent_res = await cadre_db.execute(
+                select(Department).where(Department.id == top_dept.parent_id)
+            )
+            parent_dept = parent_res.scalar_one_or_none()
+            if not parent_dept:
+                break
+            top_dept = parent_dept
+
+        top_dept_code = str(top_dept.number) if top_dept.number else top_dept.name
+
+        return top_dept_code, sub_dept_code

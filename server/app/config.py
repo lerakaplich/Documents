@@ -1,7 +1,7 @@
 import os
 
 # Токен бота (на проде заберем из env, сейчас можно оставить дефолт для тестов)
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8108629062:AAFFRoG-fmL_X2UNM4JZUQCRLL200Qt61Hc")
 
 # URL локального или внешнего API Telegram
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"

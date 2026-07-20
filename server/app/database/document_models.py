@@ -28,6 +28,14 @@ class DocDirection(str, enum.Enum):
     internal = "internal"
     external = "external"
 
+    @property
+    def code(self) -> int:
+        mapping = {
+            DocDirection.internal: 16,
+            DocDirection.external: 17,
+        }
+        return mapping[self]
+
 
 class DocStatus(str, enum.Enum):
     under_review = 'under_review'
