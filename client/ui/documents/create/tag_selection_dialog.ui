@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TagSelectionDialog</class>
+ <widget class="QDialog" name="TagSelectionDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>750</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Выбор тегов</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">* {
+    font-family: 'Segoe UI', Arial;
+}
+
+QDialog {
+    background-color: #F5F5F7;
+    color: black;
+}
+
+QLabel#titleLabel {
+    color: #1B232A;
+    font-size: 20px;
+    font-weight: bold;
+    background-color: transparent;
+    padding: 10px 0px 16px 0px;
+}
+
+QFrame#contentFrame {
+    background-color: white;
+    border: 1px solid #E0E0E0;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+QLabel#instructionLabel {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    background-color: transparent;
+    padding-bottom: 4px;
+}
+
+QLabel#selectionInfoLabel {
+    font-size: 13px;
+    color: #555;
+    background-color: transparent;
+    padding: 4px 0px;
+    border: none;
+}
+
+QLineEdit#searchEdit {
+    border: 1px solid #D0D0D0;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 14px;
+    background-color: white;
+}
+QLineEdit#searchEdit:focus {
+    border: 2px solid #D22730;
+}
+
+QTreeWidget#treeWidget {
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    background-color: transparent;
+    color: black;
+    font-size: 14px;
+    padding: 4px;
+    outline: none;
+}
+QTreeWidget#treeWidget::item {
+    padding: 8px 6px;
+    color: black;
+}
+QTreeWidget#treeWidget::item:selected {
+    background-color: #ccab6e;
+    color: white;
+}
+QTreeWidget#treeWidget::item:hover {
+    background-color: #f0f0f0;
+    color: black;
+}
+
+/* Стили для чекбоксов */
+QTreeWidget#treeWidget::indicator {
+    width: 18px;
+    height: 18px;
+}
+
+QPushButton#selectButton {
+    background-color: #ccab6e;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 12px;
+}
+QPushButton#selectButton:hover {
+    background-color: #998664;
+}
+QPushButton#selectButton:pressed {
+    background-color: #7a6a50;
+}
+
+QPushButton#cancelButton {
+    background-color: transparent;
+    color: #666;
+    border: 1px solid #D0D0D0;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 12px;
+}
+QPushButton#cancelButton:hover {
+    background-color: #f0f0f0;
+    border-color: #999;
+}
+QPushButton#cancelButton:pressed {
+    background-color: #e0e0e0;
+}
+
+QScrollBar:vertical {
+    background: #F5F5F5;
+    width: 8px;
+    border-radius: 4px;
+    margin: 0px;
+    border: none;
+}
+QScrollBar::handle:vertical {
+    background: #C1C1C1;
+    border-radius: 4px;
+    min-height: 20px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #A0A0A0;
+}
+QScrollBar::handle:vertical:pressed {
+    background: #888888;
+}
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}</string>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>16</number>
+   </property>
+   <property name="topMargin">
+    <number>16</number>
+   </property>
+   <property name="rightMargin">
+    <number>16</number>
+   </property>
+   <property name="bottomMargin">
+    <number>16</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="titleLabel">
+     <property name="text">
+      <string>Выбор тегов</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="contentFrame">
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <layout class="QVBoxLayout" name="contentLayout">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="instructionLabel">
+        <property name="text">
+         <string>Выберите теги для документа:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="searchEdit">
+        <property name="placeholderText">
+         <string>Поиск тегов...</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="selectionInfoLabel">
+        <property name="text">
+         <string>Выбрано: 0 тегов</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTreeWidget" name="treeWidget">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>300</height>
+         </size>
+        </property>
+        <column>
+         <property name="text">
+          <string>Теги</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="selectButton">
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="text">
+      <string>Выбрать</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

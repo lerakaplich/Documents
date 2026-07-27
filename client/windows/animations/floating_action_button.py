@@ -1,22 +1,29 @@
 from PyQt6.QtWidgets import QPushButton
-
 from PyQt6.QtCore import Qt, pyqtSignal, QEasingCurve, QPropertyAnimation, QTimer, QPoint, QParallelAnimationGroup
 from PyQt6.QtWidgets import QGraphicsOpacityEffect
+from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
+from PyQt6.QtCore import QByteArray, QXmlStreamReader
+import os
+import sys
+
+
+# Убираем PLUS_SVG, теперь иконка загружается из файла
 
 
 class FloatingActionButton(QPushButton):
-    """Плавающая кнопка действия с анимацией появления/исчезновения"""
+    """Плавающая кнопка действия с возможностью настройки размера иконки"""
 
-    def __init__(self, parent=None):
+    # Добавляем icon_size в параметры (по умолчанию 28x28)
+    def __init__(self, parent=None, icon_size=(28, 28)):
         super().__init__(parent)
+        self.icon_width, self.icon_height = icon_size
+
         self.setFixedSize(56, 56)
         self.setStyleSheet("""
             QPushButton {
                 background-color: #ccab6e;
                 color: white;
                 border-radius: 28px;
-                font-size: 24px;
-                font-weight: bold;
                 border: none;
             }
             QPushButton:hover {
@@ -26,7 +33,10 @@ class FloatingActionButton(QPushButton):
                 background-color: #a07d3f;
             }
         """)
-        self.setText("+")
+
+        # Передаем размеры в метод
+        self._set_icon_from_file()
+
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         # Сохраняем базовую позицию
@@ -60,6 +70,48 @@ class FloatingActionButton(QPushButton):
         # Флаг состояния
         self.is_visible = True
         self.offset = 20  # Смещение для анимации всплытия
+
+    def _set_icon_from_file(self):
+        """Установить иконку из файла SVG с динамическим размером"""
+        # Путь к файлу иконки
+        icon_path = r"D:\Documents\client\icons\plus28_gold.svg"
+
+        try:
+            from PyQt6.QtSvg import QSvgRenderer
+
+            # Проверяем существование файла
+            if not os.path.exists(icon_path):
+                print(f"[FloatingActionButton] Файл иконки не найден: {icon_path}")
+                self._set_fallback_icon()
+                return
+
+            # Загружаем SVG из файла
+            renderer = QSvgRenderer(icon_path)
+
+            # Создаем pixmap нужного размера
+            pixmap = QPixmap(self.icon_width, self.icon_height)
+            pixmap.fill(Qt.GlobalColor.transparent)
+
+            painter = QPainter(pixmap)
+            renderer.render(painter)
+            painter.end()
+
+            self.setIcon(QIcon(pixmap))
+            self.setIconSize(pixmap.rect().size())
+
+        except ImportError:
+            print("[FloatingActionButton] QtSvg не доступен, используем fallback иконку")
+            self._set_fallback_icon()
+        except Exception as e:
+            print(f"[FloatingActionButton] Ошибка загрузки SVG из файла: {e}")
+            self._set_fallback_icon()
+
+    def _set_fallback_icon(self):
+        """Установить fallback иконку (текстовый плюс) при ошибке загрузки SVG"""
+        self.setText("+")
+        self.setStyleSheet(self.styleSheet() + f"""
+            QPushButton {{ font-size: {self.icon_height}px; font-weight: bold; }}
+        """)
 
     def update_base_position(self, x, y):
         """Обновить базовую позицию кнопки"""
@@ -118,9 +170,15 @@ class FloatingActionButton(QPushButton):
 
     def start_hide_timer(self):
         """Запустить таймер для показа кнопки после остановки скролла"""
-        self.hide_timer.stop()  # Останавливаем предыдущий таймер
-        self.hide_timer.start(1000)  # Показываем через 1 секунду после остановки скролла
+        self.hide_timer.stop()
+        self.hide_timer.start(1000)
 
     def stop_hide_timer(self):
         """Остановить таймер"""
         self.hide_timer.stop()
+
+    def showEvent(self, event):
+        """Переопределяем showEvent для корректной позиции"""
+        super().showEvent(event)
+        if self.is_visible:
+            self.move(self.base_position)

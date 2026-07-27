@@ -128,7 +128,7 @@ class CommentDialog(QDialog):
         self._comments_cache = []  # Кеш комментариев для избежания рекурсии
 
         # Загружаем UI
-        ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "comments", "comments_dialog.ui")
+        ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "comments_dialog.ui")
         loadUi(ui_path, self)
 
         self._setup_ui()

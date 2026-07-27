@@ -39,6 +39,64 @@ class DocumentsPanelController:
 
         return documents, title, "type", str(type_id)
 
+    # client/core/table/documents_panel_controller.py
+
+    def get_full_document_for_history(self, document_data: dict) -> dict:
+        """
+        Получает полные данные документа с историей
+
+        Args:
+            document_data: базовые данные документа
+
+        Returns:
+            dict: обогащенные данные
+        """
+        try:
+            doc_id = document_data.get('id')
+            if not doc_id:
+                return document_data
+
+            # ИСПРАВЛЕНО: get_by_id -> get_document_by_id
+            full_doc = self.repository.get_document_by_id(doc_id)
+            if full_doc:
+                # Добавляем историю
+                full_doc['history'] = self.get_document_history(doc_id)
+                return full_doc
+        except Exception as e:
+            print(f"[Controller] Error getting full document for history: {e}")
+
+        return document_data
+
+    def get_document_history(self, document_id: int) -> list:
+        """
+        Получает историю документа
+
+        Args:
+            document_id: ID документа
+
+        Returns:
+            list: список событий истории
+        """
+        try:
+            # Здесь должна быть логика получения истории из БД
+            # Например:
+            # history = self.history_repo.get_by_document_id(document_id)
+            # return history
+
+            # Временная заглушка
+            return []
+        except Exception as e:
+            print(f"[Controller] Error getting document history: {e}")
+            return []
+
+    def get_current_user(self) -> dict:
+        """Возвращает текущего пользователя"""
+        # Здесь должна быть логика получения текущего пользователя
+        return {
+            'id': 1,
+            'full_name': 'Иванов И.И.'
+        }
+
     def load_documents_by_direction(self, direction: str, title: str = None):
         """Загружает документы по направлению."""
         documents = self.repository.get_documents_by_direction(direction)
@@ -122,13 +180,65 @@ class DocumentsPanelController:
             print(f"[Controller] Error saving comment: {e}")
         return False
 
-    def get_current_user(self) -> dict:
-        """Возвращает текущего авторизованного пользователя"""
-        # Логику получения текущего сессионного юзера держим здесь
-        return {
-            'id': 2,
-            'full_name': 'Сидоров С.С.',
-            'last_name': 'Сидоров',
-            'first_name': 'Сергей',
-            'middle_name': 'Сергеевич'
-        }
+    # client/core/table/documents_panel_controller.py
+
+    def get_full_document_for_edit(self, document_data: dict) -> dict:
+        """
+        Получает полные данные документа для редактирования
+
+        Args:
+            document_data: базовые данные документа
+
+        Returns:
+            dict: обогащенные данные
+        """
+        try:
+            doc_id = document_data.get('id')
+            if not doc_id:
+                return document_data
+
+            full_doc = self.repository.get_document_by_id(doc_id)
+            if full_doc:
+                return full_doc
+        except Exception as e:
+            print(f"[Controller] Error getting full document for edit: {e}")
+
+        return document_data
+
+    def update_document(self, document_data: dict) -> bool:
+        """
+        Обновляет документ
+
+        Args:
+            document_data: обновленные данные документа
+
+        Returns:
+            bool: успех операции
+        """
+        try:
+            doc_id = document_data.get('id')
+            if not doc_id:
+                return False
+
+            return self.repository.update_document(doc_id, document_data)
+        except Exception as e:
+            print(f"[Controller] Error updating document: {e}")
+            return False
+
+    def delete_document(self, document_id: int) -> bool:
+        """Удаляет документ"""
+        try:
+            # В реальном приложении здесь был бы вызов репозитория
+            doc = self.repository.get_document_by_id(document_id)
+            if doc:
+                # Помечаем как удаленный или удаляем
+                self.repository._documents = [d for d in self.repository._documents if d.get('id') != document_id]
+                return True
+            return False
+        except Exception as e:
+            print(f"[Controller] Error deleting document: {e}")
+            return False
+
+
+
+

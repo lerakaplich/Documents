@@ -43,7 +43,7 @@ class RedirectDialog(QDialog):
         for _ in range(4):
             root_dir = os.path.dirname(root_dir)
 
-        ui_path = os.path.join(root_dir, "client", "ui", "documents", "redirect", "redirect_dialog.ui")
+        ui_path = os.path.join(root_dir, "client", "ui", "documents", "redirect_dialog.ui")
         loadUi(ui_path, self)
 
         images_dir = os.path.join(root_dir, "client", "icons").replace("\\", "/")
