@@ -140,6 +140,7 @@ class DocumentsPanel(QWidget):
             organizations = self._get_organizations_data()
             departments = self._get_departments_data()
             employees = self._get_employees_data()
+            tags = self._get_tags_data()
 
             # Создаем универсальный диалог в режиме 'create'
             self.document_dialog = DocumentDialog(
@@ -148,7 +149,8 @@ class DocumentsPanel(QWidget):
                 current_user=current_user,
                 organizations=organizations,
                 departments=departments,
-                employees=employees
+                employees=employees,
+                tags=tags
             )
 
             self.document_dialog.document_created.connect(self._on_document_created_success)
@@ -163,6 +165,29 @@ class DocumentsPanel(QWidget):
             import traceback
             traceback.print_exc()
 
+    def _get_tags_data(self) -> list:
+        """Получает список доступных тегов из контроллера"""
+        try:
+            if hasattr(self.controller, 'get_tags'):
+                return self.controller.get_tags()
+            else:
+                # Возвращаем теги из конфига
+                from client.core.data.document_data import DocumentDataConfig
+                # Если есть метод в конфиге
+                if hasattr(DocumentDataConfig, 'get_tags_data'):
+                    return DocumentDataConfig.get_tags_data()
+                # Или возвращаем тестовые данные
+                return [
+                    {'id': 1, 'name': 'Срочно', 'priority': 'urgent', 'color': '#FF0000'},
+                    {'id': 2, 'name': 'Важно', 'priority': 'important', 'color': '#FFA500'},
+                    {'id': 3, 'name': 'Обычный', 'priority': 'normal', 'color': '#808080'},
+                    {'id': 4, 'name': 'Финансы', 'priority': 'important', 'color': '#008000'},
+                    {'id': 5, 'name': 'Кадры', 'priority': 'normal', 'color': '#0000FF'},
+                ]
+        except Exception as e:
+            print(f"[DocumentsPanel] Ошибка получения тегов: {e}")
+            return []
+
     def _handle_edit_document(self, document_data: dict):
         """Открывает диалог редактирования документа"""
         try:
@@ -176,6 +201,7 @@ class DocumentsPanel(QWidget):
             organizations = self._get_organizations_data()
             departments = self._get_departments_data()
             employees = self._get_employees_data()
+            tags = self._get_tags_data()
 
             # Используем тот же диалог, но в режиме 'edit'
             self.document_dialog = DocumentDialog(
@@ -184,7 +210,8 @@ class DocumentsPanel(QWidget):
                 document_data=full_document,
                 organizations=organizations,
                 departments=departments,
-                employees=employees
+                employees=employees,
+                tags=tags
             )
 
             self.document_dialog.document_updated.connect(self._on_document_updated)

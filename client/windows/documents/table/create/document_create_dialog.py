@@ -14,6 +14,7 @@ from PyQt6.QtGui import QStandardItemModel, QStandardItem
 
 from client.core.data.sender_service import SenderService
 from client.windows.documents.table.create.employee_selection_dialog import EmployeeSelectionDialog
+from client.windows.documents.table.create.tag_selection_dialog import TagSelectionDialog
 
 
 class DocumentDialog(QWidget):
@@ -35,7 +36,8 @@ class DocumentDialog(QWidget):
                  current_user: Optional[Dict[str, Any]] = None,
                  organizations: List[Dict] = None,
                  departments: List[Dict] = None,
-                 employees: List[Dict] = None):
+                 employees: List[Dict] = None,
+                 tags: List[Dict] = None):  # Добавлен параметр tags
         """
         Args:
             mode: 'create' или 'edit'
@@ -44,6 +46,7 @@ class DocumentDialog(QWidget):
             organizations: список организаций
             departments: список отделов
             employees: список сотрудников
+            tags: список доступных тегов
         """
         super().__init__(parent)
 
@@ -53,12 +56,14 @@ class DocumentDialog(QWidget):
         self.organizations = organizations or []
         self.departments = departments or []
         self.employees = employees or []
+        self.available_tags = tags or []  # Добавлен список тегов
 
         # Состояние формы
         self.selected_sender: Optional[Dict[str, Any]] = None
         self.selected_receivers = []
         self.selected_executors = []
-        self.selected_tags = []
+        self.selected_tags = []  # Уже есть, но оставляем
+
 
         # Сервисы
         self.sender_service = SenderService()
@@ -323,6 +328,19 @@ class DocumentDialog(QWidget):
         self.selected_executors = data.get('executor_ids', [])
         self._update_executor_button_text()
 
+        tags_data = data.get('tags', [])
+        if tags_data:
+            # Если пришли ID тегов, ищем их в доступных
+            if tags_data and isinstance(tags_data[0], (int, str)):
+                self.selected_tags = [
+                    tag for tag in self.available_tags
+                    if tag.get('id') in tags_data
+                ]
+            else:
+                # Если пришли объекты тегов
+                self.selected_tags = tags_data
+            self._update_tag_button_text()
+
     def _set_default_dates(self):
         """Установка дефолтных дат"""
         today = QDate.currentDate()
@@ -399,7 +417,62 @@ class DocumentDialog(QWidget):
 
     def _open_tag_selection(self):
         """Открывает диалог выбора тегов"""
-        QMessageBox.information(self, "Выбор тегов", "Функция выбора тегов будет добавлена в следующей версии.")
+        if not self.available_tags:
+            QMessageBox.warning(self, "Нет данных", "Список тегов не загружен.")
+            return
+
+        dialog = TagSelectionDialog(tags_list=self.available_tags, parent=self)
+
+        # Если есть уже выбранные теги, передаем их в диалог
+        if self.selected_tags:
+            selected_ids = [tag.get('id') for tag in self.selected_tags]
+            dialog.set_selected_tags(selected_ids)
+
+        # Важно: инициализация UI, если он не инициализируется в __init__ диалога
+        if hasattr(dialog, 'setupUi'):
+            dialog.setupUi()
+
+        dialog.tags_selected.connect(self._on_tags_selected)
+        dialog.exec()
+
+    def _on_tags_selected(self, selected_tags):
+        """Обработка выбора тегов"""
+        self.selected_tags = selected_tags
+        self._update_tag_button_text()
+
+    def _update_tag_button_text(self):
+        """Обновляет текст кнопки тегов"""
+        if hasattr(self, 'btn_tag'):
+            if not self.selected_tags:
+                self.btn_tag.setText("Выберите теги")
+            else:
+                names = [tag.get('name', '') for tag in self.selected_tags[:3]]
+                text = ', '.join(names)
+                if len(self.selected_tags) > 3:
+                    text += f" +{len(self.selected_tags) - 3}..."
+                self.btn_tag.setText(text)
+                self.btn_tag.setToolTip(f"Выбраны: {', '.join([tag.get('name', '') for tag in self.selected_tags])}")
+
+    def _get_available_tags(self) -> List[Dict]:
+        """
+        Получает список доступных тегов.
+        В реальном приложении здесь должен быть запрос к серверу или сервису.
+        """
+        # Пример тестовых данных (в реальном приложении замените на реальные)
+        test_tags = [
+            {'id': 1, 'name': 'Срочно', 'priority': 'urgent', 'color': '#FF0000'},
+            {'id': 2, 'name': 'Важно', 'priority': 'important', 'color': '#FFA500'},
+            {'id': 3, 'name': 'Обычный', 'priority': 'normal', 'color': '#808080'},
+            {'id': 4, 'name': 'Финансы', 'priority': 'important', 'color': '#008000'},
+            {'id': 5, 'name': 'Кадры', 'priority': 'normal', 'color': '#0000FF'},
+            {'id': 6, 'name': 'Юридический', 'priority': 'normal', 'color': '#800080'},
+            {'id': 7, 'name': 'Договор', 'priority': 'urgent', 'color': '#FF4500'},
+            {'id': 8, 'name': 'Отчет', 'priority': 'important', 'color': '#2E8B57'},
+            {'id': 9, 'name': 'Технический', 'priority': 'normal', 'color': '#4169E1'},
+            {'id': 10, 'name': 'Маркетинг', 'priority': 'normal', 'color': '#FF1493'},
+        ]
+        return test_tags
+
 
     def _update_receiver_button_text(self):
         """Обновляет текст кнопки получателей"""

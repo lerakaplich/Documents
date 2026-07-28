@@ -19,32 +19,24 @@ class TagItemDelegate(QStyledItemDelegate):
         super().__init__(parent)
         self.checked_pixmap = QPixmap(checked_path)
         self.unchecked_pixmap = QPixmap(unchecked_path)
-        self.hovered_index = None  # Индекс элемента под мышью
+        self.hovered_index = None
         self.tree_widget = parent
 
-        # Масштабируем иконки до размера 18x18
         self.checked_pixmap = self.checked_pixmap.scaled(18, 18, Qt.AspectRatioMode.KeepAspectRatio,
                                                          Qt.TransformationMode.SmoothTransformation)
         self.unchecked_pixmap = self.unchecked_pixmap.scaled(18, 18, Qt.AspectRatioMode.KeepAspectRatio,
                                                              Qt.TransformationMode.SmoothTransformation)
 
     def paint(self, painter, option, index):
-        """
-        Отрисовка элемента с кастомным чекбоксом, цветом и приоритетом
-        """
-        # Получаем данные
+        """Отрисовка элемента - ТОЛЬКО hover эффект"""
         tag_data = index.data(Qt.ItemDataRole.UserRole)
         if not tag_data:
             super().paint(painter, option, index)
             return
 
-        # Сохраняем состояние painter
         painter.save()
 
-        # Определяем состояние
-        is_selected = option.state & QStyle.StateFlag.State_Selected
-
-        # Проверяем наведение
+        # Проверяем наведение (hover)
         is_hovered = False
         if self.hovered_index is not None and self.hovered_index.isValid():
             hover_row = self.hovered_index.row()
@@ -54,18 +46,12 @@ class TagItemDelegate(QStyledItemDelegate):
             if hover_row == current_row and hover_parent == current_parent:
                 is_hovered = True
 
-        # Фон - как у сотрудников
-        if is_selected:
-            bg_color = QColor(204, 171, 110)  # #ccab6e - золотой
-            text_color = QColor(255, 255, 255)  # белый текст на золотом фоне
-        elif is_hovered:
-            bg_color = QColor(240, 240, 240)  # светло-серый
-            text_color = QColor(0, 0, 0)
+        # Фон - белый по умолчанию, серый при наведении
+        if is_hovered:
+            bg_color = QColor(240, 240, 240)
         else:
-            bg_color = QColor(255, 255, 255)  # белый фон по умолчанию
-            text_color = QColor(0, 0, 0)  # черный текст
+            bg_color = QColor(255, 255, 255)
 
-        # Заливаем фон на ВСЮ ширину элемента
         painter.fillRect(option.rect, bg_color)
 
         # Определяем цвет приоритета
@@ -76,10 +62,6 @@ class TagItemDelegate(QStyledItemDelegate):
             'normal': QColor(128, 128, 128)
         }
         priority_color = priority_colors.get(priority, QColor(128, 128, 128))
-
-        # Если выделено - приоритет белый (как у сотрудников)
-        if is_selected:
-            priority_color = QColor(255, 255, 255)
 
         # Параметры отступов
         left_margin = 8
@@ -102,15 +84,9 @@ class TagItemDelegate(QStyledItemDelegate):
         circle_y = option.rect.y() + (item_height - circle_size) // 2
         circle_rect = QRect(circle_x, circle_y, circle_size, circle_size)
 
-        # Получаем цвет тега
         color_hex = tag_data.get('color', '#808080')
         color = QColor(color_hex)
 
-        # Если выделено, делаем кружок светлее
-        if is_selected:
-            color = color.lighter(150)
-
-        # Рисуем кружок
         painter.setBrush(QBrush(color))
         painter.setPen(QPen(QColor(232, 220, 200), 1))
         painter.drawEllipse(circle_rect)
@@ -124,7 +100,7 @@ class TagItemDelegate(QStyledItemDelegate):
         font = painter.font()
         font.setPointSize(10)
         painter.setFont(font)
-        painter.setPen(text_color)
+        painter.setPen(QColor(0, 0, 0))  # Черный текст всегда
 
         name = tag_data.get('name', '')
         painter.drawText(name_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, name)
@@ -134,8 +110,6 @@ class TagItemDelegate(QStyledItemDelegate):
         priority_rect = QRect(priority_x, option.rect.y(), 110, item_height)
 
         priority_text = self.get_priority_text(priority)
-
-        # Цвет текста приоритета
         painter.setPen(priority_color)
 
         font = painter.font()
@@ -170,6 +144,22 @@ class TagTreeWidget(QTreeWidget):
         self.setSelectionBehavior(QTreeWidget.SelectionBehavior.SelectRows)
         self.setSelectionMode(QTreeWidget.SelectionMode.SingleSelection)
         self.viewport().setMouseTracking(True)
+
+        # Отключаем выделение цветом
+        self.setStyleSheet("""
+            QTreeWidget::item:selected {
+                background-color: transparent;
+                color: inherit;
+            }
+            QTreeWidget::item:selected:hover {
+                background-color: #f0f0f0;
+                color: inherit;
+            }
+            QTreeWidget {
+                selection-background-color: transparent;
+                selection-color: #000000;
+            }
+        """)
 
     def setItemDelegate(self, delegate):
         super().setItemDelegate(delegate)
@@ -230,11 +220,10 @@ class TagSelectionDialog(QDialog):
             loadUi(ui_path, self)
         else:
             print(f"UI файл не найден: {ui_path}")
-            # Создаем UI программно, если файл не найден
             self._create_ui()
 
         # Заменяем стандартный QTreeWidget на кастомный
-        self.replace_tree_widget()
+        #self.replace_tree_widgetreplace_tree_widget()
 
         # Настройка дерева
         self.setup_tree_widget()
@@ -259,63 +248,29 @@ class TagSelectionDialog(QDialog):
         if hasattr(self, 'searchEdit'):
             self.searchEdit.setFocus()
 
-    def replace_tree_widget(self):
-        """Заменяет стандартный QTreeWidget на кастомный TagTreeWidget"""
-        if hasattr(self, 'treeWidget'):
-            parent = self.treeWidget.parent()
-            geometry = self.treeWidget.geometry()
-            minimum_size = self.treeWidget.minimumSize()
-            size_policy = self.treeWidget.sizePolicy()
-            object_name = self.treeWidget.objectName()
-
-            header_text = self.treeWidget.headerItem().text(0) if self.treeWidget.headerItem() else "Теги"
-
-            old_tree = self.treeWidget
-            new_tree = TagTreeWidget(parent)
-            new_tree.setObjectName(object_name)
-            new_tree.setGeometry(geometry)
-            new_tree.setMinimumSize(minimum_size)
-            new_tree.setSizePolicy(size_policy)
-            new_tree.setHeaderLabel(header_text)
-
-            layout = parent.layout()
-            if layout:
-                index = layout.indexOf(old_tree)
-                if index >= 0:
-                    layout.removeWidget(old_tree)
-                    layout.insertWidget(index, new_tree)
-
-            old_tree.deleteLater()
-            self.treeWidget = new_tree
 
     def _create_ui(self):
         """Создает UI программно, если файл не найден"""
         layout = QVBoxLayout(self)
 
-        # Заголовок
         title_label = QLabel("Выбор тегов")
         title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(title_label)
 
-        # Инструкция
         instruction_label = QLabel("Выберите теги:")
         layout.addWidget(instruction_label)
 
-        # Поиск
         self.searchEdit = QLineEdit()
         self.searchEdit.setPlaceholderText("Поиск тегов...")
         layout.addWidget(self.searchEdit)
 
-        # Дерево
         self.treeWidget = TagTreeWidget()
         self.treeWidget.setHeaderLabel("Теги")
         layout.addWidget(self.treeWidget)
 
-        # Информация о выбранных
         self.selectionInfoLabel = QLabel("Выбрано: 0 тегов")
         layout.addWidget(self.selectionInfoLabel)
 
-        # Кнопки
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         self.selectButton = QPushButton("Выбрать")
@@ -327,16 +282,12 @@ class TagSelectionDialog(QDialog):
     def get_icon_path(self, icon_name):
         """Определяет путь к иконке"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-
-        # Путь к файлу: D:\Documents\client\windows\documents\table\create\tag_selection_dialog.py
-        # Поднимаемся на 4 уровня, чтобы получить D:\Documents\client\
         root_dir = current_dir
         for _ in range(4):
             root_dir = os.path.dirname(root_dir)
 
-        # Проверяем несколько возможных путей
         possible_paths = [
-            os.path.join(root_dir, "icons", icon_name),  # D:\Documents\client\icons\cb_checked.png
+            os.path.join(root_dir, "icons", icon_name),
             os.path.join(root_dir, "client", "icons", icon_name),
             os.path.join(current_dir, "icons", icon_name),
         ]
@@ -346,7 +297,6 @@ class TagSelectionDialog(QDialog):
                 print(f"Найдена иконка: {path}")
                 return path
 
-        # Если не найдено, возвращаем путь по умолчанию
         default_path = os.path.join(root_dir, "icons", icon_name)
         print(f"Иконка не найдена, используем путь по умолчанию: {default_path}")
         return default_path
@@ -354,9 +304,6 @@ class TagSelectionDialog(QDialog):
     def get_ui_path(self):
         """Определяет путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-
-        # Путь к файлу: D:\Documents\client\windows\documents\table\create\tag_selection_dialog.py
-        # Поднимаемся на 4 уровня, чтобы получить D:\Documents\client\
         root_dir = current_dir
         for _ in range(4):
             root_dir = os.path.dirname(root_dir)
@@ -380,11 +327,9 @@ class TagSelectionDialog(QDialog):
         if not hasattr(self, 'treeWidget'):
             return
 
-        # Настройка заголовка
         self.treeWidget.setHeaderLabel("Теги")
         self.treeWidget.setIndentation(10)
 
-        # Создаем и устанавливаем делегат для кастомных чекбоксов
         if os.path.exists(self.checked_icon_path) and os.path.exists(self.unchecked_icon_path):
             self.delegate = TagItemDelegate(self.checked_icon_path,
                                             self.unchecked_icon_path,
@@ -404,16 +349,13 @@ class TagSelectionDialog(QDialog):
         self.treeWidget.blockSignals(True)
         self.treeWidget.clear()
 
-        # Сортируем теги по приоритету
         priority_order = {'urgent': 0, 'important': 1, 'normal': 2}
         sorted_tags = sorted(self.filtered_tags,
                              key=lambda x: priority_order.get(x.get('priority', 'normal'), 3))
 
         for tag in sorted_tags:
-            # Создаем элемент
             item = QTreeWidgetItem()
 
-            # Сохраняем данные тега в элементе
             tag_data = tag.copy()
             tag_data['checked'] = any(t.get('id') == tag.get('id') for t in self.selected_tags)
 
@@ -438,33 +380,24 @@ class TagSelectionDialog(QDialog):
 
     def on_item_clicked(self, item, column):
         """Обработка клика по элементу дерева"""
-        # Получаем данные тега
         tag_data = item.data(0, Qt.ItemDataRole.UserRole)
         if not tag_data:
             return
 
-        # Переключаем состояние
         is_checked = not tag_data.get('checked', False)
         tag_data['checked'] = is_checked
 
-        # Обновляем данные
         item.setData(0, Qt.ItemDataRole.UserRole, tag_data)
 
-        # Обновляем список выбранных тегов
         if is_checked:
-            # Добавляем тег в выбранные
             original_tag = next((t for t in self.tags if t.get('id') == tag_data.get('id')), None)
             if original_tag and original_tag not in self.selected_tags:
                 self.selected_tags.append(original_tag)
         else:
-            # Удаляем тег из выбранных
             self.selected_tags = [t for t in self.selected_tags
                                   if t.get('id') != tag_data.get('id')]
 
-        # Обновляем информацию
         self.update_selection_info()
-
-        # Принудительно перерисовываем элемент
         self.treeWidget.viewport().update()
 
     def on_select(self):
@@ -544,11 +477,9 @@ def create_test_tags():
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
-    # Создаем тестовые данные
     test_tags = create_test_tags()
 
 
-    # Подключаем сигнал для обработки выбора
     def on_tags_selected(tags):
         print(f"Выбраны теги: {[t.get('name') for t in tags]}")
 

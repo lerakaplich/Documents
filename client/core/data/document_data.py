@@ -216,6 +216,32 @@ class DocumentDataConfig:
         }
     }
 
+    TAGS_DATA = [
+        {'id': 1, 'name': 'Срочно', 'priority': 'urgent', 'color': '#FF0000'},
+        {'id': 2, 'name': 'Важно', 'priority': 'important', 'color': '#FFA500'},
+        {'id': 3, 'name': 'Обычный', 'priority': 'normal', 'color': '#808080'},
+        {'id': 4, 'name': 'Финансы', 'priority': 'important', 'color': '#008000'},
+        {'id': 5, 'name': 'Кадры', 'priority': 'normal', 'color': '#0000FF'},
+        {'id': 6, 'name': 'Юридический', 'priority': 'normal', 'color': '#800080'},
+        {'id': 7, 'name': 'Договор', 'priority': 'urgent', 'color': '#FF4500'},
+        {'id': 8, 'name': 'Отчет', 'priority': 'important', 'color': '#2E8B57'},
+        {'id': 9, 'name': 'Технический', 'priority': 'normal', 'color': '#4169E1'},
+        {'id': 10, 'name': 'Маркетинг', 'priority': 'normal', 'color': '#FF1493'},
+    ]
+
+    @classmethod
+    def get_tags_data(cls) -> list:
+        """Получить все теги"""
+        return cls.TAGS_DATA.copy()
+
+    @classmethod
+    def get_tag_by_id(cls, tag_id: int) -> dict:
+        """Получить тег по ID"""
+        for tag in cls.TAGS_DATA:
+            if tag.get('id') == tag_id:
+                return tag.copy()
+        return None
+
     # ============ ГЕНЕРАЦИЯ ТЕСТОВЫХ ДАННЫХ ============
     @classmethod
     def _generate_document(cls, type_id: int, index: int, status: str, is_read: bool, is_completed: bool,
@@ -561,6 +587,29 @@ class DocumentDataConfig:
         return cls.TEST_DATA
 
     # ============ ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ============
+
+    def _get_tags_data(self) -> list:
+        """Получает список доступных тегов из контроллера"""
+        try:
+            if hasattr(self.controller, 'get_tags'):
+                return self.controller.get_tags()
+            else:
+                # Возвращаем те самые тестовые данные, которые были в DocumentDialog
+                return [
+                    {'id': 1, 'name': 'Срочно', 'priority': 'urgent', 'color': '#FF0000'},
+                    {'id': 2, 'name': 'Важно', 'priority': 'important', 'color': '#FFA500'},
+                    {'id': 3, 'name': 'Обычный', 'priority': 'normal', 'color': '#808080'},
+                    {'id': 4, 'name': 'Финансы', 'priority': 'important', 'color': '#008000'},
+                    {'id': 5, 'name': 'Кадры', 'priority': 'normal', 'color': '#0000FF'},
+                    {'id': 6, 'name': 'Юридический', 'priority': 'normal', 'color': '#800080'},
+                    {'id': 7, 'name': 'Договор', 'priority': 'urgent', 'color': '#FF4500'},
+                    {'id': 8, 'name': 'Отчет', 'priority': 'important', 'color': '#2E8B57'},
+                    {'id': 9, 'name': 'Технический', 'priority': 'normal', 'color': '#4169E1'},
+                    {'id': 10, 'name': 'Маркетинг', 'priority': 'normal', 'color': '#FF1493'},
+                ]
+        except Exception as e:
+            print(f"[DocumentsPanel] Ошибка получения тегов: {e}")
+            return []
 
     @classmethod
     def get_status_text(cls, status: str) -> str:
