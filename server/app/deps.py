@@ -229,10 +229,15 @@ async def get_doc_service(
 
 def get_delegation_service(
     db_docs: AsyncSession = Depends(get_docs_db),
-    security: SecurityService = Depends(get_security_service)
+    security: SecurityService = Depends(get_security_service),
+    notification_svc: NotificationService = Depends(get_notification_service)
 ) -> DelegationService:
-    repo = DocumentRepository(db_docs)
-    return DelegationService(repo, security)
+    doc_repo = DocumentRepository(db_docs)
+    return DelegationService(
+        repo=doc_repo,
+        security=security,
+        notification_service=notification_svc
+    )
 
 def get_workflow_service(
     db_docs: AsyncSession = Depends(get_docs_db),

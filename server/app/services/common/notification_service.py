@@ -153,28 +153,39 @@ class NotificationService:
             await self._send_safe(chat_id, text)
 
     async def notify_delegation_changed(
-            self,
-            doc_id: int,
-            delegator_id: int,
-            delegatee_id: int,
-            is_granted: bool
+        self,
+        doc_id: int,
+        delegatee_id: int,
+        is_granted: bool,
+        message: Optional[str] = None
     ):
-        """4. При делегировании прав или их отзыве"""
+        """Уведомление непосредственно делегату при назначении или отзыве доступа"""
         doc = await self.doc_repo.get_by_id(doc_id)
         if not doc:
             return
 
-        # Уведомляем непосредственно делегата
         delegatee_map = await self.emp_repo.get_chat_ids_by_employee_ids([delegatee_id])
         delegatee_chat_id = delegatee_map.get(delegatee_id)
 
-        if delegatee_chat_id:
-            action_str = "предоставлен" if is_granted else "отозван"
-            text_for_delegatee = (
-                f"🔑 <b>Доступ к документу №{doc.reg_number or doc.id} {action_str}</b>\n\n"
-                f"Вам {'делегированы права' if is_granted else 'закрыт доступ'} по данному документу."
+        if not delegatee_chat_id:
+            return
+
+        reg_num = doc.reg_number or f"ID {doc.id}"
+
+        if is_granted:
+            text = (
+                f"🔑 <b>Вам делегирован доступ к документу №{reg_num}</b>\n\n"
+                f"Вам предоставили права на просмотр и согласование данного документа."
             )
-            await self._send_safe(delegatee_chat_id, text_for_delegatee)
+            if message and message.strip():
+                text += f"\n\n<b>Сопроводительное сообщение:</b> <i>«{message.strip()}»</i>"
+        else:
+            text = (
+                f"🚫 <b>Отозван доступ к документу №{reg_num}</b>\n\n"
+                f"Ваш доступ к данному документу был отозван."
+            )
+
+        await self._send_safe(delegatee_chat_id, text)
 
     async def notify_overtime_announcement(self, announcement_text: str):
         """5. Рассылка по переработкам — вообще всем людям"""

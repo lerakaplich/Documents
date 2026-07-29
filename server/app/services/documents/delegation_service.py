@@ -4,13 +4,20 @@ from server.app.database.document_models import DocumentRole
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.schemas.doc.document_dto import RedirectHistoryRead
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.services.common.notification_service import NotificationService
 from server.app.services.common.security_service import SecurityService
 
 
 class DelegationService:
-    def __init__(self, repo: DocumentRepository, security: SecurityService):
+    def __init__(
+        self,
+        repo: DocumentRepository,
+        security: SecurityService,
+        notification_service: NotificationService
+    ):
         self.repo = repo
         self.security = security
+        self.notifications = notification_service
 
     async def _check_permissions(self, doc_id: int, actor: CurrentUser):
         """Проверка: Администратор ИЛИ участник с правами управления."""
@@ -48,6 +55,13 @@ class DelegationService:
         await self.repo.add_redirect_history(doc_id, actor.id, target_id, message)
         await self.repo.db.commit()
 
+        await self.notifications.notify_delegation_changed(
+            doc_id=doc_id,
+            delegatee_id=target_id,
+            is_granted=True,
+            message=message
+        )
+
     async def remove_delegate(self, doc_id: int, actor: CurrentUser, target_id: int):
         """Отозвать делегата"""
         await self._check_permissions(doc_id, actor)
@@ -59,6 +73,12 @@ class DelegationService:
         await self.repo.add_redirect_history(doc_id, actor.id, target_id, "Отозван доступ делегата")
 
         await self.repo.db.commit()
+
+        await self.notifications.notify_delegation_changed(
+            doc_id=doc_id,
+            delegatee_id=target_id,
+            is_granted=False
+        )
 
     async def get_history(self, doc_id: int) -> List[RedirectHistoryRead]:
         """Получить историю перенаправлений"""
