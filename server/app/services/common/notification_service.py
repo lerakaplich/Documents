@@ -5,6 +5,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError, TelegramAPIError
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from server.app.database.document_models import DocStatus
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 
@@ -101,20 +102,51 @@ class NotificationService:
         for chat_id in chat_map.values():
             await self._send_safe(chat_id, text)
 
-    async def notify_status_changed(self, doc_id: int, old_status: str, new_status: str, actor_id: int):
-        """3. При смене статуса — всем участникам"""
+    async def notify_status_changed(
+            self,
+            doc_id: int,
+            new_status: DocStatus,
+            actor_id: Optional[int] = None
+    ):
+        """
+        Уведомление об изменении статуса документа.
+        Отправляется всем участникам (кроме инициатора действия)
+        ТОЛЬКО при переходе в финальные статусы: approved или rejected.
+        """
+        # Фильтруем статус — отправляем только для утвержденных и отклоненных документов
+        if new_status not in (DocStatus.approved, DocStatus.rejected):
+            return
+
         doc = await self.doc_repo.get_by_id(doc_id)
         if not doc:
             return
 
         participants = await self.doc_repo.get_document_participants_dto(doc_id)
-        target_emp_ids = [emp_id for emp_id in participants.all_unique_ids if emp_id != actor_id]
+
+        # Исключаем инициатора (actor_id), если он указан
+        target_emp_ids = [
+            emp_id for emp_id in participants.all_unique_ids
+            if actor_id is None or emp_id != actor_id
+        ]
+
+        if not target_emp_ids:
+            return
 
         chat_map = await self.emp_repo.get_chat_ids_by_employee_ids(target_emp_ids)
+        if not chat_map:
+            return
+
+        reg_num = doc.reg_number or f"ID {doc.id}"
+
+        # Красивые эмодзи и понятные статусы для пользователей
+        if new_status == DocStatus.approved:
+            status_text = "🟢 <b>Утвержден</b>"
+        else:  # rejected
+            status_text = "🔴 <b>Отклонен</b>"
 
         text = (
-            f"🔄 <b>Изменение статуса документа №{doc.reg_number or doc.id}</b>\n\n"
-            f"<b>Новый статус:</b> {new_status}"
+            f"📋 <b>Изменение статуса документа №{reg_num}</b>\n\n"
+            f"<b>Новый статус:</b> {status_text}"
         )
 
         for chat_id in chat_map.values():

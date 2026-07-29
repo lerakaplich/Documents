@@ -255,7 +255,8 @@ def get_review_service(
     return DocumentReviewService(
         repo=doc_repo,
         comment_service=comment_svc,
-        security=security
+        security=security,
+        notification_service=notification_svc
     )
 
 def get_registry_service(db_docs: AsyncSession = Depends(get_docs_db)) -> RegistryService:
