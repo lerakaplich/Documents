@@ -4,26 +4,45 @@ from sqlalchemy import select
 
 from server.app.database.document_models import Comment, SystemEmployee
 from server.app.repositories.comment_repo import CommentRepository
+from server.app.services.common.notification_service import NotificationService
 
 
 class CommentService:
-    def __init__(self, repo: CommentRepository):
-        self.repo = repo  # Внедряем репозиторий, управляющий сущностями Comment
+    def __init__(
+        self,
+        repo: CommentRepository,
+        notification_service: NotificationService
+    ):
+        self.repo = repo
+        self.notifications = notification_service
 
     async def create_comment(self, document_id: int, user_id: int, text: str) -> Comment:
         """Бизнес-логика создания записи комментария/замечания"""
-        if not text.strip():
+        clean_text = text.strip()
+        if not clean_text:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Текст правок не может быть пустым."
             )
 
-        # Используем метод create нашего обновленного репозитория
-        return await self.repo.create(
+        # 1. Создаем комментарий в БД
+        comment = await self.repo.create(
             document_id=document_id,
             employee_id=user_id,
-            text_content=text.strip()
+            text_content=clean_text
         )
+
+        # 2. Фиксируем транзакцию, чтобы запись точно сохранилась
+        await self.repo.db.commit()
+
+        # 3. Отправляем уведомление всем участникам документа (кроме автора комментария)
+        await self.notifications.notify_comment_added(
+            doc_id=document_id,
+            author_id=user_id,
+            comment_text=clean_text
+        )
+
+        return comment
 
     async def get_document_comments(self, document_id: int) -> List[Comment]:
         """Получить список сырых комментариев к документу"""

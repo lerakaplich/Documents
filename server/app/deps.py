@@ -241,16 +241,17 @@ def get_workflow_service(
     repo = DocumentRepository(db_docs)
     return WorkflowService(repo, delegation_svc)
 
+
 def get_review_service(
-    db_docs: AsyncSession = Depends(get_docs_db),
-    security: SecurityService = Depends(get_security_service)
+        db_docs: AsyncSession = Depends(get_docs_db),
+        security: SecurityService = Depends(get_security_service),
+        notification_svc: NotificationService = Depends(get_notification_service)
 ) -> DocumentReviewService:
-    # Инициализируем компоненты
     doc_repo = DocumentRepository(db_docs)
     comment_repo = CommentRepository(db_docs)
-    comment_svc = CommentService(comment_repo)
 
-    # Внедряем все три зависимости, как требует класс
+    comment_svc = CommentService(repo=comment_repo, notification_service=notification_svc)
+
     return DocumentReviewService(
         repo=doc_repo,
         comment_service=comment_svc,
@@ -261,7 +262,10 @@ def get_registry_service(db_docs: AsyncSession = Depends(get_docs_db)) -> Regist
     repo = DocumentRepository(db_docs)
     return RegistryService(repo)
 
-def get_comment_service(db_docs: AsyncSession = Depends(get_docs_db)) -> CommentService:
+def get_comment_service(
+    db_docs: AsyncSession = Depends(get_docs_db),
+    notification_svc: NotificationService = Depends(get_notification_service)
+) -> CommentService:
     repo = CommentRepository(db_docs)
-    return CommentService(repo)
+    return CommentService(repo=repo, notification_service=notification_svc)
 
