@@ -7,7 +7,6 @@ import shutil
 
 from fastapi import UploadFile, HTTPException
 
-from server.app.database.document_models import AppRights
 from server.app.repositories.attachment_repo import AttachmentRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.common.security_service import SecurityService
@@ -59,7 +58,7 @@ class AttachmentService:
         return temp_view_path
 
     async def add_attachment(self, doc_id: int, file: UploadFile, current_user: CurrentUser, sent_date: date = None):
-        await self.security.verify_document_access(current_user, doc_id, self.repo)
+        await self.security.verify_document_access(current_user, doc_id)
 
         if not sent_date:
             sent_date = await self.repo.get_document_sent_date(doc_id) or datetime.now().date()
@@ -125,7 +124,7 @@ class AttachmentService:
             shutil.rmtree(work_dir)
 
     async def get_attachments_info(self, doc_id: int, current_user: CurrentUser):
-        await self.security.verify_document_access(current_user, doc_id, self.repo)
+        await self.security.verify_document_access(current_user, doc_id)
         attachments = await self.repo.get_all_by_doc(doc_id)
         return [
             {
@@ -144,7 +143,7 @@ class AttachmentService:
         if not attachment:
             raise HTTPException(status_code=404, detail="Вложение не найдено")
 
-        await self.security.verify_document_access(current_user, attachment.document_id, self.repo)
+        await self.security.verify_document_access(current_user, attachment.document_id)
         # БЕЗОПАСНАЯ РАЗБОРКА ПУТИ
         if '#' not in attachment.storage_path:
             # Если разделителя нет, значит данные повреждены или путь старого формата
@@ -185,7 +184,7 @@ class AttachmentService:
 
     async def get_page_count(self, attach_id: int, current_user: CurrentUser) -> int:
         attachment = await self.repo.get_by_id(attach_id)
-        await self.security.verify_document_access(current_user, attachment.document_id, self.repo)
+        await self.security.verify_document_access(current_user, attachment.document_id)
         archive_path, file_name = attachment.storage_path.split('#')
 
         # 1. Убедимся, что папка temp существует
@@ -204,7 +203,7 @@ class AttachmentService:
 
     async def get_page_as_stream(self, attach_id: int, page_num: int, current_user: CurrentUser) -> io.BytesIO:
         attachment = await self.repo.get_by_id(attach_id)
-        await self.security.verify_document_access(current_user, attachment.document_id, self.repo)
+        await self.security.verify_document_access(current_user, attachment.document_id)
         archive_path, file_name = attachment.storage_path.split('#')
 
         temp_path = f"temp/view_{attach_id}_{uuid.uuid4().hex}"

@@ -1,6 +1,18 @@
 import bcrypt
 from datetime import date, timedelta
 from typing import Tuple
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from server.app.deps import get_security_service, get_attachment_service, get_doc_service
+from server.app.services.documents.document_service import DocumentService
+
+async def build_doc_service_for_bot(
+    db_docs: AsyncSession,
+    db_emp: AsyncSession
+) -> DocumentService:
+    security_svc = get_security_service(emp_db=db_emp)
+    attachment_svc = get_attachment_service(db_docs=db_docs, security_svc=security_svc)
+    return await get_doc_service(db_docs=db_docs, db_emp=db_emp, attachment_svc=attachment_svc)
 
 def hash_password(password: str) -> str:
     """Хэширование пароля с солью bcrypt"""
@@ -77,3 +89,15 @@ def get_recent_periods(count: int = 6) -> list[dict]:
         current_pivot = start - timedelta(days=5)
 
     return periods
+
+
+async def build_doc_service_for_bot(
+    db_docs: AsyncSession,
+    db_emp: AsyncSession
+) -> DocumentService:
+    """
+    Безопасно собирает DocumentService, используя твои фабрики из deps.py
+    """
+    security_svc = get_security_service(emp_db=db_emp)
+    attachment_svc = get_attachment_service(db_docs=db_docs, security_svc=security_svc)
+    return await get_doc_service(db_docs=db_docs, db_emp=db_emp, attachment_svc=attachment_svc)

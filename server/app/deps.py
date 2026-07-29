@@ -99,12 +99,20 @@ def get_auth_service(
     session_repo = SessionRepository(db_docs)
     return AuthService(db_emp=db_emp, session_repo=session_repo)
 
+
 def get_security_service(
-    emp_db: AsyncSession = Depends(get_employees_db)
+        emp_db: AsyncSession = Depends(get_employees_db),
+        doc_db: AsyncSession = Depends(get_docs_db)
 ) -> SecurityService:
     emp_repo = EmployeesRepository(emp_db)
     org_repo = OrgRepository(emp_db)
-    return SecurityService(emp_repo, org_repo)
+    doc_repo = DocumentRepository(doc_db)
+
+    return SecurityService(
+        emp_repo=emp_repo,
+        org_repo=org_repo,
+        doc_repo=doc_repo
+    )
 
 def get_doc_type_service(
     db: AsyncSession = Depends(get_docs_db),

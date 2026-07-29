@@ -38,9 +38,9 @@ def paginate_periods(all_periods: list, page: int) -> tuple[list, int]:
 # ==================== 1. Вход в режим просмотра ====================
 
 @router.message(F.chat.type == "private", F.text == "Мои переработки")
-async def show_overtime_periods(message: Message, emp_db: AsyncSession):
+async def show_overtime_periods(message: Message, emp_session: AsyncSession):
     """Показывает список доступных периодов для выбора (стартуем с 1 страницы)"""
-    result = await emp_db.execute(select(Employee).where(Employee.chat_id == message.from_user.id))
+    result = await emp_session.execute(select(Employee).where(Employee.chat_id == message.from_user.id))
     employee = result.scalar_one_or_none()
 
     if not employee:
@@ -99,7 +99,7 @@ async def back_to_periods_callback(callback: CallbackQuery):
 @router.callback_query(kb.PeriodCallback.filter())
 @router.callback_query(kb.OvertimeListCallback.filter())
 async def show_overtimes_list(callback: CallbackQuery, callback_data: kb.PeriodCallback | kb.OvertimeListCallback,
-                              emp_db: AsyncSession, state: FSMContext):
+                              emp_session: AsyncSession, state: FSMContext):
     """Отображает постраничный список переработок за период"""
     await state.clear()
 
@@ -111,7 +111,7 @@ async def show_overtimes_list(callback: CallbackQuery, callback_data: kb.PeriodC
     # Извлекаем, на какой странице месяцев мы находились
     current_periods_page = callback_data.current_periods_page
 
-    emp_res = await emp_db.execute(select(Employee).where(Employee.chat_id == callback.from_user.id))
+    emp_res = await emp_session.execute(select(Employee).where(Employee.chat_id == callback.from_user.id))
     employee = emp_res.scalar_one_or_none()
 
     if not employee:
@@ -126,7 +126,7 @@ async def show_overtimes_list(callback: CallbackQuery, callback_data: kb.PeriodC
         )
         .order_by(Overtime.overtime_date.asc())
     )
-    res = await emp_db.execute(query)
+    res = await emp_session.execute(query)
     all_overtimes = res.scalars().all()
 
     if not all_overtimes:
@@ -182,12 +182,12 @@ async def show_overtimes_list(callback: CallbackQuery, callback_data: kb.PeriodC
 # ==================== 4. Карточка конкретной переработки ====================
 
 @router.callback_query(kb.OvertimeDetailCallback.filter())
-async def show_overtime_details(callback: CallbackQuery, callback_data: kb.OvertimeDetailCallback, emp_db: AsyncSession,
+async def show_overtime_details(callback: CallbackQuery, callback_data: kb.OvertimeDetailCallback, emp_session: AsyncSession,
                                 state: FSMContext):
     """Показывает детали переработки и ждет ввода нового описания"""
 
     # Извлекаем переработку из БД
-    ov_res = await emp_db.execute(select(Overtime).where(Overtime.id == callback_data.overtime_id))
+    ov_res = await emp_session.execute(select(Overtime).where(Overtime.id == callback_data.overtime_id))
     ov = ov_res.scalar_one_or_none()
 
     if not ov:
@@ -225,7 +225,7 @@ async def show_overtime_details(callback: CallbackQuery, callback_data: kb.Overt
 # ==================== 5. Обработка ввода описания ====================
 
 @router.message(OvertimeStates.viewing_details)
-async def update_overtime_description(message: Message, state: FSMContext, emp_db: AsyncSession):
+async def update_overtime_description(message: Message, state: FSMContext, emp_session: AsyncSession):
     """Перехватывает текст сообщения и записывает его в описание переработки"""
 
     # 1. Если пользователь нажал глобальную отмену (а мы в состоянии ввода)
@@ -254,18 +254,18 @@ async def update_overtime_description(message: Message, state: FSMContext, emp_d
 
     try:
         # Обновляем описание в базе данных
-        await emp_db.execute(
+        await emp_session.execute(
             update(Overtime)
             .where(Overtime.id == ov_id)
             .values(note_text=message.text)
         )
-        await emp_db.commit()
+        await emp_session.commit()
 
         await message.answer("✅ Описание переработки успешно сохранено!", reply_markup=get_main_menu())
 
     except Exception as e:
         logger.error(f"Ошибка при обновлении описания переработки {ov_id}: {e}", exc_info=True)
-        await emp_db.rollback()
+        await emp_session.rollback()
         await message.answer("❌ Не удалось сохранить описание. Попробуйте позже.", reply_markup=get_main_menu())
 
     # Возвращаем пользователя обратно к списку переработок за этот период!
@@ -282,7 +282,7 @@ async def update_overtime_description(message: Message, state: FSMContext, emp_d
     period_name = data["parent_name"]
     page = data["parent_page"]
 
-    emp_res = await emp_db.execute(select(Employee).where(Employee.chat_id == message.from_user.id))
+    emp_res = await emp_session.execute(select(Employee).where(Employee.chat_id == message.from_user.id))
     employee = emp_res.scalar_one_or_none()
 
     query = (
@@ -293,7 +293,7 @@ async def update_overtime_description(message: Message, state: FSMContext, emp_d
         )
         .order_by(Overtime.overtime_date.asc())
     )
-    res = await emp_db.execute(query)
+    res = await emp_session.execute(query)
     all_overtimes = res.scalars().all()
 
     total_hours = sum(msg.format_overtime_duration(ov.overtime_start, ov.overtime_end) for ov in all_overtimes)

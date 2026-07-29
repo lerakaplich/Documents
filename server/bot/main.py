@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import sys
-from contextlib import asynccontextmanager
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -9,8 +8,10 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from server.bot.config import bot_settings
 from server.bot.handlers import main_router
+from server.bot.middlewares.auth import EmployeeAuthMiddleware
+from server.bot.middlewares.db_session import DbSessionMiddleware
+from server.bot.middlewares.services import ServicesMiddleware
 from server.bot.scheduler import setup_scheduler
-from server.app.database.session import get_employees_db  # Твой генератор сессий БД
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,12 +21,6 @@ logging.basicConfig(
 logger = logging.getLogger("bot_main")
 
 
-# Middleware для автоматической передачи сессии БД в каждый обработчик aiogram
-class DbSessionMiddleware:
-    async def __call__(self, handler, event, data):
-        async with asynccontextmanager(get_employees_db)() as session:
-            data["emp_db"] = session  # Передаем ее в аргументы функции-обработчика
-            return await handler(event, data)
 
 
 async def main():
@@ -38,16 +33,24 @@ async def main():
     )
     dp = Dispatcher(storage=MemoryStorage())
 
-    # Регистрируем Middleware и роутер с обработчиками команд
-    dp.update.middleware(DbSessionMiddleware())
+    # 2.1. Создаем и кладем сессии БД в context data
+    dp.update.outer_middleware(DbSessionMiddleware())
+
+    # 2.2. Инициализируем сервисы, используя созданные сессии БД
+    dp.update.outer_middleware(ServicesMiddleware())
+
+    # 2.3. Авторизуем сотрудника
+    dp.update.outer_middleware(EmployeeAuthMiddleware())
+
+    # --- 3. Подключение роутеров ---
     dp.include_router(main_router)
 
-    # 2. Инициализация планировщика APScheduler (утренняя статистика)
+    # 4. Инициализация планировщика APScheduler (утренняя статистика)
     scheduler = setup_scheduler()
     scheduler.start()
     logger.info("Планировщик APScheduler запущен.")
 
-    # 3. Запуск поллинга (прослушивания обновлений от Telegram)
+    # 5. Запуск поллинга (прослушивания обновлений от Telegram)
     try:
         logger.info("Бот запущен и слушает новые сообщения...")
         await dp.start_polling(bot)

@@ -2,15 +2,22 @@ from typing import Optional, Any
 
 from fastapi import HTTPException
 from server.app.database.document_models import AppRights, DocumentRole
+from server.app.repositories.document_repo import DocumentRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
 
 
 class SecurityService:
-    def __init__(self, emp_repo: EmployeesRepository, org_repo: OrgRepository):
+    def __init__(
+        self,
+        emp_repo: EmployeesRepository,
+        org_repo: OrgRepository,
+        doc_repo: DocumentRepository
+    ):
         self.emp_repo = emp_repo
         self.org_repo = org_repo
+        self.doc_repo = doc_repo
 
     async def verify_is_admin(self, user: CurrentUser):
         """Проверка, является ли пользователь администратором или суперадмином."""
@@ -39,7 +46,7 @@ class SecurityService:
             )
         return True
 
-    async def verify_document_access(self, user: CurrentUser, doc_id: int, repo: Any) -> bool:
+    async def verify_document_access(self, user: CurrentUser, doc_id: int) -> bool:
         """
         Универсальная проверка доступа к документу:
         Пропускает, если пользователь Admin/Superadmin ИЛИ является участником (sender, recipient и др.).
@@ -50,7 +57,7 @@ class SecurityService:
 
         # 2. Проверяем связь пользователя с документом через репозиторий
         # Метод get_user_relation должен быть реализован в вашем репозитории
-        relation = await repo.get_user_relation(doc_id, user.id)
+        relation = await self.doc_repo.get_user_relation(doc_id, user.id)
         if relation and relation.role in [DocumentRole.sender, DocumentRole.recipient, DocumentRole.delegate]:
             return True
 

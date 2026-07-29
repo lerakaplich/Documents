@@ -283,7 +283,7 @@ class Document(BaseDocuments):
         order_by="DocumentStatusHistory.changed_at.asc()"
     )
 
-    type: Mapped["DocumentType"] = relationship("DocumentType")
+    type: Mapped["DocumentType"] = relationship("DocumentType", lazy="selectin")
 
 
 # ============================================================================

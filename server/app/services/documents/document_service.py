@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import HTTPException, status, UploadFile
 from typing import Optional, List
 from server.app.database.document_models import Document, EmployeeDocument, DocumentRole, AppRights, Read, DocDirection
@@ -16,18 +18,19 @@ class DocumentService:
         self.emp_repo = emp_repo
         self.attachment_service = attachment_service
 
-    async def create(self, payload: DocumentCreateForm, user: CurrentUser, files: Optional[List[UploadFile]] = None) -> Document:
+    async def create(self, payload: DocumentCreateForm, user: CurrentUser) -> Document:
         """Создание документа с привязкой участников и тегов"""
-        # 1. Создаем базовую карточку документа (без file_path, вложения теперь в отдельной таблице)
-        async with self.repo.db.begin():
+        async with self.repo.db.begin_nested():
+            global_msg_id = payload.global_msg_id or str(uuid.uuid4())
             new_doc = Document(
                 type_id=payload.type_id,
                 direction=payload.direction,
                 title=payload.title,
                 about=payload.about,
                 reg_number=payload.reg_number,
+                sequence_number=payload.sequence_number,
                 deadline=payload.deadline,
-                global_msg_id=payload.global_msg_id,
+                global_msg_id=global_msg_id,
                 parent_document_id=payload.parent_document_id,
                 confident_flag=payload.confident_flag,
                 clearance_id=payload.clearance_id
@@ -35,35 +38,62 @@ class DocumentService:
             self.repo.db.add(new_doc)
             await self.repo.db.flush()
 
-            # 2. Формируем матрицу участников внутреннего согласования МАЗа
+            # 2. Определяем отправителя (из payload, иначе fallback на того, кто выполняет запрос)
+            sender_id = payload.sender_id or user.id
+
+            # Множество уже добавленных ID сотрудников, чтобы не допускать дублей
+            added_employee_ids = set()
+
+            # Добавляем Отправителя (sender)
             self.repo.db.add(
-                EmployeeDocument(document_id=new_doc.id, employee_id=user.id, role=DocumentRole.sender, is_approved=True))
+                EmployeeDocument(
+                    document_id=new_doc.id,
+                    employee_id=sender_id,
+                    role=DocumentRole.sender,
+                    is_approved=True
+                )
+            )
+            added_employee_ids.add(sender_id)
 
+            # Добавляем Исполнителей (executors)
             for emp_id in payload.executors:
-                self.repo.db.add(EmployeeDocument(document_id=new_doc.id, employee_id=emp_id, role=DocumentRole.executor,
-                                                  is_approved=True))
+                if emp_id not in added_employee_ids:
+                    self.repo.db.add(
+                        EmployeeDocument(
+                            document_id=new_doc.id,
+                            employee_id=emp_id,
+                            role=DocumentRole.executor,
+                            is_approved=True
+                        )
+                    )
+                    added_employee_ids.add(emp_id)
 
+            # Добавляем Получателей (recipients)
             for emp_id in payload.recipients:
-                self.repo.db.add(EmployeeDocument(document_id=new_doc.id, employee_id=emp_id, role=DocumentRole.recipient,
-                                                  is_approved=None))
+                if emp_id not in added_employee_ids:
+                    self.repo.db.add(
+                        EmployeeDocument(
+                            document_id=new_doc.id,
+                            employee_id=emp_id,
+                            role=DocumentRole.recipient,
+                            is_approved=None
+                        )
+                    )
+                    added_employee_ids.add(emp_id)
 
             # 3. Привязываем теги через Many-to-Many
             if payload.tag_ids:
                 from server.app.database.document_models import DocumentTag
-                for tag_id in payload.tag_ids:
+                for tag_id in set(payload.tag_ids):  # set() уберет возможные дубликаты тегов
                     self.repo.db.add(DocumentTag(document_id=new_doc.id, tag_id=tag_id))
 
-            # 4. Обрабатываем каждый файл через AttachmentService
-            if files:
-                for file in files:
-                    await self.attachment_service.add_attachment(
-                        doc_id=new_doc.id,
-                        file=file,
-                        current_user=user,
-                        sent_date=new_doc.created_at  # Или из payload
-                    )
-
             await self.repo.db.commit()
+
+        await self.repo.db.refresh(
+            new_doc,
+            attribute_names=["tags", "employees", "attachments", "type"]
+        )
+
         return new_doc
 
     async def get_by_id(self, doc_id: int, user_id: int, user_rights: AppRights) -> Document:

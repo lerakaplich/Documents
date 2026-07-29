@@ -16,7 +16,7 @@ router = Router()
 
 @router.message(CommandStart())
 @router.message(Command("start"))
-async def cmd_start(message: Message, state: FSMContext, emp_db: AsyncSession):
+async def cmd_start(message: Message, state: FSMContext, emp_session: AsyncSession):
     """
     Единый обработчик команды /start.
     Проверяет, авторизован ли пользователь, и выдает соответствующий интерфейс.
@@ -25,7 +25,7 @@ async def cmd_start(message: Message, state: FSMContext, emp_db: AsyncSession):
 
     # Ищем сотрудника в БД по его Telegram chat_id
     query = select(Employee).where(Employee.chat_id == message.from_user.id)
-    result = await emp_db.execute(query)
+    result = await emp_session.execute(query)
     employee = result.scalar_one_or_none()
 
     # СЦЕНАРИЙ 1: Пользователь уже авторизован
@@ -53,7 +53,7 @@ async def cmd_start(message: Message, state: FSMContext, emp_db: AsyncSession):
 
 
 @router.message(F.contact)
-async def handle_contact(message: Message, emp_db: AsyncSession):
+async def handle_contact(message: Message, emp_session: AsyncSession):
     """Обработка полученного контакта, связывание chat_id и генерация пароля"""
     contact = message.contact
 
@@ -70,7 +70,7 @@ async def handle_contact(message: Message, emp_db: AsyncSession):
         (Employee.phone_number == phone) |
         (Employee.phone_number == f"+{phone}")
     )
-    result = await emp_db.execute(query)
+    result = await emp_session.execute(query)
     employee = result.scalar_one_or_none()
 
     if not employee:
@@ -88,7 +88,7 @@ async def handle_contact(message: Message, emp_db: AsyncSession):
     employee.chat_id = message.from_user.id
     employee.password_hash = hashed
 
-    await emp_db.commit()
+    await emp_session.commit()
 
     # Отправка структурированного ответа с выдачей ГЛАВНОГО МЕНЮ
     await message.answer(

@@ -16,14 +16,16 @@ class DocumentCreateForm(BaseModel):
     title: Optional[str] = None
     about: Optional[str] = None
     reg_number: Optional[str] = None
+    sequence_number: Optional[int] = None
     deadline: Optional[date] = None
 
     # СМДО / Безопасность (Добавлено на основании новых полей БД)
-    global_msg_id: str  # Локальный UUID или UUID пакета СМДО
+    global_msg_id: Optional[str] = None  # Локальный UUID или UUID пакета СМДО
     parent_document_id: Optional[int] = None
     confident_flag: int = 0  # 0 - открытый, 1 - ДСП
     clearance_id: Optional[int] = None
 
+    sender_id: Optional[int] = None
     executors: List[int] = []  # ID сотрудников
     recipients: List[int] = []  # ID сотрудников
     tag_ids: List[int] = []
