@@ -176,15 +176,18 @@ def get_overtime_service(
 
 
 def get_overtime_import_service(
-        emp_db: AsyncSession = Depends(get_employees_db),
-        security: SecurityService = Depends(get_security_service)
+    db_emp: AsyncSession = Depends(get_employees_db),
+    security: SecurityService = Depends(get_security_service),
+    notification_svc: NotificationService = Depends(get_notification_service)
 ) -> OvertimeImportService:
-    overtime_repo = OvertimeRepository(emp_db)
-    employee_repo = EmployeesRepository(emp_db)
+    overtime_repo = OvertimeRepository(db_emp)
+    employee_repo = EmployeesRepository(db_emp)
+
     return OvertimeImportService(
         overtime_repo=overtime_repo,
         employee_repo=employee_repo,
-        security=security
+        security=security,
+        notification_service=notification_svc
     )
 
 def get_overtime_export_service(

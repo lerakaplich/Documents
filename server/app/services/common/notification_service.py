@@ -1,6 +1,6 @@
 # server/app/services/notification_service.py
 import logging
-from typing import List, Optional
+from typing import List, Optional, Set
 from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError, TelegramAPIError
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -187,14 +187,25 @@ class NotificationService:
 
         await self._send_safe(delegatee_chat_id, text)
 
-    async def notify_overtime_announcement(self, announcement_text: str):
-        """5. Рассылка по переработкам — вообще всем людям"""
-        all_chat_ids = await self.emp_repo.get_all_active_chat_ids()
+    async def notify_overtimes_imported(self, employee_ids: Set[int]):
+        """
+        Массовое рассылочное уведомление сотрудникам,
+        у которых появились новые импортированные переработки.
+        """
+        if not employee_ids:
+            return
+
+        # Получаем chat_id только тех сотрудников, кому начислили переработки
+        chat_map = await self.emp_repo.get_chat_ids_by_employee_ids(list(employee_ids))
+        if not chat_map:
+            return
 
         text = (
-            f"⏰ <b>Информация о переработках</b>\n\n"
-            f"{announcement_text}"
+            "⏰ <b>Обновление данных по переработкам</b>\n\n"
+            "В систему импортированы новые записи о ваших переработках.\n"
+            "Вы можете проверить обновленную информацию в своем личном кабинете."
         )
 
-        for chat_id in all_chat_ids:
+        # Рассылаем каждому адресату
+        for chat_id in chat_map.values():
             await self._send_safe(chat_id, text)

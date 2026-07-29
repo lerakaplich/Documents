@@ -1,15 +1,25 @@
 import re
 import pandas as pd
 from datetime import datetime, time, date
-from typing import List, Dict, Optional, Tuple, BinaryIO
+from typing import List, Dict, Optional, Tuple, BinaryIO, Set
+
+from server.app.services.common.notification_service import NotificationService
+
 
 class OvertimeImportService:
     """Сервис для парсинга Excel-файлов и импорта переработок в БД"""
 
-    def __init__(self, overtime_repo, employee_repo, security):
+    def __init__(
+        self,
+        overtime_repo,
+        employee_repo,
+        security,
+        notification_service: NotificationService
+    ):
         self.overtime_repo = overtime_repo
         self.employee_repo = employee_repo
         self.security = security
+        self.notifications = notification_service
         self.employees_cache = {}
 
     async def _load_employees_cache(self):
@@ -171,6 +181,8 @@ class OvertimeImportService:
         """Основной метод парсинга потока файла и сохранения в БД"""
         result = {'total_rows': 0, 'imported': 0, 'duplicates': 0, 'skipped': 0, 'errors': 0, 'error_details': []}
 
+        imported_employee_ids: Set[int] = set()
+
         try:
             await self._load_employees_cache()
 
@@ -252,12 +264,17 @@ class OvertimeImportService:
                             description="Импортировано автоматически из системы учета"
                         )
                         result['imported'] += 1
+                        imported_employee_ids.add(employee_id)
 
                 except Exception as row_error:
                     result['errors'] += 1
                     result['error_details'].append(f"Строка {i + 1}: {str(row_error)}")
 
             await self.overtime_repo.db.commit()  # Фиксируем транзакцию
+
+            if imported_employee_ids:
+                await self.notifications.notify_overtimes_imported(imported_employee_ids)
+
             return result
 
         except Exception as file_error:
