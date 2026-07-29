@@ -235,3 +235,31 @@ class EmployeesRepository:
             top_dept_code = sub_dept_code
 
         return top_dept_code, sub_dept_code
+
+    async def get_chat_ids_by_employee_ids(self, employee_ids: List[int]) -> dict[int, int]:
+        """Возвращает словарь {employee_id: chat_id} только для тех, у кого заполнено поле"""
+        if not employee_ids:
+            return {}
+
+        stmt = (
+            select(Employee.id, Employee.chat_id)
+            .where(
+                Employee.id.in_(employee_ids),
+                Employee.chat_id.is_not(None),
+                Employee.is_active == True
+            )
+        )
+        result = await self.db.execute(stmt)
+        return {row.id: row.chat_id for row in result.all()}
+
+    async def get_all_active_chat_ids(self) -> List[int]:
+        """Возвращает список chat_id всех активных сотрудников для массовых анонсов"""
+        stmt = (
+            select(Employee.chat_id)
+            .where(
+                Employee.is_active == True,
+                Employee.chat_id.is_not(None)
+            )
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())

@@ -1,6 +1,6 @@
 # bot/middlewares/services.py
 from typing import Callable, Dict, Any, Awaitable
-from aiogram import BaseMiddleware
+from aiogram import BaseMiddleware, Bot
 from aiogram.types import TelegramObject
 
 # Импортируем ваши репозитории и сервисы из FastAPI-приложения
@@ -8,6 +8,7 @@ from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.attachment_repo import AttachmentRepository
 from server.app.repositories.org_repo import OrgRepository
+from server.app.services.common.notification_service import NotificationService
 
 from server.app.services.documents.document_service import DocumentService
 from server.app.services.documents.attachment_service import AttachmentService
@@ -23,29 +24,34 @@ class ServicesMiddleware(BaseMiddleware):
     ) -> Any:
         db_docs = data.get("doc_session")
         db_emp = data.get("emp_session")
+        bot: Bot = data.get("bot")
 
         if db_docs and db_emp:
             emp_repo = EmployeesRepository(db_emp)
             org_repo = OrgRepository(db_emp)
-            doc_repo = DocumentRepository(db_docs)  # 👈 1. Создаем doc_repo
+            doc_repo = DocumentRepository(db_docs)
             att_repo = AttachmentRepository(db_docs)
 
-            # 👈 2. Передаем doc_repo в SecurityService
             security_svc = SecurityService(
                 emp_repo=emp_repo,
                 org_repo=org_repo,
                 doc_repo=doc_repo
             )
 
-            # 3. Собираем AttachmentService
             processor = DocumentProcessor()
             attachment_svc = AttachmentService(att_repo, processor, security_svc)
 
-            # 4. Собираем DocumentService
+            notification_svc = NotificationService(
+                bot=bot,
+                emp_repo=emp_repo,
+                doc_repo=doc_repo
+            )
+
             doc_svc = DocumentService(
                 repo=doc_repo,
                 emp_repo=emp_repo,
-                attachment_service=attachment_svc
+                attachment_service=attachment_svc,
+                notification_service=notification_svc
             )
 
             data["document_service"] = doc_svc

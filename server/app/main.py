@@ -16,20 +16,11 @@ from server.app.api.errors import global_exception_handler
 from server.app.database.session import get_docs_db, get_employees_db, DOCS_DB_URL_RAW
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.document_repo import DocumentRepository
-from server.app.services.common.notifier import listen_to_db_notifications
 from server.app.services.common.sync_service import SyncService
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    task = asyncio.create_task(listen_to_db_notifications(DOCS_DB_URL_RAW))
-    yield
-    # Остановка при выключении
-    task.cancel()
 
 app = FastAPI(
     title="СЭД Документооборот — Тестовый Сервер",
-    version="1.0.0",
-    lifespan=lifespan
+    version="1.0.0"
 )
 
 # Подключаем наш написанный модуль авторизации

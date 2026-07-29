@@ -7,7 +7,6 @@ from server.app.schemas.doc.doc_employee_dto import DocEmployeeItem, Participant
 from server.app.schemas.doc.tag_dto import TagRead
 from server.app.schemas.doc.attachment_dto import DocumentAttachmentRead
 from server.app.schemas.doc.receiver_dto import DocumentReceiverRead
-from server.app.schemas.user_schemas.doc_participants import ParticipantDTO
 
 
 class DocumentCreateForm(BaseModel):

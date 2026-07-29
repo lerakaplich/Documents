@@ -14,6 +14,7 @@ from server.app.database.document_models import (
     DocumentArchive, DocumentPin, DocumentAttachment, DocumentStatusHistory, DocumentType
 )
 from server.app.database.employee_models import Department, EmployeePosition
+from server.app.schemas.user_schemas.doc_participants import DocumentParticipantsDTO
 
 
 class DocumentRepository:
@@ -460,3 +461,29 @@ class DocumentRepository:
         top_dept_code = str(top_dept.number) if top_dept.number else top_dept.name
 
         return top_dept_code, sub_dept_code
+
+    async def get_document_participants_dto(self, doc_id: int) -> DocumentParticipantsDTO:
+        """Группирует участников документа по их ролям"""
+        participants = await self.get_participants(doc_id)
+
+        sender_id = None
+        executors = []
+        recipients = []
+        delegates = []
+
+        for p in participants:
+            if p.role == DocumentRole.sender:  # или автора, смотрим твой Enum DocumentRole
+                sender_id = p.employee_id
+            elif p.role == DocumentRole.executor:
+                executors.append(p.employee_id)
+            elif p.role == DocumentRole.recipient:
+                recipients.append(p.employee_id)
+            elif p.role == DocumentRole.delegate:
+                delegates.append(p.employee_id)
+
+        return DocumentParticipantsDTO(
+            sender_id=sender_id,
+            executors=executors,
+            recipients=recipients,
+            delegates=delegates
+        )

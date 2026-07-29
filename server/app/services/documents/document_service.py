@@ -9,14 +9,22 @@ from server.app.schemas.doc.document_dto import DocumentCreateForm, AdminMetadat
 from sqlalchemy import select
 
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.services.common.notification_service import NotificationService
 from server.app.services.documents.attachment_service import AttachmentService
 
 
 class DocumentService:
-    def __init__(self, repo: DocumentRepository, emp_repo: EmployeesRepository, attachment_service: AttachmentService):
+    def __init__(
+        self,
+        repo: DocumentRepository,
+        emp_repo: EmployeesRepository,
+        attachment_service: AttachmentService,
+        notification_service: NotificationService
+    ):
         self.repo = repo
         self.emp_repo = emp_repo
         self.attachment_service = attachment_service
+        self.notifications = notification_service
 
     async def create(self, payload: DocumentCreateForm, user: CurrentUser) -> Document:
         """Создание документа с привязкой участников и тегов"""
@@ -92,6 +100,12 @@ class DocumentService:
         await self.repo.db.refresh(
             new_doc,
             attribute_names=["tags", "employees", "attachments", "type"]
+        )
+
+        # 4. Фоновая отправка уведомления участникам после фиксации в БД
+        await self.notifications.notify_document_created(
+            doc_id=new_doc.id,
+            actor_id=user.id
         )
 
         return new_doc

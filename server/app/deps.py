@@ -1,10 +1,13 @@
+from typing import Optional
+
 import jwt
+from aiogram import Bot
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from server.app.config import JWT_SECRET_KEY, JWT_ALGORITHM
+from server.app.config import JWT_SECRET_KEY, JWT_ALGORITHM, TELEGRAM_BOT_TOKEN
 from server.app.database.document_models import SystemEmployee
 from server.app.database.session import get_docs_db, get_employees_db  # УБРАЛИ кадровый get_employees_db
 from server.app.repositories.attachment_repo import AttachmentRepository
@@ -18,6 +21,7 @@ from server.app.repositories.session_repo import SessionRepository
 from server.app.repositories.tag_repo import TagRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.authorization.auth_service import AuthService
+from server.app.services.common.notification_service import NotificationService
 from server.app.services.overtime.overtime_export import OvertimeExportService
 from server.app.services.overtime.overtime_import import OvertimeImportService
 from server.app.services.common.tiff_converter import DocumentProcessor
@@ -38,6 +42,24 @@ from server.app.services.documents.tag_service import TagService
 
 security = HTTPBearer()
 
+# Глобальный синглтон бота (инициализируется при старте)
+_bot_instance: Optional[Bot] = None
+
+def get_telegram_bot() -> Optional[Bot]:
+    global _bot_instance
+    if _bot_instance is None and TELEGRAM_BOT_TOKEN:
+        _bot_instance = Bot(token=TELEGRAM_BOT_TOKEN)
+    return _bot_instance
+
+
+def get_notification_service(
+    db_docs: AsyncSession = Depends(get_docs_db),
+    db_emp: AsyncSession = Depends(get_employees_db),
+    bot: Optional[Bot] = Depends(get_telegram_bot)
+) -> NotificationService:
+    doc_repo = DocumentRepository(db_docs)
+    emp_repo = EmployeesRepository(db_emp)
+    return NotificationService(bot=bot, emp_repo=emp_repo, doc_repo=doc_repo)
 
 async def get_current_user(
         credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -189,9 +211,10 @@ def get_attachment_service(
 # --- ФАБРИКИ ЗАВИСИМОСТЕЙ ДЛЯ СЕРВИСОВ ---
 
 async def get_doc_service(
-        db_docs: AsyncSession = Depends(get_docs_db),
-        db_emp: AsyncSession = Depends(get_employees_db),
-        attachment_svc: AttachmentService = Depends(get_attachment_service)
+    db_docs: AsyncSession = Depends(get_docs_db),
+    db_emp: AsyncSession = Depends(get_employees_db),
+    attachment_svc: AttachmentService = Depends(get_attachment_service),
+    notification_svc: NotificationService = Depends(get_notification_service)
 ) -> DocumentService:
     doc_repo = DocumentRepository(db_docs)
     emp_repo = EmployeesRepository(db_emp)
@@ -199,7 +222,8 @@ async def get_doc_service(
     return DocumentService(
         repo=doc_repo,
         emp_repo=emp_repo,
-        attachment_service=attachment_svc
+        attachment_service=attachment_svc,
+        notification_service=notification_svc
     )
 
 
