@@ -152,7 +152,7 @@ async def process_save_document(
             parent_document_id=data.get("parent_document_id"),
             confident_flag=data.get("confident_flag", False),
             clearance_id=data.get("clearance_id"),
-            sender_id=data.get("sender"),
+            sender_id=data.get("sender_id"),
             executors=data.get("executors", []),
             recipients=data.get("recipients", []),
             tag_ids=data.get("tag_ids", [])
