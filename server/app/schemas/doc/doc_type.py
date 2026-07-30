@@ -3,7 +3,7 @@ from typing import Optional, Any
 
 class DocTypeBase(BaseModel):
     name: str
-    fields: Optional[list[Any]] = []
+    fields: dict[str, bool] = {}
     auto_num: bool = False
     smdo_code_type: Optional[str] = None
 
@@ -16,6 +16,6 @@ class DocTypeCreate(DocTypeBase):
 
 class DocTypeUpdate(BaseModel):
     name: Optional[str] = None
-    fields: Optional[list[Any]] = None
+    fields: Optional[dict[str, bool]] = None
     auto_num: Optional[bool] = None
     smdo_code_type: Optional[str] = None
