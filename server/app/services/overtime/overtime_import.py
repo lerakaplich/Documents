@@ -260,8 +260,7 @@ class OvertimeImportService:
                             employee_id=employee_id,
                             overtime_date=overtime_date,
                             start_time=ot_start,
-                            end_time=ot_end,
-                            description="Импортировано автоматически из системы учета"
+                            end_time=ot_end
                         )
                         result['imported'] += 1
                         imported_employee_ids.add(employee_id)

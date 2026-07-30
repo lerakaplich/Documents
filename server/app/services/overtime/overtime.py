@@ -78,3 +78,34 @@ class OvertimeService:
                 detail="Запись о переработке не найдена"
             )
         return True
+
+    async def update_bulk_notes_by_employee(self, user: CurrentUser, overtime_ids: list[int], note: str):
+        if not overtime_ids:
+            return {"updated_count": 0}
+
+        # 1. Запрашиваем все записи из БД по переданным ID
+        records = await self.repo.get_by_ids(overtime_ids)
+
+        # 2. Проверяем, что все ID были найдены в БД
+        found_ids = {r.id for r in records}
+        missing_ids = set(overtime_ids) - found_ids
+        if missing_ids:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Записи с ID {list(missing_ids)} не найдены"
+            )
+
+        # 3. ПРОВЕРКА ПРАВ: абсолютно ВСЕ записи должны принадлежать текущему пользователю (user.id)
+        forbidden_ids = [r.id for r in records if r.employee_id != user.id]
+        if forbidden_ids:
+            raise HTTPException(
+                status_code=403,
+                detail="Недостаточно прав: вы можете редактировать только свои собственные записи"
+            )
+
+        # 4. Выполняем массовое обновление
+        return await self.repo.update_bulk_notes_for_employee(
+            overtime_ids=overtime_ids,
+            employee_id=user.id,
+            note=note
+        )

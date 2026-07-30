@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import date, time
 from typing import Optional
 
@@ -21,3 +21,7 @@ class OvertimeUpdate(BaseModel):
 class OvertimeRead(OvertimeBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+class OvertimeBulkUpdateNote(BaseModel):
+    overtime_ids: list[int] = Field(..., description="Список ID записей переработок")
+    note: str = Field(..., description="Новый текст описания/заметки")

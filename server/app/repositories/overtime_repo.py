@@ -21,6 +21,12 @@ class OvertimeRepository:
         result = await self.db.execute(select(Overtime).where(Overtime.id == ot_id))
         return result.scalar_one_or_none()
 
+    async def get_by_ids(self, ot_ids: list[int]):
+        if not ot_ids:
+            return []
+        result = await self.db.execute(select(Overtime).where(Overtime.id.in_(ot_ids)))
+        return result.scalars().all()
+
     async def update_note(self, ot_id: int, note: str):
         stmt = (
             update(Overtime)
@@ -92,3 +98,16 @@ class OvertimeRepository:
         self.db.add(new_record)
         # commit() здесь делать НЕ НАДО, сервис импорта сделает один общий commit в конце файла
         return new_record
+
+    async def update_bulk_notes_for_employee(self, overtime_ids: list[int], employee_id: int, note: str):
+        stmt = (
+            update(Overtime)
+            .where(
+                Overtime.id.in_(overtime_ids),
+                Overtime.employee_id == employee_id
+            )
+            .values(note_text=note)
+        )
+        await self.db.execute(stmt)
+        await self.db.commit()
+        return {"updated_count": len(overtime_ids)}

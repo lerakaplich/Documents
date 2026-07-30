@@ -8,7 +8,9 @@ from server.app.deps import get_current_user, get_overtime_service, get_overtime
     get_overtime_export_service
 
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
-from server.app.schemas.user_schemas.overtime_dto import OvertimeRead, OvertimeCreate, OvertimeUpdate
+from server.app.schemas.user_schemas.overtime_dto import OvertimeRead, OvertimeCreate, OvertimeUpdate, \
+    OvertimeBulkUpdateNote
+from server.app.services.overtime.overtime import OvertimeService
 from server.app.services.overtime.overtime_export import OvertimeExportService
 from server.app.services.overtime.overtime_import import OvertimeImportService
 
@@ -21,6 +23,17 @@ async def create_overtime(
     service = Depends(get_overtime_service)
 ):
     return await service.create_by_admin(current_user, data)
+
+@router.patch("/bulk-description")
+async def update_bulk_descriptions(
+    data: OvertimeBulkUpdateNote,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: OvertimeService = Depends(get_overtime_service)
+):
+    """
+    Массовое обновление заметок/описаний для списка переработок
+    """
+    return await service.update_bulk_notes_by_employee(current_user, data.overtime_ids, data.note)
 
 @router.patch("/{ot_id}/description")
 async def update_my_description(
