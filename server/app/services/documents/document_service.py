@@ -2,7 +2,9 @@ import uuid
 
 from fastapi import HTTPException, status, UploadFile
 from typing import Optional, List
-from server.app.database.document_models import Document, EmployeeDocument, DocumentRole, AppRights, Read, DocDirection
+from server.app.database.document_models import Document, EmployeeDocument, DocumentRole, AppRights, Read, DocDirection, \
+    DocStatus
+from server.app.repositories.doc_type_repo import DocTypeRepository
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.schemas.doc.document_dto import DocumentCreateForm, AdminMetadataUpdate, ProposedNumberResponse
@@ -26,9 +28,20 @@ class DocumentService:
         self.attachment_service = attachment_service
         self.notifications = notification_service
 
+    def _determine_initial_status(self, deadline) -> DocStatus:
+        """
+        Определяет начальный статус документа.
+        Если дедлайн не указан — документ сразу утверждается (approved).
+        Если дедлайн задан — отправляется на рассмотрение (under_review).
+        """
+        if deadline is None:
+            return DocStatus.approved
+        return DocStatus.under_review
+
     async def create(self, payload: DocumentCreateForm, user: CurrentUser) -> Document:
         """Создание документа с привязкой участников и тегов"""
         async with self.repo.db.begin_nested():
+            initial_status = self._determine_initial_status(payload.deadline)
             global_msg_id = payload.global_msg_id or str(uuid.uuid4())
             new_doc = Document(
                 type_id=payload.type_id,
@@ -38,6 +51,8 @@ class DocumentService:
                 reg_number=payload.reg_number,
                 sequence_number=payload.sequence_number,
                 deadline=payload.deadline,
+                needs_response=payload.needs_response,
+                status=initial_status,
                 global_msg_id=global_msg_id,
                 parent_document_id=payload.parent_document_id,
                 confident_flag=payload.confident_flag,
@@ -192,3 +207,4 @@ class DocumentService:
             proposed_number=proposed_str,
             sequence_number=next_seq
         )
+

@@ -224,6 +224,12 @@ class Document(BaseDocuments):
         server_default="under_review",
         nullable=False
     )
+    needs_response: Mapped[bool] = mapped_column(
+        Boolean,
+        server_default="false",
+        nullable=False
+    )
+
     type_id: Mapped[int] = mapped_column(Integer, ForeignKey("types.id", ondelete="RESTRICT"), nullable=False)
     direction: Mapped[DocDirection] = mapped_column(SqlEnum(DocDirection, name="doc_direction"), nullable=False)
     title: Mapped[Optional[str]] = mapped_column(Text)

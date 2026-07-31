@@ -29,6 +29,8 @@ class DocumentCreateForm(BaseModel):
     recipients: List[int] = []  # ID сотрудников
     tag_ids: List[int] = []
 
+    needs_response: bool = False
+
 class TagItem(BaseModel):
     name: str
     priority: TagPriority

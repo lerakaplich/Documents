@@ -133,25 +133,20 @@ async def ask_reg_number(
 @router.callback_query(F.data == "use_suggested_reg_num", CreateDocumentFSM.waiting_for_reg_num)
 async def process_suggested_reg_num(
     callback: types.CallbackQuery,
-    state: FSMContext,
-    doc_session: AsyncSession,
-    emp_session: AsyncSession
+    state: FSMContext
 ):
     data = await state.get_data()
     reg_num = data.get("suggested_reg_num")
     await state.update_data(reg_number=reg_num)
     await callback.answer()
 
-    bot_repo = BotRepository(doc_session=doc_session, emp_session=emp_session)
-    await go_to_next_step(callback.message, state, bot_repo)
+    await ask_needs_response(callback.message, state)
 
 
 @router.message(CreateDocumentFSM.waiting_for_reg_num)
 async def process_manual_reg_num(
     message: types.Message,
-    state: FSMContext,
-    doc_session: AsyncSession,
-    emp_session: AsyncSession
+    state: FSMContext
 ):
     reg_num = message.text.strip() if message.text else ""
     if not reg_num:
@@ -160,5 +155,44 @@ async def process_manual_reg_num(
 
     await state.update_data(reg_number=reg_num)
 
+    await ask_needs_response(message, state)
+
+async def ask_needs_response(
+    message: types.Message,
+    state: FSMContext
+):
+    """Обязательный шаг: Уточнение, требуется ли ответ на документ"""
+    await state.set_state(CreateDocumentFSM.waiting_for_needs_response)
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="❓ Да, требуется", callback_data="needs_resp:yes")
+    builder.button(text="🚫 Нет, не требуется", callback_data="needs_resp:no")
+    builder.button(text="❌ Отмена", callback_data="cancel_doc_creation")
+    builder.adjust(2, 1)
+
+    await message.answer(
+        "📩 **Требуется ли ответ на данный документ?**\n\n"
+        "Укажите, ожидается ли официальный ответ/отклик от получателей:",
+        parse_mode="Markdown",
+        reply_markup=builder.as_markup()
+    )
+
+
+# ШАГ 2.4: Сохранение флага needs_response -> Переход к динамическим шагам
+@router.callback_query(F.data.startswith("needs_resp:"), CreateDocumentFSM.waiting_for_needs_response)
+async def process_needs_response_selection(
+    callback: types.CallbackQuery,
+    state: FSMContext,
+    doc_session: AsyncSession,
+    emp_session: AsyncSession
+):
+    resp_choice = callback.data.split(":")[1]
+    needs_response_val = (resp_choice == "yes")
+
+    # Сохраняем флаг в FSM
+    await state.update_data(needs_response=needs_response_val)
+    await callback.answer()
+
+    # Переходим к следующему шагу (к динамическим полям типа title, about, deadline и т.д.)
     bot_repo = BotRepository(doc_session=doc_session, emp_session=emp_session)
-    await go_to_next_step(message, state, bot_repo)
+    await go_to_next_step(callback.message, state, bot_repo)

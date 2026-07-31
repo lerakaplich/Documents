@@ -143,6 +143,7 @@ async def process_save_document(
         payload = DocumentCreateForm(
             type_id=data["type_id"],
             direction=data["direction"],
+            needs_response=data.get("needs_response", False),
             title=data.get("title"),
             about=data.get("about"),
             reg_number=data.get("reg_number"),
