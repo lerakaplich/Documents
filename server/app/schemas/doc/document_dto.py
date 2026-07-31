@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import date, datetime
 
 from server.app.database.document_models import DocStatus, DocDirection, TagPriority
@@ -147,3 +147,13 @@ class RedirectHistoryRead(BaseModel):
 class ProposedNumberResponse(BaseModel):
     proposed_number: str
     sequence_number: int
+
+class UnansweredDocumentStat(BaseModel):
+    document_id: int
+    reg_number: Optional[str] = "Б/Н"
+    title: Optional[str] = None
+    deadline: Optional[date] = None
+    assignees: List[str]  # ФИО Получателей (recipient) и Делегатов (delegate)
+    delay_info: Union[int, str]  # Число (дней * 50) или строка "Дедлайн не прошел"
+
+    model_config = ConfigDict(from_attributes=True)

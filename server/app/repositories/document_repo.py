@@ -487,3 +487,32 @@ class DocumentRepository:
             recipients=recipients,
             delegates=delegates
         )
+
+    async def get_unanswered_documents(self) -> List[Document]:
+        """
+        Возвращает документы, требующие ответа (needs_response = True),
+        на которые еще нет ни одного ответного документа (где parent_document_id == doc.id).
+        """
+        # Подзапрос: получаем список всех parent_document_id (ID документов, на которые уже ответили)
+        answered_parent_ids = (
+            select(Document.parent_document_id)
+            .where(Document.parent_document_id.is_not(None))
+            .scalar_subquery()
+        )
+
+        # Основной запрос: documents, где needs_response = True и id NOT IN (answered_parent_ids)
+        stmt = (
+            select(Document)
+            .where(
+                Document.needs_response.is_(True),
+                Document.id.not_in(answered_parent_ids)
+            )
+            .options(
+                # Загружаем участников вместе с их данными system_employees
+                selectinload(Document.employees).selectinload(EmployeeDocument.employee)
+            )
+            .order_by(Document.created_at.desc())
+        )
+
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())

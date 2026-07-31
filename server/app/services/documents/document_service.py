@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 from fastapi import HTTPException, status, UploadFile
 from typing import Optional, List
@@ -7,7 +8,8 @@ from server.app.database.document_models import Document, EmployeeDocument, Docu
 from server.app.repositories.doc_type_repo import DocTypeRepository
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
-from server.app.schemas.doc.document_dto import DocumentCreateForm, AdminMetadataUpdate, ProposedNumberResponse
+from server.app.schemas.doc.document_dto import DocumentCreateForm, AdminMetadataUpdate, ProposedNumberResponse, \
+    UnansweredDocumentStat
 from sqlalchemy import select
 
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
@@ -207,4 +209,45 @@ class DocumentService:
             proposed_number=proposed_str,
             sequence_number=next_seq
         )
+
+    async def get_unanswered_stats(self) -> List[UnansweredDocumentStat]:
+        """Расчет статистики и пеней по неотвеченным документам"""
+        unanswered_docs = await self.repo.get_unanswered_documents()
+        today = date.today()
+
+        stats: List[UnansweredDocumentStat] = []
+
+        for doc in unanswered_docs:
+            # 1. Собираем ФИО Получателей (recipient) и Делегатов (delegate)
+            assignees_fio = []
+            for emp_doc in doc.employees:
+                if emp_doc.role in (DocumentRole.recipient, DocumentRole.delegate) and emp_doc.employee:
+                    emp = emp_doc.employee
+                    fio = f"{emp.last_name} {emp.first_name}"
+                    if emp.patronymic:
+                        fio += f" {emp.patronymic}"
+                    assignees_fio.append(fio.strip())
+
+            # 2. Расчет задержки (количество дней после дедлайна * 50)
+            if doc.deadline:
+                days_overdue = (today - doc.deadline).days
+                if days_overdue > 0:
+                    delay_info = days_overdue * 50  # Количество дней просрочки * 50
+                else:
+                    delay_info = "Дедлайн не прошел"
+            else:
+                delay_info = "Дедлайн не прошел"
+
+            stats.append(
+                UnansweredDocumentStat(
+                    document_id=doc.id,
+                    reg_number=doc.reg_number or "Б/Н",
+                    title=doc.title,
+                    deadline=doc.deadline,
+                    assignees=assignees_fio,
+                    delay_info=delay_info
+                )
+            )
+
+        return stats
 

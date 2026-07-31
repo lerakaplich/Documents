@@ -7,7 +7,7 @@ from server.app.deps import get_current_user, get_doc_service, get_registry_serv
 from server.app.role_checker import RoleChecker
 from server.app.schemas.doc.document_dto import (
     DocumentListItem, DocumentCreateForm, DocumentDetailRead,
-    AdminMetadataUpdate, DocumentPaginationResponse, ProposedNumberResponse
+    AdminMetadataUpdate, DocumentPaginationResponse, ProposedNumberResponse, UnansweredDocumentStat
 )
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 
@@ -112,6 +112,25 @@ async def admin_update_metadata(
 ):
     """Административное редактирование метаданных в обход ограничений состояний"""
     return await service.admin_update_metadata(document_id, payload)
+
+@router.get(
+    "/stats/unanswered",
+    response_model=List[UnansweredDocumentStat],
+    status_code=status.HTTP_200_OK,
+    summary="Получить статистику по неотвеченным документам"
+)
+async def get_unanswered_documents_stats(
+    doc_service: DocumentService = Depends(get_doc_service),
+    current_user = Depends(get_current_user)
+):
+    """
+    Эндпоинт возвращает список документов:
+    - Требующих ответа (`needs_response = True`)
+    - На которые еще не поступил ответ (нет записей с `parent_document_id`)
+    - С расчетом штрафа/просрочки (дни после дедлайна * 50)
+    - С перечнем ответственных ФИО (Получатели и Делегаты)
+    """
+    return await doc_service.get_unanswered_stats()
 
 
 
