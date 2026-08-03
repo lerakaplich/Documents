@@ -21,9 +21,9 @@ class TagService:
 
         # 2. Если приоритет нормальный — проверяем админа или руководителя
         try:
-            await self.security.verify_is_admin(user)
+            await self.security.is_admin(user)
         except HTTPException:
-            await self.security.verify_is_leader_at_least_once(user)
+            await self.security.is_leader_anywhere(user)
 
     async def get_all(self):
         return await self.repo.get_all()

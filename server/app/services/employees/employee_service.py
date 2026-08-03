@@ -49,7 +49,7 @@ class EmployeeService:
 
     async def get_full_employee_info(self, current_user: CurrentUser, emp_id: int) -> Optional[EmployeeDetailRead]:
         # 1. Сначала проверяем права!
-        await self.security.verify_employee_view_access(current_user, emp_id)
+        await self.security.can_view_employee(current_user, emp_id)
 
         # 2. Потом берем данные
         employee = await self.emp_repo.get_by_id(emp_id)
@@ -68,7 +68,7 @@ class EmployeeService:
 
     async def create_employee(self, current_user: CurrentUser, data: EmployeeCreate):
         # Одной строкой проверяем права
-        await self.security.verify_dept_access(current_user, data.position.department_id)
+        await self.security.can_manage_dept(current_user, data.position.department_id)
 
         async with self.emp_repo.db.begin():
             new_emp = await self.emp_repo.add_employee(data)
@@ -103,12 +103,12 @@ class EmployeeService:
             data: EmployeeFullUpdate
     ):
         # 1. Проверка доступа к сотруднику (Иерархическая)
-        await self.security.verify_employee_view_access(manager_user, target_id)
+        await self.security.can_view_employee(manager_user, target_id)
 
         # 2. Проверка эскалации прав (если менеджер меняет поле 'rights')
         # Важно: если rights нет в данных (None), проверку пропускаем
         if data.rights is not None:
-            await self.security.verify_can_update_rights(manager_user, data.rights)
+            await self.security.can_update_rights(manager_user, data.rights)
 
         # 3. Получение текущих данных
         current_emp = await self.emp_repo.get_by_id(target_id)
@@ -124,7 +124,7 @@ class EmployeeService:
             for pos in data.positions:
                 # Если отдел новый (или id отсутствует, значит новая позиция) — проверяем доступ
                 if pos.department_id not in current_dept_ids:
-                    await self.security.verify_dept_access(manager_user, pos.department_id)
+                    await self.security.can_manage_dept(manager_user, pos.department_id)
 
         # 5. Выполнение обновлений в транзакции
         async with self.emp_repo.db.begin_nested():
@@ -187,7 +187,7 @@ class EmployeeService:
 
     async def add_employee_position(self, current_user: CurrentUser, emp_id: int, data: PositionCreate):
         # 1. Проверка прав через SecurityService
-        await self.security.verify_dept_access(current_user, data.department_id)
+        await self.security.can_manage_dept(current_user, data.department_id)
 
         # 2. Добавление
         return await self.emp_repo.add_position(emp_id, data)
@@ -204,14 +204,14 @@ class EmployeeService:
             raise HTTPException(status_code=404, detail="Позиция не найдена")
 
         # Проверка через SecurityService (вместо старого метода)
-        await self.security.verify_dept_access(current_user, pos_to_delete.department_id)
+        await self.security.can_manage_dept(current_user, pos_to_delete.department_id)
 
         return await self.emp_repo.delete_position(pos_id)
 
     async def set_access_leadership(self, user: CurrentUser, pos_id: int, is_leader: bool):
         # 1. Проверяем доступ к отделу
         pos = await self.emp_repo.get_position_by_id(pos_id)
-        await self.security.verify_dept_access(user, pos.department_id)
+        await self.security.can_manage_dept(user, pos.department_id)
 
         # 2. Просто меняем флаг
         return await self.emp_repo.update_is_leader(pos_id, is_leader)

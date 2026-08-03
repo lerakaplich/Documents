@@ -31,20 +31,20 @@ class DocumentReviewService:
         is_authorized = False
 
         try:
-            await self.security.verify_is_admin(current_user)
+            await self.security.is_admin(current_user)
             is_authorized = True
         except HTTPException:
             pass
 
         if not is_authorized:
             relation = await self.repo.get_user_relation(document_id, current_user.id)
-            await self.security.verify_can_review_document(relation)
+            await self.security.can_review_document(relation)
 
         return await self.repo.get_status_history_by_doc_id(document_id)
 
     async def process_review(self, document_id: int, user_id: int, approved: bool, comment_text: str = None):
         relation = await self.repo.get_user_relation(document_id, user_id)
-        await self.security.verify_can_review_document(relation)
+        await self.security.can_review_document(relation)
 
         if relation.is_approved is not None:
             raise HTTPException(status_code=400, detail="Решение уже принято.")
@@ -62,7 +62,7 @@ class DocumentReviewService:
     async def make_revisions(self, document_id: int, user_id: int, text: str) -> None:
         """Внесение замечаний (правок) к документу без вынесения финального решения"""
         relation = await self.repo.get_user_relation(document_id, user_id)
-        await self.security.verify_can_review_document(relation)
+        await self.security.can_review_document(relation)
 
         document = await self.repo.get_by_id(document_id)
         if not document:
@@ -88,7 +88,7 @@ class DocumentReviewService:
         reason: Optional[str] = None
     ):
         """Ручное (административное) изменение статуса документа"""
-        await self.security.verify_is_admin(current_user)
+        await self.security.is_admin(current_user)
 
         document = await self.repo.get_by_id(document_id)
         if not document:

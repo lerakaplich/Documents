@@ -19,9 +19,9 @@ class DepartmentService:
     async def create_department(self, current_user: CurrentUser, data: DepartmentCreate) -> DepartmentRead:
         # 1. Проверка прав: используем SecurityService
         if data.parent_id:
-            await self.security.verify_dept_access(current_user, data.parent_id)
+            await self.security.can_manage_dept(current_user, data.parent_id)
         else:
-            await self.security.verify_is_admin(current_user)
+            await self.security.is_admin(current_user)
 
         # 2. Валидация родителя
         parent_path = ""
@@ -42,7 +42,7 @@ class DepartmentService:
     async def update_department(self, current_user: CurrentUser, dept_id: int,
                                 data: DepartmentUpdate) -> DepartmentRead:
         # 1. Проверка прав (иерархическая)
-        await self.security.verify_dept_access(current_user, dept_id)
+        await self.security.can_manage_dept(current_user, dept_id)
 
         # 2. Подготовка данных
         update_data = data.model_dump(exclude_unset=True)
@@ -58,7 +58,7 @@ class DepartmentService:
 
     async def set_department_head(self, user: CurrentUser, dept_id: int, employee_id: int):
         # 1. Проверка прав (остается внешней, вне транзакции)
-        await self.security.verify_can_appoint_leader(user, dept_id)
+        await self.security.can_appoint_leader(user, dept_id)
 
         # 2. Атомарная транзакция для бизнес-логики
         async with self.repo.db.begin_nested():
@@ -79,7 +79,7 @@ class DepartmentService:
 
     async def remove_department_head(self, user: CurrentUser, dept_id: int):
         # 1. Проверка прав (кто может снимать руководителя)
-        await self.security.verify_can_appoint_leader(user, dept_id)
+        await self.security.can_appoint_leader(user, dept_id)
 
         # 2. Получаем департамент
         dept = await self.repo.get_department_by_id(dept_id)
@@ -99,7 +99,7 @@ class DepartmentService:
 
     async def delete_department(self, user: CurrentUser, dept_id: int):
         # 1. Проверка прав
-        await self.security.verify_can_appoint_leader(user, dept_id)
+        await self.security.can_appoint_leader(user, dept_id)
 
         # 2. Проверка детей
         if await self.repo.has_children(dept_id):
@@ -118,7 +118,7 @@ class DepartmentService:
         if new_parent_id is None:
             raise HTTPException(status_code=400, detail="Подразделение должно иметь родителя")
 
-        await self.security.verify_can_appoint_leader(user, dept_id)
+        await self.security.can_appoint_leader(user, dept_id)
 
         # 1. Получаем нового родителя (чтобы узнать его путь)
         new_parent_path = ""
@@ -157,7 +157,7 @@ class DepartmentService:
     async def archive_department(self, user: CurrentUser, dept_id: int):
         # 1. Проверка прав (кто может архивировать)
         # Только глобальные админы или вышестоящее руководство
-        await self.security.verify_can_appoint_leader(user, dept_id)
+        await self.security.can_appoint_leader(user, dept_id)
 
         # 2. Проверка: есть ли там сотрудники? (бизнес-логика)
         employees = await self.repo.get_employees_by_dept(dept_id)

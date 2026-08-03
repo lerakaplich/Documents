@@ -12,7 +12,7 @@ class OvertimeService:
         self.repo = repo
 
     async def create_by_admin(self, user: CurrentUser, data: OvertimeCreate):
-        await self.security.verify_is_admin(user)
+        await self.security.is_admin(user)
         return await self.repo.add(data)
 
     async def update_note_by_employee(self, user: CurrentUser, ot_id: int, note: str):
@@ -21,7 +21,7 @@ class OvertimeService:
             raise HTTPException(status_code=404, detail="Запись не найдена")
 
         try:
-            await self.security.verify_is_admin(user)
+            await self.security.is_admin(user)
         except HTTPException:
             if record.employee_id != user.id:
                 raise HTTPException(
@@ -32,7 +32,7 @@ class OvertimeService:
         return await self.repo.update_note(ot_id, note)
 
     async def update_by_admin(self, user: CurrentUser, ot_id: int, data: OvertimeUpdate):
-        await self.security.verify_is_admin(user)
+        await self.security.is_admin(user)
 
         update_dict = data.model_dump(exclude_unset=True)
 
@@ -48,7 +48,7 @@ class OvertimeService:
 
     async def get_by_employee(self, current_user: CurrentUser, target_employee_id: int):
         try:
-            await self.security.verify_is_admin(current_user)
+            await self.security.is_admin(current_user)
         except HTTPException:
             if current_user.id != target_employee_id:
                 raise HTTPException(
@@ -59,16 +59,16 @@ class OvertimeService:
         return await self.repo.get_by_employee_id(target_employee_id)
 
     async def get_by_dept(self, user: CurrentUser, dept_id: int):
-        await self.security.verify_dept_access(user, dept_id)
+        await self.security.can_manage_dept(user, dept_id)
         return await self.repo.get_by_dept_id(dept_id)
 
     async def get_all(self, user: CurrentUser):
         """Доступно только админам/суперадминам"""
-        await self.security.verify_is_admin(user)
+        await self.security.is_admin(user)
         return await self.repo.get_all()
 
     async def delete_by_admin(self, user: CurrentUser, ot_id: int):
-        await self.security.verify_is_admin(user)
+        await self.security.is_admin(user)
 
         deleted_id = await self.repo.delete(ot_id)
 

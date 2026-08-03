@@ -1,11 +1,11 @@
 from typing import Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from server.app.database.employee_models import Department, EmployeePosition, Employee, Organization
-from server.app.schemas.org import DepartmentCreate
+from server.app.schemas.org import DepartmentCreate, OrganizationCreate
 
 
 class OrgRepository:
@@ -145,3 +145,41 @@ class OrgRepository:
             .where(Department.id == dept_id)
         )
         return result.scalar_one_or_none()
+
+    async def create_organization(self, data: OrganizationCreate) -> Organization:
+        new_org = Organization(
+            unp=data.unp,
+            smdo_code=data.smdo_code,
+            name=data.name,
+            phone_number=data.phone_number,
+            address=data.address,
+            email=data.email,
+            is_subscriber=data.is_subscriber
+        )
+        self.db.add(new_org)
+        await self.db.flush()
+        await self.db.refresh(new_org)
+        return new_org
+
+    async def get_all_organizations(self, limit: int = 100, offset: int = 0) -> list[Organization]:
+        stmt = select(Organization).offset(offset).limit(limit).order_by(Organization.name)
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_organization_by_unp(self, unp: str) -> Optional[Organization]:
+        result = await self.db.execute(
+            select(Organization).where(Organization.unp == unp)
+        )
+        return result.scalar_one_or_none()
+
+    async def delete_organization(self, org_id: int) -> None:
+        stmt = delete(Organization).where(Organization.id == org_id)
+        await self.db.execute(stmt)
+        await self.db.flush()
+
+    async def has_linked_entities(self, org_id: int) -> bool:
+        """Проверка, привязаны ли к организации подразделения (для безопасного удаления)"""
+        result = await self.db.execute(
+            select(Department.id).where(Department.organization_id == org_id).limit(1)
+        )
+        return result.scalar_one_or_none() is not None

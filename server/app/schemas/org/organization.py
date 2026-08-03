@@ -14,6 +14,9 @@ class OrganizationRead(OrganizationBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
 
+class OrganizationCreate(OrganizationBase):
+    pass
+
 class OrganizationUpdate(BaseModel):
     smdo_code: Optional[str] = None
     name: Optional[str] = None

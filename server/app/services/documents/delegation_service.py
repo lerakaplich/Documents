@@ -28,7 +28,7 @@ class DelegationService:
             return  # Успех: пользователь — владелец/получатель
 
         # 2. Если не участник, проверяем админа
-        await self.security.verify_is_admin(actor)
+        await self.security.is_admin(actor)
 
     async def add_delegate(self, doc_id: int, actor: CurrentUser, target_id: int, message: str = None):
         """Назначить сотрудника делегатом"""
