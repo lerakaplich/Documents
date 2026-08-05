@@ -1,5 +1,3 @@
-from typing import List, Optional, Tuple
-from datetime import date
 from server.app.database.document_models import Document, AppRights, DocStatus, DocDirection
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.schemas.doc.doc_employee_dto import ParticipantItem
@@ -10,7 +8,7 @@ class RegistryService:
     def __init__(self, db_repo: DocumentRepository):
         self.repo = db_repo
 
-    async def get_all_paginated(self, user_id: int, user_rights: AppRights, **params) -> Tuple[int, List[Document]]:
+    async def get_all_paginated(self, user_id: int, user_rights: AppRights, **params) -> tuple[int, list[Document]]:
         # 1. Начало сборки запроса
         query = self.repo.prepare_document_list_query()
         query = self.repo.apply_read_status(query, user_id)

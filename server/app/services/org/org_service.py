@@ -1,7 +1,6 @@
 from fastapi import HTTPException, status
 
 from server.app.repositories.org_repo import OrgRepository
-from typing import List
 
 from server.app.schemas.org import DepartmentNode, OrganizationUpdate, OrganizationRead, OrganizationCreate
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
@@ -14,7 +13,7 @@ class OrgService:
         self.repo = repo
         self.security = security
 
-    async def get_org_structure(self, org_id: int) -> List[DepartmentNode]:
+    async def get_org_structure(self, org_id: int) -> list[DepartmentNode]:
         depts = await self.repo.get_departments_by_org(org_id)
 
         nodes = {
@@ -90,7 +89,7 @@ class OrgService:
 
     async def get_all_organizations(
         self, limit: int = 100, offset: int = 0
-    ) -> List[OrganizationRead]:
+    ) -> list[OrganizationRead]:
         orgs = await self.repo.get_all_organizations(limit=limit, offset=offset)
         return [OrganizationRead.model_validate(o) for o in orgs]
 

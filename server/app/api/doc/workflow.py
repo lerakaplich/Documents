@@ -2,12 +2,11 @@ from fastapi import APIRouter, Depends, status, Form
 from typing import Optional
 
 from server.app.database.document_models import DocStatus
-from server.app.deps import get_current_user, get_review_service, get_workflow_service, get_registry_service
+from server.app.deps import get_current_user, get_review_service, get_workflow_service
 from server.app.schemas.doc.document_dto import (
     ToggleCompletionPayload
 )
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
-from server.app.services.documents.registry_service import RegistryService
 
 # Импортируем обновленные сервисы СЭД
 from server.app.services.documents.review_service import DocumentReviewService

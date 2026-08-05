@@ -4,7 +4,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.database.document_models import DocDirection
-from server.app.deps import get_doc_service
 from server.bot.handlers.step_navigator import go_to_next_step
 from server.bot.keyboards.menu_kb import get_cancel_keyboard
 from server.bot.services.bot_repo import BotRepository

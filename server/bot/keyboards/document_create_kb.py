@@ -1,11 +1,10 @@
-from typing import List
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from server.app.database.document_models import DocumentType
 
 
-def get_types_keyboard(types: List[DocumentType]) -> ReplyKeyboardMarkup:
+def get_types_keyboard(types: list[DocumentType]) -> ReplyKeyboardMarkup:
     """Динамическая клавиатура с типами документов из БД + кнопка Отмена"""
     keyboard = []
 

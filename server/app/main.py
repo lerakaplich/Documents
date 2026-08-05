@@ -1,7 +1,4 @@
-import asyncio
-
 from fastapi import FastAPI, Depends
-from contextlib import asynccontextmanager
 from server.app.api.auth_router import router as auth_router
 from server.app.api.doc import doc_router
 from server.app.api.organization import router as org_router
@@ -13,7 +10,7 @@ from server.app.api.overtimes import router as over_router
 from sqlalchemy.ext.asyncio import AsyncSession
 from server.app.api.employees import router as employees_router
 from server.app.api.errors import global_exception_handler
-from server.app.database.session import get_docs_db, get_employees_db, DOCS_DB_URL_RAW
+from server.app.database.session import get_docs_db, get_employees_db
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.services.common.sync_service import SyncService

@@ -1,5 +1,5 @@
 # bot/middlewares/services.py
-from typing import Callable, Dict, Any, Awaitable
+from typing import Callable, Any, Awaitable
 from aiogram import BaseMiddleware, Bot
 from aiogram.types import TelegramObject
 
@@ -18,9 +18,9 @@ from server.app.services.common.tiff_converter import DocumentProcessor
 class ServicesMiddleware(BaseMiddleware):
     async def __call__(
         self,
-        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
         event: TelegramObject,
-        data: Dict[str, Any]
+        data: dict[str, Any]
     ) -> Any:
         db_docs = data.get("doc_session")
         db_emp = data.get("emp_session")

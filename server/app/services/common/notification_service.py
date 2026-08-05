@@ -1,6 +1,6 @@
 # server/app/services/notification_service.py
 import logging
-from typing import List, Optional, Set
+from typing import Optional
 from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError, TelegramAPIError
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -187,7 +187,7 @@ class NotificationService:
 
         await self._send_safe(delegatee_chat_id, text)
 
-    async def notify_overtimes_imported(self, employee_ids: Set[int]):
+    async def notify_overtimes_imported(self, employee_ids: set[int]):
         """
         Массовое рассылочное уведомление сотрудникам,
         у которых появились новые импортированные переработки.

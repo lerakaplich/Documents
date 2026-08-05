@@ -5,7 +5,6 @@ from server.app.schemas.user_schemas.employee_dto import CurrentUser
 
 from server.app.services.org.org_service import OrgService
 from fastapi import APIRouter, Depends, status, Query
-from typing import List
 
 router = APIRouter(prefix="/org", tags=["Organization Structure"])
 
@@ -26,7 +25,7 @@ async def create_organization(
 
 @router.get(
     "",
-    response_model=List[OrganizationRead],
+    response_model=list[OrganizationRead],
     summary="Получить список всех организаций"
 )
 async def get_all_organizations(
@@ -51,7 +50,7 @@ async def get_organization(
 
 @router.get(
     "/{org_id}/structure",
-    response_model=List[DepartmentNode],
+    response_model=list[DepartmentNode],
     summary="Получить древовидную структуру отделов организации"
 )
 async def get_org_structure(

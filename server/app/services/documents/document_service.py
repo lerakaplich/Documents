@@ -1,11 +1,9 @@
 import uuid
 from datetime import date
 
-from fastapi import HTTPException, status, UploadFile
-from typing import Optional, List
+from fastapi import HTTPException, status
 from server.app.database.document_models import Document, EmployeeDocument, DocumentRole, AppRights, Read, DocDirection, \
     DocStatus
-from server.app.repositories.doc_type_repo import DocTypeRepository
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.schemas.doc.document_dto import DocumentCreateForm, AdminMetadataUpdate, ProposedNumberResponse, \
@@ -210,12 +208,12 @@ class DocumentService:
             sequence_number=next_seq
         )
 
-    async def get_unanswered_stats(self) -> List[UnansweredDocumentStat]:
+    async def get_unanswered_stats(self) -> list[UnansweredDocumentStat]:
         """Расчет статистики и пеней по неотвеченным документам"""
         unanswered_docs = await self.repo.get_unanswered_documents()
         today = date.today()
 
-        stats: List[UnansweredDocumentStat] = []
+        stats: list[UnansweredDocumentStat] = []
 
         for doc in unanswered_docs:
             # 1. Собираем ФИО Получателей (recipient) и Делегатов (delegate)

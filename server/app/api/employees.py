@@ -1,4 +1,3 @@
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from server.app.deps import get_current_user, get_employee_service
@@ -8,7 +7,7 @@ from server.app.services.employees.employee_service import EmployeeService
 
 router = APIRouter(prefix="/departments", tags=["Employees"])
 
-@router.get("/departments/{department_id}/staff", response_model=List[EmployeeRead])
+@router.get("/departments/{department_id}/staff", response_model=list[EmployeeRead])
 async def get_department_staff(
     department_id: int,
     service: EmployeeService = Depends(get_employee_service)
@@ -16,7 +15,7 @@ async def get_department_staff(
     """Список сотрудников в конкретном подразделении"""
     return await service.get_staff_by_department(department_id)
 
-@router.get("/all", response_model=List[EmployeeListRead])
+@router.get("/all", response_model=list[EmployeeListRead])
 async def get_all_employees(
     page: int = 1,
     limit: int = 20,

@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, Form
-from typing import List
 
 from server.app.deps import get_current_user, get_review_service, \
     get_comment_service
@@ -23,7 +22,7 @@ async def make_document_revisions(
     return {"status": "success", "message": "Правки успешно добавлены в историю документа"}
 
 
-@router.get("/{document_id}", response_model=List[dict])
+@router.get("/{document_id}", response_model=list[dict])
 async def get_document_comments_history(
         document_id: int,
         current_user: CurrentUser = Depends(get_current_user),

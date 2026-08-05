@@ -1,9 +1,8 @@
 from fastapi import WebSocket
-from typing import Dict
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: Dict[int, WebSocket] = {}
+        self.active_connections: dict[int, WebSocket] = {}
 
     async def connect(self, websocket: WebSocket, employee_id: int):
         await websocket.accept()

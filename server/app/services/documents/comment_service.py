@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from typing import List, Dict, Any
+from typing import Any
 from sqlalchemy import select
 
 from server.app.database.document_models import Comment, SystemEmployee
@@ -44,11 +44,11 @@ class CommentService:
 
         return comment
 
-    async def get_document_comments(self, document_id: int) -> List[Comment]:
+    async def get_document_comments(self, document_id: int) -> list[Comment]:
         """Получить список сырых комментариев к документу"""
         return await self.repo.get_all_by_document_id(document_id)
 
-    async def get_document_comments_with_authors(self, document_id: int) -> List[Dict[str, Any]]:
+    async def get_document_comments_with_authors(self, document_id: int) -> list[dict[str, Any]]:
         """
         Получить историю замечаний с отформатированным ФИО автора (Фамилия И. О.)
         через локальную таблицу system_employees.

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status, Query
-from typing import List, Optional
+from typing import Optional
 from datetime import date
 
 from server.app.database.document_models import DocStatus, DocDirection, AppRights
@@ -49,10 +49,10 @@ async def get_proposed_document_number(
 async def get_documents(
         scope: str = "my",
         is_completed: Optional[bool] = None,
-        status_filters: Optional[List[DocStatus]] = Query(None),
+        status_filters: Optional[list[DocStatus]] = Query(None),
         type_id: Optional[int] = None,
         direction: Optional[DocDirection] = None,
-        tag_ids: Optional[List[int]] = Query(None),
+        tag_ids: Optional[list[int]] = Query(None),
         date_from: Optional[date] = None,
         date_to: Optional[date] = None,
         search: Optional[str] = None,
@@ -115,7 +115,7 @@ async def admin_update_metadata(
 
 @router.get(
     "/stats/unanswered",
-    response_model=List[UnansweredDocumentStat],
+    response_model=list[UnansweredDocumentStat],
     status_code=status.HTTP_200_OK,
     summary="Получить статистику по неотвеченным документам"
 )

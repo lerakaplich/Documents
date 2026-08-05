@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
+from typing import Optional
 from datetime import date
 from server.app.database.document_models import AppRights  # Используется в SystemEmployee
 
@@ -41,7 +41,7 @@ class PositionUpdate(PositionData):
 
 class EmployeeRead(EmployeeBase):
     id: int
-    positions: List[EmployeePositionRead] = []  # Список всех занимаемых должностей
+    positions: list[EmployeePositionRead] = []  # Список всех занимаемых должностей
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -91,6 +91,6 @@ class EmployeeFullUpdate(BaseModel):
     is_active: Optional[bool] = None
 
     # Позиции
-    positions: List[PositionUpdate] # Список позиций
+    positions: list[PositionUpdate] # Список позиций
 
     model_config = ConfigDict(from_attributes=True)

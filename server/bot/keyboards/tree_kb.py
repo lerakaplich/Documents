@@ -1,5 +1,5 @@
 # server/bot/keyboards/tree_kb.py
-from typing import List, Optional
+from typing import Optional
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardMarkup
 from server.app.database.employee_models import Department, Employee
@@ -7,12 +7,12 @@ from server.bot.states.org_tree_cb import OrgTreeCallback
 
 
 def build_org_tree_keyboard(
-    departments: List[Department],
-    employees: List[Employee],
+    departments: list[Department],
+    employees: list[Employee],
     current_dept: Optional[Department],
     target_role: str,
-    selected_ids: List[int] = None,
-    disabled_ids: List[int] = None
+    selected_ids: list[int] = None,
+    disabled_ids: list[int] = None
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     selected_ids = selected_ids or []

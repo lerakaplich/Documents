@@ -1,7 +1,6 @@
-import os
 from io import BytesIO
 from datetime import date, datetime
-from typing import Optional, List, Dict
+from typing import Optional
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from sqlalchemy import select
@@ -35,7 +34,7 @@ class OvertimeExportService:
             dept_id: int,
             start_date: Optional[date] = None,
             end_date: Optional[date] = None
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Получить все переработки сотрудников отдела за период"""
         stmt = (
             select(

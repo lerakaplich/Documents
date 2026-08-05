@@ -1,6 +1,5 @@
 import io
 import os
-import uuid
 import fitz as pymupdf
 from PIL import Image, ImageFilter, ImageEnhance
 

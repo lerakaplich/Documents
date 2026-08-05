@@ -1,5 +1,4 @@
 from fastapi import HTTPException, status
-from typing import List
 from server.app.database.document_models import DocumentRole
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.schemas.doc.document_dto import RedirectHistoryRead
@@ -80,7 +79,7 @@ class DelegationService:
             is_granted=False
         )
 
-    async def get_history(self, doc_id: int) -> List[RedirectHistoryRead]:
+    async def get_history(self, doc_id: int) -> list[RedirectHistoryRead]:
         """Получить историю перенаправлений"""
         history_records = await self.repo.get_redirect_history(doc_id)
         return [RedirectHistoryRead.model_validate(h) for h in history_records]

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import HTTPException
 
@@ -22,7 +22,7 @@ class EmployeeService:
         self,
         department_id: int,
         include_inactive: bool = False # Добавляем параметр
-    ) -> List[EmployeeRead]:
+    ) -> list[EmployeeRead]:
         employees = await self.emp_repo.get_by_department(department_id, include_inactive=include_inactive)
         return [EmployeeRead.model_validate(e) for e in employees]
 
@@ -160,7 +160,7 @@ class EmployeeService:
         result["rights"] = data.rights or current_sys.rights
         return EmployeeDetailRead.model_validate(result)
 
-    async def sync_employee_positions(self, employee_id: int, new_positions: List[PositionUpdate]):
+    async def sync_employee_positions(self, employee_id: int, new_positions: list[PositionUpdate]):
         # 1. Получаем текущие позиции
         current_positions = await self.emp_repo.get_positions_by_employee(employee_id)
         current_map = {p.id: p for p in current_positions}

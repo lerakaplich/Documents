@@ -1,5 +1,5 @@
 # server/app/repositories/employees_repo.py
-from typing import List, Optional
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
@@ -14,7 +14,7 @@ class EmployeesRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_all_active(self) -> List[Employee]:
+    async def get_all_active(self) -> list[Employee]:
         """Возвращает список всех работающих сотрудников для кэширования при импорте"""
         stmt = select(Employee).where(Employee.is_active == True)
         result = await self.db.execute(stmt)
@@ -29,7 +29,7 @@ class EmployeesRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_by_department(self, department_id: int, include_inactive: bool = False) -> List[Employee]:
+    async def get_by_department(self, department_id: int, include_inactive: bool = False) -> list[Employee]:
         stmt = (
             select(Employee)
             .join(EmployeePosition)
@@ -64,7 +64,7 @@ class EmployeesRepository:
         result = await self.db.execute(query)
         return result.all()
 
-    async def get_leader_paths(self, employee_id: int) -> List[str]:
+    async def get_leader_paths(self, employee_id: int) -> list[str]:
         stmt = select(Department.hierarchy_path).join(EmployeePosition).where(
             EmployeePosition.employee_id == employee_id,
             EmployeePosition.is_leader == True
@@ -73,7 +73,7 @@ class EmployeesRepository:
         # Приводим к list[str], убирая возможные None
         return [path for path in result.scalars().all() if path]
 
-    async def get_target_dept_paths(self, target_emp_id: int) -> List[str]:
+    async def get_target_dept_paths(self, target_emp_id: int) -> list[str]:
         stmt = select(Department.hierarchy_path).join(EmployeePosition).where(
             EmployeePosition.employee_id == target_emp_id
         )
@@ -187,7 +187,7 @@ class EmployeesRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_positions_by_employee(self, employee_id: int) -> List[EmployeePosition]:
+    async def get_positions_by_employee(self, employee_id: int) -> list[EmployeePosition]:
         stmt = select(EmployeePosition).where(EmployeePosition.employee_id == employee_id)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
@@ -236,7 +236,7 @@ class EmployeesRepository:
 
         return top_dept_code, sub_dept_code
 
-    async def get_chat_ids_by_employee_ids(self, employee_ids: List[int]) -> dict[int, int]:
+    async def get_chat_ids_by_employee_ids(self, employee_ids: list[int]) -> dict[int, int]:
         """Возвращает словарь {employee_id: chat_id} только для тех, у кого заполнено поле"""
         if not employee_ids:
             return {}
@@ -252,7 +252,7 @@ class EmployeesRepository:
         result = await self.db.execute(stmt)
         return {row.id: row.chat_id for row in result.all()}
 
-    async def get_all_active_chat_ids(self) -> List[int]:
+    async def get_all_active_chat_ids(self) -> list[int]:
         """Возвращает список chat_id всех активных сотрудников для массовых анонсов"""
         stmt = (
             select(Employee.chat_id)

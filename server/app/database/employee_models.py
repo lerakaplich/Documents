@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional
 from datetime import date, time
 
 from sqlalchemy import Integer, String, Text, Boolean, Date, BigInteger, ForeignKey, UniqueConstraint, Time
@@ -22,7 +22,7 @@ class Organization(BaseEmployees):
     email: Mapped[Optional[str]] = mapped_column(Text)
     is_subscriber: Mapped[bool] = mapped_column(Boolean, server_default="true", nullable=False)
 
-    departments: Mapped[List["Department"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
+    departments: Mapped[list["Department"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
 
 class DepartmentType(BaseEmployees):
     """Справочник типов подразделений (Отдел, Бюро, Дирекция и т.д.)"""
@@ -32,7 +32,7 @@ class DepartmentType(BaseEmployees):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
     # Обратная связь, чтобы знать, какие подразделения имеют этот тип
-    departments: Mapped[List["Department"]] = relationship(back_populates="department_type")
+    departments: Mapped[list["Department"]] = relationship(back_populates="department_type")
 
 class Department(BaseEmployees):
     """Универсальное дерево подразделений (Иерархическая структура)"""
@@ -52,7 +52,7 @@ class Department(BaseEmployees):
     head_employee_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("employees.id"), nullable=True)
     organization: Mapped["Organization"] = relationship(back_populates="departments")
     department_type: Mapped[Optional["DepartmentType"]] = relationship(back_populates="departments")
-    positions: Mapped[List["EmployeePosition"]] = relationship(back_populates="department",
+    positions: Mapped[list["EmployeePosition"]] = relationship(back_populates="department",
                                                                 cascade="all, delete-orphan")
     head_employee: Mapped[Optional["Employee"]] = relationship()
 
@@ -73,9 +73,9 @@ class Employee(BaseEmployees):
     chat_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
 
-    positions: Mapped[List["EmployeePosition"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
+    positions: Mapped[list["EmployeePosition"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
 
-    overtimes: Mapped[List["Overtime"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
+    overtimes: Mapped[list["Overtime"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
 
 
 class EmployeePosition(BaseEmployees):

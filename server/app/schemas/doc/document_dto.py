@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List, Union
+from typing import Optional, Union
 from datetime import date, datetime
 
 from server.app.database.document_models import DocStatus, DocDirection, TagPriority
@@ -25,9 +25,9 @@ class DocumentCreateForm(BaseModel):
     clearance_id: Optional[int] = None
 
     sender_id: Optional[int] = None
-    executors: List[int] = []  # ID сотрудников
-    recipients: List[int] = []  # ID сотрудников
-    tag_ids: List[int] = []
+    executors: list[int] = []  # ID сотрудников
+    recipients: list[int] = []  # ID сотрудников
+    tag_ids: list[int] = []
 
     needs_response: bool = False
 
@@ -55,8 +55,8 @@ class DocumentListItem(BaseModel):
     sent_date: Optional[date] = None
     deadline: Optional[date] = None
     last_comment_text: Optional[str] = None
-    tags: List[TagItem] = []
-    participants: List[ParticipantItem] = []
+    tags: list[TagItem] = []
+    participants: list[ParticipantItem] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -92,10 +92,10 @@ class DocumentDetailRead(BaseModel):
     created_at: datetime
 
     # Вложенные списки
-    tags: List[TagRead] = []
-    employees: List[DocEmployeeItem] = []
-    attachments: List[DocumentAttachmentRead] = []  # Заменило старые плоские пути файлов!
-    receivers: List[DocumentReceiverRead] = []  # Веерная рассылка пакета
+    tags: list[TagRead] = []
+    employees: list[DocEmployeeItem] = []
+    attachments: list[DocumentAttachmentRead] = []  # Заменило старые плоские пути файлов!
+    receivers: list[DocumentReceiverRead] = []  # Веерная рассылка пакета
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -105,7 +105,7 @@ class DocumentPaginationResponse(BaseModel):
     total: int = Field(..., description="Общее количество документов по фильтрам")
     limit: int = Field(..., description="Размер страницы")
     offset: int = Field(..., description="Смещение")
-    items: List[DocumentListItem] = Field(..., description="Массив документов текущей страницы")
+    items: list[DocumentListItem] = Field(..., description="Массив документов текущей страницы")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -153,7 +153,7 @@ class UnansweredDocumentStat(BaseModel):
     reg_number: Optional[str] = "Б/Н"
     title: Optional[str] = None
     deadline: Optional[date] = None
-    assignees: List[str]  # ФИО Получателей (recipient) и Делегатов (delegate)
+    assignees: list[str]  # ФИО Получателей (recipient) и Делегатов (delegate)
     delay_info: Union[int, str]  # Число (дней * 50) или строка "Дедлайн не прошел"
 
     model_config = ConfigDict(from_attributes=True)

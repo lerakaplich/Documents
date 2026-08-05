@@ -1,9 +1,8 @@
-from pymupdf import pymupdf
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, cast, String, desc, asc, exists, insert, delete, update
+from sqlalchemy import select, func, and_, or_, desc, asc, exists, insert, delete, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from typing import List, Optional, Tuple
-from datetime import date, datetime, timezone
+from typing import Optional
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import selectinload
 
@@ -100,14 +99,14 @@ class DocumentRepository:
         )
         await self.db.execute(stmt)
 
-    async def get_participants(self, doc_id: int) -> List[EmployeeDocument]:
+    async def get_participants(self, doc_id: int) -> list[EmployeeDocument]:
         """Получить список всех текущих участников документа"""
         result = await self.db.execute(
             select(EmployeeDocument).where(EmployeeDocument.document_id == doc_id)
         )
         return list(result.scalars().all())
 
-    async def get_redirect_history(self, doc_id: int) -> List[RedirectHistory]:
+    async def get_redirect_history(self, doc_id: int) -> list[RedirectHistory]:
         """Получить историю перенаправлений"""
         result = await self.db.execute(
             select(RedirectHistory)
@@ -116,7 +115,7 @@ class DocumentRepository:
         )
         return list(result.scalars().all())
 
-    async def get_rights_map(self, emp_ids: List[int]) -> dict:
+    async def get_rights_map(self, emp_ids: list[int]) -> dict:
         """
         Быстрый запрос для получения прав по списку ID сотрудников.
         Возвращает словарь {emp_id: rights_value}
@@ -398,7 +397,7 @@ class DocumentRepository:
         from datetime import datetime, timezone
         return datetime.now(timezone.utc)
 
-    async def get_status_history_by_doc_id(self, document_id: int) -> List[DocumentStatusHistory]:
+    async def get_status_history_by_doc_id(self, document_id: int) -> list[DocumentStatusHistory]:
         """Получение хронологической истории изменения статусов документа"""
         query = (
             select(DocumentStatusHistory)
@@ -488,7 +487,7 @@ class DocumentRepository:
             delegates=delegates
         )
 
-    async def get_unanswered_documents(self) -> List[Document]:
+    async def get_unanswered_documents(self) -> list[Document]:
         """
         Возвращает документы, требующие ответа (needs_response = True),
         на которые еще нет ни одного ответного документа (где parent_document_id == doc.id).

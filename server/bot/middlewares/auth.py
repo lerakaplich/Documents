@@ -1,18 +1,17 @@
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any, Awaitable, Callable
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, User, Message, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from server.app.repositories.employee_repo import EmployeesRepository
 from server.bot.services.bot_repo import BotRepository
 
 
 class EmployeeAuthMiddleware(BaseMiddleware):
     async def __call__(
             self,
-            handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+            handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
             event: TelegramObject,
-            data: Dict[str, Any]
+            data: dict[str, Any]
     ) -> Any:
         event_user: User | None = data.get("event_from_user")
         emp_session: AsyncSession | None = data.get("emp_session")

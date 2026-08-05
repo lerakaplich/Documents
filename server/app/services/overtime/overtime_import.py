@@ -1,7 +1,7 @@
 import re
 import pandas as pd
 from datetime import datetime, time, date
-from typing import List, Dict, Optional, Tuple, BinaryIO, Set
+from typing import Optional, BinaryIO
 
 from server.app.services.common.notification_service import NotificationService
 
@@ -69,7 +69,7 @@ class OvertimeImportService:
         return bool(re.search(r'\d{2}:\d{2}(?::\d{2})?\s*-\s*\d{2}:\d{2}(?::\d{2})?', value))
 
     @staticmethod
-    def parse_time_range(time_str: str) -> Tuple[Optional[time], Optional[time]]:
+    def parse_time_range(time_str: str) -> tuple[Optional[time], Optional[time]]:
         if not time_str or not isinstance(time_str, str):
             return None, None
 
@@ -86,7 +86,7 @@ class OvertimeImportService:
         return None, None
 
     @staticmethod
-    def parse_shift(shift_str: str) -> Tuple[time, time]:
+    def parse_shift(shift_str: str) -> tuple[time, time]:
         if not shift_str or not isinstance(shift_str, str):
             return time(8, 0), time(16, 30)
 
@@ -124,8 +124,8 @@ class OvertimeImportService:
     def round_to_30_minutes_down(dt: datetime) -> datetime:
         return dt.replace(minute=0 if dt.minute < 30 else 30, second=0, microsecond=0)
 
-    def calculate_overtime_separate(self, start_time: time, end_time: time, shift_start: time, shift_end: time) -> List[
-        Tuple[float, time, time]]:
+    def calculate_overtime_separate(self, start_time: time, end_time: time, shift_start: time, shift_end: time) -> list[
+        tuple[float, time, time]]:
         today = date.today()
         shift_start_dt = datetime.combine(today, shift_start)
         shift_end_dt = datetime.combine(today, shift_end)
@@ -145,7 +145,7 @@ class OvertimeImportService:
 
         return results
 
-    def detect_columns(self, row) -> Dict[str, Optional[int]]:
+    def detect_columns(self, row) -> dict[str, Optional[int]]:
         detected = {'name': None, 'date': None, 'time_range': None, 'shift': None}
         for col_idx, value in enumerate(row):
             if value is None or pd.isna(value):
@@ -177,11 +177,11 @@ class OvertimeImportService:
                 return emp_id
         return None
 
-    async def import_from_excel_file(self, file_stream: BinaryIO) -> Dict:
+    async def import_from_excel_file(self, file_stream: BinaryIO) -> dict:
         """Основной метод парсинга потока файла и сохранения в БД"""
         result = {'total_rows': 0, 'imported': 0, 'duplicates': 0, 'skipped': 0, 'errors': 0, 'error_details': []}
 
-        imported_employee_ids: Set[int] = set()
+        imported_employee_ids: set[int] = set()
 
         try:
             await self._load_employees_cache()

@@ -1,6 +1,5 @@
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import Message
 
 from server.bot.handlers.document_creation.confirmation import show_confirmation_summary
 from server.bot.handlers.document_creation.participants import show_org_tree

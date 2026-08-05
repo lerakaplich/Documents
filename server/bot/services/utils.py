@@ -1,6 +1,5 @@
 import bcrypt
 from datetime import date, timedelta
-from typing import Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.deps import get_security_service, get_attachment_service, get_doc_service
@@ -20,7 +19,7 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 
-def get_period_for_date(target_date: date) -> Tuple[date, date, str]:
+def get_period_for_date(target_date: date) -> tuple[date, date, str]:
     """
     Для любой даты определяет границы расчетного периода (с 25 по 24 число)
     и возвращает (start_date, end_date, 'Месяц Год' выплаты).

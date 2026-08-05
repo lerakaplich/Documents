@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from server.app.database.employee_models import Department
 from server.bot.keyboards.tree_kb import build_org_tree_keyboard
 from server.bot.services.bot_repo import BotRepository
-from server.bot.states.bot_states import CreateDocumentFSM
 from server.bot.states.org_tree_cb import OrgTreeCallback
 
 router = Router()

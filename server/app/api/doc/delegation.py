@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from typing import List, Optional
+from typing import Optional
 
 from server.app.deps import get_current_user, get_delegation_service
 from server.app.schemas.doc.document_dto import (
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/delegation", tags=["Documents"])
 # --- ЭНДПОИНТЫ ДЕЛЕГИРОВАНИЯ ---
 
 
-@router.get("/{document_id}/history", response_model=List[RedirectHistoryRead])
+@router.get("/{document_id}/history", response_model=list[RedirectHistoryRead])
 async def get_redirect_history(
         document_id: int,
         current_user: CurrentUser = Depends(get_current_user),

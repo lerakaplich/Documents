@@ -3,17 +3,10 @@ from datetime import datetime
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.database.document_models import AppRights
-from server.app.repositories.attachment_repo import AttachmentRepository
-from server.app.repositories.document_repo import DocumentRepository
-from server.app.repositories.employee_repo import EmployeesRepository
-from server.app.repositories.org_repo import OrgRepository
 from server.app.schemas.doc.document_dto import DocumentCreateForm
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
-from server.app.services.common.security_service import SecurityService
-from server.app.services.common.tiff_converter import DocumentProcessor
 from server.app.services.documents.attachment_service import AttachmentService
 from server.app.services.documents.document_service import DocumentService
 from server.bot.keyboards.menu_kb import get_main_menu

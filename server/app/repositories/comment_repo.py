@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-from typing import List, Optional
+from typing import Optional
 from server.app.database.document_models import Comment
 
 class CommentRepository:
@@ -12,7 +12,7 @@ class CommentRepository:
         result = await self.db.execute(select(Comment).where(Comment.id == comment_id))
         return result.scalar_one_or_none()
 
-    async def get_all_by_document_id(self, document_id: int) -> List[Comment]:
+    async def get_all_by_document_id(self, document_id: int) -> list[Comment]:
         """Получить все комментарии к документу, отсортированные по времени создания"""
         query = (
             select(Comment)

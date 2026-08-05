@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Optional, List
+from typing import Optional
 from pydantic import BaseModel, Field
 from server.app.database.document_models import DocDirection
 
@@ -30,10 +30,10 @@ class BotDocumentCreateForm(BaseModel):
 
     # Участники (ID из базы кадров)
     sender_id: int  # Отправитель (пользователь бота)
-    executors: List[int] = []  # Исполнители
-    recipients: List[int] = []  # Получатели
+    executors: list[int] = []  # Исполнители
+    recipients: list[int] = []  # Получатели
 
     # Дополнительно
-    tag_ids: List[int] = []
-    attachments: List[BotAttachmentDTO] = []
+    tag_ids: list[int] = []
+    attachments: list[BotAttachmentDTO] = []
     parent_document_id: Optional[int] = None

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File
 from starlette.responses import StreamingResponse
 
 from server.app.deps import get_attachment_service, get_current_user

@@ -1,6 +1,5 @@
 from aiogram.filters.callback_data import CallbackData
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from datetime import date
 
 
 # Описываем структуры колбэков

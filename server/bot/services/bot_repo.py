@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -21,7 +21,7 @@ class BotRepository:
         self.doc_session = doc_session
         self.emp_session = emp_session
 
-    async def get_all_types(self) -> List[DocType]:
+    async def get_all_types(self) -> list[DocType]:
         """Возвращает все доступные типы документов"""
         stmt = select(DocType).order_by(DocType.name)
         result = await self.doc_session.execute(stmt)
@@ -53,13 +53,13 @@ class BotRepository:
 
         return tags, total_count
 
-    async def get_departments_by_parent(self, parent_id: Optional[int] = None) -> List[Department]:
+    async def get_departments_by_parent(self, parent_id: Optional[int] = None) -> list[Department]:
         """Получает дочерние отделы (если parent_id=None — верхний уровень)"""
         stmt = select(Department).where(Department.parent_id == parent_id).order_by(Department.name)
         res = await self.emp_session.execute(stmt)
         return list(res.scalars().all())
 
-    async def get_employees_by_department(self, department_id: int) -> List[Employee]:
+    async def get_employees_by_department(self, department_id: int) -> list[Employee]:
         """Получает всех сотрудников конкретного отдела"""
         stmt = (
             select(Employee)
@@ -70,7 +70,7 @@ class BotRepository:
         res = await self.emp_session.execute(stmt)
         return list(res.scalars().all())
 
-    async def get_all_employees_in_department_tree(self, department_id: int) -> List[int]:
+    async def get_all_employees_in_department_tree(self, department_id: int) -> list[int]:
         """Рекурсивно получает ID всех сотрудников отдела и всех его подотделов"""
         # Собираем ID текущего отдела и всех его дочерних структур
         dept_ids = [department_id]

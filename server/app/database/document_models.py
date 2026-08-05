@@ -1,6 +1,6 @@
 import enum
 from datetime import date, datetime
-from typing import Optional, List
+from typing import Optional
 
 from sqlalchemy import (
     Integer, String, Text, Boolean, Date, DateTime,
@@ -95,7 +95,7 @@ class Tag(BaseDocuments):
 
     color: Mapped[str] = mapped_column(String(7), server_default="#808080", nullable=False)
 
-    documents: Mapped[List["Document"]] = relationship(
+    documents: Mapped[list["Document"]] = relationship(
         secondary="document_tags",
         back_populates="tags"
     )
@@ -263,26 +263,26 @@ class Document(BaseDocuments):
     last_comment_text: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    archives: Mapped[List["DocumentArchive"]] = relationship(
+    archives: Mapped[list["DocumentArchive"]] = relationship(
         cascade="all, delete-orphan"
     )
 
     # Relationships (Внутри этой же БД)
-    tags: Mapped[List["Tag"]] = relationship(
+    tags: Mapped[list["Tag"]] = relationship(
         secondary="document_tags",
         back_populates="documents",
         lazy="selectin"
     )
-    employees: Mapped[List["EmployeeDocument"]] = relationship(
+    employees: Mapped[list["EmployeeDocument"]] = relationship(
         back_populates="document",
         cascade="all, delete-orphan",
         lazy="selectin"
     )
-    attachments: Mapped[List["DocumentAttachment"]] = relationship(
+    attachments: Mapped[list["DocumentAttachment"]] = relationship(
         cascade="all, delete-orphan",
         lazy="selectin"
     )
-    status_history: Mapped[List["DocumentStatusHistory"]] = relationship(
+    status_history: Mapped[list["DocumentStatusHistory"]] = relationship(
         back_populates="document",
         cascade="all, delete-orphan",
         lazy="selectin",
@@ -348,8 +348,8 @@ class SystemEmployee(BaseDocuments):
         nullable=False
     )
 
-    sessions: Mapped[List["UserSession"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
-    documents: Mapped[List["EmployeeDocument"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
+    sessions: Mapped[list["UserSession"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
+    documents: Mapped[list["EmployeeDocument"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
 
 
 class EmployeeDocument(BaseDocuments):

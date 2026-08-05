@@ -1,6 +1,5 @@
-from typing import Optional, Any, List
+from typing import Optional, Any
 
-from fastapi import HTTPException
 from server.app.database.document_models import AppRights, DocumentRole
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
@@ -29,7 +28,7 @@ class SecurityService:
         """Пользователь является суперадмином."""
         return user.rights == AppRights.superadmin
 
-    def is_at_least(self, user: CurrentUser, required_rights: List[AppRights]) -> bool:
+    def is_at_least(self, user: CurrentUser, required_rights: list[AppRights]) -> bool:
         """Проверяет, входит ли роль пользователя в допустимый список."""
         return user.rights in required_rights
 
