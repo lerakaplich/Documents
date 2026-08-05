@@ -5,7 +5,7 @@ from server.app.schemas.user_schemas.employee_dto import EmployeeRead, EmployeeL
     EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate
 from server.app.services.employees.employee_service import EmployeeService
 
-router = APIRouter(prefix="/departments", tags=["Employees"])
+router = APIRouter(prefix="/employees", tags=["Employees"])
 
 @router.get("/departments/{department_id}/staff", response_model=list[EmployeeRead])
 async def get_department_staff(
