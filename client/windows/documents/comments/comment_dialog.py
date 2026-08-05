@@ -165,29 +165,63 @@ class CommentDialog(QDialog):
         self.commentsListWidget.clear()
 
         comments = self.document_data.get('comments', [])
-        self._comments_cache = comments.copy()  # Сохраняем копию
+        self._comments_cache = comments.copy()
 
         if not comments:
-            # Показываем сообщение об отсутствии комментариев
             item = QListWidgetItem("Нет комментариев")
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
             self.commentsListWidget.addItem(item)
             return
 
-        # Сортируем комментарии по дате (сначала старые)
+        # Функция для преобразования created_at в datetime (без часового пояса)
+        def parse_created_at(comment):
+            created_at = comment.get('created_at')
+            if created_at is None:
+                return datetime.min
+
+            if isinstance(created_at, datetime):
+                # Если дата с часовым поясом - убираем его
+                if created_at.tzinfo is not None:
+                    return created_at.replace(tzinfo=None)
+                return created_at
+
+            if isinstance(created_at, str):
+                try:
+                    # Пробуем парсить строку
+                    # Сначала пробуем ISO формат с Z или +00:00
+                    if created_at.endswith('Z'):
+                        created_at = created_at[:-1] + '+00:00'
+
+                    # Парсим с возможным часовым поясом
+                    dt = datetime.fromisoformat(created_at)
+                    # Если есть часовой пояс - убираем его
+                    if dt.tzinfo is not None:
+                        dt = dt.replace(tzinfo=None)
+                    return dt
+                except (ValueError, TypeError):
+                    # Пробуем другие форматы
+                    for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%d.%m.%Y %H:%M", "%Y-%m-%d"]:
+                        try:
+                            dt = datetime.strptime(created_at, fmt)
+                            return dt
+                        except ValueError:
+                            continue
+                    return datetime.min
+
+            return datetime.min
+
+        # Сортируем комментарии по дате
         sorted_comments = sorted(
             comments,
-            key=lambda c: c.get('created_at', datetime.min),
+            key=parse_created_at,
             reverse=False
         )
 
         for i, comment in enumerate(sorted_comments):
-            # Показываем разделитель после всех комментариев, кроме последнего
             show_separator = (i < len(sorted_comments) - 1)
             self._add_comment_to_list(comment, show_separator)
 
-        # Прокручиваем к последнему комментарию
         self.commentsListWidget.scrollToBottom()
 
     def _add_comment_to_list(self, comment: dict, show_separator: bool = True):

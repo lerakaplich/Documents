@@ -16,7 +16,7 @@
   <property name="styleSheet">
    <string notr="true">QScrollArea {
     border: none;
-    background-color: transparent;
+    background-color: white;
 }
 
 /* Борьба с крапинкой - принудительно задаём фон для всех внутренних виджетов */

@@ -1,3 +1,5 @@
+# client/windows/system/tags/tags_page.py
+
 import os
 import sys
 
@@ -11,6 +13,7 @@ from PyQt6.uic import loadUi
 
 from client.windows.system.tags.tag_card import TagCard
 from client.windows.animations.floating_action_button import FloatingActionButton
+from client.windows.system.tags.tag_dialog import TagDialog  # Добавлен импорт
 
 
 class TagsPage(QWidget):
@@ -300,21 +303,73 @@ class TagsPage(QWidget):
 
     def on_add_tag(self):
         """Обработчик нажатия на плавающую кнопку добавления тега"""
-        print("Добавление нового тега")
-        QMessageBox.information(
-            self,
-            "Новый тег",
-            "Создание нового тега\n\nЭта функция в разработке."
-        )
+        # Создаем диалог для нового тега
+        dialog = TagDialog(self)
+
+        if dialog.exec():
+            # Получаем данные из диалога
+            tag_data = dialog.get_tag_data()
+
+            # Добавляем ID
+            max_id = max([tag.get('id', 0) for tag in self.tags], default=0)
+            tag_data['id'] = max_id + 1
+
+            # Добавляем количество документов (по умолчанию 0)
+            tag_data['documents_count'] = 0
+
+            # Добавляем в список
+            self.tags.append(tag_data)
+
+            # Обновляем отображение
+            self.update_display()
+
+            # Показываем сообщение об успехе
+            QMessageBox.information(
+                self,
+                "Успешно",
+                f"Тег «{tag_data.get('name')}» успешно создан."
+            )
 
     def on_edit_tag(self, tag_data):
         """Обработка редактирования тега"""
-        print(f"Редактирование тега: {tag_data.get('name')} (ID: {tag_data.get('id')})")
-        QMessageBox.information(
-            self,
-            "Редактирование тега",
-            f"Редактирование тега: {tag_data.get('name')}\n\nЭта функция в разработке."
-        )
+        # Находим полные данные тега
+        full_tag_data = None
+        for tag in self.tags:
+            if tag.get('id') == tag_data.get('id'):
+                full_tag_data = tag.copy()
+                break
+
+        if not full_tag_data:
+            QMessageBox.warning(self, "Ошибка", "Тег не найден")
+            return
+
+        # Создаем диалог с существующими данными
+        dialog = TagDialog(self, tag_id=tag_data.get('id'))
+
+        if dialog.exec():
+            # Получаем обновленные данные
+            updated_data = dialog.get_tag_data()
+
+            # Обновляем существующий тег
+            for i, tag in enumerate(self.tags):
+                if tag.get('id') == tag_data.get('id'):
+                    # Сохраняем ID и другие неизменяемые поля
+                    updated_data['id'] = tag.get('id')
+                    updated_data['documents_count'] = tag.get('documents_count', 0)
+
+                    # Обновляем данные
+                    self.tags[i].update(updated_data)
+                    break
+
+            # Обновляем отображение
+            self.update_display()
+
+            # Показываем сообщение об успехе
+            QMessageBox.information(
+                self,
+                "Успешно",
+                f"Тег «{updated_data.get('name')}» успешно обновлен."
+            )
 
     def on_delete_tag(self, tag_id):
         """Обработка удаления тега"""

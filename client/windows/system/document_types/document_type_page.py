@@ -1,3 +1,5 @@
+# client/windows/system/document_types/document_types_page.py
+
 import os
 import sys
 
@@ -11,6 +13,7 @@ from PyQt6.uic import loadUi
 
 from client.windows.system.document_types.document_type_card import DocumentTypeCard
 from client.windows.animations.floating_action_button import FloatingActionButton
+from client.windows.system.document_types.document_type_dialog import DocumentTypeDialog  # Добавлен импорт
 
 
 class DocumentTypesPage(QWidget):
@@ -193,7 +196,6 @@ class DocumentTypesPage(QWidget):
         """Сортировка по количеству документов (убывание)"""
         return sorted(types, key=lambda x: x.get('documents_count', 0), reverse=True)
 
-
     def sort_by_code_asc(self, types):
         """Сортировка по коду А→Я"""
         return sorted(types, key=lambda x: x.get('code', '').lower())
@@ -257,7 +259,6 @@ class DocumentTypesPage(QWidget):
             ]
 
         # Сортировка
-        # Сортировка
         sort_methods = {
             "А→Я": self.sort_by_name_asc,
             "А→Я (по названию)": self.sort_by_name_asc,
@@ -316,21 +317,76 @@ class DocumentTypesPage(QWidget):
 
     def on_add_type(self):
         """Обработчик нажатия на плавающую кнопку добавления типа"""
-        print("Добавление нового типа документа")
-        QMessageBox.information(
-            self,
-            "Новый тип документа",
-            "Создание нового типа документа\n\nЭта функция в разработке."
-        )
+        # Создаем диалог для нового типа
+        dialog = DocumentTypeDialog(self, item={})
+
+        if dialog.exec():
+            # Получаем данные из диалога
+            new_type_data = dialog.get_data()
+
+            # Добавляем ID
+            max_id = max([dt.get('id', 0) for dt in self.document_types], default=0)
+            new_type_data['id'] = max_id + 1
+
+            # Добавляем стандартные поля
+            new_type_data['code'] = new_type_data.get('name', '')[:3].upper()
+            new_type_data['description'] = new_type_data.get('description', '')
+            new_type_data['documents_count'] = 0
+
+            # Добавляем в список
+            self.document_types.append(new_type_data)
+
+            # Обновляем отображение
+            self.update_display()
+
+            # Показываем сообщение об успехе
+            QMessageBox.information(
+                self,
+                "Успешно",
+                f"Тип документа «{new_type_data.get('name')}» успешно создан."
+            )
 
     def on_edit_type(self, type_data):
         """Обработка редактирования типа документа"""
-        print(f"Редактирование типа: {type_data.get('name')} (ID: {type_data.get('id')})")
-        QMessageBox.information(
-            self,
-            "Редактирование типа документа",
-            f"Редактирование: {type_data.get('name')}\n\nЭта функция в разработке."
-        )
+        # Находим полные данные типа
+        full_type_data = None
+        for dt in self.document_types:
+            if dt.get('id') == type_data.get('id'):
+                full_type_data = dt.copy()
+                break
+
+        if not full_type_data:
+            QMessageBox.warning(self, "Ошибка", "Тип документа не найден")
+            return
+
+        # Создаем диалог с существующими данными
+        dialog = DocumentTypeDialog(self, item=full_type_data)
+
+        if dialog.exec():
+            # Получаем обновленные данные
+            updated_data = dialog.get_data()
+
+            # Обновляем существующий тип
+            for i, dt in enumerate(self.document_types):
+                if dt.get('id') == type_data.get('id'):
+                    # Сохраняем ID и другие неизменяемые поля
+                    updated_data['id'] = dt.get('id')
+                    updated_data['code'] = dt.get('code', '')
+                    updated_data['documents_count'] = dt.get('documents_count', 0)
+
+                    # Обновляем данные
+                    self.document_types[i].update(updated_data)
+                    break
+
+            # Обновляем отображение
+            self.update_display()
+
+            # Показываем сообщение об успехе
+            QMessageBox.information(
+                self,
+                "Успешно",
+                f"Тип документа «{updated_data.get('name')}» успешно обновлен."
+            )
 
     def on_delete_type(self, type_id):
         """Обработка удаления типа документа"""

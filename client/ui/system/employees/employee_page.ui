@@ -14,7 +14,63 @@
    <string>Сотрудники</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">background-color: transparent;</string>
+   <string notr="true">background-color: transparent;
+QComboBox {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px;
+    padding-right: 25px;
+    background-color: white;
+    color: #1B232A;
+    font-size: 13px;
+    outline: none;
+}
+
+QComboBox:hover {
+    border-color: #ccab6e;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+
+QComboBox::down-arrow {
+    image: none;
+    border: none;
+    width: 0px;
+    height: 0px;
+}
+
+QComboBox QAbstractItemView {
+    border-radius: 6px;
+    background-color: white;
+    color: #1B232A;
+    padding: 4px;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+    padding: 8px;
+    color: #1B232A;
+    border: none;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+QComboBox QAbstractItemView::item:focus {
+    outline: none;
+    border: none;
+}</string>
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
    <property name="spacing">

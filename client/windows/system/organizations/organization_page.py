@@ -346,12 +346,38 @@ class OrganizationsPage(QWidget):
 
     def on_add_org(self):
         """Обработчик нажатия на плавающую кнопку добавления организации"""
-        print("Добавление новой организации")
-        QMessageBox.information(
-            self,
-            "Новая организация",
-            "Создание новой организации\n\nЭта функция в разработке."
-        )
+        from client.windows.system.organizations.organization_dialog import OrganizationDialog
+
+        dialog = OrganizationDialog(self)
+        if dialog.exec():
+            # Получаем данные из диалога
+            org_data = {
+                'unp': dialog.lineEditUNP.text().strip(),
+                'smdo_code': dialog.lineEditSmdoCode.text().strip(),
+                'name': dialog.lineEditName.text().strip(),
+                'phone': dialog.lineEditPhone.text().strip(),
+                'address': dialog.lineEditAddress.text().strip(),
+                'email': dialog.lineEditEmail.text().strip(),
+                'is_subscriber': dialog.checkBoxSubscriber.isChecked()
+            }
+
+            # Проверяем обязательные поля
+            if not org_data['name']:
+                QMessageBox.warning(
+                    self,
+                    "Ошибка валидации",
+                    "Поле 'Полное наименование' обязательно для заполнения."
+                )
+                return
+
+            # Добавляем организацию
+            self.add_org(org_data)
+
+            QMessageBox.information(
+                self,
+                "Успешно",
+                f"Организация «{org_data['name']}» успешно добавлена."
+            )
 
     def on_edit_org(self, org_data):
         """Обработка редактирования организации"""

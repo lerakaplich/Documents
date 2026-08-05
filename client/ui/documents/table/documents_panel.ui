@@ -135,13 +135,13 @@
         <property name="minimumSize">
          <size>
           <width>300</width>
-          <height>30</height>
+          <height>32</height>
          </size>
         </property>
         <property name="maximumSize">
          <size>
           <width>16777215</width>
-          <height>30</height>
+          <height>32</height>
          </size>
         </property>
         <property name="styleSheet">
@@ -166,13 +166,13 @@ QLineEdit:focus {
         <property name="minimumSize">
          <size>
           <width>100</width>
-          <height>30</height>
+          <height>32</height>
          </size>
         </property>
         <property name="maximumSize">
          <size>
           <width>16777215</width>
-          <height>30</height>
+          <height>32</height>
          </size>
         </property>
         <property name="styleSheet">
@@ -196,13 +196,13 @@ QPushButton:hover {
         <property name="minimumSize">
          <size>
           <width>100</width>
-          <height>30</height>
+          <height>32</height>
          </size>
         </property>
         <property name="maximumSize">
          <size>
           <width>16777215</width>
-          <height>30</height>
+          <height>32</height>
          </size>
         </property>
         <property name="styleSheet">
@@ -226,13 +226,13 @@ QPushButton:hover {
         <property name="minimumSize">
          <size>
           <width>100</width>
-          <height>30</height>
+          <height>32</height>
          </size>
         </property>
         <property name="maximumSize">
          <size>
           <width>16777215</width>
-          <height>30</height>
+          <height>32</height>
          </size>
         </property>
         <property name="styleSheet">
@@ -263,6 +263,43 @@ QPushButton:hover {
          </size>
         </property>
        </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="statusesBtn_2">
+        <property name="minimumSize">
+         <size>
+          <width>100</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">
+QPushButton {
+    background-color: #ccab6e;
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+}
+QPushButton:hover {
+    background-color: #998664;
+}
+QPushButton:pressed {
+    background-color: #7a6a50;
+}
+        </string>
+        </property>
+        <property name="text">
+         <string>Статистика</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
