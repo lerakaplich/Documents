@@ -114,20 +114,45 @@ class EmployeesPage(QWidget):
                 )
                 return
 
-            # Получаем текущие права пользователя (можно расширить)
-            current_user_rights = 'admin'  # По умолчанию админ, можно подставить реальные данные
+            # Получаем данные о текущей организации
+            current_org = self.organizations.get(self.current_org_id)
+            if not current_org:
+                QMessageBox.warning(
+                    self,
+                    "Ошибка",
+                    "Выбранная организация не найдена."
+                )
+                return
 
-            # Создаем диалог
+            # Определяем права пользователя (можно расширить)
+            current_user_rights = 'admin'  # По умолчанию админ
+            is_organization_head = False
+            is_division_head = False
+            is_department_head = False
+
+            # Если выбрано подразделение, передаем его ID
+            current_department_id = self.current_department_id if self.current_department_id else None
+
+            # Создаем диалог с правильными параметрами
             dialog = EmployeeDialog(
                 parent_editor=self,
                 employee=None,  # None = создание нового
+                is_maz=False,  # Можно определить по организации
+                profile_manager=None,  # Если есть менеджер профилей
                 current_user_rights=current_user_rights,
                 current_user_org_id=self.current_org_id,
-                # Другие параметры по необходимости
+                current_user_div_id=None,  # Если есть подразделения
+                current_user_dept_id=current_department_id,
+                is_organization_head=is_organization_head,
+                is_division_head=is_division_head,
+                is_department_head=is_department_head,
+                filter_external_only=False,
+                organization_head_ids=None
             )
 
-            # Подключаем сигнал создания
+            # Подключаем сигналы
             dialog.employee_created.connect(self.on_employee_created)
+            dialog.employee_updated.connect(self.on_employee_updated)
 
             # Показываем диалог
             dialog.exec()
@@ -148,10 +173,22 @@ class EmployeesPage(QWidget):
             "Успешно",
             f"Сотрудник с ID {employee_id} успешно создан!"
         )
-        # Обновляем список сотрудников
-        self.load_test_data()  # Или загружаем данные из БД
+        # Обновляем данные
+        self.load_test_data()  # Или загружаем из БД
         self.update_display()
-        self.employees_updated.emit()  # Сигнал для родительского окна
+        self.employees_updated.emit()
+
+    def on_employee_updated(self, employee_id):
+        """Обработчик обновления сотрудника"""
+        QMessageBox.information(
+            self,
+            "Успешно",
+            f"Сотрудник с ID {employee_id} успешно обновлен!"
+        )
+        # Обновляем данные
+        self.load_test_data()  # Или загружаем из БД
+        self.update_display()
+        self.employees_updated.emit()
 
     # ======================== КОНЕЦ НОВЫХ МЕТОДОВ ========================
 
@@ -327,6 +364,11 @@ class EmployeesPage(QWidget):
         self.comboOrganization.addItem("Все организации", None)
         for org_id, org_data in self.organizations.items():
             self.comboOrganization.addItem(org_data["name"], org_id)
+
+        # Устанавливаем первую организацию как выбранную по умолчанию
+        if self.comboOrganization.count() > 1:  # Если есть хотя бы одна организация
+            self.comboOrganization.setCurrentIndex(1)  # Индекс 1 - первая организация (индекс 0 - "Все организации")
+            # Это автоматически вызовет on_organization_changed(1)
 
     # -------------------- Сортировка --------------------
     def show_sort_menu(self):
