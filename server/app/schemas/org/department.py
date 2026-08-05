@@ -1,33 +1,60 @@
-from pydantic import BaseModel, ConfigDict
 from typing import Optional
-from .department_type import DepartmentTypeRead # Импортируем тип из соседнего файла
+from pydantic import BaseModel, ConfigDict, computed_field
+from .department_type import DepartmentTypeRead
 
+
+# --- Базовая схема с общими бизнес-полями ---
 class DepartmentBase(BaseModel):
-    organization_id: int
-    parent_id: Optional[int] = None
     name: str
     number: Optional[int] = None
     phone_number: Optional[str] = None
-    hierarchy_path: Optional[str] = None
 
-class DepartmentRead(DepartmentBase):
+
+# --- Схема руководителя для чтения ---
+class DepartmentHeadRead(BaseModel):
     id: int
-    department_type: Optional[DepartmentTypeRead] = None
+    first_name: str
+    last_name: str
+    middle_name: Optional[str] = None
+
+    @computed_field
+    @property
+    def full_name(self) -> str:
+        parts = [self.last_name, self.first_name, self.middle_name]
+        return " ".join(p for p in parts if p)
+
     model_config = ConfigDict(from_attributes=True)
 
-class DepartmentCreate(BaseModel):
+
+# --- DTO для ЧТЕНИЯ (Response) ---
+class DepartmentRead(DepartmentBase):
+    id: int
+    organization_id: int
+    parent_id: Optional[int] = None
+    hierarchy_path: Optional[str] = None
+    head_employee_id: Optional[int] = None
+
+    department_type: Optional[DepartmentTypeRead] = None
+    head: Optional[DepartmentHeadRead] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- DTO для СОЗДАНИЯ (Request) ---
+class DepartmentCreate(DepartmentBase):
     organization_id: int
     parent_id: Optional[int] = None
     department_type_id: Optional[int] = None
-    name: str
-    number: Optional[int] = None
-    phone_number: Optional[str] = None
 
+
+# --- DTO для ОБНОВЛЕНИЯ (Request) ---
 class DepartmentUpdate(BaseModel):
-    parent_id: Optional[int] = None
     name: Optional[str] = None
     number: Optional[int] = None
     phone_number: Optional[str] = None
+    department_type_id: Optional[int] = None
 
+
+# --- DTO для ПЕРЕМЕЩЕНИЯ (Request) ---
 class DepartmentMove(BaseModel):
-    new_parent_id: int
+    new_parent_id: Optional[int] = None
