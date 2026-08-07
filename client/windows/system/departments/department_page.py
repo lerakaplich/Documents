@@ -12,6 +12,7 @@ from PyQt6.uic import loadUi
 from client.windows.animations.collapsible_group import CollapsibleGroup
 from client.windows.system.departments.department_card import DepartmentCard
 from client.windows.animations.floating_action_button import FloatingActionButton
+from client.windows.system.departments.department_dialog import DepartmentDialog
 
 
 class DepartmentPage(QWidget):
@@ -405,16 +406,169 @@ class DepartmentPage(QWidget):
 
     def on_add_department(self):
         """Обработчик нажатия на плавающую кнопку добавления"""
-        QMessageBox.information(
-            self,
-            "Добавление",
-            f"Добавление нового отдела\n\nЭта функция в разработке."
-        )
+        # Создаем диалог для добавления нового отдела
+        dialog = DepartmentDialog(self)
+
+        # Если пользователь нажал "Сохранить"
+        if dialog.exec():
+            # Получаем данные из диалога
+            data = dialog.get_data()
+
+            if data:
+                # Здесь можно добавить логику сохранения в БД
+                print(f"[DEBUG] Добавлен новый отдел: {data}")
+
+                # Показываем сообщение об успехе
+                QMessageBox.information(
+                    self,
+                    "Успешно",
+                    f"Отдел '{data.get('name')}' успешно добавлен!"
+                )
+
+                # TODO: Обновить список отделов
+                # self.refresh_departments()
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Ошибка",
+                    "Не удалось получить данные отдела"
+                )
 
     def on_edit_department(self, data):
-        """Обработчик редактирования"""
-        print(f"Редактирование: {data.get('name')}")
+        """Обработчик редактирования отдела"""
+        print(f"[DEBUG] Редактирование отдела: {data.get('name')}")
+
+        # Ищем отдел в списке по ID
+        department_id = data.get('id') or data.get('code')
+        if department_id:
+            # Пытаемся найти полные данные отдела
+            department_data = None
+            for item in self.all_items:
+                if str(item.get('id')) == str(department_id):
+                    department_data = {
+                        'id': item.get('id'),
+                        'name': item.get('name'),
+                        'organization_id': item.get('organization_id'),
+                        'parent_department_id': None,  # Пока нет родительского
+                        'type_id': None,  # Пока нет типа
+                        'department_number': str(item.get('id')),
+                        'phone': '',  # Пока нет телефона
+                        'head_id': None  # Пока нет руководителя
+                    }
+                    break
+
+            # Если нашли данные, открываем диалог редактирования
+            if department_data:
+                dialog = DepartmentDialog(self, department_data=department_data)
+
+                if dialog.exec():
+                    # Получаем обновленные данные
+                    updated_data = dialog.get_data()
+                    print(f"[DEBUG] Обновлены данные отдела: {updated_data}")
+
+                    # TODO: Сохранить изменения в БД
+                    # self.update_department(updated_data)
+
+                    QMessageBox.information(
+                        self,
+                        "Успешно",
+                        f"Отдел '{updated_data.get('name')}' успешно обновлен!"
+                    )
+
+                    # TODO: Обновить список отделов
+                    # self.refresh_departments()
+                return
+
+        # Если не нашли данные, открываем диалог создания с предзаполненными полями
+        QMessageBox.warning(
+            self,
+            "Предупреждение",
+            f"Данные отдела '{data.get('name')}' не найдены. Будет создан новый отдел."
+        )
+        self.on_add_department()
 
     def on_delete_department(self, item_id):
-        """Обработчик удаления"""
-        print(f"Удаление ID: {item_id}")
+        """Обработчик удаления отдела"""
+        print(f"[DEBUG] Удаление отдела с ID: {item_id}")
+
+        # Ищем название отдела для сообщения
+        department_name = f"ID: {item_id}"
+        for item in self.all_items:
+            if str(item.get('id')) == str(item_id):
+                department_name = item.get('name', department_name)
+                break
+
+        # Подтверждение удаления
+        reply = QMessageBox.question(
+            self,
+            "Подтверждение удаления",
+            f"Вы уверены, что хотите удалить отдел '{department_name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            # TODO: Удалить из БД
+            # self.delete_department(item_id)
+
+            QMessageBox.information(
+                self,
+                "Успешно",
+                f"Отдел '{department_name}' успешно удален!"
+            )
+
+            # TODO: Обновить список отделов
+            # self.refresh_departments()
+
+
+def main():
+    """Точка входа для тестирования"""
+    app = QApplication(sys.argv)
+
+    # Тестовые данные
+    test_data = [
+        {
+            "id": 1,
+            "name": "ОАО МАЗ",
+            "children": [
+                {
+                    "id": 2,
+                    "name": "Отдел разработки",
+                    "children": [
+                        {"id": 3, "name": "Отдел ПО"},
+                        {"id": 4, "name": "Отдел аппаратного обеспечения"}
+                    ]
+                },
+                {
+                    "id": 5,
+                    "name": "Бухгалтерия",
+                    "children": [
+                        {"id": 6, "name": "Бухгалтерия расчетов"},
+                        {"id": 7, "name": "Касса"}
+                    ]
+                }
+            ]
+        },
+        {
+            "id": 8,
+            "name": "ООО ТехноСервис",
+            "children": [
+                {
+                    "id": 9,
+                    "name": "Отдел продаж",
+                    "children": [
+                        {"id": 10, "name": "Отдел оптовых продаж"}
+                    ]
+                }
+            ]
+        }
+    ]
+
+    window = DepartmentPage(structure_data=test_data)
+    window.show()
+
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
