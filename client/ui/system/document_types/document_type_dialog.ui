@@ -6,46 +6,46 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>600</width>
-    <height>900</height>
+    <width>621</width>
+    <height>620</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Тип документа</string>
   </property>
   <property name="styleSheet">
    <string notr="true">QScrollArea {
-    border: none;
-    background-color: white;
+ border: none;
+ background-color: transparent;
 }
-
-/* Борьба с крапинкой - принудительно задаём фон для всех внутренних виджетов */
-QScrollArea &gt; QWidget,
-QScrollArea &gt; QWidget &gt; QWidget,
-QScrollArea QWidget {
-    background-color: #1B232A;
-    background: #1B232A;
+QDialog {
+    background-color: #f8f9fa;
 }
-
-/* Красим viewport */
-QScrollArea QWidget#qt_scrollarea_viewport {
-    background-color: #1B232A !important;
-    background: #1B232A !important;
-}
-
-QScrollArea QWidget#qt_scrollarea_viewport &gt; QWidget {
-    background-color: #1B232A !important;
-}
-
-/* Вертикальный скроллбар - фон прозрачный */
-QScrollBar:vertical {
+QCheckBox {
+    color: #1B232A;
+    spacing: 0px;
+    font-size: 13px;
     background: transparent;
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    image: url(&quot;D:/Documents/client/icons/cb_unchecked.png&quot;);
+}
+
+QCheckBox::indicator:checked {
+    image: url(&quot;D:/Documents/client/icons/cb_checked.png&quot;);
+}
+
+QScrollBar::vertical {
+    background: #F5F5F5;
     width: 8px;
     border-radius: 4px;
     margin: 0px;
+    border: none;
 }
 
-/* Бегунок (ползунок) */
 QScrollBar::handle:vertical {
     background: #C1C1C1;
     border-radius: 4px;
@@ -56,16 +56,31 @@ QScrollBar::handle:vertical:hover {
     background: #A0A0A0;
 }
 
-/* Горизонтальный скроллбар - фон прозрачный */
+QScrollBar::handle:vertical:pressed {
+    background: #888888;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+
 QScrollBar:horizontal {
     border: none;
-    background: transparent;
+    background: #F5F5F5;
     height: 8px;
     margin: 0px;
     border-radius: 4px;
 }
 
-/* Бегунок горизонтальный */
 QScrollBar::handle:horizontal {
     background: #C1C1C1;
     border-radius: 4px;
@@ -76,24 +91,177 @@ QScrollBar::handle:horizontal:hover {
     background: #A0A0A0;
 }
 
-/* Убираем стрелки */
-QScrollBar::add-line,
-QScrollBar::sub-line {
-    border: none;
-    background: none;
+QScrollBar::handle:horizontal:pressed {
+    background: #888888;
 }
 
-/* Убираем фон для области между полосой и краями */
-QScrollBar::add-page:vertical,
-QScrollBar::sub-page:vertical,
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
 QScrollBar::add-page:horizontal,
 QScrollBar::sub-page:horizontal {
     background: none;
+}
+
+/* ===== СТИЛИ ДЛЯ QLineEdit ===== */
+QLineEdit {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px;
+    background-color: white;
+    color: #1B232A;
+    font-size: 13px;
+}
+
+QLineEdit:hover {
+    border-color: #ccab6e;
+}
+
+QLineEdit:focus {
+    border: 2px solid #ccab6e;
+}
+
+QLineEdit:read-only {
+    background-color: #f5f5f5;
+    color: #6c757d;
+}
+
+/* ===== СТИЛИ ДЛЯ QGroupBox ===== */
+QGroupBox {
+    font-weight: bold;
+    font-size: 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    background-color: white;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+    color: #1B232A;
+}
+
+/* ===== СТИЛИ ДЛЯ QPushButton ===== */
+QPushButton {
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 8px 16px;
+
+}
+
+/* Кнопка Обзор и Очистить */
+QPushButton#browseBtn,
+QPushButton#clearBtn {
+    background-color: #f8f9fa;
+    color: #1B232A;
+    border: 1px solid #dee2e6;
+}
+
+QPushButton#browseBtn:hover,
+QPushButton#clearBtn:hover {
+    background-color: #e9ecef;
+    border-color: #ccab6e;
+}
+
+QPushButton#browseBtn:pressed,
+QPushButton#clearBtn:pressed {
+    background-color: #dee2e6;
+}
+
+/* Кнопка Сохранить */
+QPushButton#saveButton {
+    background-color: #ccab6e;
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    border: none;
+
+}
+
+QPushButton#saveButton:hover {
+    background-color: #b8945a;
+}
+
+QPushButton#saveButton:pressed {
+    background-color: #a07d4a;
+}
+
+/* Toggle Switch для параметров */
+QPushButton#toggleBtn {
+
+    border-radius: 13px;
+    font-size: 11px;
+    font-weight: bold;
+    margin: 0px;
+    padding: 0px;
+}
+
+QPushButton#toggleBtn:disabled {
+    opacity: 0.7;
+}
+
+/* ===== СТИЛИ ДЛЯ QFrame ===== */
+QFrame#paramFrame {
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    background-color: white;
+    margin: 2px 0px;
+}
+
+QFrame#paramFrame:hover {
+    border-color: #ccab6e;
+    background-color: #fdfcf7;
+}
+
+/* ===== СТИЛИ ДЛЯ QLabel ===== */
+QLabel {
+    color: #1B232A;
+}
+
+QLabel#titleLabel {
+    font-size: 22px;
+    font-weight: bold;
+    color: #1B232A;
+    margin-bottom: 10px;
+}
+
+QLabel#sectionLabel {
+    font-weight: bold;
+    color: #1B232A;
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+QLabel#paramNameLabel {
+    font-weight: 500;
+    color: #1B232A;
+    font-size: 13px;
+}
+
+/* Акцент на обязательных полях */
+QLabel[required=&quot;true&quot;] {
+    color: #ccab6e;
+}
+
+QLabel[required=&quot;true&quot;]::after {
+    content: &quot; *&quot;;
+    color: #dc3545;
+    font-weight: bold;
 }</string>
   </property>
-  <layout class="QVBoxLayout" name="main_layout">
+  <layout class="QVBoxLayout" name="mainLayout">
    <property name="spacing">
-    <number>10</number>
+    <number>15</number>
    </property>
    <property name="leftMargin">
     <number>20</number>
@@ -108,9 +276,9 @@ QScrollBar::sub-page:horizontal {
     <number>20</number>
    </property>
    <item>
-    <widget class="QLabel" name="title_label">
+    <widget class="QLabel" name="titleLabel">
      <property name="styleSheet">
-      <string notr="true">font-size: 18px; font-weight: bold; color: black;</string>
+      <string>font-size: 22px; font-weight: bold; color: #1B232A; margin-bottom: 10px;</string>
      </property>
      <property name="text">
       <string>Новый тип документа</string>
@@ -118,171 +286,93 @@ QScrollBar::sub-page:horizontal {
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="name_label">
+    <widget class="QScrollArea" name="scrollArea">
      <property name="styleSheet">
-      <string notr="true">color: black; font-weight: bold;</string>
-     </property>
-     <property name="text">
-      <string>Название типа*:</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLineEdit" name="name_input">
-     <property name="styleSheet">
-      <string notr="true">border-radius: 8px; border: 1px solid #ccab6e; padding: 8px; color: black;</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="auto_number_label">
-     <property name="styleSheet">
-      <string notr="true">color: black; font-weight: bold; </string>
-     </property>
-     <property name="text">
-      <string>Настройки номера:</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QCheckBox" name="auto_number_checkbox">
-     <property name="toolTip">
-      <string>Если включено, номер документа будет формироваться автоматически при создании.
-Если выключено, поле номера останется для ручного заполнения.</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QCheckBox {
-    spacing: 10px;
-    font-size: 14px;
-    padding: 8px;
-    border: 1px solid #ccab6e;
-    border-radius: 6px;
-    background: white;
-    color: black;
+      <string notr="true">QScrollBar::vertical {
+    background: #F5F5F5;
+    width: 8px;
+    border-radius: 4px;
+    margin: 0px;
+    border: none;
 }
-QCheckBox::indicator {
-    width: 18px;
-    height: 18px;
+
+QScrollBar::handle:vertical {
+    background: #C1C1C1;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #A0A0A0;
+}
+
+QScrollBar::handle:vertical:pressed {
+    background: #888888;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #F5F5F5;
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #C1C1C1;
+    border-radius: 4px;
+    min-width: 20px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #A0A0A0;
+}
+
+QScrollBar::handle:horizontal:pressed {
+    background: #888888;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: none;
 }</string>
-     </property>
-     <property name="text">
-      <string>Автоматически формировать номер документа</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="template_label">
-     <property name="styleSheet">
-      <string notr="true">color: black; font-weight: bold;</string>
-     </property>
-     <property name="text">
-      <string>Шаблон документа:</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="template_layout">
-     <item>
-      <widget class="QLineEdit" name="template_path_input">
-       <property name="styleSheet">
-        <string notr="true">border-radius: 8px; border: 1px solid #ccab6e; padding: 8px; color: black; background: white;</string>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-       <property name="placeholderText">
-        <string>Путь к файлу шаблона...</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="browse_template_btn">
-       <property name="toolTip">
-        <string>Выбрать файл шаблона документа</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton {
-    background-color: #f0f0f0;
-    color: #333;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 14px;
-    border: 1px solid #ccab6e;
-    padding: 8px 15px;
-}
-QPushButton:hover {
-    background-color: #e0e0e0;
-    border: 1px solid #998664;
-}
-QPushButton:pressed {
-    background-color: #d0d0d0;
-}</string>
-       </property>
-       <property name="text">
-        <string>Обзор...</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="clear_template_btn">
-       <property name="toolTip">
-        <string>Очистить путь к шаблону</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton {
-    background-color: #f0f0f0;
-    color: #333;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 14px;
-    border: 1px solid #ccab6e;
-    padding: 8px 15px;
-}
-QPushButton:hover {
-    background-color: #e0e0e0;
-    border: 1px solid #998664;
-}
-QPushButton:pressed {
-    background-color: #d0d0d0;
-}</string>
-       </property>
-       <property name="text">
-        <string>Очистить</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <widget class="QLabel" name="params_label">
-     <property name="styleSheet">
-      <string notr="true">color: black; font-weight: bold; </string>
-     </property>
-     <property name="text">
-      <string>Выберите активные параметры:</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QScrollArea" name="scroll_area">
-     <property name="styleSheet">
-      <string notr="true">border: none; background: transparent;</string>
      </property>
      <property name="widgetResizable">
       <bool>true</bool>
      </property>
-     <widget class="QWidget" name="scroll_content">
+     <widget class="QWidget" name="scrollContent">
       <property name="geometry">
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>560</width>
-        <height>524</height>
+        <width>581</width>
+        <height>475</height>
        </rect>
       </property>
-      <layout class="QVBoxLayout" name="scroll_layout">
+      <layout class="QVBoxLayout" name="scrollLayout">
        <property name="spacing">
-        <number>5</number>
+        <number>15</number>
        </property>
        <property name="leftMargin">
         <number>0</number>
@@ -296,37 +386,270 @@ QPushButton:pressed {
        <property name="bottomMargin">
         <number>0</number>
        </property>
+       <item>
+        <widget class="QGroupBox" name="documentTypeGroup">
+         <property name="title">
+          <string>Информация о типе документа</string>
+         </property>
+         <layout class="QGridLayout" name="documentTypeLayout">
+          <property name="leftMargin">
+           <number>15</number>
+          </property>
+          <property name="topMargin">
+           <number>15</number>
+          </property>
+          <property name="rightMargin">
+           <number>15</number>
+          </property>
+          <property name="bottomMargin">
+           <number>15</number>
+          </property>
+          <property name="spacing">
+           <number>10</number>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="nameLabel">
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Название типа *:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="nameInput">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Введите название типа документа</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QLabel" name="numberSettingsLabel">
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 600; margin-top: 5px;</string>
+            </property>
+            <property name="text">
+             <string>Настройки номера:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <widget class="QCheckBox" name="autoNumberCheckbox">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string>spacing: 10px; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Автоматически формировать номер документа</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLabel" name="templateLabel">
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 600; margin-top: 5px;</string>
+            </property>
+            <property name="text">
+             <string>Шаблон документа:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0" colspan="2">
+           <layout class="QHBoxLayout" name="templateLayout">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <item>
+             <widget class="QLineEdit" name="templatePathInput">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>32</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>32</height>
+               </size>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+              <property name="placeholderText">
+               <string>Путь к файлу шаблона...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="clearBtn">
+              <property name="minimumSize">
+               <size>
+                <width>80</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>100</width>
+                <height>32</height>
+               </size>
+              </property>
+              <property name="cursor">
+               <cursorShape>PointingHandCursor</cursorShape>
+              </property>
+              <property name="text">
+               <string>Очистить</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="browseBtn">
+              <property name="minimumSize">
+               <size>
+                <width>80</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>100</width>
+                <height>32</height>
+               </size>
+              </property>
+              <property name="cursor">
+               <cursorShape>PointingHandCursor</cursorShape>
+              </property>
+              <property name="text">
+               <string>Обзор...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="paramsGroup">
+         <property name="toolTip">
+          <string>Включите параметры, которые должны отображаться в документах этого типа</string>
+         </property>
+         <property name="title">
+          <string>Параметры документа</string>
+         </property>
+         <layout class="QVBoxLayout" name="paramsLayout">
+          <property name="spacing">
+           <number>8</number>
+          </property>
+          <property name="leftMargin">
+           <number>15</number>
+          </property>
+          <property name="topMargin">
+           <number>15</number>
+          </property>
+          <property name="rightMargin">
+           <number>15</number>
+          </property>
+          <property name="bottomMargin">
+           <number>15</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="paramsHintLabel">
+            <property name="styleSheet">
+             <string>color: #6c757d; font-weight: normal; font-size: 12px; margin-bottom: 5px;</string>
+            </property>
+            <property name="text">
+             <string>Выберите параметры, которые будут доступны в документах этого типа:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QScrollArea" name="paramsScrollArea">
+            <property name="styleSheet">
+             <string>border: none; background: transparent;</string>
+            </property>
+            <property name="widgetResizable">
+             <bool>true</bool>
+            </property>
+            <widget class="QWidget" name="paramsScrollContent">
+             <property name="geometry">
+              <rect>
+               <x>0</x>
+               <y>0</y>
+               <width>549</width>
+               <height>147</height>
+              </rect>
+             </property>
+             <layout class="QVBoxLayout" name="paramsScrollLayout">
+              <property name="spacing">
+               <number>5</number>
+              </property>
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+             </layout>
+            </widget>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
       </layout>
      </widget>
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="button_layout">
-     <item>
-      <widget class="QPushButton" name="save_btn">
-       <property name="styleSheet">
-        <string notr="true">QPushButton {
-    background-color: #ccab6e;
-    color: white;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 18px;
-    border: none;
-    padding: 10px;
-}
-QPushButton:hover {
-    background-color: #998664;
-}
-QPushButton:pressed {
-    background-color: #7a6a50;
-}</string>
-       </property>
-       <property name="text">
-        <string>Сохранить</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QPushButton" name="saveButton">
+     <property name="minimumSize">
+      <size>
+       <width>120</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="text">
+      <string>Сохранить</string>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

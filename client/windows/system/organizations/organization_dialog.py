@@ -36,23 +36,49 @@ class OrganizationDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
-        self.btnSave.clicked.connect(self.save_organization)
-        self.lineEditUNP.setFocus()
+        # Подключаем сигналы
+        self.saveButton.clicked.connect(self.save_organization)
+
+        # Устанавливаем фокус на первое поле
+        self.fullNameEdit.setFocus()
+
+        # Дополнительные настройки для поля УНП (только цифры)
+        self.unpEdit.textChanged.connect(self.validate_unp)
+
+    def validate_unp(self, text):
+        """Ограничиваем ввод только цифрами для поля УНП"""
+        # Убираем всё, кроме цифр
+        digits_only = ''.join(filter(str.isdigit, text))
+        if text != digits_only:
+            self.unpEdit.setText(digits_only)
 
     def save_organization(self):
+        """Сохранение организации"""
         print("Сохранение организации...")
 
+        # Собираем данные из полей
         data = {
-            'unp': self.lineEditUNP.text().strip(),
-            'smdo_code': self.lineEditSmdoCode.text().strip(),
-            'name': self.lineEditName.text().strip(),
-            'phone': self.lineEditPhone.text().strip(),
-            'address': self.lineEditAddress.text().strip(),
-            'email': self.lineEditEmail.text().strip(),
-            'is_subscriber': self.checkBoxSubscriber.isChecked()
+            'full_name': self.fullNameEdit.text().strip(),
+            'phone': self.phoneEdit.text().strip(),
+            'address': self.addressEdit.text().strip(),
+            'email': self.emailEdit.text().strip(),
+            'unp': self.unpEdit.text().strip(),
+            'smdo_code': self.smdoCodeEdit.text().strip(),
+            'is_subscriber': self.smdoSubscriberCheckbox.isChecked()
         }
 
+        # Проверяем обязательные поля
+        if not data['full_name']:
+            print("Ошибка: Полное наименование обязательно для заполнения")
+            self.fullNameEdit.setFocus()
+            self.fullNameEdit.setStyleSheet("border: 2px solid #D22730; border-radius: 6px; padding: 8px;")
+            return
+
         print(f"Данные: {data}")
+
+        # Здесь можно добавить логику сохранения в БД
+
+        # Закрываем диалог с успехом
         self.accept()
 
 

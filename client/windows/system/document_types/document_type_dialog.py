@@ -259,33 +259,66 @@ class DocumentTypeDialog(QtWidgets.QDialog):
 
     def setup_parameters_ui(self):
         """Создает интерфейс для выбора параметров"""
-        # Проверяем, есть ли scroll_layout
-        if not hasattr(self, 'scroll_layout'):
-            print("[ERROR] scroll_layout не найден в UI, создаем программно")
-            self.scroll_layout = QtWidgets.QVBoxLayout()
-            self.scroll_content = QtWidgets.QWidget()
-            self.scroll_content.setLayout(self.scroll_layout)
-            self.scroll_area.setWidget(self.scroll_content)
+        # Ищем правильный контейнер для параметров
+        if hasattr(self, 'paramsScrollLayout'):
+            # Используем существующий layout из UI
+            layout = self.paramsScrollLayout
+            print("[DEBUG] Найден paramsScrollLayout из UI")
+        elif hasattr(self, 'scroll_layout'):
+            # Если есть scroll_layout (для fallback)
+            layout = self.scroll_layout
+            print("[DEBUG] Используем scroll_layout (fallback)")
+        else:
+            # Создаем новый layout
+            print("[ERROR] Не найден layout для параметров, создаем новый")
+            layout = QtWidgets.QVBoxLayout()
+
+            # Проверяем наличие scroll_content
+            if hasattr(self, 'scroll_content'):
+                self.scroll_content.setLayout(layout)
+            elif hasattr(self, 'paramsScrollContent'):
+                self.paramsScrollContent.setLayout(layout)
+            else:
+                # Создаем контейнер
+                container = QtWidgets.QWidget()
+                container.setLayout(layout)
+                if hasattr(self, 'paramsScrollArea'):
+                    self.paramsScrollArea.setWidget(container)
+                elif hasattr(self, 'scrollArea'):
+                    self.scrollArea.setWidget(container)
 
         # Очищаем существующие параметры
-        while self.scroll_layout.count():
-            child = self.scroll_layout.takeAt(0)
+        while layout.count():
+            child = layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
 
         for param in self.available_parameters:
             frame = QtWidgets.QFrame()
-            frame.setStyleSheet("border: 1px solid #E0E0E0; border-radius: 6px; background: white; margin: 2px;")
+            frame.setObjectName(f"paramFrame_{param}")
+            frame.setStyleSheet("""
+                QFrame {
+                    border: 1px solid #E0E0E0; 
+                    border-radius: 6px; 
+                    background: white; 
+                    margin: 2px;
+                }
+                QFrame:hover {
+                    border-color: #ccab6e;
+                    background-color: #fdfcf7;
+                }
+            """)
             flayout = QtWidgets.QHBoxLayout(frame)
             flayout.setContentsMargins(10, 5, 10, 5)
 
             lbl = QtWidgets.QLabel(self.parameter_names[param])
-            lbl.setStyleSheet("font-weight: bold; border: none; color: black;")
+            lbl.setStyleSheet("font-weight: bold; border: none; color: #1B232A;")
             flayout.addWidget(lbl)
             flayout.addStretch()
 
             btn = QtWidgets.QPushButton()
             btn.setFixedSize(70, 26)
+            btn.setObjectName(f"toggleBtn_{param}")
 
             # Проверяем наличие параметра в загруженном списке
             is_active = param in self.selected_parameters
@@ -300,13 +333,13 @@ class DocumentTypeDialog(QtWidgets.QDialog):
                 btn.setEnabled(False)
                 btn.setToolTip("Этот параметр обязателен и не может быть отключен")
 
-            # Правильный коннект
+            # Правильный коннект с сохранением параметров
             btn.clicked.connect(lambda checked, p=param, b=btn: self.toggle_param(p, b))
 
             flayout.addWidget(btn)
-            self.scroll_layout.addWidget(frame)
+            layout.addWidget(frame)
 
-        self.scroll_layout.addStretch()
+        layout.addStretch()
 
     def browse_template(self):
         """Открыть диалог выбора файла шаблона"""
@@ -320,6 +353,21 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         if file_path:
             self.template_path_input.setText(file_path)
             print(f"[DEBUG] Выбран шаблон: {file_path}")
+
+    def clear_parameter_widgets(self):
+        """Очищает все виджеты параметров"""
+        layout = None
+
+        if hasattr(self, 'paramsScrollLayout'):
+            layout = self.paramsScrollLayout
+        elif hasattr(self, 'scroll_layout'):
+            layout = self.scroll_layout
+
+        if layout:
+            while layout.count():
+                child = layout.takeAt(0)
+                if child.widget():
+                    child.widget().deleteLater()
 
     def clear_template(self):
         """Очистить путь к шаблону"""

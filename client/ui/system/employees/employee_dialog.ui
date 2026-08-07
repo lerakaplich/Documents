@@ -179,7 +179,6 @@ QDateEdit {
     color: #1B232A;
     font-size: 13px;
     outline: none;
-    min-height: 20px;
 }
 
 QDateEdit:hover {
@@ -742,7 +741,7 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>0</height>
              </size>
             </property>
             <property name="maximumSize">

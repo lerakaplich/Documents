@@ -6,31 +6,218 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>480</width>
-    <height>300</height>
+    <width>580</width>
+    <height>499</height>
    </rect>
   </property>
-  <property name="minimumSize">
-   <size>
-    <width>480</width>
-    <height>300</height>
-   </size>
-  </property>
-  <property name="maximumSize">
-   <size>
-    <width>16777215</width>
-    <height>300</height>
-   </size>
-  </property>
   <property name="windowTitle">
-   <string>Подразделение</string>
+   <string>Отдел</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">
+   <string notr="true">QScrollArea {
+ border: none;
+ background-color: transparent;
+}
 QDialog {
     background-color: #f8f9fa;
 }
-</string>
+QCheckBox {
+    color: #1B232A;
+    spacing: 0px;
+    font-size: 12px;
+    background: transparent;
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    image: url(&quot;D:/Documents/client/icons/cb_unchecked.png&quot;);
+}
+
+QCheckBox::indicator:checked {
+    image: url(&quot;D:/Documents/client/icons/cb_checked.png&quot;);
+}
+
+QScrollBar::vertical {
+    background: #F5F5F5;
+    width: 8px;
+    border-radius: 4px;
+    margin: 0px;
+    border: none;
+}
+
+QScrollBar::handle:vertical {
+    background: #C1C1C1;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #A0A0A0;
+}
+
+QScrollBar::handle:vertical:pressed {
+    background: #888888;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #F5F5F5;
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #C1C1C1;
+    border-radius: 4px;
+    min-width: 20px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #A0A0A0;
+}
+
+QScrollBar::handle:horizontal:pressed {
+    background: #888888;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
+/* ===== СТИЛИ ДЛЯ QComboBox ===== */
+QComboBox {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px;
+    padding-right: 30px;
+    background-color: white;
+    color: #1B232A;
+    font-size: 13px;
+    outline: none;
+}
+
+QComboBox:hover {
+    border-color: #ccab6e;
+}
+
+QComboBox:focus {
+    border: 2px solid #ccab6e;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+}
+
+QComboBox::down-arrow {
+    image: url(D:/Documents/client/icons/down_arrow_combo.svg);
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+}
+
+QComboBox QAbstractItemView {
+    border-radius: 6px;
+    background-color: white;
+    color: #1B232A;
+    padding: 4px;
+    outline: none;
+    border: 1px solid #ccab6e;
+}
+
+QComboBox QAbstractItemView::item {
+    padding: 8px;
+    color: #1B232A;
+    border: none;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+/* ===== СТИЛИ ДЛЯ QLineEdit ===== */
+QLineEdit {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px;
+    background-color: white;
+    color: #1B232A;
+    font-size: 13px;
+}
+
+QLineEdit:hover {
+    border-color: #ccab6e;
+}
+
+QLineEdit:focus {
+    border: 2px solid #ccab6e;
+}
+
+/* ===== СТИЛИ ДЛЯ QGroupBox ===== */
+QGroupBox {
+    font-weight: bold;
+    font-size: 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    background-color: white;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+    color: #1B232A;
+}
+
+/* ===== СТИЛИ ДЛЯ QPushButton (Сохранить) ===== */
+QPushButton#saveButton {
+    background-color: #ccab6e;
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    border: none;
+}
+QPushButton#saveButton:hover {
+    background-color: #b8945a;
+}
+QPushButton#saveButton:pressed {
+    background-color: #a07d4a;
+}</string>
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
    <property name="spacing">
@@ -54,200 +241,366 @@ QDialog {
       <string>font-size: 22px; font-weight: bold; color: #1B232A; margin-bottom: 10px;</string>
      </property>
      <property name="text">
-      <string>Новое подразделение</string>
+      <string>Новый отдел</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="deptInfoGroup">
+    <widget class="QScrollArea" name="scrollArea">
      <property name="styleSheet">
-      <string>QGroupBox {
-    font-weight: bold;
-    font-size: 14px;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-    background-color: white;
+      <string notr="true">QScrollBar::vertical {
+    background: #F5F5F5;
+    width: 8px;
+    border-radius: 4px;
+    margin: 0px;
+    border: none;
 }
-QGroupBox::title {
-    subcontrol-origin: margin;
-    left: 10px;
-    padding: 0 5px 0 5px;
-    color: #1B232A;
+
+QScrollBar::handle:vertical {
+    background: #C1C1C1;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #A0A0A0;
+}
+
+QScrollBar::handle:vertical:pressed {
+    background: #888888;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #F5F5F5;
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #C1C1C1;
+    border-radius: 4px;
+    min-width: 20px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #A0A0A0;
+}
+
+QScrollBar::handle:horizontal:pressed {
+    background: #888888;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: none;
 }</string>
      </property>
-     <property name="title">
-      <string>Информация о подразделении</string>
+     <property name="widgetResizable">
+      <bool>true</bool>
      </property>
-     <layout class="QGridLayout" name="deptInfoLayout">
-      <property name="leftMargin">
-       <number>15</number>
+     <widget class="QWidget" name="scrollContent">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>540</width>
+        <height>349</height>
+       </rect>
       </property>
-      <property name="topMargin">
-       <number>15</number>
-      </property>
-      <property name="rightMargin">
-       <number>15</number>
-      </property>
-      <property name="bottomMargin">
-       <number>15</number>
-      </property>
-      <property name="spacing">
-       <number>10</number>
-      </property>
-      <item row="0" column="0">
-       <widget class="QLabel" name="labelName">
-        <property name="minimumSize">
-         <size>
-          <width>120</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="styleSheet">
-         <string>color: #1B232A; font-weight: 500;</string>
-        </property>
-        <property name="text">
-         <string>Название *:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLineEdit" name="lineEditName">
-        <property name="styleSheet">
-         <string>border: 1px solid #dee2e6; border-radius: 6px; padding: 8px; background-color: white; color: #1B232A;</string>
-        </property>
-        <property name="placeholderText">
-         <string>Название подразделения</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="labelNumber">
-        <property name="styleSheet">
-         <string>color: #1B232A; font-weight: 500;</string>
-        </property>
-        <property name="text">
-         <string>Номер:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="lineEditNumber">
-        <property name="styleSheet">
-         <string>border: 1px solid #dee2e6; border-radius: 6px; padding: 8px; background-color: white; color: #1B232A;</string>
-        </property>
-        <property name="placeholderText">
-         <string>Внутренний номер/код</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="labelPhone">
-        <property name="styleSheet">
-         <string>color: #1B232A; font-weight: 500;</string>
-        </property>
-        <property name="text">
-         <string>Телефон:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QLineEdit" name="lineEditPhone">
-        <property name="styleSheet">
-         <string>border: 1px solid #dee2e6; border-radius: 6px; padding: 8px; background-color: white; color: #1B232A;</string>
-        </property>
-        <property name="placeholderText">
-         <string>Телефон подразделения</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+      <layout class="QVBoxLayout" name="scrollLayout">
+       <property name="spacing">
+        <number>20</number>
+       </property>
+       <property name="leftMargin">
+        <number>5</number>
+       </property>
+       <property name="topMargin">
+        <number>5</number>
+       </property>
+       <property name="rightMargin">
+        <number>15</number>
+       </property>
+       <property name="bottomMargin">
+        <number>5</number>
+       </property>
+       <item>
+        <widget class="QGroupBox" name="departmentInfoGroup">
+         <property name="title">
+          <string>Информация об отделе</string>
+         </property>
+         <layout class="QGridLayout" name="departmentInfoLayout">
+          <property name="leftMargin">
+           <number>15</number>
+          </property>
+          <property name="topMargin">
+           <number>15</number>
+          </property>
+          <property name="rightMargin">
+           <number>15</number>
+          </property>
+          <property name="bottomMargin">
+           <number>15</number>
+          </property>
+          <property name="spacing">
+           <number>10</number>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="nameLabel">
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Название *:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="nameEdit">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Введите название отдела</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="organizationLabel">
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Организация *:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="organizationCombo">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color: transparent;</string>
+            </property>
+            <property name="placeholderText">
+             <string>Выберите организацию</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="parentDepartmentLabel">
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Родительский отдел:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="parentDepartmentCombo">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Выберите родительский отдел</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="typeLabel">
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Тип отдела *:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QComboBox" name="typeCombo">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Выберите тип отдела</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="departmentNumberLabel">
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Номер отдела:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="departmentNumberEdit">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Введите номер отдела</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="phoneLabel">
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Телефон:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLineEdit" name="phoneEdit">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>+375 XX XXX-XX-XX</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="headLabel">
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Руководитель:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QComboBox" name="headCombo">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Выберите руководителя</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="buttonLayout">
-     <property name="spacing">
-      <number>15</number>
+    <widget class="QPushButton" name="saveButton">
+     <property name="minimumSize">
+      <size>
+       <width>120</width>
+       <height>40</height>
+      </size>
      </property>
-     <item>
-      <spacer name="buttonSpacer">
-       <property name="orientation">
-        <enum>Qt::Orientation::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btnCancel">
-       <property name="minimumSize">
-        <size>
-         <width>120</width>
-         <height>40</height>
-        </size>
-       </property>
-       <property name="cursor">
-        <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="styleSheet">
-        <string>QPushButton {
-    background-color: #6c757d;
-    color: white;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 14px;
-    border: none;
-}
-QPushButton:hover {
-    background-color: #5a6268;
-}
-QPushButton:pressed {
-    background-color: #545b62;
-}</string>
-       </property>
-       <property name="text">
-        <string>Отмена</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btnSave">
-       <property name="minimumSize">
-        <size>
-         <width>120</width>
-         <height>40</height>
-        </size>
-       </property>
-       <property name="cursor">
-        <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="styleSheet">
-        <string>QPushButton {
-    background-color: #ccab6e;
-    color: white;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 14px;
-    border: none;
-}
-QPushButton:hover {
-    background-color: #b8945a;
-}
-QPushButton:pressed {
-    background-color: #a07d4a;
-}</string>
-       </property>
-       <property name="text">
-        <string>Сохранить</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="text">
+      <string>Сохранить</string>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

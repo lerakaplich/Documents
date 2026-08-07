@@ -28,9 +28,11 @@ class SystemTab(QWidget):
         self.tags_page = None
         self.document_types_page = None
         self.organizations_page = None
-        self.structure_pages = {}  # ← ДОБАВИТЬ ЭТУ СТРОКУ
-
+        self.structure_pages = {}
         self.structure_tab_names = {}
+
+        # Словарь типов отделов (в реальном приложении загружается из БД)
+        self.department_types = {}
 
         self.init_ui_from_file()
         self.load_all_data()
@@ -50,6 +52,9 @@ class SystemTab(QWidget):
         """Загрузка всех данных"""
         print("Загрузка тестовых данных...")
 
+        # Загружаем типы отделов (в реальном приложении из БД)
+        self.load_department_types()
+
         self.structure_data = [
             {
                 "id": 1,
@@ -62,15 +67,18 @@ class SystemTab(QWidget):
                             {
                                 "id": 3,
                                 "name": "Управление информационных технологий (УИТ)",
+                                "department_type_id": 1,  # ← Добавляем ID типа отдела
                                 "children": [
                                     {
                                         "id": 4,
                                         "name": "Отдел разработки СЭД",
+                                        "department_type_id": 2,  # ← Добавляем ID типа отдела
                                         "children": []
                                     },
                                     {
                                         "id": 5,
                                         "name": "Отдел системного администрирования",
+                                        "department_type_id": 2,  # ← Добавляем ID типа отдела
                                         "children": []
                                     }
                                 ]
@@ -78,20 +86,24 @@ class SystemTab(QWidget):
                             {
                                 "id": 6,
                                 "name": "Канцелярия (Общий отдел)",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": []
                             },
                             {
                                 "id": 7,
                                 "name": "Планово-экономический отдел",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": [
                                     {
                                         "id": 8,
                                         "name": "Бюро планирования",
+                                        "department_type_id": 3,  # ← Добавляем ID типа отдела
                                         "children": []
                                     },
                                     {
                                         "id": 9,
                                         "name": "Бюро анализа",
+                                        "department_type_id": 3,  # ← Добавляем ID типа отдела
                                         "children": []
                                     }
                                 ]
@@ -105,15 +117,18 @@ class SystemTab(QWidget):
                             {
                                 "id": 11,
                                 "name": "Конструкторский отдел",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": [
                                     {
                                         "id": 12,
                                         "name": "Сектор двигателей",
+                                        "department_type_id": 4,  # ← Добавляем ID типа отдела
                                         "children": []
                                     },
                                     {
                                         "id": 13,
                                         "name": "Сектор трансмиссий",
+                                        "department_type_id": 4,  # ← Добавляем ID типа отдела
                                         "children": []
                                     }
                                 ]
@@ -121,16 +136,19 @@ class SystemTab(QWidget):
                             {
                                 "id": 14,
                                 "name": "Технологический отдел",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": []
                             },
                             {
                                 "id": 15,
                                 "name": "Цех сборки №1",
+                                "department_type_id": 5,  # ← Добавляем ID типа отдела
                                 "children": []
                             },
                             {
                                 "id": 16,
                                 "name": "Цех сборки №2",
+                                "department_type_id": 5,  # ← Добавляем ID типа отдела
                                 "children": []
                             }
                         ]
@@ -142,11 +160,13 @@ class SystemTab(QWidget):
                             {
                                 "id": 18,
                                 "name": "Бухгалтерия",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": []
                             },
                             {
                                 "id": 19,
                                 "name": "Финансовый отдел",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": []
                             }
                         ]
@@ -158,11 +178,13 @@ class SystemTab(QWidget):
                             {
                                 "id": 21,
                                 "name": "Отдел кадров",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": []
                             },
                             {
                                 "id": 22,
                                 "name": "Отдел охраны труда",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": []
                             }
                         ]
@@ -185,16 +207,19 @@ class SystemTab(QWidget):
                             {
                                 "id": 26,
                                 "name": "Технический отдел",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": []
                             },
                             {
                                 "id": 27,
                                 "name": "Производственный отдел",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": []
                             },
                             {
                                 "id": 28,
                                 "name": "Цех кузовной",
+                                "department_type_id": 5,  # ← Добавляем ID типа отдела
                                 "children": []
                             }
                         ]
@@ -217,11 +242,13 @@ class SystemTab(QWidget):
                             {
                                 "id": 32,
                                 "name": "Отдел разработок",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": []
                             },
                             {
                                 "id": 33,
                                 "name": "Проектный отдел",
+                                "department_type_id": 2,  # ← Добавляем ID типа отдела
                                 "children": []
                             }
                         ]
@@ -240,6 +267,20 @@ class SystemTab(QWidget):
         self.create_structure_tabs()
 
         print("Все данные загружены!")
+
+    def load_department_types(self):
+        """Загрузка типов отделов (в реальном приложении из БД)"""
+        # В реальном приложении здесь будет запрос к БД:
+        # self.department_types = {dt.id: dt.name for dt in session.query(DepartmentType).all()}
+
+        # Тестовые данные
+        self.department_types = {
+            1: "Управления",
+            2: "Отделы",
+            3: "Бюро",
+            4: "Сектора",
+            5: "Цеха",
+        }
 
     def analyze_structure_types(self):
         """Анализирует структуру и определяет уникальные названия уровней для вкладок"""
@@ -319,21 +360,14 @@ class SystemTab(QWidget):
         self.tabWidget.addTab(self.organizations_page, "Организации")
 
     def create_structure_tabs(self):
-        """Создание динамических вкладок на основе проанализированной структуры"""
-        sorted_types = sorted(self.structure_tab_names.items(),
-                              key=lambda x: x[1]["level"])
-
-        for type_key, type_info in sorted_types:
-            tab_name = type_info["name"]
-            page = DepartmentPage(
-                tab_name=tab_name,
-                structure_data=self.structure_data,
-                type_key=type_key,
-                parent=self
-            )
-            self.tabWidget.addTab(page, tab_name)
-
-
+        """Создание единой вкладки для структуры с иерархическим отображением"""
+        # Создаем одну страницу со всей структурой
+        page = DepartmentPage(
+            tab_name="Структура",
+            structure_data=self.structure_data,
+            parent=self
+        )
+        self.tabWidget.addTab(page, "Структура")
 
 
 class MainWindow(QMainWindow):

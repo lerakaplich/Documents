@@ -1,4 +1,3 @@
-# collapsible_group.py
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QSizePolicy, QApplication
 )
@@ -14,6 +13,8 @@ class CollapsibleGroup(QWidget):
         self.is_expanded = is_expanded
         self.content_widgets = []
         self._content_height = 0
+        self._is_animating = False
+        self._update_timer = None
 
         # Главный layout
         self.main_layout = QVBoxLayout(self)
@@ -43,11 +44,16 @@ class CollapsibleGroup(QWidget):
         # Контент
         self.content_area = QWidget()
         self.content_area.setStyleSheet("background-color: transparent;")
+        self.content_area.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Minimum
+        )
+
         self.content_area_layout = QVBoxLayout(self.content_area)
         self.content_area_layout.setSpacing(10)
         self.content_area_layout.setContentsMargins(15, 10, 15, 10)
-        # УБИРАЕМ AlignTop - это причина проблемы!
-        # self.content_area_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # Убираем ограничение по высоте для контента
+        self.content_area.setMinimumHeight(0)
 
         # Добавляем в основной layout
         self.main_layout.addWidget(self.header)
@@ -55,7 +61,7 @@ class CollapsibleGroup(QWidget):
 
         # Анимация для высоты контента
         self.animation = QPropertyAnimation(self.content_area, b"maximumHeight")
-        self.animation.setDuration(250)
+        self.animation.setDuration(300)
         self.animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self.animation.finished.connect(self._on_animation_finished)
 
@@ -65,7 +71,7 @@ class CollapsibleGroup(QWidget):
         # Устанавливаем начальное состояние
         if is_expanded:
             self.content_area.setVisible(True)
-            self.content_area.setMaximumHeight(0)  # Будет обновлено при добавлении виджетов
+            self.content_area.setMaximumHeight(0)
         else:
             self.content_area.setVisible(False)
             self.content_area.setMaximumHeight(0)
@@ -89,23 +95,39 @@ class CollapsibleGroup(QWidget):
         was_visible = self.content_area.isVisible()
         old_max_height = self.content_area.maximumHeight()
 
-        # Временно показываем и убираем ограничения для расчета
+        # Временно показываем для расчета
         self.content_area.setVisible(True)
         self.content_area.setMaximumHeight(16777215)
 
         # Принудительно обновляем геометрию
         self.content_area_layout.activate()
-
-        # Даем время на обновление
-        QApplication.processEvents()
+        self.content_area.updateGeometry()
 
         # Получаем рекомендуемую высоту
         height = self.content_area.sizeHint().height()
+
+        # Если height = 0, пробуем альтернативный способ расчета
+        if height == 0:
+            total_height = 0
+            for i in range(self.content_area_layout.count()):
+                item = self.content_area_layout.itemAt(i)
+                if item and item.widget():
+                    widget = item.widget()
+                    # Даем виджету правильно рассчитать размер
+                    widget.updateGeometry()
+                    widget_height = widget.sizeHint().height()
+                    if widget_height > 0:
+                        total_height += widget_height + self.content_area_layout.spacing()
+            height = total_height if total_height > 0 else 100  # Минимальная высота
 
         # Восстанавливаем состояние
         self.content_area.setMaximumHeight(old_max_height)
         if not was_visible:
             self.content_area.setVisible(False)
+
+        # Добавляем отступы
+        margins = self.content_area_layout.contentsMargins()
+        height += margins.top() + margins.bottom()
 
         return max(height, 10)
 
@@ -126,6 +148,11 @@ class CollapsibleGroup(QWidget):
         if self.is_expanded == expanded and self._content_height > 0:
             return
 
+        # Если анимация уже идет, останавливаем
+        if self._is_animating:
+            self.animation.stop()
+            self._is_animating = False
+
         self.is_expanded = expanded
         self.update_arrow()
 
@@ -134,11 +161,12 @@ class CollapsibleGroup(QWidget):
             self.update_content_height()
 
             if self._content_height <= 0:
-                self.content_area.setVisible(False)
+                # Если высота не рассчиталась, пробуем еще раз с задержкой
+                QTimer.singleShot(50, self._retry_expand)
                 return
 
             if animated:
-                self.animation.stop()
+                self._is_animating = True
                 self.content_area.setVisible(True)
                 self.animation.setStartValue(0)
                 self.animation.setEndValue(self._content_height)
@@ -146,48 +174,89 @@ class CollapsibleGroup(QWidget):
             else:
                 self.content_area.setVisible(True)
                 self.content_area.setMaximumHeight(self._content_height)
+                self.content_area.updateGeometry()
         else:
-            if animated and self.content_area.isVisible():
-                self.animation.stop()
+            if animated and self.content_area.isVisible() and self.content_area.height() > 0:
+                self._is_animating = True
                 current_height = self.content_area.height()
+                if current_height <= 0:
+                    current_height = self._content_height
                 self.animation.setStartValue(current_height)
                 self.animation.setEndValue(0)
                 self.animation.start()
             else:
                 self.content_area.setMaximumHeight(0)
                 self.content_area.setVisible(False)
+                self.content_area.updateGeometry()
+
+    def _retry_expand(self):
+        """Повторная попытка развернуть группу"""
+        if self.is_expanded:
+            self.update_content_height()
+            if self._content_height > 0:
+                self.content_area.setVisible(True)
+                self.content_area.setMaximumHeight(self._content_height)
+                self.content_area.updateGeometry()
+            else:
+                # Если все еще 0, устанавливаем минимальную высоту
+                self._content_height = 100
+                self.content_area.setVisible(True)
+                self.content_area.setMaximumHeight(self._content_height)
+                self.content_area.updateGeometry()
 
     def _on_animation_finished(self):
         """Обработчик завершения анимации"""
+        self._is_animating = False
         if not self.is_expanded:
             self.content_area.setMaximumHeight(0)
             self.content_area.setVisible(False)
+        else:
+            # Убеждаемся, что высота правильная
+            if self._content_height > 0:
+                self.content_area.setMaximumHeight(self._content_height)
+            self.content_area.updateGeometry()
 
     def add_widget(self, widget):
         """Добавляет виджет в контент"""
-        # Устанавливаем правильную политику размера для добавляемого виджета
+        # Устанавливаем правильную политику размера
         widget.setSizePolicy(
             QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Minimum  # Изменено с Fixed на Minimum
         )
+        widget.setMinimumHeight(0)
 
         self.content_area_layout.addWidget(widget)
         self.content_widgets.append(widget)
 
-        # Если группа развернута, обновляем высоту
+        # Если группа развернута, обновляем высоту с задержкой
         if self.is_expanded:
-            QTimer.singleShot(10, self._delayed_height_update)
+            # Отменяем предыдущий таймер
+            if self._update_timer:
+                self._update_timer.stop()
+            self._update_timer = QTimer()
+            self._update_timer.setSingleShot(True)
+            self._update_timer.timeout.connect(self._delayed_height_update)
+            self._update_timer.start(50)
 
     def _delayed_height_update(self):
         """Отложенное обновление высоты после добавления виджетов"""
+        if self._update_timer:
+            self._update_timer = None
+
         if self.is_expanded and self.content_widgets:
+            # Обновляем высоту
             new_height = self.update_content_height()
+
             if new_height > 0:
+                self._content_height = new_height
                 self.content_area.setVisible(True)
                 self.content_area.setMaximumHeight(new_height)
-                # Принудительно обновляем布局
-                self.content_area_layout.activate()
                 self.content_area.updateGeometry()
+                # Обновляем весь виджет
+                self.updateGeometry()
+                # Обновляем родительские виджеты
+                if self.parent():
+                    self.parent().updateGeometry()
 
     def remove_widget(self, widget):
         """Удаляет виджет из контента"""
@@ -197,7 +266,12 @@ class CollapsibleGroup(QWidget):
             widget.deleteLater()
 
             if self.is_expanded:
-                QTimer.singleShot(10, self._delayed_height_update)
+                if self._update_timer:
+                    self._update_timer.stop()
+                self._update_timer = QTimer()
+                self._update_timer.setSingleShot(True)
+                self._update_timer.timeout.connect(self._delayed_height_update)
+                self._update_timer.start(50)
 
     def clear_content(self):
         """Очищает весь контент"""
@@ -205,7 +279,18 @@ class CollapsibleGroup(QWidget):
             widget.deleteLater()
         self.content_widgets.clear()
 
+        if self._update_timer:
+            self._update_timer.stop()
+            self._update_timer = None
+
         if self.is_expanded:
             self._content_height = 0
             self.content_area.setMaximumHeight(0)
             self.content_area.setVisible(False)
+
+    def showEvent(self, event):
+        """Обработчик события показа виджета"""
+        super().showEvent(event)
+        # При показе обновляем высоту
+        if self.is_expanded and self.content_widgets:
+            QTimer.singleShot(100, self._delayed_height_update)

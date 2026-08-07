@@ -4,7 +4,7 @@ import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLineEdit, QScrollArea, QMenu, QMessageBox, QApplication,
-    QSizePolicy
+    QSizePolicy, QLabel
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.uic import loadUi
@@ -15,16 +15,15 @@ from client.windows.animations.floating_action_button import FloatingActionButto
 
 
 class DepartmentPage(QWidget):
-    """Страница структурных единиц с поиском, сортировкой и группировкой по организациям"""
+    """Страница структурных единиц с иерархической группировкой: Организация → Тип → Отделы"""
 
-    def __init__(self, tab_name="Структура", structure_data=None, type_key=None, parent=None):
+    def __init__(self, tab_name="Структура", structure_data=None, parent=None):
         super().__init__(parent)
 
         # Данные
         self.tab_name = tab_name
         self.structure_data = structure_data or []
-        self.type_key = type_key
-        self.all_items = []  # Все элементы этого типа
+        self.all_items = []  # Все элементы
         self.filtered_items = []
 
         # Состояние
@@ -32,7 +31,7 @@ class DepartmentPage(QWidget):
 
         # Инициализация
         self.init_ui()
-        self.collect_items()
+        self.collect_all_departments()
         self.setup_connections()
         self.update_display()
 
@@ -64,36 +63,37 @@ class DepartmentPage(QWidget):
         self.searchEdit.textChanged.connect(self.on_search_changed)
         self.btnResetFilters.clicked.connect(self.reset_all_filters)
 
-    def collect_items(self):
-        """Собирает все элементы нужного типа из структуры"""
+    def collect_all_departments(self):
+        """Собирает все отделы (всех типов) из структуры"""
         self.all_items = []
 
-        for org in self.structure_data:
-            items = self._collect_items_by_type(org, self.type_key)
-            for item in items:
-                # Добавляем информацию об организации
-                item_copy = item.copy()
-                item_copy["organization_name"] = org["name"]
-                item_copy["organization_id"] = org["id"]
-                # Находим родителя
-                item_copy["parent_name"] = self._find_parent_name(org, item["id"])
-                self.all_items.append(item_copy)
+        def traverse(node, org_name, org_id, parent_name=""):
+            # Если у узла есть дети, проверяем их названия для определения типа
+            if node.get("children"):
+                # Проверяем, является ли текущий узел родителем для отделов
+                child_names = [child["name"] for child in node["children"]]
+                level_type = self._detect_level_type(child_names)
 
-    def _collect_items_by_type(self, node, type_key):
-        """Рекурсивно собирает элементы определенного типа из дерева"""
-        items = []
+                # Если это уровень отделов, добавляем детей
+                if level_type:
+                    for child in node["children"]:
+                        item = {
+                            "id": child["id"],
+                            "name": child["name"],
+                            "organization_name": org_name,
+                            "organization_id": org_id,
+                            "parent_name": node["name"],
+                            "department_type": level_type,
+                            "type_display": self._get_type_display_name(level_type)
+                        }
+                        self.all_items.append(item)
 
-        if node.get("children"):
-            child_names = [child["name"] for child in node["children"]]
-            current_level_type = self._detect_level_type(child_names)
-
-            if current_level_type == type_key:
-                items.extend(node["children"])
-            else:
+                # Рекурсивно обходим детей
                 for child in node["children"]:
-                    items.extend(self._collect_items_by_type(child, type_key))
+                    traverse(child, org_name, org_id, node["name"])
 
-        return items
+        for org in self.structure_data:
+            traverse(org, org["name"], org["id"])
 
     def _detect_level_type(self, names):
         """Определяет тип уровня по названиям"""
@@ -116,19 +116,18 @@ class DepartmentPage(QWidget):
         else:
             return "departments"
 
-    def _find_parent_name(self, root_node, target_id):
-        """Находит название родительского узла"""
-
-        def search(node, parent_name=""):
-            if node["id"] == target_id:
-                return parent_name
-            for child in node.get("children", []):
-                result = search(child, node["name"])
-                if result:
-                    return result
-            return None
-
-        return search(root_node, "")
+    def _get_type_display_name(self, type_key):
+        """Возвращает русское название для типа структуры"""
+        names = {
+            "divisions": "Управления",
+            "departments": "Отделы",
+            "workshops": "Цеха",
+            "branches": "Филиалы",
+            "sections": "Сектора",
+            "bureaus": "Бюро",
+            "directorates": "Дирекции",
+        }
+        return names.get(type_key, type_key.capitalize())
 
     def show_sort_menu(self):
         """Показать меню сортировки"""
@@ -226,7 +225,8 @@ class DepartmentPage(QWidget):
             filtered = [
                 item for item in filtered
                 if search_text in item.get('name', '').lower() or
-                   search_text in str(item.get('id', '')).lower()
+                   search_text in str(item.get('id', '')).lower() or
+                   search_text in item.get('organization_name', '').lower()
             ]
 
         # Сортировка
@@ -239,17 +239,26 @@ class DepartmentPage(QWidget):
         sort_func = sort_methods.get(self.current_sort, self.sort_by_name_asc)
         return sort_func(filtered)
 
-    def group_by_organization(self, items):
-        """Группировка элементов по организациям"""
-        groups = {}
+    def group_hierarchically(self, items):
+        """
+        Группировка элементов по иерархии:
+        Организация → Тип подразделения → Отделы
+        """
+        hierarchy = {}
 
         for item in items:
             org_name = item.get("organization_name", "Без организации")
-            if org_name not in groups:
-                groups[org_name] = []
-            groups[org_name].append(item)
+            type_display = item.get("type_display", "Другие")
 
-        return groups
+            if org_name not in hierarchy:
+                hierarchy[org_name] = {}
+
+            if type_display not in hierarchy[org_name]:
+                hierarchy[org_name][type_display] = []
+
+            hierarchy[org_name][type_display].append(item)
+
+        return hierarchy
 
     def update_display(self):
         """Обновление отображения элементов"""
@@ -263,43 +272,103 @@ class DepartmentPage(QWidget):
 
         # Получаем отфильтрованные и отсортированные элементы
         self.filtered_items = self.filter_and_sort_items()
-        groups = self.group_by_organization(self.filtered_items)
 
-        # Сортируем организации: сначала заполненные, потом пустые, МАЗ первый
+        if not self.filtered_items:
+            # Показываем сообщение о пустом результате
+            empty_label = QLabel("Нет данных для отображения")
+            empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_label.setStyleSheet("color: #999; font-size: 16px; padding: 40px;")
+            self.scrollAreaLayout.addWidget(empty_label)
+            self.scrollAreaLayout.addStretch()
+            return
+
+        hierarchy = self.group_hierarchically(self.filtered_items)
+
+        # Сортируем организации: сначала ОАО МАЗ, потом остальные по алфавиту
         org_order = sorted(
-            [org for org in groups.keys() if groups[org]],  # Только непустые группы
+            hierarchy.keys(),
             key=lambda x: (x != "ОАО МАЗ", x)
         )
 
-        for i, org_name in enumerate(org_order):
-            items = groups[org_name]
-            if not items:
-                continue
-
-            # Первая группа развернута
-            is_expanded = (i == 0)
-            group = CollapsibleGroup(org_name, is_expanded)
-
-            for item in items:
-                card_data = {
-                    "name": item["name"],
-                    "code": str(item["id"]),
-                    "leader": "Не назначен",
-                    "phone": f"{item['id']}00",
-                    "description": f"{item['name']} организации {org_name}"
+        group_counter = 0
+        for org_name in org_order:
+            # Группа организации
+            is_org_expanded = (group_counter == 0)
+            org_group = CollapsibleGroup(org_name, is_org_expanded)
+            org_group.setStyleSheet("""
+                QGroupBox {
+                    font-size: 16px;
+                    font-weight: bold;
+                    border: 2px solid #D22730;
+                    border-radius: 8px;
+                    margin-top: 10px;
+                    padding-top: 10px;
+                    background-color: #fafafa;
                 }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 15px;
+                    padding: 0 10px 0 10px;
+                    color: #D22730;
+                }
+            """)
 
-                item_card = DepartmentCard(card_data)
-                item_card.edit_clicked.connect(self.on_edit_department)
-                item_card.delete_clicked.connect(self.on_delete_department)
+            # Типы подразделений внутри организации
+            types = hierarchy[org_name]
+            type_counter = 0
+            for type_name, items in types.items():
+                # Группа типа подразделения
+                is_type_expanded = (type_counter == 0)
+                type_group = CollapsibleGroup(type_name, is_type_expanded)
+                type_group.setStyleSheet("""
+                    QGroupBox {
+                        font-size: 14px;
+                        font-weight: bold;
+                        border: 1px solid #cccccc;
+                        border-radius: 6px;
+                        margin-top: 8px;
+                        padding-top: 8px;
+                        background-color: #f5f5f5;
+                    }
+                    QGroupBox::title {
+                        subcontrol-origin: margin;
+                        left: 15px;
+                        padding: 0 8px 0 8px;
+                        color: #333333;
+                    }
+                """)
 
-                group.add_widget(item_card)
+                # Карточки отделов
+                for item in items:
+                    # Получаем информацию о руководителе
+                    leader_name = self._get_department_leader(item["id"])
 
-            self.scrollAreaLayout.addWidget(group)
+                    card_data = {
+                        "name": item["name"],
+                        "code": str(item["id"]),
+                        "leader": leader_name or "Не назначен",
+                        "phone": f"{item['id']}00",
+                        "description": f"{item['name']} ({item.get('parent_name', '')})"
+                    }
 
-            # Если группа развернута, обновляем её высоту после добавления
-            if is_expanded:
-                QTimer.singleShot(50, group._delayed_height_update)
+                    item_card = DepartmentCard(card_data)
+                    item_card.edit_clicked.connect(self.on_edit_department)
+                    item_card.delete_clicked.connect(self.on_delete_department)
+
+                    type_group.add_widget(item_card)
+
+                org_group.add_widget(type_group)
+                type_counter += 1
+
+                # Обновляем высоту после добавления
+                QTimer.singleShot(50, type_group._delayed_height_update)
+
+            self.scrollAreaLayout.addWidget(org_group)
+            group_counter += 1
+
+            # Обновляем высоту организации после добавления всех типов
+            if is_org_expanded:
+                QTimer.singleShot(100, org_group._delayed_height_update)
 
         # Добавляем растяжку в конце
         self.scrollAreaLayout.addStretch()
@@ -307,6 +376,12 @@ class DepartmentPage(QWidget):
         # Сбрасываем скролл в начало
         self.scrollArea.verticalScrollBar().setValue(0)
         self.scrollArea.update()
+
+    def _get_department_leader(self, department_id):
+        """Получает ФИО руководителя отдела (заглушка)"""
+        # TODO: Реализовать получение из базы данных
+        # Пока возвращаем None
+        return None
 
     def position_floating_button(self):
         """Позиционирование плавающей кнопки в правом нижнем углу"""
@@ -333,7 +408,7 @@ class DepartmentPage(QWidget):
         QMessageBox.information(
             self,
             "Добавление",
-            f"Добавление нового элемента в «{self.tab_name}»\n\nЭта функция в разработке."
+            f"Добавление нового отдела\n\nЭта функция в разработке."
         )
 
     def on_edit_department(self, data):
@@ -343,46 +418,3 @@ class DepartmentPage(QWidget):
     def on_delete_department(self, item_id):
         """Обработчик удаления"""
         print(f"Удаление ID: {item_id}")
-
-
-# Для тестирования
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-
-    # Тестовые данные
-    test_structure = [
-        {
-            "id": 1,
-            "name": "ОАО МАЗ",
-            "children": [
-                {"id": 2, "name": "Дирекция", "children": []},
-                {
-                    "id": 3,
-                    "name": "Техническая дирекция",
-                    "children": [
-                        {"id": 4, "name": "Конструкторский отдел", "children": []},
-                        {"id": 5, "name": "Технологический отдел", "children": []},
-                    ]
-                },
-            ]
-        }
-    ]
-
-    window = QWidget()
-    window.setWindowTitle("Тест - Структурные единицы")
-    window.setGeometry(100, 100, 1000, 700)
-
-    # type_key="departments" покажет все отделы
-    dept_page = DepartmentPage(
-        tab_name="Отделы",
-        structure_data=test_structure,
-        type_key="departments"
-    )
-
-    layout = QVBoxLayout(window)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.addWidget(dept_page)
-
-    window.show()
-    sys.exit(app.exec())

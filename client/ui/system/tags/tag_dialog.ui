@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>580</width>
-    <height>365</height>
+    <height>333</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>0</width>
-    <height>365</height>
+    <height>333</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -30,7 +30,75 @@
 QDialog {
     background-color: #f8f9fa;
 }
-</string>
+QScrollBar::vertical {
+    background: #F5F5F5;
+    width: 8px;
+    border-radius: 4px;
+    margin: 0px;
+    border: none;
+}
+
+QScrollBar::handle:vertical {
+    background: #C1C1C1;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #A0A0A0;
+}
+
+QScrollBar::handle:vertical:pressed {
+    background: #888888;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #F5F5F5;
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #C1C1C1;
+    border-radius: 4px;
+    min-width: 20px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #A0A0A0;
+}
+
+QScrollBar::handle:horizontal:pressed {
+    background: #888888;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: none;
+}</string>
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
    <property name="spacing">
@@ -100,7 +168,7 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
         <x>0</x>
         <y>0</y>
         <width>540</width>
-        <height>213</height>
+        <height>181</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="scrollLayout">
@@ -157,13 +225,19 @@ QGroupBox::title {
           <property name="spacing">
            <number>10</number>
           </property>
-          <item row="0" column="1">
-           <widget class="QLineEdit" name="lineEditName">
-            <property name="styleSheet">
-             <string>border: 1px solid #dee2e6; border-radius: 6px; padding: 8px; background-color: white; color: #1B232A;</string>
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelName">
+            <property name="minimumSize">
+             <size>
+              <width>120</width>
+              <height>0</height>
+             </size>
             </property>
-            <property name="placeholderText">
-             <string>Введите название хэштега (без #)</string>
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Название хэштега *:</string>
             </property>
            </widget>
           </item>
@@ -177,8 +251,64 @@ QGroupBox::title {
             </property>
            </widget>
           </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="lineEditName">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string>border: 1px solid #dee2e6; border-radius: 6px; padding: 8px; background-color: white; color: #1B232A;</string>
+            </property>
+            <property name="placeholderText">
+             <string>Введите название хэштега (без #)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelColor">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string>color: #1B232A; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Цвет хэштега *:</string>
+            </property>
+           </widget>
+          </item>
           <item row="2" column="1">
            <widget class="QComboBox" name="comboBoxPriority">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
             <property name="toolTip">
              <string>Выберите приоритет хэштега</string>
             </property>
@@ -260,36 +390,13 @@ QComboBox QAbstractItemView::item:focus {
             </item>
            </widget>
           </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="labelColor">
-            <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
-            </property>
-            <property name="text">
-             <string>Цвет хэштега *:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="labelName">
-            <property name="minimumSize">
-             <size>
-              <width>120</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
-            </property>
-            <property name="text">
-             <string>Название хэштега *:</string>
-            </property>
-           </widget>
-          </item>
           <item row="1" column="1">
            <layout class="QHBoxLayout" name="colorSelectionLayout">
             <property name="spacing">
              <number>8</number>
+            </property>
+            <property name="sizeConstraint">
+             <enum>QLayout::SizeConstraint::SetFixedSize</enum>
             </property>
             <item>
              <widget class="QFrame" name="colorIndicator">
@@ -333,6 +440,18 @@ QFrame:hover {
             </item>
             <item>
              <widget class="QComboBox" name="comboBoxColor">
+              <property name="minimumSize">
+               <size>
+                <width>200</width>
+                <height>32</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>32</height>
+               </size>
+              </property>
               <property name="styleSheet">
                <string notr="true">QComboBox {
     border: 1px solid #dee2e6;
