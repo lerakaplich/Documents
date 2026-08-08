@@ -5,7 +5,24 @@ from PyQt6.QtWidgets import (
     QWidget, QPushButton, QVBoxLayout, QApplication,
     QSpacerItem, QSizePolicy, QScrollArea
 )
+from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal, QSize
+from PyQt6.uic import loadUi
+
+from client.core.data.document_data import DocumentDataConfig
+from client.windows.left_panel.direction_group import DirectionGroup
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+import os
+import sys
+from typing import List, Dict, Any
+from PyQt6.QtWidgets import (
+    QWidget, QPushButton, QVBoxLayout, QApplication,
+    QSpacerItem, QSizePolicy, QScrollArea
+)
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal
+from PyQt6.QtGui import QIcon
 from PyQt6.uic import loadUi
 
 from client.core.data.document_data import DocumentDataConfig
@@ -23,6 +40,7 @@ class LeftPanel(QWidget):
     profile_clicked = pyqtSignal()
     all_documents_clicked = pyqtSignal()
     system_clicked = pyqtSignal()
+    logout_clicked = pyqtSignal()  # Новый сигнал для выхода
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -41,6 +59,9 @@ class LeftPanel(QWidget):
             loadUi(ui_path, self)
 
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
+        # Настройка иконки для кнопки выхода
+        self.setup_logout_button()
 
         # Скрываем старые виджеты
         for widget_name in ['externalWidget', 'internalWidget']:
@@ -62,6 +83,16 @@ class LeftPanel(QWidget):
 
         # Загружаем данные из DocumentDataConfig
         self.load_from_data()
+
+    def setup_logout_button(self):
+        """Настраивает иконку для кнопки выхода"""
+        if hasattr(self, 'logoutBtn'):
+            # Загружаем иконку из файла
+            icon_path = os.path.join(ROOT_DIR, "icons", "logout.svg")
+            if os.path.exists(icon_path):
+                icon = QIcon(icon_path)
+                self.logoutBtn.setIcon(icon)
+                self.logoutBtn.setIconSize(icon.availableSizes()[0] if icon.availableSizes() else QSize(20, 20))
 
     def create_fallback_ui(self):
         """Создает UI с разделением на верхнюю и нижнюю части"""
@@ -112,6 +143,17 @@ class LeftPanel(QWidget):
         self.systemBtn.setStyleSheet(self._get_button_style())
         self.systemBtn.setCursor(Qt.CursorShape.PointingHandCursor)
         bottom_layout.addWidget(self.systemBtn)
+
+        # Кнопка выхода
+        self.logoutBtn = QPushButton("Выйти")
+        self.logoutBtn.setStyleSheet(self._get_button_style())
+        self.logoutBtn.setCursor(Qt.CursorShape.PointingHandCursor)
+        # Загружаем иконку
+        icon_path = os.path.join(ROOT_DIR, "icons", "logout.svg")
+        if os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+            self.logoutBtn.setIcon(icon)
+        bottom_layout.addWidget(self.logoutBtn)
 
         self.hidePanelBtn = QPushButton("◀ Скрыть панель")
         self.hidePanelBtn.setStyleSheet(self._get_collapse_button_style())
@@ -171,6 +213,26 @@ class LeftPanel(QWidget):
                 }
             """
 
+    def _get_compact_logout_style(self):
+        """Стиль для кнопки выхода в свернутом состоянии"""
+        return """
+                QPushButton {
+                    background-color: transparent;
+                    color: #DDB87A;
+                    border: none;
+                    border-radius: 5px;
+                    padding: 10px;
+                    text-align: center;
+                    min-height: 42px;
+                }
+                QPushButton:hover {
+                    background-color: #3A4A54;
+                }
+                QPushButton QIcon {
+                    padding: 8px;
+                }
+            """
+
     def setup_buttons(self):
         if hasattr(self, 'profileBtn'):
             self.profileBtn.clicked.connect(self.on_profile_clicked)
@@ -178,6 +240,8 @@ class LeftPanel(QWidget):
             self.allDocsBtn.clicked.connect(self.on_all_documents_clicked)
         if hasattr(self, 'systemBtn'):
             self.systemBtn.clicked.connect(self.on_system_clicked)
+        if hasattr(self, 'logoutBtn'):
+            self.logoutBtn.clicked.connect(self.on_logout_clicked)
         if hasattr(self, 'hidePanelBtn'):
             self.hidePanelBtn.clicked.connect(self.toggle_panel)
 
@@ -214,6 +278,87 @@ class LeftPanel(QWidget):
 
         except Exception as e:
             print(f"LeftPanel: ошибка при создании контейнера групп - {e}")
+
+    # ... (остальные методы без изменений) ...
+
+    def toggle_buttons_visibility(self, visible: bool):
+        """Только скрываем/показываем контент, не трогаем структуру layout"""
+        # Верхние кнопки
+        if hasattr(self, 'profileBtn'):
+            self.profileBtn.setText("👤 Мой профиль" if visible else "👤")
+            self.profileBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+
+        if hasattr(self, 'allDocsBtn'):
+            self.allDocsBtn.setText("📄 Все документы" if visible else "📄")
+            self.allDocsBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+
+        # Нижние кнопки
+        if hasattr(self, 'systemBtn'):
+            self.systemBtn.setText("⚙️ Система" if visible else "⚙️")
+            self.systemBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+
+        # Кнопка выхода - в свернутом состоянии показываем только иконку
+        if hasattr(self, 'logoutBtn'):
+            if visible:
+                self.logoutBtn.setText("Выйти")
+                self.logoutBtn.setStyleSheet(self._get_button_style())
+                self.logoutBtn.setIconSize(QSize(20, 20))
+            else:
+                self.logoutBtn.setText("")
+                self.logoutBtn.setStyleSheet(self._get_compact_logout_style())
+                self.logoutBtn.setIconSize(QSize(32, 32))  # Увеличиваем иконку в свернутом состоянии
+
+        if hasattr(self, 'hidePanelBtn'):
+            self.hidePanelBtn.setText("◀ Скрыть панель" if visible else "▶")
+            if visible:
+                self.hidePanelBtn.setStyleSheet(self._get_collapse_button_style())
+            else:
+                self.hidePanelBtn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #DDB87A;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 20px;
+                text-align: center;
+                min-height: 42px;
+            }
+            QPushButton:hover {
+                background-color: #3A4A54;
+            }
+        """)
+
+        # Главное — скрываем только содержимое групп
+        if hasattr(self, 'scrollArea'):
+            self.scrollArea.setVisible(visible)
+
+        self.updateGeometry()
+        if self.parent():
+            self.parent().updateGeometry()
+
+    # ========== ОБРАБОТЧИКИ КНОПОК ==========
+
+    def on_profile_clicked(self):
+        """Обработчик клика по кнопке профиля"""
+        print("Нажата кнопка профиля")
+        self.profile_clicked.emit()
+
+    def on_all_documents_clicked(self):
+        """Обработчик клика по кнопке всех документов"""
+        print("Нажата кнопка всех документов")
+        self.all_documents_clicked.emit()
+
+    def on_system_clicked(self):
+        """Обработчик клика по кнопке системы"""
+        print("Нажата кнопка системы")
+        self.system_clicked.emit()
+
+    def on_logout_clicked(self):
+        """Обработчик клика по кнопке выхода"""
+        print("Нажата кнопка выхода из аккаунта")
+        self.logout_clicked.emit()
+
 
     def add_group(self, group_name: str) -> DirectionGroup:
         """Добавляет новую группу направлений"""
@@ -315,67 +460,7 @@ class LeftPanel(QWidget):
         if self.parent():
             self.parent().update()
 
-    def toggle_buttons_visibility(self, visible: bool):
-        """Только скрываем/показываем контент, не трогаем структуру layout"""
-        # Верхние кнопки
-        if hasattr(self, 'profileBtn'):
-            self.profileBtn.setText("👤 Мой профиль" if visible else "👤")
-            self.profileBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
 
-        if hasattr(self, 'allDocsBtn'):
-            self.allDocsBtn.setText("📄 Все документы" if visible else "📄")
-            self.allDocsBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
-
-        # Нижние кнопки
-        if hasattr(self, 'systemBtn'):
-            self.systemBtn.setText("⚙️ Система" if visible else "⚙️")
-            self.systemBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
-
-        if hasattr(self, 'hidePanelBtn'):
-            self.hidePanelBtn.setText("◀ Скрыть панель" if visible else "▶")
-            if visible:
-                self.hidePanelBtn.setStyleSheet(self._get_collapse_button_style())
-            else:
-                self.hidePanelBtn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                color: #DDB87A;
-                border: none;
-                border-radius: 5px;
-                padding: 10px;
-                font-size: 20px;
-                text-align: center;
-                min-height: 42px;
-            }
-            QPushButton:hover {
-                background-color: #3A4A54;
-            }
-        """)
-
-        # Главное — скрываем только содержимое групп
-        if hasattr(self, 'scrollArea'):
-            self.scrollArea.setVisible(visible)
-
-        self.updateGeometry()
-        if self.parent():
-            self.parent().updateGeometry()
-
-    # ========== ОБРАБОТЧИКИ КНОПОК ==========
-
-    def on_profile_clicked(self):
-        """Обработчик клика по кнопке профиля"""
-        print("Нажата кнопка профиля")
-        self.profile_clicked.emit()
-
-    def on_all_documents_clicked(self):
-        """Обработчик клика по кнопке всех документов"""
-        print("Нажата кнопка всех документов")
-        self.all_documents_clicked.emit()
-
-    def on_system_clicked(self):
-        """Обработчик клика по кнопке системы"""
-        print("Нажата кнопка системы")
-        self.system_clicked.emit()
 
     def on_direction_clicked(self, direction_name: str, group_name: str, type_id: int = None):
         """Обработчик клика по направлению (типу документа)"""
