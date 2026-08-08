@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PeriodDialog</class>
+ <widget class="QDialog" name="PeriodDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>403</width>
+    <height>312</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Выбор периода</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QDialog {
+    background-color: #f8f9fa;
+}
+
+QLabel {
+    color: #1B232A;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+QDateEdit {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px;
+    padding-right: 30px;
+    background-color: white;
+    color: #1B232A;
+    font-size: 13px;
+}
+
+QDateEdit:hover {
+    border-color: #ccab6e;
+}
+
+QDateEdit:focus {
+    border: 2px solid #ccab6e;
+}
+
+QDateEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+}
+
+QDateEdit::down-arrow {
+    image: url(D:/Documents/client/icons/calendar_date.png);
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+}
+
+QDateEdit QCalendarWidget {
+    background-color: white;
+    border-radius: 8px;
+    padding: 5px;
+}
+
+QDateEdit QCalendarWidget QTableView {
+    border: none;
+    background-color: white;
+}
+
+QDateEdit QCalendarWidget QHeaderView::section {
+    background-color: #f8f9fa;
+    color: #1B232A;
+    font-weight: bold;
+    padding: 4px;
+    border: none;
+}
+
+QDateEdit QCalendarWidget QTableView::item {
+    padding: 4px;
+    border-radius: 4px;
+}
+
+QDateEdit QCalendarWidget QTableView::item:selected {
+    background-color: #ccab6e;
+    color: white;
+}
+
+QDateEdit QCalendarWidget QTableView::item:hover {
+    background-color: #e3f2fd;
+}
+
+/* Стили для кнопок быстрого выбора (будут переопределены в коде) */
+QPushButton#todayButton,
+QPushButton#weekButton,
+QPushButton#monthButton,
+QPushButton#quarterButton {
+    background-color: transparent;
+    color: #1B232A;
+    font-weight: bold;
+    font-size: 12px;
+    border: none;
+    padding: 4px 8px;
+}
+
+QPushButton#todayButton:hover,
+QPushButton#weekButton:hover,
+QPushButton#monthButton:hover,
+QPushButton#quarterButton:hover {
+    color: #ccab6e;
+}
+
+/* Активный стиль будет применяться через код */
+/* .active {
+    color: #ccab6e;
+    text-decoration: underline;
+} */
+
+QPushButton#applyButton {
+    background-color: #ccab6e;
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    border: none;
+    padding: 0 20px;
+}
+
+QPushButton#applyButton:hover {
+    background-color: #b8945a;
+}
+
+QPushButton#applyButton:pressed {
+    background-color: #a07d4a;
+}
+
+QHBoxLayout, QVBoxLayout {
+    spacing: 10px;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="titleLabel">
+     <property name="styleSheet">
+      <string>font-size: 20px; font-weight: bold; color: #1B232A; margin-bottom: 5px;</string>
+     </property>
+     <property name="text">
+      <string>Выбор периода</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="periodGroup">
+     <property name="styleSheet">
+      <string>QGroupBox {
+    font-weight: bold;
+    font-size: 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    background-color: white;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+    color: #1B232A;
+}</string>
+     </property>
+     <property name="title">
+      <string>Период</string>
+     </property>
+     <layout class="QVBoxLayout" name="periodLayout">
+      <property name="spacing">
+       <number>12</number>
+      </property>
+      <property name="leftMargin">
+       <number>15</number>
+      </property>
+      <property name="topMargin">
+       <number>15</number>
+      </property>
+      <property name="rightMargin">
+       <number>15</number>
+      </property>
+      <property name="bottomMargin">
+       <number>15</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="startDateLayout">
+        <property name="spacing">
+         <number>10</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="startLabel">
+          <property name="minimumSize">
+           <size>
+            <width>90</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Начало периода:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QDateEdit" name="startDateEdit">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>32</height>
+           </size>
+          </property>
+          <property name="displayFormat">
+           <string>dd.MM.yyyy</string>
+          </property>
+          <property name="calendarPopup">
+           <bool>true</bool>
+          </property>
+          <property name="date">
+           <date>
+            <year>2026</year>
+            <month>8</month>
+            <day>1</day>
+           </date>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="endDateLayout">
+        <property name="spacing">
+         <number>10</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="endLabel">
+          <property name="minimumSize">
+           <size>
+            <width>90</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Конец периода:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QDateEdit" name="endDateEdit">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>32</height>
+           </size>
+          </property>
+          <property name="displayFormat">
+           <string>dd.MM.yyyy</string>
+          </property>
+          <property name="calendarPopup">
+           <bool>true</bool>
+          </property>
+          <property name="date">
+           <date>
+            <year>2026</year>
+            <month>8</month>
+            <day>7</day>
+           </date>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="quickButtonsLayout">
+        <property name="spacing">
+         <number>10</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="todayButton">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="text">
+           <string>Сегодня</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="weekButton">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="text">
+           <string>Неделя</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="monthButton">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="text">
+           <string>Месяц</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="quarterButton">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="text">
+           <string>Квартал</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="applyButton">
+     <property name="minimumSize">
+      <size>
+       <width>100</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="text">
+      <string>Применить</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

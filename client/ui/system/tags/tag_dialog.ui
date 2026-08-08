@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>580</width>
-    <height>333</height>
+    <height>338</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -98,7 +98,67 @@ QScrollBar::sub-line:horizontal {
 QScrollBar::add-page:horizontal,
 QScrollBar::sub-page:horizontal {
     background: none;
-}</string>
+}
+
+QComboBox {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px;
+    padding-right: 30px;
+    background-color: white;
+    color: #1B232A;
+    font-size: 13px;
+    outline: none;
+}
+
+QComboBox:hover {
+    border-color: #ccab6e;
+}
+
+QComboBox:focus {
+    border: 2px solid #ccab6e;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+}
+
+QComboBox::down-arrow {
+    image: url(D:/Documents/client/icons/down_arrow_combo.svg);
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+}
+
+QComboBox QAbstractItemView {
+    border-radius: 6px;
+    background-color: white;
+    color: #1B232A;
+    padding: 4px;
+    outline: none;
+    border: 1px solid #ccab6e;
+}
+
+QComboBox QAbstractItemView::item {
+    padding: 8px;
+    color: #1B232A;
+    border: none;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+</string>
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
    <property name="spacing">
@@ -129,35 +189,7 @@ QScrollBar::sub-page:horizontal {
    <item>
     <widget class="QScrollArea" name="scrollArea">
      <property name="styleSheet">
-      <string notr="true">
-QScrollArea {
-    border: none;
-    background-color: transparent;
-}
-QScrollBar:vertical {
-    background: #e8e8e8;
-    width: 10px;
-    border-radius: 5px;
-    margin: 2px;
-}
-QScrollBar::handle:vertical {
-    background: #ccab6e;
-    border-radius: 5px;
-    min-height: 30px;
-}
-QScrollBar::handle:vertical:hover {
-    background: #b8945a;
-}
-QScrollBar::handle:vertical:pressed {
-    background: #a07d4a;
-}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-    height: 0px;
-}
-QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-    background: none;
-}
-</string>
+      <string notr="true"/>
      </property>
      <property name="widgetResizable">
       <bool>true</bool>
@@ -167,8 +199,8 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>540</width>
-        <height>181</height>
+        <width>538</width>
+        <height>184</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="scrollLayout">
@@ -300,7 +332,7 @@ QGroupBox::title {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>0</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -313,62 +345,7 @@ QGroupBox::title {
              <string>Выберите приоритет хэштега</string>
             </property>
             <property name="styleSheet">
-             <string notr="true">QComboBox {
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    padding: 8px;
-    padding-right: 25px;
-    background-color: white;
-    color: #1B232A;
-    font-size: 13px;
-    outline: none;
-}
-
-QComboBox:hover {
-    border-color: #ccab6e;
-}
-
-QComboBox::drop-down {
-    border: none;
-    width: 20px;
-}
-
-QComboBox::down-arrow {
-    image: none;
-    border: none;
-    width: 0px;
-    height: 0px;
-}
-
-QComboBox QAbstractItemView {
-    border-radius: 6px;
-    background-color: white;
-    color: #1B232A;
-    padding: 4px;
-    outline: none;
-}
-
-QComboBox QAbstractItemView::item {
-    padding: 8px;
-    color: #1B232A;
-    border: none;
-    outline: none;
-}
-
-QComboBox QAbstractItemView::item:hover {
-    background-color: #e3f2fd;
-    color: #1B232A;
-}
-
-QComboBox QAbstractItemView::item:selected {
-    background-color: #e3f2fd;
-    color: #1B232A;
-}
-
-QComboBox QAbstractItemView::item:focus {
-    outline: none;
-    border: none;
-}</string>
+             <string notr="true"/>
             </property>
             <property name="currentIndex">
              <number>0</number>
@@ -443,7 +420,7 @@ QFrame:hover {
               <property name="minimumSize">
                <size>
                 <width>200</width>
-                <height>32</height>
+                <height>0</height>
                </size>
               </property>
               <property name="maximumSize">
@@ -453,62 +430,7 @@ QFrame:hover {
                </size>
               </property>
               <property name="styleSheet">
-               <string notr="true">QComboBox {
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    padding: 8px;
-    padding-right: 25px;
-    background-color: white;
-    color: #1B232A;
-    font-size: 13px;
-    outline: none;
-}
-
-QComboBox:hover {
-    border-color: #ccab6e;
-}
-
-QComboBox::drop-down {
-    border: none;
-    width: 20px;
-}
-
-QComboBox::down-arrow {
-    image: none;
-    border: none;
-    width: 0px;
-    height: 0px;
-}
-
-QComboBox QAbstractItemView {
-    border-radius: 6px;
-    background-color: white;
-    color: #1B232A;
-    padding: 4px;
-    outline: none;
-}
-
-QComboBox QAbstractItemView::item {
-    padding: 8px;
-    color: #1B232A;
-    border: none;
-    outline: none;
-}
-
-QComboBox QAbstractItemView::item:hover {
-    background-color: #e3f2fd;
-    color: #1B232A;
-}
-
-QComboBox QAbstractItemView::item:selected {
-    background-color: #e3f2fd;
-    color: #1B232A;
-}
-
-QComboBox QAbstractItemView::item:focus {
-    outline: none;
-    border: none;
-}</string>
+               <string notr="true"/>
               </property>
               <property name="currentIndex">
                <number>0</number>
