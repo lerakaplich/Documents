@@ -306,6 +306,16 @@ QScrollBar::add-line, QScrollBar::sub-line {
     border: none;
     background: none;
 }
+
+/* Стиль для итоговых часов - незаметный курсив */
+QLabel#labelTotalHoursMy, QLabel#labelTotalHoursAll {
+    font-size: 12px;
+    font-style: italic;
+    color: #999999;
+    background-color: transparent;
+    padding: 2px 0;
+    font-weight: normal;
+}
    </string>
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
@@ -701,77 +711,43 @@ QPushButton:pressed {
             </layout>
            </item>
            <item>
-            <widget class="QFrame" name="totalFrame_2">
-             <layout class="QHBoxLayout" name="horizontalLayoutTotal_2">
-              <property name="leftMargin">
-               <number>15</number>
-              </property>
-              <property name="topMargin">
-               <number>10</number>
-              </property>
-              <property name="rightMargin">
-               <number>15</number>
-              </property>
-              <property name="bottomMargin">
-               <number>10</number>
-              </property>
-              <item>
-               <widget class="QLabel" name="totalLabel">
-                <property name="text">
-                 <string>Итого часов переработок:</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="totalHoursValue">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>50</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>0.0</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignmentFlag::AlignCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="totalHoursUnit">
-                <property name="text">
-                 <string>ч.</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="totalRightSpacer">
-                <property name="orientation">
-                 <enum>Qt::Orientation::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
+            <layout class="QHBoxLayout" name="totalHoursLayoutMy">
+             <item>
+              <widget class="QLabel" name="labelTotalHoursMy">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">font-size: 12px; font-style: italic; color: #999999; background-color: transparent; padding: 2px 0; font-weight: normal;</string>
+               </property>
+               <property name="text">
+                <string>Итого часов: 0.0</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="totalHoursSpacerMy">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
            </item>
            <item>
             <widget class="QTableWidget" name="myOvertimeTable">
@@ -953,77 +929,43 @@ QPushButton:pressed {
             </layout>
            </item>
            <item>
-            <widget class="QFrame" name="totalFrame">
-             <layout class="QHBoxLayout" name="horizontalLayoutTotal">
-              <property name="leftMargin">
-               <number>15</number>
-              </property>
-              <property name="topMargin">
-               <number>10</number>
-              </property>
-              <property name="rightMargin">
-               <number>15</number>
-              </property>
-              <property name="bottomMargin">
-               <number>10</number>
-              </property>
-              <item>
-               <widget class="QLabel" name="totalLabelAll">
-                <property name="text">
-                 <string>Итого часов переработок:</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="totalHoursValueAll">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>50</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>0.0</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignmentFlag::AlignCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="totalHoursUnitAll">
-                <property name="text">
-                 <string>ч.</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="totalRightSpacerAll">
-                <property name="orientation">
-                 <enum>Qt::Orientation::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
+            <layout class="QHBoxLayout" name="totalHoursLayoutAll">
+             <item>
+              <widget class="QLabel" name="labelTotalHoursAll">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">font-size: 12px; font-style: italic; color: #999999; background-color: transparent; padding: 2px 0; font-weight: normal;</string>
+               </property>
+               <property name="text">
+                <string>Итого часов: 0.0</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="totalHoursSpacerAll">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
            </item>
            <item>
             <widget class="QTableWidget" name="allOvertimeTable">

@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QWidget, QApplication, QMessageBox, QFormLayout, QLabel,
     QVBoxLayout, QHBoxLayout, QPushButton, QTabWidget, QFrame,
     QTableWidget, QTableWidgetItem, QComboBox, QScrollArea, QGridLayout,
-    QSizePolicy
+    QSizePolicy, QSpacerItem
 )
 from PyQt6.QtCore import Qt
 from PyQt6.uic import loadUi
@@ -16,7 +16,6 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 from client.windows.profile.user_data.email_edit_window import EmailEditWindow
 from client.windows.profile.user_data.phone_edit_window import PhoneEditWindow
 from client.windows.profile.overtime.overtime_card import OvertimeCard
-# Импортируем иерархический фильтр (предполагаем, что он лежит в client.widgets)
 
 
 class ProfileForm(QWidget):
@@ -71,12 +70,25 @@ class ProfileForm(QWidget):
     def _create_card_container(self):
         container = QWidget()
         container.setStyleSheet("background-color: transparent;")
-        grid_layout = QGridLayout(container)
+        # Используем QVBoxLayout с выравниванием по верху
+        main_layout = QVBoxLayout(container)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        # Создаем QGridLayout для карточек
+        grid_layout = QGridLayout()
         grid_layout.setSpacing(15)
         grid_layout.setContentsMargins(10, 10, 10, 10)
         grid_layout.setColumnMinimumWidth(0, 450)
         grid_layout.setColumnMinimumWidth(1, 450)
+
+        # Добавляем растяжку внизу, чтобы карточки прижимались к верху
+        main_layout.addLayout(grid_layout)
+        main_layout.addStretch()
+
         container.grid_layout = grid_layout
+        container.main_layout = main_layout
         container.cards = []
         return container
 
@@ -123,8 +135,6 @@ class ProfileForm(QWidget):
         if not layout:
             print("Layout not found, cannot add filter")
             return
-
-        # ... остальной код
 
         # Ищем comboDepartment и заменяем его
         for i in range(layout.count()):
@@ -199,14 +209,44 @@ class ProfileForm(QWidget):
             }
         ]
 
+        # Данные для "Моих переработок" (только Иванов)
+        my_data = [
+            {
+                'employee_name': 'Иванов Иван',
+                'department_id': 1,
+                'created_at': '10.05.2026',
+                'description': 'Дедлайн проекта',
+                'date': '15.05.2026',
+                'start_time': '18:00',
+                'end_time': '20:30',
+                'duration': 2.5
+            },
+            {
+                'employee_name': 'Иванов Иван',
+                'department_id': 5,
+                'created_at': '18.05.2026',
+                'description': 'Релиз версии',
+                'date': '22.05.2026',
+                'start_time': '17:00',
+                'end_time': '20:00',
+                'duration': 3.0
+            }
+        ]
+
         if filter_department_id is not None:
             # Собираем все ID поддерева (включая дочерние)
             all_ids = self._get_all_child_ids(filter_department_id)
-            filtered = [item for item in all_data if item.get('department_id') in all_ids]
+            filtered_all = [item for item in all_data if item.get('department_id') in all_ids]
+            # Для "Моих" тоже применяем фильтр (если нужно)
+            filtered_my = [item for item in my_data if item.get('department_id') in all_ids]
         else:
-            filtered = all_data
+            filtered_all = all_data
+            filtered_my = my_data
 
-        self._populate_card_container(self.allOvertimeContainer, filtered)
+        self._populate_card_container(self.allOvertimeContainer, filtered_all)
+        self._populate_card_container(self.myOvertimeContainer, filtered_my)
+        self._update_total_hours(self.labelTotalHoursAll, filtered_all)
+        self._update_total_hours(self.labelTotalHoursMy, filtered_my)
 
     def _get_all_child_ids(self, dept_id):
         """Рекурсивно собирает все идентификаторы подразделений в поддереве"""
@@ -215,6 +255,12 @@ class ProfileForm(QWidget):
         for child in children:
             ids.extend(self._get_all_child_ids(child["id"]))
         return ids
+
+    def _update_total_hours(self, label, data_list):
+        """Обновляет надпись с итоговым количеством часов"""
+        total = sum(item.get('duration', 0) for item in data_list)
+        if label:
+            label.setText(f"Итого часов: {total:.1f}")
 
     # ---------- ОСТАЛЬНЫЕ МЕТОДЫ (БЕЗ ИЗМЕНЕНИЙ) ----------
     def load_test_overtime_data(self):
@@ -289,11 +335,13 @@ class ProfileForm(QWidget):
         ]
 
         self._populate_card_container(self.myOvertimeContainer, my_data)
-        # Для all используем новый метод, но пока загружаем все данные
         self._populate_card_container(self.allOvertimeContainer, all_data)
+        self._update_total_hours(self.labelTotalHoursAll, all_data)
+        self._update_total_hours(self.labelTotalHoursMy, my_data)
 
     def _populate_card_container(self, container, data_list):
         grid_layout = container.grid_layout
+        # Очищаем grid_layout
         while grid_layout.count():
             item = grid_layout.takeAt(0)
             if item.widget():
@@ -310,13 +358,19 @@ class ProfileForm(QWidget):
 
             row = i // 2
             col = i % 2
-            grid_layout.addWidget(card, row, col)
-            container.cards.append(card)
+            grid_layout.addWidget(card, row, col, alignment=Qt.AlignmentFlag.AlignTop)
 
-        if len(data_list) > 0 and len(data_list) % 2 != 0:
-            spacer = QWidget()
-            spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-            grid_layout.addWidget(spacer, len(data_list) // 2, 1)
+        # Убираем старый spacer, если был
+        if hasattr(container, 'spacer'):
+            old_spacer = container.spacer
+            if old_spacer:
+                container.main_layout.removeItem(old_spacer)
+                del old_spacer
+
+        # Добавляем растяжку в конце, чтобы карточки были сверху
+        spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        container.main_layout.addItem(spacer)
+        container.spacer = spacer
 
     def on_overtime_edit(self, overtime_id):
         QMessageBox.information(self, "Редактирование", f"Редактирование записи #{overtime_id}")
@@ -591,10 +645,6 @@ class ProfileForm(QWidget):
 
     def on_export_clicked(self):
         QMessageBox.information(self, "Экспорт", "Экспорт данных в Excel/PDF")
-
-    # Удаляем старый обработчик on_department_filter_changed, он больше не нужен
-    # def on_department_filter_changed(self, department: str):
-    #     pass
 
 
 if __name__ == "__main__":
