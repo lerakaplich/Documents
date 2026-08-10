@@ -1,0 +1,707 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>OvertimeDialog</class>
+ <widget class="QWidget" name="OvertimeDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>468</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>400</width>
+    <height>0</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>400</width>
+    <height>16777215</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Оформление переработки</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+QWidget {
+    background-color: #FFFFFF;
+}
+QLabel {
+    color: #1B232A;
+}
+QLabel[bold=&quot;true&quot;] {
+    font-weight: bold;
+    color: #1B232A;
+}
+QComboBox, QTextEdit, QDateEdit, QTimeEdit, QTextBrowser {
+    border-radius: 10px;
+    border: 1px solid #CCAB6E;
+    padding: 5px;
+    background-color: white;
+    color: #1B232A;
+}
+QComboBox:hover, QTextEdit:hover, QDateEdit:hover, QTimeEdit:hover, QTextBrowser:hover {
+    border: 1px solid #998664;
+}
+QComboBox:focus, QTextEdit:focus, QDateEdit:focus, QTimeEdit:focus, QTextBrowser:focus {
+    border: 2px solid #CCAB6E;
+}
+
+/* Стили для выпадающего контейнера QComboBox */
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+}
+
+/* Настройки зоны drop-down для QDateEdit и QTimeEdit */
+QDateEdit::drop-down, QTimeEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+}
+
+/* Иконка календаря вместо стрелочки для QDateEdit */
+QDateEdit::down-arrow {
+    image: url(D:/Documents/client/icons/calendar_date.png);
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+}
+
+/* Стрелки для QTimeEdit – вверх и вниз */
+QTimeEdit::up-button, QTimeEdit::down-button {
+    width: 30px;
+    border: none;
+    background: transparent;
+}
+QTimeEdit::up-arrow {
+    image: url(D:/Documents/client/icons/up_arrow.svg);
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+}
+QTimeEdit::down-arrow {
+    image: url(D:/Documents/client/icons/down_arrow.svg);
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+}
+
+QComboBox::down-arrow {
+    image: url(D:/Documents/client/icons/down_arrow.svg);
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+}
+
+/* ===== СТИЛИ ДЛЯ ВЫПАДАЮЩИХ СПИСКОВ QComboBox ===== */
+QComboBox QAbstractItemView {
+    border-radius: 6px;
+    background-color: white;
+    color: #1B232A;
+    padding: 4px;
+    outline: none;
+    border: 1px solid #CCAB6E;
+}
+
+QComboBox QAbstractItemView::item {
+    padding: 8px;
+    color: #1B232A;
+    border: none;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+QComboBox QAbstractItemView::item:focus {
+    outline: none;
+    border: none;
+}
+
+/* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ QCalendarWidget ===== */
+QCalendarWidget {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #CCAB6E;
+}
+
+/* Месяц/год - белый фон, черный текст */
+QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background-color: white;
+    color: #1B232A;
+    border-radius: 8px 8px 0 0;
+}
+
+/* Контейнер навигации */
+QCalendarWidget QWidget {
+    background-color: white;
+    color: #1B232A;
+}
+
+/* Кнопки навигации (стрелки) - черные, без фона */
+QCalendarWidget QToolButton#qt_calendar_prevmonth,
+QCalendarWidget QToolButton#qt_calendar_nextmonth {
+    background-color: transparent;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
+QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
+    background-color: #e3f2fd;
+}
+
+QCalendarWidget QToolButton#qt_calendar_prevmonth:pressed,
+QCalendarWidget QToolButton#qt_calendar_nextmonth:pressed {
+    background-color: #d0d0d0;
+}
+
+/* Кнопка с месяцем (для выбора месяца) */
+QCalendarWidget QToolButton#qt_calendar_monthbutton {
+    background-color: white;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QCalendarWidget QToolButton#qt_calendar_monthbutton:hover {
+    background-color: #e3f2fd;
+}
+
+/* Кнопка с годом (для выбора года) */
+QCalendarWidget QToolButton#qt_calendar_yearbutton {
+    background-color: white;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
+    background-color: #e3f2fd;
+}
+
+/* Меню выбора месяца/года */
+QCalendarWidget QMenu {
+    background-color: white;
+    border: 1px solid #CCAB6E;
+    border-radius: 6px;
+    color: #1B232A;
+}
+
+QCalendarWidget QMenu::item {
+    padding: 6px 20px;
+    border-radius: 4px;
+}
+
+QCalendarWidget QMenu::item:selected {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+/* Дни недели (шапка) - золотой фон, белый текст */
+QCalendarWidget QWidget#qt_calendar_weekday {
+    color: white;
+    font-weight: bold;
+    background-color: #CCAB6E;
+    padding: 4px;
+}
+
+/* Ячейки дней */
+QCalendarWidget QToolButton#qt_calendar_day {
+    border: none;
+    border-radius: 4px;
+    padding: 4px;
+    color: #1B232A;
+    background-color: transparent;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:hover {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+/* Выбранная дата - золотой фон, белый текст */
+QCalendarWidget QToolButton#qt_calendar_day:checked {
+    background-color: #CCAB6E;
+    color: white;
+    border-radius: 4px;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
+    background-color: #998664;
+}
+
+/* Дни других месяцев - серый текст */
+QCalendarWidget QToolButton#qt_calendar_day:disabled {
+    color: #B0B0B0;
+}
+
+/* Сегодняшняя дата - красный фон, белый текст */
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;] {
+    background-color: #D22730;
+    color: white;
+    border-radius: 4px;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:hover {
+    background-color: #862633;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:pressed {
+    background-color: #6a1e29;
+}
+
+/* Если сегодняшняя дата выбрана - приоритет у выбранной */
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked {
+    background-color: #CCAB6E;
+    color: white;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked:hover {
+    background-color: #998664;
+}
+
+/* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ В QDateEdit (попап) ===== */
+QDateEdit QCalendarWidget {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #CCAB6E;
+}
+
+/* Навигационная панель в попапе */
+QDateEdit QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background-color: white;
+    color: #1B232A;
+    border-radius: 8px 8px 0 0;
+}
+
+QDateEdit QCalendarWidget QWidget {
+    background-color: white;
+    color: #1B232A;
+}
+
+/* Стрелки навигации в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth {
+    background-color: transparent;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
+    background-color: #e3f2fd;
+}
+
+/* Кнопка месяца в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton {
+    background-color: white;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton:hover {
+    background-color: #e3f2fd;
+}
+
+/* Кнопка года в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton {
+    background-color: white;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
+    background-color: #e3f2fd;
+}
+
+/* Дни недели в попапе - золотой фон, белый текст */
+QDateEdit QCalendarWidget QWidget#qt_calendar_weekday {
+    color: white;
+    font-weight: bold;
+    background-color: #CCAB6E;
+    padding: 4px;
+}
+
+/* Ячейки дней в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day {
+    border: none;
+    border-radius: 4px;
+    padding: 4px;
+    color: #1B232A;
+    background-color: transparent;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:hover {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+/* Выбранная дата в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked {
+    background-color: #CCAB6E;
+    color: white;
+    border-radius: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
+    background-color: #998664;
+}
+
+/* Дни других месяцев в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:disabled {
+    color: #B0B0B0;
+}
+
+/* Сегодняшняя дата в попапе - красный фон, белый текст */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;] {
+    background-color: #D22730;
+    color: white;
+    border-radius: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:hover {
+    background-color: #862633;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:pressed {
+    background-color: #6a1e29;
+}
+
+/* Если сегодняшняя дата выбрана в попапе - приоритет у выбранной */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked {
+    background-color: #CCAB6E;
+    color: white;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked:hover {
+    background-color: #998664;
+}
+
+/* ===== СТИЛИ ДЛЯ КНОПОК ===== */
+QPushButton {
+    border-radius: 10px;
+    background-color: #CCAB6E;
+    color: white;
+    border: none;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 8px;
+}
+QPushButton:hover {
+    background-color: #998664;
+}
+QPushButton:pressed {
+    background-color: #7A6A50;
+}
+QPushButton#btnCancel {
+    background-color: #e0e0e0;
+    color: #1B232A;
+}
+QPushButton#btnCancel:hover {
+    background-color: #d0d0d0;
+}
+QPushButton#btnCancel:pressed {
+    background-color: #b0b0b0;
+}
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>12</number>
+   </property>
+   <property name="leftMargin">
+    <number>12</number>
+   </property>
+   <property name="topMargin">
+    <number>12</number>
+   </property>
+   <property name="rightMargin">
+    <number>12</number>
+   </property>
+   <property name="bottomMargin">
+    <number>12</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="labelTitle">
+     <property name="font">
+      <font>
+       <pointsize>14</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #1B232A; font-weight: bold;</string>
+     </property>
+     <property name="text">
+      <string>Добавление переработки</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelEmployee">
+     <property name="styleSheet">
+      <string notr="true">color: #1B232A;</string>
+     </property>
+     <property name="text">
+      <string>Сотрудник</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="comboEmployee">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="editable">
+      <bool>true</bool>
+     </property>
+     <property name="placeholderText">
+      <string>Введите или выберите сотрудника</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelDate">
+     <property name="styleSheet">
+      <string notr="true">color: #1B232A;</string>
+     </property>
+     <property name="text">
+      <string>Дата переработки</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDateEdit" name="dateEdit">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="calendarPopup">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelTime">
+     <property name="styleSheet">
+      <string notr="true">color: #1B232A;</string>
+     </property>
+     <property name="text">
+      <string>Период времени</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayoutTime">
+     <item>
+      <widget class="QTimeEdit" name="timeStart">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="displayFormat">
+        <string>HH:mm</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="labelTimeSeparator">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>20</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>–</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QTimeEdit" name="timeEnd">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="displayFormat">
+        <string>HH:mm</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelDescription">
+     <property name="styleSheet">
+      <string notr="true">color: #1B232A;</string>
+     </property>
+     <property name="text">
+      <string>Описание переработки</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTextEdit" name="descriptionEdit">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>80</height>
+      </size>
+     </property>
+     <property name="placeholderText">
+      <string>Введите описание переработки...</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="QPushButton" name="btnSave">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>44</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>44</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>Сохранить</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

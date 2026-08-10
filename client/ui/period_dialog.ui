@@ -162,6 +162,9 @@ background-color: transparent;</string>
      <property name="text">
       <string>Выбор периода</string>
      </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
     </widget>
    </item>
    <item>

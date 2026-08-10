@@ -268,11 +268,7 @@ QLabel#titleLabel {
     padding: 3px 0;
 }
 
-QLabel {
-    font-size: 13px;
-    font-weight: normal;
-    color: #333;
-}
+
 
 /* Скроллбары */
 QScrollArea {

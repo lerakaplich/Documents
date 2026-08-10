@@ -1,10 +1,11 @@
-from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtWidgets import QMessageBox, QDialog
 from PyQt6.QtCore import Qt, QDate
 
 from client.core.filtering.hierarchical_department_filter import HierarchicalDepartmentFilter
 from client.windows.period_dialog import PeriodDialog
 from client.windows.profile.overtime.overtime_data_manager import OvertimeDataManager
 from client.windows.profile.overtime.overtime_card_container import OvertimeCardContainer
+from client.windows.profile.overtime.overtime_dialog import OvertimeDialog
 from client.windows.profile.overtime.overtime_period_manager import OvertimePeriodManager
 
 
@@ -133,18 +134,16 @@ class OvertimePanel:
                 print("allOvertimeContainer не существует, создаем...")
                 self.card_container.setup_card_containers()
 
-            # Получаем и фильтруем данные
             my_data, all_data = self.data_manager.get_test_data()
             my_data, all_data = self.data_manager.filter_data(
                 my_data, all_data, filter_department_id, start_date_str, end_date_str
             )
 
-            # Обновление контейнеров
             if for_my:
                 print(f"Обновление только 'Моих переработок' с {len(my_data)} записями")
                 self.card_container.populate_card_container(
                     self.card_container.myOvertimeContainer, my_data,
-                    self.on_overtime_edit, self.on_overtime_delete
+                    self.on_overtime_edit_my, self.on_overtime_delete
                 )
                 self.card_container.update_total_hours(self.labelTotalHoursMy, my_data)
             else:
@@ -152,11 +151,11 @@ class OvertimePanel:
                 print(f"Обновление 'Моих переработок' с {len(my_data)} записями")
                 self.card_container.populate_card_container(
                     self.card_container.allOvertimeContainer, all_data,
-                    self.on_overtime_edit, self.on_overtime_delete
+                    self.on_overtime_edit_all, self.on_overtime_delete
                 )
                 self.card_container.populate_card_container(
                     self.card_container.myOvertimeContainer, my_data,
-                    self.on_overtime_edit, self.on_overtime_delete
+                    self.on_overtime_edit_my, self.on_overtime_delete
                 )
                 self.card_container.update_total_hours(self.labelTotalHoursAll, all_data)
                 self.card_container.update_total_hours(self.labelTotalHoursMy, my_data)
@@ -165,10 +164,9 @@ class OvertimePanel:
             print(f"Ошибка в load_overtime_data: {e}")
             import traceback
             traceback.print_exc()
-            # Используем уведомление вместо QMessageBox
             if hasattr(self.parent, 'notification_manager'):
                 self.parent.notification_manager.show_notification(
-                    f"❌ Ошибка загрузки данных: {str(e)}",
+                    f"Ошибка загрузки данных: {str(e)}",
                     duration=4000
                 )
 
@@ -249,14 +247,39 @@ class OvertimePanel:
                 duration=2500
             )
 
-    # ---------- Действия с карточками ----------
-    def on_overtime_edit(self, overtime_id):
-        # Используем уведомление вместо QMessageBox
-        if hasattr(self.parent, 'notification_manager'):
-            self.parent.notification_manager.show_notification(
-                f"Редактирование записи #{overtime_id}",
-                duration=3000
+    def on_overtime_edit_my(self, overtime_id):
+        data = self.data_manager.get_overtime_by_id(overtime_id)
+        if not data:
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification("Запись не найдена", duration=3000)
+            return
+        dialog = OvertimeDialog(self.parent, readonly=True)
+        dialog.set_data(data)
+        if dialog.exec() == QDialog.DialogCode.Accepted and dialog.result_data is not None:
+            self.load_overtime_data(
+                filter_department_id=None,
+                start_date_str=self.period_manager.all_period['start'] if self.period_manager.all_period else None,
+                end_date_str=self.period_manager.all_period['end'] if self.period_manager.all_period else None
             )
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification("Описание обновлено", duration=3000)
+
+    def on_overtime_edit_all(self, overtime_id):
+        data = self.data_manager.get_overtime_by_id(overtime_id)
+        if not data:
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification("Запись не найдена", duration=3000)
+            return
+        dialog = OvertimeDialog(self.parent, readonly=False)
+        dialog.set_data(data)
+        if dialog.exec() == QDialog.DialogCode.Accepted and dialog.result_data is not None:
+            self.load_overtime_data(
+                filter_department_id=None,
+                start_date_str=self.period_manager.all_period['start'] if self.period_manager.all_period else None,
+                end_date_str=self.period_manager.all_period['end'] if self.period_manager.all_period else None
+            )
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification("Переработка обновлена", duration=3000)
 
     def on_overtime_delete(self, overtime_id):
         # Используем уведомление вместо QMessageBox
@@ -272,12 +295,21 @@ class OvertimePanel:
         )
 
     def on_add_overtime_all_clicked(self):
-        # Используем уведомление вместо QMessageBox
-        if hasattr(self.parent, 'notification_manager'):
-            self.parent.notification_manager.show_notification(
-                "Открыть форму создания карточки переработки",
-                duration=3000
+        """Открывает диалог создания новой переработки."""
+        dialog = OvertimeDialog(self.parent)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # Пользователь нажал «Сохранить» – обновляем таблицу/карточки
+            self.load_overtime_data(
+                filter_department_id=None,
+                start_date_str=self.period_manager.all_period['start'] if self.period_manager.all_period else None,
+                end_date_str=self.period_manager.all_period['end'] if self.period_manager.all_period else None
             )
+            # (Опционально) показать уведомление об успешном добавлении
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification(
+                    "Переработка успешно добавлена",
+                    duration=3000
+                )
 
     def on_export_clicked(self):
         """Открывает диалог выбора периода для экспорта."""
@@ -298,7 +330,7 @@ class OvertimePanel:
             # Используем уведомление вместо QMessageBox
             if hasattr(self.parent, 'notification_manager'):
                 self.parent.notification_manager.show_notification(
-                    f"❌ Ошибка открытия окна экспорта: {str(e)}",
+                    f"Ошибка открытия окна экспорта: {str(e)}",
                     duration=4000
                 )
 
@@ -321,6 +353,6 @@ class OvertimePanel:
             # Используем уведомление вместо QMessageBox
             if hasattr(self.parent, 'notification_manager'):
                 self.parent.notification_manager.show_notification(
-                    f"❌ Ошибка экспорта: {str(e)}",
+                    f"Ошибка экспорта: {str(e)}",
                     duration=4000
                 )
