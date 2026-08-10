@@ -1,6 +1,7 @@
 from PyQt6.QtCore import QDate
 from PyQt6.QtWidgets import QMessageBox
 
+from client.windows.animations.animated_notification import NotificationManager
 from client.windows.period_dialog import PeriodDialog
 
 
@@ -13,6 +14,13 @@ class OvertimePeriodManager:
         self.all_period = None
         self.my_has_filter = False
         self.all_has_filter = False
+
+        # Получаем менеджер уведомлений из родителя
+        if hasattr(parent, 'notification_manager'):
+            self.notification_manager = parent.notification_manager
+        else:
+            # Если у родителя нет менеджера, создаем свой
+            self.notification_manager = NotificationManager(parent, max_visible=3)
 
     def update_period_button_text(self, button, period_data):
         """Обновляет текст на кнопке выбора периода."""
@@ -82,6 +90,13 @@ class OvertimePeriodManager:
             print(f"Ошибка в show_period_dialog: {e}")
             import traceback
             traceback.print_exc()
+
+            # Показываем уведомление об ошибке
+            self.notification_manager.show_notification(
+                f"Не удалось открыть окно выбора периода: {str(e)}",
+                duration=4000
+            )
+
             QMessageBox.warning(self.parent, "Ошибка", f"Не удалось открыть окно выбора периода\n{str(e)}")
 
     def on_period_selected(self, period_data, is_my=False, load_callback=None):
@@ -90,6 +105,7 @@ class OvertimePeriodManager:
             start_date = period_data['start_date_str']
             end_date = period_data['end_date_str']
             tab_name = "Моих переработок" if is_my else "Всех переработок"
+
             print(f"Выбран период для '{tab_name}': {start_date} - {end_date}")
 
             if is_my:
@@ -99,6 +115,12 @@ class OvertimePeriodManager:
                 self.all_period = {'start': start_date, 'end': end_date}
                 self.all_has_filter = True
 
+            # Показываем уведомление об успешном применении фильтра
+            self.notification_manager.show_notification(
+                f"Фильтр применен: {start_date} - {end_date}",
+                duration=3000
+            )
+
             if load_callback:
                 load_callback(is_my, start_date, end_date)
 
@@ -106,6 +128,13 @@ class OvertimePeriodManager:
             print(f"Ошибка в on_period_selected: {e}")
             import traceback
             traceback.print_exc()
+
+            # Показываем уведомление об ошибке
+            self.notification_manager.show_notification(
+                f"Ошибка применения фильтра: {str(e)}",
+                duration=4000
+            )
+
             QMessageBox.warning(self.parent, "Ошибка", f"Не удалось применить фильтр: {str(e)}")
 
     def reset_period(self, is_my=False, load_callback=None):
@@ -113,9 +142,17 @@ class OvertimePeriodManager:
         if is_my:
             self.my_period = None
             self.my_has_filter = False
+            tab_name = "Моих переработок"
         else:
             self.all_period = None
             self.all_has_filter = False
+            tab_name = "Всех переработок"
+
+        # Показываем уведомление о сбросе фильтра
+        self.notification_manager.show_notification(
+            f"Фильтр для '{tab_name}' сброшен",
+            duration=2500
+        )
 
         if load_callback:
             load_callback(is_my, None, None)

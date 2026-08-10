@@ -156,7 +156,8 @@ QHBoxLayout, QVBoxLayout {
    <item>
     <widget class="QLabel" name="titleLabel">
      <property name="styleSheet">
-      <string>font-size: 20px; font-weight: bold; color: #1B232A; margin-bottom: 5px;</string>
+      <string notr="true">font-size: 20px; font-weight: bold; color: #1B232A; margin-bottom: 5px; 
+background-color: transparent;</string>
      </property>
      <property name="text">
       <string>Выбор периода</string>

@@ -165,7 +165,12 @@ class OvertimePanel:
             print(f"Ошибка в load_overtime_data: {e}")
             import traceback
             traceback.print_exc()
-            QMessageBox.warning(self.parent, "Ошибка", f"Не удалось загрузить данные: {str(e)}")
+            # Используем уведомление вместо QMessageBox
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification(
+                    f"❌ Ошибка загрузки данных: {str(e)}",
+                    duration=4000
+                )
 
     # ---------- Работа с периодами ----------
     def on_select_period_clicked(self):
@@ -222,8 +227,12 @@ class OvertimePanel:
     def reset_my_filters(self):
         """Сбрасывает все фильтры для «Моих переработок»."""
         self.reset_my_period()
-        QMessageBox.information(self.parent, "Фильтры сброшены",
-                                "Фильтры для вкладки 'Мои переработки' сброшены")
+        # Используем уведомление вместо QMessageBox
+        if hasattr(self.parent, 'notification_manager'):
+            self.parent.notification_manager.show_notification(
+                "Фильтры для вкладки 'Мои переработки' сброшены",
+                duration=2500
+            )
 
     def reset_all_filters(self):
         """Сбрасывает все фильтры для «Всех переработок» (отдел + период)."""
@@ -233,15 +242,29 @@ class OvertimePanel:
 
         self.data_manager.current_filter_department_id = None
         self.reset_all_period()
-        QMessageBox.information(self.parent, "Фильтры сброшены",
-                                "Фильтры для вкладки 'Все переработки' сброшены")
+        # Используем уведомление вместо QMessageBox
+        if hasattr(self.parent, 'notification_manager'):
+            self.parent.notification_manager.show_notification(
+                "Фильтры для вкладки 'Все переработки' сброшены",
+                duration=2500
+            )
 
     # ---------- Действия с карточками ----------
     def on_overtime_edit(self, overtime_id):
-        QMessageBox.information(self.parent, "Редактирование", f"Редактирование записи #{overtime_id}")
+        # Используем уведомление вместо QMessageBox
+        if hasattr(self.parent, 'notification_manager'):
+            self.parent.notification_manager.show_notification(
+                f"Редактирование записи #{overtime_id}",
+                duration=3000
+            )
 
     def on_overtime_delete(self, overtime_id):
-        QMessageBox.information(self.parent, "Удаление", f"Запись #{overtime_id} удалена")
+        # Используем уведомление вместо QMessageBox
+        if hasattr(self.parent, 'notification_manager'):
+            self.parent.notification_manager.show_notification(
+                f"Запись #{overtime_id} удалена",
+                duration=3000
+            )
         self.load_overtime_data(
             filter_department_id=None,
             start_date_str=self.period_manager.all_period['start'] if self.period_manager.all_period else None,
@@ -249,7 +272,12 @@ class OvertimePanel:
         )
 
     def on_add_overtime_all_clicked(self):
-        QMessageBox.information(self.parent, "Добавление переработки", "Открыть форму создания карточки переработки")
+        # Используем уведомление вместо QMessageBox
+        if hasattr(self.parent, 'notification_manager'):
+            self.parent.notification_manager.show_notification(
+                "Открыть форму создания карточки переработки",
+                duration=3000
+            )
 
     def on_export_clicked(self):
         """Открывает диалог выбора периода для экспорта."""
@@ -267,7 +295,12 @@ class OvertimePanel:
             dialog.period_selected.connect(self.on_export_period_selected)
             dialog.exec()
         except Exception as e:
-            QMessageBox.warning(self.parent, "Ошибка", f"Не удалось открыть окно выбора периода для экспорта\n{str(e)}")
+            # Используем уведомление вместо QMessageBox
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification(
+                    f"❌ Ошибка открытия окна экспорта: {str(e)}",
+                    duration=4000
+                )
 
     def on_export_period_selected(self, period_data):
         """Обработчик выбора периода для экспорта."""
@@ -275,10 +308,19 @@ class OvertimePanel:
             start_date = period_data['start_date_str']
             end_date = period_data['end_date_str']
             print(f"Экспорт данных за период: {start_date} - {end_date}")
-            QMessageBox.information(self.parent, "Экспорт",
-                                    f"Экспорт данных за период {start_date} - {end_date} в Excel/PDF")
+            # Используем уведомление вместо QMessageBox
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification(
+                    f"Экспорт данных за период {start_date} - {end_date} выполнен",
+                    duration=3000
+                )
         except Exception as e:
             print(f"Ошибка в on_export_period_selected: {e}")
             import traceback
             traceback.print_exc()
-            QMessageBox.warning(self.parent, "Ошибка", f"Не удалось выполнить экспорт: {str(e)}")
+            # Используем уведомление вместо QMessageBox
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification(
+                    f"❌ Ошибка экспорта: {str(e)}",
+                    duration=4000
+                )

@@ -14,87 +14,63 @@ class AnimatedNotification(QFrame):
 
     # Сигналы
     closed = pyqtSignal()
-    action_clicked = pyqtSignal()
 
-    # Типы уведомлений
-    INFO = "info"
-    SUCCESS = "success"
-    WARNING = "warning"
-    ERROR = "error"
-
-    def __init__(self, parent=None, message="", notification_type=INFO,
-                 duration=3000, show_action=False, action_text="Действие"):
+    def __init__(self, parent=None, message="", duration=3000):
         super().__init__(parent)
 
-        self.notification_type = notification_type
         self.duration = duration
-        self.show_action = show_action
-        self.action_text = action_text
+        self.is_closing = False
 
-        # Настройка внешнего вида
-        self.setFixedWidth(350)
-        self.setMinimumHeight(60)
+        # Настройка внешнего вида - шире и выше
+        self.setFixedWidth(400)  # Было 350
+        self.setFixedHeight(60)  # Было 60
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setFrameShadow(QFrame.Shadow.Raised)
 
-        # Настройка стилей в зависимости от типа
-        self.setup_style()
+        # Делаем фон полностью прозрачным
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
+
+        # Отключаем возможность фокуса и кликов на уведомлении
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+        # Золотой фон со скругленными углами
+        self.setStyleSheet("""
+            AnimatedNotification {
+                background-color: #ccab6e;
+                border-radius: 16px;
+                border: none;
+            }
+            QLabel {
+                background-color: #ccab6e;
+                border-radius: 16px;
+                color: white;
+                font-size: 18px;
+                font-weight: 600;
+            }
+        """)
 
         # Создаем layout
         self.layout = QHBoxLayout(self)
-        self.layout.setContentsMargins(15, 10, 15, 10)
-        self.layout.setSpacing(10)
+        self.layout.setContentsMargins(10, 8, 10, 8)  # Больше отступы
+        self.layout.setSpacing(5)
 
-        # Иконка
-        self.icon_label = QLabel()
-        self.icon_label.setFixedSize(24, 24)
-        self.layout.addWidget(self.icon_label)
-
-        # Сообщение
+        # Сообщение (только текст, без иконок)
         self.message_label = QLabel(message)
         self.message_label.setWordWrap(True)
-        self.message_label.setStyleSheet("color: #333333; font-size: 13px;")
-        self.layout.addWidget(self.message_label, 1)
-
-        # Кнопка действия (опционально)
-        if show_action:
-            self.action_btn = QPushButton(action_text)
-            self.action_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: transparent;
-                    color: #ccab6e;
-                    border: none;
-                    font-weight: bold;
-                    font-size: 12px;
-                    padding: 5px 10px;
-                }
-                QPushButton:hover {
-                    color: #b8944f;
-                    text-decoration: underline;
-                }
-            """)
-            self.action_btn.clicked.connect(self.action_clicked.emit)
-            self.layout.addWidget(self.action_btn)
-
-        # Кнопка закрытия
-        self.close_btn = QPushButton("×")
-        self.close_btn.setFixedSize(20, 20)
-        self.close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                color: #999999;
-                border: none;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                color: #333333;
+        self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.message_label.setStyleSheet("""
+            QLabel {
+                background-color: #ccab6e;
+                border-radius: 16px;
+                color: white;
+                font-size: 18px;
+                font-weight: 600;
             }
         """)
-        self.close_btn.clicked.connect(self.close_notification)
-        self.layout.addWidget(self.close_btn)
+        self.layout.addWidget(self.message_label, 1)
 
-        # Эффект прозрачности
+        # Эффект прозрачности для всего уведомления
         self.opacity_effect = QGraphicsOpacityEffect()
         self.opacity_effect.setOpacity(1.0)
         self.setGraphicsEffect(self.opacity_effect)
@@ -102,130 +78,84 @@ class AnimatedNotification(QFrame):
         # Анимации
         self.setup_animations()
 
-        # Таймер автоматического скрытия
+        # Таймер автоматического закрытия
         if duration > 0:
             self.auto_close_timer = QTimer()
             self.auto_close_timer.setSingleShot(True)
-            self.auto_close_timer.timeout.connect(self.close_notification)
-
-    def setup_style(self):
-        """Настройка стилей в зависимости от типа уведомления"""
-        styles = {
-            self.INFO: {
-                "background": "#E3F2FD",
-                "border": "#2196F3",
-                "icon": "ℹ️"
-            },
-            self.SUCCESS: {
-                "background": "#E8F5E9",
-                "border": "#4CAF50",
-                "icon": "✅"
-            },
-            self.WARNING: {
-                "background": "#FFF3E0",
-                "border": "#FF9800",
-                "icon": "⚠️"
-            },
-            self.ERROR: {
-                "background": "#FFEBEE",
-                "border": "#F44336",
-                "icon": "❌"
-            }
-        }
-
-        style = styles.get(self.notification_type, styles[self.INFO])
-
-        self.setStyleSheet(f"""
-            AnimatedNotification {{
-                background-color: {style["background"]};
-                border-left: 4px solid {style["border"]};
-                border-radius: 8px;
-            }}
-        """)
-
-        if hasattr(self, 'icon_label'):
-            self.icon_label.setText(style["icon"])
+            self.auto_close_timer.timeout.connect(self.start_fade_out)
 
     def setup_animations(self):
         """Настройка анимаций"""
-        # Анимация прозрачности
-        self.fade_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
-        self.fade_animation.setDuration(300)
-        self.fade_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        # Анимация прозрачности (появление)
+        self.fade_in_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_in_animation.setDuration(400)
+        self.fade_in_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
 
-        # Анимация позиции
+        # Анимация прозрачности (исчезновение)
+        self.fade_out_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_out_animation.setDuration(2000)
+        self.fade_out_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        self.fade_out_animation.setEndValue(0.0)
+        self.fade_out_animation.finished.connect(self._on_fade_out_finished)
+
+        # Анимация позиции (выезжание снизу)
         self.slide_animation = QPropertyAnimation(self, b"pos")
-        self.slide_animation.setDuration(300)
+        self.slide_animation.setDuration(400)
         self.slide_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
 
         # Группа для показа
         self.show_group = QParallelAnimationGroup()
-        self.show_group.addAnimation(self.fade_animation)
+        self.show_group.addAnimation(self.fade_in_animation)
         self.show_group.addAnimation(self.slide_animation)
 
-    def show_notification(self, x, y, slide_from="right"):
-        """Показать уведомление с анимацией
-
-        Args:
-            x, y: конечная позиция
-            slide_from: направление всплытия ("right", "left", "top", "bottom")
-        """
+    def show_notification(self, x, y):
+        """Показать уведомление с анимацией (всплывает снизу)"""
         self.show()
         self.raise_()
 
-        # Настраиваем начальную позицию в зависимости от направления
-        if slide_from == "right":
-            start_x = x + 50
-            start_y = y
-        elif slide_from == "left":
-            start_x = x - 50
-            start_y = y
-        elif slide_from == "top":
-            start_x = x
-            start_y = y - 50
-        elif slide_from == "bottom":
-            start_x = x
-            start_y = y + 50
-        else:
-            start_x = x
-            start_y = y
+        # Начальная позиция - снизу
+        start_x = x
+        start_y = y + 80
 
-        # Настраиваем анимацию
+        # Настраиваем анимацию появления
         self.slide_animation.setStartValue(QPoint(start_x, start_y))
         self.slide_animation.setEndValue(QPoint(x, y))
 
-        self.fade_animation.setStartValue(0.0)
-        self.fade_animation.setEndValue(1.0)
+        self.fade_in_animation.setStartValue(0.0)
+        self.fade_in_animation.setEndValue(1.0)
 
         self.move(start_x, start_y)
         self.opacity_effect.setOpacity(0.0)
 
-        # Запускаем анимацию
+        # Запускаем анимацию появления
         self.show_group.start()
 
         # Запускаем таймер авто-закрытия
         if self.duration > 0:
+            QTimer.singleShot(500, self.start_auto_close_timer)
+
+    def start_auto_close_timer(self):
+        """Запускает таймер автоматического закрытия"""
+        if hasattr(self, 'auto_close_timer') and not self.is_closing:
             self.auto_close_timer.start(self.duration)
 
-    def close_notification(self):
-        """Закрыть уведомление с анимацией"""
+    def start_fade_out(self):
+        """Начинает анимацию исчезновения"""
+        if self.is_closing:
+            return
+
+        self.is_closing = True
+
         if hasattr(self, 'auto_close_timer'):
             self.auto_close_timer.stop()
 
-        # Настраиваем анимацию исчезновения
-        self.fade_animation.setStartValue(self.opacity_effect.opacity())
-        self.fade_animation.setEndValue(0.0)
+        current_opacity = self.opacity_effect.opacity()
+        self.fade_out_animation.setStartValue(current_opacity)
+        self.fade_out_animation.setEndValue(0.0)
+        self.fade_out_animation.start()
 
-        current_pos = self.pos()
-        self.slide_animation.setStartValue(current_pos)
-        self.slide_animation.setEndValue(QPoint(current_pos.x() + 50, current_pos.y()))
-
-        self.show_group.finished.connect(self._on_close_finished)
-        self.show_group.start()
-
-    def _on_close_finished(self):
-        """Обработчик завершения анимации закрытия"""
-        self.show_group.finished.disconnect(self._on_close_finished)
+    def _on_fade_out_finished(self):
+        """Обработчик завершения анимации исчезновения"""
         self.hide()
         self.closed.emit()
         self.deleteLater()
@@ -242,10 +172,38 @@ class NotificationManager:
         self.parent = parent_widget
         self.max_visible = max_visible
         self.active_notifications = []
-        self.notification_spacing = 10
+        self.notification_spacing = 5  # Было 10 - меньше расстояние
 
-    def show_notification(self, message, notification_type=AnimatedNotification.INFO,
-                          duration=3000, slide_from="right"):
+        # Создаем прозрачный контейнер для уведомлений
+        self.container = QWidget(parent_widget)
+        self.container.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.container.setGeometry(0, 0, parent_widget.width(), parent_widget.height())
+
+        # Делаем контейнер прозрачным для кликов
+        self.container.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+        # Поднимаем контейнер поверх всех виджетов
+        self.container.raise_()
+
+        # Сохраняем оригинальный resizeEvent
+        self._original_resize_event = parent_widget.resizeEvent
+        parent_widget.resizeEvent = self._on_parent_resize
+
+    def _on_parent_resize(self, event):
+        """Обновляет размер контейнера при изменении родителя"""
+        self.container.setGeometry(0, 0, self.parent.width(), self.parent.height())
+        self._update_notifications_position()
+        # Вызываем оригинальный обработчик если есть
+        if self._original_resize_event:
+            self._original_resize_event(event)
+
+    def _update_notifications_position(self):
+        """Обновляет позиции всех активных уведомлений"""
+        for i, notification in enumerate(self.active_notifications):
+            x, y = self._calculate_position(i)
+            notification.move(x, y)
+
+    def show_notification(self, message, duration=3000):
         """Показать новое уведомление"""
         # Удаляем старые уведомления если их слишком много
         while len(self.active_notifications) >= self.max_visible:
@@ -254,20 +212,19 @@ class NotificationManager:
 
         # Создаем новое уведомление
         notification = AnimatedNotification(
-            self.parent,
+            self.container,
             message,
-            notification_type,
             duration
         )
 
         # Подключаем сигнал закрытия
         notification.closed.connect(lambda: self._remove_notification(notification))
 
-        # Вычисляем позицию
+        # Вычисляем позицию (снизу)
         x, y = self._calculate_position(len(self.active_notifications))
 
         # Показываем уведомление
-        notification.show_notification(x, y, slide_from)
+        notification.show_notification(x, y)
 
         # Добавляем в список активных
         self.active_notifications.append(notification)
@@ -275,12 +232,17 @@ class NotificationManager:
         return notification
 
     def _calculate_position(self, index):
-        """Вычислить позицию для нового уведомления"""
-        parent_width = self.parent.width()
-        parent_height = self.parent.height()
+        """Вычислить позицию для нового уведомления (по центру снизу)"""
+        parent_width = self.container.width()
+        parent_height = self.container.height()
 
-        x = parent_width - 370  # 350 ширина + 20 отступ
-        y = 20 + index * (80 + self.notification_spacing)  # 60 высота + отступ
+        notification_height = 85  # Высота уведомления + отступы
+
+        # Центрируем по горизонтали
+        x = (parent_width - 500) // 2  # 500 - ширина уведомления
+
+        # Поднимаем чуть выше от низа
+        y = parent_height - 40 - (index + 1) * (notification_height + self.notification_spacing)
 
         return x, y
 
@@ -288,4 +250,69 @@ class NotificationManager:
         """Удалить уведомление из списка активных"""
         if notification in self.active_notifications:
             self.active_notifications.remove(notification)
+            self._update_notifications_position()
 
+
+# Пример использования
+if __name__ == "__main__":
+    import sys
+    from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QTextEdit
+
+
+    class MainWindow(QMainWindow):
+        def __init__(self):
+            super().__init__()
+            self.setWindowTitle("Уведомления по центру")
+            self.setGeometry(100, 100, 800, 600)
+
+            # Центральный виджет
+            central = QWidget()
+            self.setCentralWidget(central)
+            layout = QVBoxLayout(central)
+
+            # Текстовое поле
+            text = QTextEdit()
+            text.setPlainText(
+                "Нажмите сюда, чтобы проверить, что уведомления не блокируют клики.\n\nВы можете взаимодействовать с этим полем, пока видны уведомления."
+                "\n\nУведомления теперь:\n• По центру экрана\n• Ближе друг к другу\n• Крупный шрифт 18px"
+            )
+            text.setStyleSheet("border: 2px solid #ccc; border-radius: 8px; padding: 10px; font-size: 14px;")
+            layout.addWidget(text)
+
+            # Кнопка для показа уведомлений
+            btn = QPushButton("Показать уведомление")
+            btn.clicked.connect(self.show_notification)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #ccab6e;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 12px;
+                    font-weight: bold;
+                    font-size: 16px;
+                }
+                QPushButton:hover {
+                    background-color: #b8944f;
+                }
+            """)
+            layout.addWidget(btn)
+
+            # Менеджер уведомлений
+            self.notification_manager = NotificationManager(self, max_visible=3)
+
+            # Счетчик уведомлений
+            self.counter = 1
+
+        def show_notification(self):
+            self.notification_manager.show_notification(
+                f"Уведомление #{self.counter}: Действие выполнено успешно!",
+                duration=3000
+            )
+            self.counter += 1
+
+
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
