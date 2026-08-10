@@ -214,6 +214,9 @@ QGroupBox::title {
             <height>0</height>
            </size>
           </property>
+          <property name="styleSheet">
+           <string notr="true"> background-color: transparent;</string>
+          </property>
           <property name="text">
            <string>Начало периода:</string>
           </property>
@@ -262,6 +265,9 @@ QGroupBox::title {
             <width>90</width>
             <height>0</height>
            </size>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"> background-color: transparent;</string>
           </property>
           <property name="text">
            <string>Конец периода:</string>
