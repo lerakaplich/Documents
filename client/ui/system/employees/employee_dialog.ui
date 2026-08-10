@@ -137,7 +137,7 @@ QComboBox::drop-down {
 }
 
 QComboBox::down-arrow {
-    image: url(D:/Documents/client/icons/down_arrow_combo.svg);
+    image: url(D:/Documents/client/icons/down_arrow.svg);
     width: 16px;
     height: 16px;
     margin-right: 6px;
@@ -485,6 +485,9 @@ QPushButton#saveButton:pressed {
      </property>
      <property name="text">
       <string>Новый сотрудник</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
    </item>

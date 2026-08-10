@@ -283,6 +283,9 @@ QLabel[required=&quot;true&quot;]::after {
      <property name="text">
       <string>Новый тип документа</string>
      </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
     </widget>
    </item>
    <item>

@@ -127,7 +127,7 @@ QComboBox::drop-down {
 }
 
 QComboBox::down-arrow {
-    image: url(D:/Documents/client/icons/down_arrow_combo.svg);
+    image: url(D:/Documents/client/icons/down_arrow.svg);
     width: 16px;
     height: 16px;
     margin-right: 6px;
@@ -183,6 +183,9 @@ QComboBox QAbstractItemView::item:selected {
      </property>
      <property name="text">
       <string>Новый хэштег</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
    </item>

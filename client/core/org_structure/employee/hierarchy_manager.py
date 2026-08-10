@@ -213,7 +213,7 @@ class HierarchyManager:
                 border: none;
             }
             QComboBox::down-arrow {
-                image: url(D:/Documents/client/icons/down_arrow_combo.svg);
+                image: url(D:/Documents/client/icons/down_arrow.svg);
                 width: 16px;
                 height: 16px;
                 margin-right: 6px;
