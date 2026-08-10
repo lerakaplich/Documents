@@ -5,8 +5,8 @@ from PyQt6.QtWidgets import QWidget, QApplication, QMessageBox, QFormLayout, QLa
 from PyQt6.QtCore import Qt
 from PyQt6.uic import loadUi
 
+from client.windows.profile.overtime.overtime_panel import OvertimePanel
 from client.windows.profile.profile_info import ProfileInfo
-from client.windows.profile.overtime_panel import OvertimePanel
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

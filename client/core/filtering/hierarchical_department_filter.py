@@ -125,3 +125,21 @@ class HierarchicalDepartmentFilter(QWidget):
 
         finally:
             self._updating = False
+
+    def clear_selection(self):
+        """Сбрасывает выбор во всех комбобоксах, но не удаляет их."""
+        # Устанавливаем "Все" (индекс 0) для всех комбобоксов
+        for combo in self._comboboxes:
+            if combo:
+                combo.blockSignals(True)  # Блокируем сигналы
+                combo.setCurrentIndex(0)  # Выбираем "Все"
+                combo.blockSignals(False)  # Разблокируем сигналы
+
+        # Удаляем все комбобоксы после первого уровня (дочерние)
+        while len(self._comboboxes) > 1:
+            combo = self._comboboxes.pop()
+            combo.deleteLater()
+
+        self._current_selection = None
+        # Эмитим сигнал с None, чтобы обновить данные
+        self.selectionChanged.emit(None)
