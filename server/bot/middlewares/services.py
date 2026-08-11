@@ -51,7 +51,8 @@ class ServicesMiddleware(BaseMiddleware):
                 repo=doc_repo,
                 emp_repo=emp_repo,
                 attachment_service=attachment_svc,
-                notification_service=notification_svc
+                notification_service=notification_svc,
+                security=security_svc
             )
 
             data["document_service"] = doc_svc
