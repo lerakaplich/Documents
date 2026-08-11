@@ -19,15 +19,21 @@ class DelegationService:
         self.notifications = notification_service
 
     async def _check_permissions(self, doc_id: int, actor: CurrentUser):
-        """Проверка: Администратор ИЛИ участник с правами управления."""
+        # 1. Администраторам разрешено управление
+        if self.security.is_admin(actor):
+            return
 
-        # 1. Пробуем проверить роль участника
+        # 2. Проверяем связь актора с документом
         relation = await self.repo.get_user_relation(doc_id, actor.id)
-        if relation and relation.role in [DocumentRole.sender, DocumentRole.recipient]:
-            return  # Успех: пользователь — владелец/получатель
 
-        # 2. Если не участник, проверяем админа
-        await self.security.is_admin(actor)
+        allowed_roles = [DocumentRole.sender, DocumentRole.recipient]
+        if relation and relation.role in allowed_roles:
+            return
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="У вас нет прав для управления делегатами этого документа"
+        )
 
     async def add_delegate(self, doc_id: int, actor: CurrentUser, target_id: int, message: str = None):
         """Назначить сотрудника делегатом"""

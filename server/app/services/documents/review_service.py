@@ -28,26 +28,32 @@ class DocumentReviewService:
 
     async def get_document_status_history(self, document_id: int, current_user: CurrentUser) -> list:
         """Получение истории статусов документа (Доступно участникам документа ИЛИ администраторам)"""
-        is_authorized = False
-
-        try:
-            await self.security.is_admin(current_user)
-            is_authorized = True
-        except HTTPException:
-            pass
-
-        if not is_authorized:
-            relation = await self.repo.get_user_relation(document_id, current_user.id)
-            await self.security.can_review_document(relation)
-
+        # 1. Администраторам доступ разрешен всегда
+        if not self.security.is_admin(current_user):
+            # 2. Для остальных проверяем, имеет ли пользователь доступ к документу
+            has_access = await self.security.can_access_document(current_user, document_id)
+            if not has_access:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="У вас нет прав на просмотр истории статусов этого документа."
+                )
         return await self.repo.get_status_history_by_doc_id(document_id)
 
     async def process_review(self, document_id: int, user_id: int, approved: bool, comment_text: str = None):
         relation = await self.repo.get_user_relation(document_id, user_id)
-        await self.security.can_review_document(relation)
+
+        # Проверяем, может ли пользователь утверждать/отклонять документ
+        if not self.security.can_review_document(relation):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="У вас нет прав на согласование данного документа."
+            )
 
         if relation.is_approved is not None:
-            raise HTTPException(status_code=400, detail="Решение уже принято.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Решение уже принято."
+            )
 
         relation.is_approved = approved
 
@@ -62,7 +68,12 @@ class DocumentReviewService:
     async def make_revisions(self, document_id: int, user_id: int, text: str) -> None:
         """Внесение замечаний (правок) к документу без вынесения финального решения"""
         relation = await self.repo.get_user_relation(document_id, user_id)
-        await self.security.can_review_document(relation)
+
+        if not self.security.can_review_document(relation):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="У вас нет прав на внесение замечаний к этому документу."
+            )
 
         document = await self.repo.get_by_id(document_id)
         if not document:
@@ -88,7 +99,11 @@ class DocumentReviewService:
         reason: Optional[str] = None
     ):
         """Ручное (административное) изменение статуса документа"""
-        await self.security.is_admin(current_user)
+        if not self.security.is_admin(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Изменение статуса вручную доступно только администраторам."
+            )
 
         document = await self.repo.get_by_id(document_id)
         if not document:
@@ -114,8 +129,8 @@ class DocumentReviewService:
             extra={
                 "action": "manual_document_status_changed",
                 "document_id": document_id,
-                "old_status": old_status.value,
-                "new_status": new_status.value,
+                "old_status": old_status.value if hasattr(old_status, 'value') else str(old_status),
+                "new_status": new_status.value if hasattr(new_status, 'value') else str(new_status),
                 "triggered_by_user_id": current_user.id,
                 "reason": reason
             }

@@ -1,6 +1,7 @@
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, exists
 from sqlalchemy.ext.asyncio import AsyncSession
-from server.app.database.document_models import DocumentType
+from server.app.database.document_models import DocumentType, Document
+
 
 class DocTypeRepository:
     def __init__(self, db: AsyncSession):
@@ -31,3 +32,9 @@ class DocTypeRepository:
         result = await self.db.execute(delete(DocumentType).where(DocumentType.id == type_id).returning(DocumentType.id))
         await self.db.commit()
         return result.scalar_one_or_none()
+
+    async def is_used_in_documents(self, type_id: int) -> bool:
+        """Проверяет, привязан ли этот тип хотя бы к одному документу."""
+        stmt = select(exists().where(Document.type_id == type_id))
+        result = await self.db.execute(stmt)
+        return bool(result.scalar())

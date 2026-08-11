@@ -8,8 +8,45 @@ class RegistryService:
     def __init__(self, db_repo: DocumentRepository):
         self.repo = db_repo
 
-    async def get_all_paginated(self, user_id: int, user_rights: AppRights, **params) -> tuple[int, list[Document]]:
-        # 1. Начало сборки запроса
+    async def get_all_paginated(
+            self,
+            user_id: int,
+            user_rights: AppRights,
+            scope: str = "my",
+            is_completed: bool | None = None,
+            status_filters: list | None = None,
+            type_id: int | None = None,
+            direction: str | None = None,
+            tag_ids: list[int] | None = None,
+            date_from: str | None = None,
+            date_to: str | None = None,
+            search: str | None = None,
+            sort_by: str = "created_at",
+            sort_order: str = "desc",
+            limit: int = 20,
+            offset: int = 0,
+            **extra_params
+    ) -> tuple[int, list[DocumentListItem]]:
+
+        # Собираем словарь со всеми параметрами фильтрации
+        filter_params = {
+            "scope": scope,
+            "is_completed": is_completed,
+            "status_filters": status_filters,
+            "type_id": type_id,
+            "direction": direction,
+            "tag_ids": tag_ids,
+            "date_from": date_from,
+            "date_to": date_to,
+            "search": search,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+            "limit": limit,
+            "offset": offset,
+            **extra_params
+        }
+
+        # 1. Подготовка базового запроса
         query = self.repo.prepare_document_list_query()
         query = self.repo.apply_read_status(query, user_id)
         query = self.repo.apply_archive_status(query, user_id)
@@ -17,46 +54,41 @@ class RegistryService:
         query = self.repo.apply_reply_status(query)
         query = self.repo.apply_attachments_status(query)
 
+        # 2. Ограничение области видимости (scope) и прав доступа
+        is_admin = user_rights in [AppRights.admin, AppRights.superadmin]
 
-        # 2. Применяем права доступа
-        if user_rights not in [AppRights.admin, AppRights.superadmin]:
-            query = self.repo.apply_user_scope(query, user_id, params.get('is_completed'))
-        elif params.get('is_completed') is not None:
-            query = self.repo.apply_admin_scope(query, params['is_completed'])
+        if scope == "my" or not is_admin:
+            # Для личного контура (или обычных пользователей) смотрим только документы с участием user_id
+            query = self.repo.apply_user_scope(query, user_id, is_completed)
+        else:
+            # Для администраторов в глобальных scope ("all", "archive" и т.д.)
+            query = self.repo.apply_admin_scope(query, is_completed)
 
-        # 3. Применяем бизнес-фильтры
-        query = self.repo.apply_filters(query, params)
+        # 3. Бизнес-фильтры (передаем полный словарь фильтров в репозиторий)
+        query = self.repo.apply_filters(query, filter_params)
 
-        # 4. Полнотекстовый поиск (логику разбиения слов оставляем в сервисе)
-        search = params.get('search')
+        # 4. Полнотекстовый поиск
         if search and search.strip():
             for word in search.strip().split():
                 query = self.repo.apply_search(query, f"%{word}%")
 
-        # 5. Считаем общее количество (до пагинации)
+        # 5. Подсчет тотала (до лимита и оффсета)
         total = await self.repo.count_query(query)
 
         # 6. Сортировка и пагинация
-        query = self.repo.apply_sorting(
-            query,
-            params.get('sort_by', 'created_at'),
-            params.get('sort_order', 'desc')
-        )
-        query = query.limit(params.get('limit', 20)).offset(params.get('offset', 0))
+        query = self.repo.apply_sorting(query, sort_by, sort_order)
+        query = query.limit(limit).offset(offset)
 
-        # 7. Выполнение
+        # 7. Выполнение запроса
         rows = await self.repo.execute_query(query)
-
-        if rows is None:
+        if not rows:
             rows = []
 
+        # 8. Маппинг DTO
         items = []
         for doc, is_read, is_archived, is_pinned, reply_id, has_attachments in rows:
-            # 1. Валидируем только те поля, которые есть в БД
-            # (exclude_unset=True помогает избежать проблем, если какие-то поля None)
             item = DocumentListItem.model_validate(doc, from_attributes=True)
 
-            # 2. Вручную заполняем поля, которых нет в модели БД
             item.is_read = is_read or False
             item.is_archived = is_archived or False
             item.is_pinned = is_pinned or False
@@ -64,7 +96,6 @@ class RegistryService:
             item.has_attachments = has_attachments or False
             item.type_name = doc.type.name if doc.type else "Без типа"
 
-            # 3. Заполняем вложенные списки
             item.participants = [
                 ParticipantItem(fio=self._format_fio(ed.employee), role=ed.role)
                 for ed in doc.employees
@@ -79,7 +110,8 @@ class RegistryService:
         return total, items
 
     def _format_fio(self, emp) -> str:
-        """Фамилия И.О."""
-        if not emp: return "Неизвестно"
+        """Форматирование ФИО вида: Фамилия И.О."""
+        if not emp:
+            return "Неизвестно"
         patronymic = f"{emp.patronymic[0]}." if emp.patronymic else ""
         return f"{emp.last_name} {emp.first_name[0]}.{patronymic}"

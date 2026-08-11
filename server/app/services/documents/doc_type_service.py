@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.repositories.doc_type_repo import DocTypeRepository
@@ -13,6 +13,14 @@ class DocTypeService:
         self.security = security
         self.repo = repo
 
+    def _check_admin(self, user: CurrentUser):
+        """Вспомогательная проверка прав администратора (синхронная)."""
+        if not self.security.is_admin(user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Недостаточно прав. Требуются права администратора"
+            )
+
     async def get_all(self):
         return await self.repo.get_all()
 
@@ -23,20 +31,39 @@ class DocTypeService:
         return doc_type
 
     async def create(self, user: CurrentUser, data: DocTypeCreate):
-        await self.security.is_admin(user)
+        self._check_admin(user)
         return await self.repo.add(data)
 
     async def update(self, user: CurrentUser, type_id: int, data: DocTypeUpdate):
-        await self.security.is_admin(user)
-        updated = await self.repo.update(type_id, data)
-        if not updated:
-            raise HTTPException(status_code=404, detail="Тип документа не найден")
-        return updated
+        self._check_admin(user)
+
+        # Проверяем существование перед обновлением
+        doc_type = await self.repo.get_by_id(type_id)
+        if not doc_type:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Тип документа не найден"
+            )
+
+        return await self.repo.update(type_id, data)
 
     async def delete(self, user: CurrentUser, type_id: int):
-        await self.security.is_admin(user)
-        # Дополнительно: можно добавить проверку, не используется ли тип в документах
-        deleted = await self.repo.delete(type_id)
-        if not deleted:
-            raise HTTPException(status_code=404, detail="Тип документа не найден")
+        self._check_admin(user)
+
+        doc_type = await self.repo.get_by_id(type_id)
+        if not doc_type:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Тип документа не найден"
+            )
+
+        # Проверка: используется ли этот тип хотя бы в одном документе
+        is_used = await self.repo.is_used_in_documents(type_id)
+        if is_used:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Нельзя удалить тип документа, так как к нему привязаны существующие документы"
+            )
+
+        await self.repo.delete(type_id)
         return {"message": "Тип успешно удален"}

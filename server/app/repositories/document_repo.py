@@ -249,7 +249,7 @@ class DocumentRepository:
 
     def apply_filters(self, query, params: dict):
         """Универсальное применение фильтров из словаря параметров."""
-        if params.get('statuses'): query = query.where(Document.status.in_(params['statuses']))
+        if params.get('status_filters'): query = query.where(Document.status.in_(params['status_filters']))
         if params.get('type_id'): query = query.where(Document.type_id == params['type_id'])
         if params.get('direction'): query = query.where(Document.direction == params['direction'])
         if params.get('date_from'): query = query.where(Document.sent_date >= params['date_from'])

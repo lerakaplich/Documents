@@ -47,26 +47,27 @@ async def get_proposed_document_number(
 
 @router.get("/", response_model=DocumentPaginationResponse)
 async def get_documents(
-        scope: str = "my",
-        is_completed: Optional[bool] = None,
-        status_filters: Optional[list[DocStatus]] = Query(None),
-        type_id: Optional[int] = None,
-        direction: Optional[DocDirection] = None,
-        tag_ids: Optional[list[int]] = Query(None),
-        date_from: Optional[date] = None,
-        date_to: Optional[date] = None,
-        search: Optional[str] = None,
-        sort_by: str = "created_at",
-        sort_order: str = "desc",
-        limit: int = Query(20, ge=1, le=100, description="Размер страницы"),
-        offset: int = Query(0, ge=0, description="Смещение выборки"),
-        current_user: CurrentUser = Depends(get_current_user),
-        service: RegistryService = Depends(get_registry_service)
+    scope: str = Query("my", description="Область видимости: 'my', 'all', 'archive', 'pinned'"),
+    is_completed: Optional[bool] = Query(None, description="Фильтр завершенности"),
+    status_filters: Optional[list[DocStatus]] = Query(default=None, description="Фильтр по статусам"),
+    type_id: Optional[int] = Query(None, description="ID типа документа"),
+    direction: Optional[DocDirection] = Query(None, description="Направление (internal/external/etc.)"),
+    tag_ids: Optional[list[int]] = Query(None, description="Список ID тегов"),
+    date_from: Optional[date] = Query(None, description="Дата создания ОТ"),
+    date_to: Optional[date] = Query(None, description="Дата создания ДО"),
+    search: Optional[str] = Query(None, description="Строка поиска"),
+    sort_by: str = Query("created_at", description="Поле для сортировки"),
+    sort_order: str = Query("desc", description="Направление сортировки ('asc' или 'desc')"),
+    limit: int = Query(20, ge=1, le=100, description="Размер страницы"),
+    offset: int = Query(0, ge=0, description="Смещение выборки"),
+    current_user: CurrentUser = Depends(get_current_user),
+    service: RegistryService = Depends(get_registry_service)
 ):
     """Реестр документов с динамической фильтрацией и пагинацией для PyQt6 таблиц"""
     total, items = await service.get_all_paginated(
         user_id=current_user.id,
         user_rights=current_user.rights,
+        scope=scope,
         is_completed=is_completed,
         status_filters=status_filters,
         type_id=type_id,
@@ -89,7 +90,7 @@ async def get_document_by_id(
         service: DocumentService = Depends(get_doc_service)
 ):
     """Получение детальной информации о документе с фиксацией прочтения"""
-    return await service.get_by_id(doc_id, current_user.id, current_user.rights)
+    return await service.get_user(doc_id, current_user)
 
 
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -99,7 +100,7 @@ async def delete_document(
         service: DocumentService = Depends(get_doc_service)
 ):
     """Удаление документа администратором системы"""
-    await service.delete(doc_id)
+    await service.delete(doc_id, admin_user)
     return None
 
 
@@ -111,7 +112,7 @@ async def admin_update_metadata(
         service: DocumentService = Depends(get_doc_service)
 ):
     """Административное редактирование метаданных в обход ограничений состояний"""
-    return await service.admin_update_metadata(document_id, payload)
+    return await service.admin_update_metadata(document_id, payload, admin_user)
 
 @router.get(
     "/stats/unanswered",
@@ -130,7 +131,7 @@ async def get_unanswered_documents_stats(
     - С расчетом штрафа/просрочки (дни после дедлайна * 50)
     - С перечнем ответственных ФИО (Получатели и Делегаты)
     """
-    return await doc_service.get_unanswered_stats()
+    return await doc_service.get_unanswered_stats(current_user)
 
 
 

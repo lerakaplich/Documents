@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 
 from fastapi import HTTPException, status
-from server.app.database.document_models import Document, EmployeeDocument, DocumentRole, AppRights, Read, DocDirection, \
+from server.app.database.document_models import Document, EmployeeDocument, DocumentRole, Read, DocDirection, \
     DocStatus
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
@@ -12,6 +12,7 @@ from sqlalchemy import select
 
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.common.notification_service import NotificationService
+from server.app.services.common.security_service import SecurityService
 from server.app.services.documents.attachment_service import AttachmentService
 
 
@@ -20,11 +21,13 @@ class DocumentService:
         self,
         repo: DocumentRepository,
         emp_repo: EmployeesRepository,
+        security: SecurityService,
         attachment_service: AttachmentService,
         notification_service: NotificationService
     ):
         self.repo = repo
         self.emp_repo = emp_repo
+        self.security = security
         self.attachment_service = attachment_service
         self.notifications = notification_service
 
@@ -40,6 +43,14 @@ class DocumentService:
 
     async def create(self, payload: DocumentCreateForm, user: CurrentUser) -> Document:
         """Создание документа с привязкой участников и тегов"""
+        # Если пытаются указать другого отправителя, требуется роль администратора
+        if payload.sender_id and payload.sender_id != user.id:
+            if not self.security.is_admin(user):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Нельзя создавать документ от имени другого сотрудника без прав администратора."
+                )
+
         async with self.repo.db.begin_nested():
             initial_status = self._determine_initial_status(payload.deadline)
             global_msg_id = payload.global_msg_id or str(uuid.uuid4())
@@ -125,41 +136,69 @@ class DocumentService:
 
         return new_doc
 
-    async def get_by_id(self, doc_id: int, user_id: int, user_rights: AppRights) -> Document:
+    async def get_user(self, doc_id: int, user: CurrentUser) -> Document:
         """Получение документа с фиксацией прочтения пользователем"""
         document = await self.repo.get_by_id(doc_id)
         if not document:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден.")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Документ не найден."
+            )
 
-        # Разграничение прав: если не админ, проверяем участие в документе
-        if user_rights not in [AppRights.admin, AppRights.superadmin]:
-            relation = await self.repo.get_user_relation(doc_id, user_id)
-            if not relation:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ к документу запрещен.")
+        # Проверка прав через SecurityService
+        if not await self.security.can_access_document(user, doc_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Доступ к документу запрещен."
+            )
 
         # Фиксация прочтения (Reads)
         read_check = await self.repo.db.execute(
-            select(Read).where(Read.document_id == doc_id, Read.employee_id == user_id)
+            select(Read).where(Read.document_id == doc_id, Read.employee_id == user.id)
         )
         if not read_check.scalar_one_or_none():
-            self.repo.db.add(Read(document_id=doc_id, employee_id=user_id))
+            self.repo.db.add(Read(document_id=doc_id, employee_id=user.id))
             await self.repo.db.commit()
 
         return document
 
-    async def delete(self, doc_id: int) -> None:
-        """Полное удаление документа"""
+    async def delete(self, doc_id: int, user: CurrentUser) -> None:
+        """Полное удаление документа (доступно только администраторам)"""
+        if not self.security.is_admin(user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Недостаточно прав для удаления документа."
+            )
+
         document = await self.repo.get_by_id(doc_id)
         if not document:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден.")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Документ не найден."
+            )
+
         await self.repo.delete(doc_id)
         await self.repo.db.commit()
 
-    async def admin_update_metadata(self, document_id: int, payload: AdminMetadataUpdate) -> Document:
+    async def admin_update_metadata(
+        self,
+        document_id: int,
+        payload: AdminMetadataUpdate,
+        user: CurrentUser
+    ) -> Document:
         """Административное изменение метаданных в обход ограничений бизнес-логики"""
+        if not self.security.is_admin(user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Недостаточно прав для администрирования метаданных."
+            )
+
         document = await self.repo.get_by_id(document_id)
         if not document:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден.")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Документ не найден."
+            )
 
         update_data = payload.model_dump(exclude_unset=True)
         if not update_data:
@@ -174,7 +213,10 @@ class DocumentService:
             return document
         except Exception as e:
             await self.repo.db.rollback()
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Ошибка обновления: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ошибка обновления: {str(e)}"
+            )
 
     async def generate_proposed_number(
         self,
@@ -208,8 +250,14 @@ class DocumentService:
             sequence_number=next_seq
         )
 
-    async def get_unanswered_stats(self) -> list[UnansweredDocumentStat]:
-        """Расчет статистики и пеней по неотвеченным документам"""
+    async def get_unanswered_stats(self, user: CurrentUser) -> list[UnansweredDocumentStat]:
+        """Расчет статистики и пеней по неотвеченным документам (доступно администраторам)"""
+        if not self.security.is_admin(user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Просмотр статистики доступен только администраторам."
+            )
+
         unanswered_docs = await self.repo.get_unanswered_documents()
         today = date.today()
 
