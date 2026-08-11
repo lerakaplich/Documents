@@ -190,12 +190,45 @@ class ProfileInfo:
         except Exception as e:
             QMessageBox.warning(self.parent, "Ошибка", f"Не удалось открыть окно редактирования телефона\n{str(e)}")
 
+    def set_http_client(self, http_client):
+        """Устанавливает HTTP клиент для отправки запросов"""
+        self.http_client = http_client
+
     def on_phone_updated(self, new_phone: str):
         """Обновляет отображение телефона после редактирования."""
         self.current_phone_raw = new_phone
         if self.label_phone_value:
             self.label_phone_value.setText(self.format_phone_display(new_phone))
-        QMessageBox.information(self.parent, "Успешно", f"Номер телефона обновлён\n+{new_phone}")
+
+        # Отправка обновления на сервер
+        if hasattr(self, 'http_client') and self.http_client:
+            try:
+                from client.services.employee_service import EmployeeService
+                service = EmployeeService(self.http_client)
+                service.update_my_profile({"phone": new_phone})
+                QMessageBox.information(self.parent, "Успешно", "Номер телефона обновлён")
+            except Exception as e:
+                QMessageBox.warning(self.parent, "Ошибка", f"Не удалось обновить телефон на сервере:\n{str(e)}")
+        else:
+            QMessageBox.information(self.parent, "Успешно", "Номер телефона обновлён (локально)")
+
+    def on_email_updated(self, new_email: str):
+        """Обновляет отображение email после редактирования."""
+        self.current_email_raw = new_email
+        if self.label_email_value:
+            self.label_email_value.setText(new_email if new_email else "Не указан")
+
+        # Отправка обновления на сервер
+        if hasattr(self, 'http_client') and self.http_client:
+            try:
+                from client.services.employee_service import EmployeeService
+                service = EmployeeService(self.http_client)
+                service.update_my_profile({"email": new_email})
+                QMessageBox.information(self.parent, "Успешно", "Email обновлён")
+            except Exception as e:
+                QMessageBox.warning(self.parent, "Ошибка", f"Не удалось обновить email на сервере:\n{str(e)}")
+        else:
+            QMessageBox.information(self.parent, "Успешно", "Email обновлён (локально)")
 
     def on_edit_email_clicked(self):
         """Открывает диалог редактирования email."""
@@ -206,9 +239,3 @@ class ProfileInfo:
         except Exception as e:
             QMessageBox.warning(self.parent, "Ошибка", f"Не удалось открыть окно редактирования email\n{str(e)}")
 
-    def on_email_updated(self, new_email: str):
-        """Обновляет отображение email после редактирования."""
-        self.current_email_raw = new_email
-        if self.label_email_value:
-            self.label_email_value.setText(new_email if new_email else "Не указан")
-        QMessageBox.information(self.parent, "Успешно", "Email обновлён" if new_email else "Email удалён")

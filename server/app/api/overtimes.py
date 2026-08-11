@@ -24,7 +24,7 @@ async def create_overtime(
 ):
     return await service.create_by_admin(current_user, data)
 
-@router.patch("/bulk-description")
+@router.patch("/bulk-description") #bot
 async def update_bulk_descriptions(
     data: OvertimeBulkUpdateNote,
     current_user: CurrentUser = Depends(get_current_user),
