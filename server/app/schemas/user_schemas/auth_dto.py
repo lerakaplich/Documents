@@ -1,0 +1,70 @@
+import re
+from typing import Optional
+from pydantic import BaseModel, Field, field_validator
+
+def clean_and_normalize_phone(v: str) -> str:
+    """Унифицирует телефонные номера под формат +375XXXXXXXXX (Беларусь)"""
+    digits = "".join(re.findall(r"\d", v))
+
+    if digits.startswith("80") and len(digits) == 11:
+        digits = "375" + digits[2:]
+    elif len(digits) == 9 and (
+        digits.startswith("29") or digits.startswith("44") or
+        digits.startswith("33") or digits.startswith("25")
+    ):
+        digits = "375" + digits
+
+    if not digits.startswith("375") or len(digits) != 12:
+        raise ValueError(
+            "Номер телефона должен быть в международном формате (например, +375XXXXXXXXX)"
+        )
+    return f"+{digits}"
+
+
+class UserLoginRequest(BaseModel):
+    """Схема для входа по номеру телефона и паролю"""
+    phone_number: str = Field(..., description="Номер телефона пользователя")
+    password: str = Field(..., description="Пароль, полученный через Telegram")
+    remember_me: bool = Field(False, description="Флаг 'Запомнить меня'")
+    device_info: Optional[str] = Field(None, description="Информация об устройстве для истории сессий")
+
+    @field_validator("phone_number")
+    @classmethod
+    def normalize_phone_number(cls, v: str) -> str:
+        return clean_and_normalize_phone(v)
+
+
+class TokenResponse(BaseModel):
+    """Ответ с токенами при успешном входе или обновлении"""
+    access_token: str = Field(..., description="JWT access токен")
+    refresh_token: Optional[str] = Field(None, description="Сессионный refresh токен")
+    token_type: str = Field("bearer", description="Тип токена")
+
+
+class TokenRefreshRequest(BaseModel):
+    """Запрос на обновление access токена по refresh-токену"""
+    refresh_token: str = Field(..., description="Действующий refresh токен")
+
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str = Field(..., description="Текущий пароль")
+    new_password: str = Field(..., min_length=6, description="Новый надежный пароль")
+
+
+class ForgotPasswordRequest(BaseModel):
+    phone_number: str
+
+    @field_validator("phone_number")
+    @classmethod
+    def normalize(cls, v: str) -> str:
+        return clean_and_normalize_phone(v)
+
+class ResetPasswordConfirm(BaseModel):
+    phone_number: str
+    code: str = Field(..., min_length=4, max_length=8)
+    new_password: str = Field(..., min_length=6)
+
+    @field_validator("phone_number")
+    @classmethod
+    def normalize(cls, v: str) -> str:
+        return clean_and_normalize_phone(v)
