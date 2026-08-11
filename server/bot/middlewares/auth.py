@@ -20,6 +20,19 @@ class EmployeeAuthMiddleware(BaseMiddleware):
         if not event_user or not emp_session:
             return await handler(event, data)
 
+        imessage: Message | None = None
+        if isinstance(event, Message):
+            message = event
+        elif hasattr(event, "message") and isinstance(event.message, Message):
+            message = event.message
+
+        # Если это текстовое сообщение /start или отправка контакта — СРАЗУ пропускаем в хэндлер
+        if message:
+            if message.text and message.text.startswith("/start"):
+                return await handler(event, data)
+            if message.contact:
+                return await handler(event, data)
+
         # Создаем репозиторий бота
         bot_repo = BotRepository(doc_session=doc_session, emp_session=emp_session)
 
@@ -28,7 +41,7 @@ class EmployeeAuthMiddleware(BaseMiddleware):
 
         # ❌ Если пользователь не найден в кадровой базе
         if not employee:
-            text = "⚠️ **Доступ запрещен.**\nВаш Telegram-аккаунт не привязан к профилю сотрудника в системе."
+            text = "⚠️ <b>Доступ запрещен.</b>\nВаш Telegram-аккаунт не привязан к профилю сотрудника в системе."
             if isinstance(event, Message):
                 await event.answer(text, parse_mode="Markdown")
             elif isinstance(event, CallbackQuery):
