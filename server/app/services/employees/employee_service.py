@@ -5,9 +5,10 @@ from fastapi import HTTPException,status
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
+from server.app.schemas.org import DepartmentPathItem
 from server.app.schemas.user_schemas.employee_dto import EmployeeRead, EmployeeListRead, CurrentUser, \
     EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate, PositionCreate, \
-    PositionUpdate
+    PositionUpdate, EmployeePositionRead
 from server.app.services.common.security_service import SecurityService
 
 
@@ -302,18 +303,83 @@ class EmployeeService:
         # 3. Обновление флага
         return await self.emp_repo.update_is_leader(pos_id, is_leader)
 
-    async def get_my_profile(
-        self, current_user: CurrentUser
-    ) -> Optional[EmployeeDetailRead]:
-        """Получение профиля текущего авторизованного пользователя."""
-        employee = await self.emp_repo.get_by_id(current_user.id)
+    @staticmethod
+    def _parse_hierarchy_path(path: Optional[str]) -> list[int]:
+        """Вспомогательный метод парсинга пути вида '1/5/3'"""
+        if not path:
+            return []
+        return [int(x) for x in path.split("/") if x.strip().isdigit()]
+
+    async def get_my_profile(self, current_user: CurrentUser) -> Optional[EmployeeDetailRead]:
+        """Получение и сборка полного профиля сотрудника со всеми цепочками и правами."""
+
+        # 1. Загрузка сущности сотрудника с базовыми связями из БД
+        employee = await self.emp_repo.get_by_id_with_departments(current_user.id)
         if not employee:
             return None
 
+        # 2. Сбор всех уникальных ID подразделений из hierarchy_path всех его должностей
+        needed_dept_ids: set[int] = set()
+        for pos in employee.positions:
+            if pos.department and pos.department.hierarchy_path:
+                needed_dept_ids.update(self._parse_hierarchy_path(pos.department.hierarchy_path))
+
+        # 3. Загрузка словаря родительских отделов из БД
+        depts_map = await self.emp_repo.get_departments_by_ids(needed_dept_ids)
+
+        # 4. Преобразование должностей (positions) в DTO с формированием цепочек
+        positions_dto: list[EmployeePositionRead] = []
+
+        for pos in employee.positions:
+            pos_chain: list[DepartmentPathItem] = []
+            pos_path_names: list[str] = []
+
+            if pos.department and pos.department.hierarchy_path:
+                chain_ids = self._parse_hierarchy_path(pos.department.hierarchy_path)
+
+                for d_id in chain_ids:
+                    dept_obj = depts_map.get(d_id)
+                    if dept_obj:
+                        type_name = dept_obj.department_type.name if dept_obj.department_type else None
+
+                        pos_chain.append(
+                            DepartmentPathItem(
+                                id=dept_obj.id,
+                                name=dept_obj.name,
+                                number=dept_obj.number,
+                                department_type_name=type_name,
+                            )
+                        )
+                        pos_path_names.append(dept_obj.name)
+
+            # Валидируем каждую должность в Pydantic-схему напрямую
+            pos_dto = EmployeePositionRead(
+                id=pos.id,
+                department_id=pos.department_id,
+                position_name=pos.position_name,
+                is_leader=pos.is_leader,
+                department_path=pos_path_names,
+                department_chain=pos_chain
+            )
+            positions_dto.append(pos_dto)
+
+        # 5. Получение прав пользователя
         rights_data = await self.doc_repo.get_rights_map([current_user.id])
         user_rights = rights_data.get(current_user.id, "user")
 
-        emp_dict = employee.__dict__.copy()
-        emp_dict["rights"] = user_rights
-
-        return EmployeeDetailRead.model_validate(emp_dict)
+        # 6. Итоговая сборка полного DTO ответа
+        return EmployeeDetailRead(
+            id=employee.id,
+            service_number=employee.service_number,
+            last_name=employee.last_name,
+            first_name=employee.first_name,
+            patronymic=employee.patronymic,
+            phone_number=employee.phone_number,
+            work_number=employee.work_number,
+            email=employee.email,
+            birth_date=employee.birth_date,
+            chat_id=employee.chat_id,
+            is_active=employee.is_active,
+            rights=user_rights,
+            positions=positions_dto
+        )

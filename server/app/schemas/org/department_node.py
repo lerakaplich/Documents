@@ -10,3 +10,12 @@ class DepartmentNode(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 DepartmentNode.model_rebuild()
+
+class DepartmentPathItem(BaseModel):
+    """Узел в цепочке иерархии (от высшего руководства/департамента к текущему отделу)"""
+    id: int
+    name: str
+    number: Optional[int] = None
+    department_type_name: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
