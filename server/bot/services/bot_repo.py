@@ -185,7 +185,7 @@ class BotRepository:
         result = await self.emp_session.execute(stmt)
         return result.scalars().first()
 
-    async def get_employees_by_ids(self, employee_ids: list[int]) -> List[Employee]:
+    async def get_employees_by_ids(self, employee_ids: list[int]) -> list[Employee]:
         """
         Возвращает список сотрудников по списку их ID (для получения имен участников).
         Запрос адресован в emp_session.
@@ -204,7 +204,7 @@ class BotRepository:
         result = await self.emp_session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_tags_by_ids(self, tag_ids: list[int]) -> List[Tag]:
+    async def get_tags_by_ids(self, tag_ids: list[int]) -> list[Tag]:
         """
         Возвращает список тегов по их ID (для отображения наименований тегов).
         Запрос адресован в doc_session.

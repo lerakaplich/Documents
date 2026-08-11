@@ -2,3 +2,5 @@ xlrd
 apscheduler
 bcrypt
 PyJWT
+PyMuPDF
+bcrypt
