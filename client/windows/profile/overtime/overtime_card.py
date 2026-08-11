@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import QFrame, QPushButton, QLabel, QMessageBox
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.uic import loadUi
 
+from client.windows.delete_dialog import DeleteDialog
+
 
 class OvertimeCard(QFrame):
     """Карточка сверхурочной работы"""
@@ -19,6 +21,7 @@ class OvertimeCard(QFrame):
 
         Args:
             overtime_id: ID записи о сверхурочной работе
+            data: Словарь с данными:
             data: Словарь с данными:
                 - employee_name: str - ФИО сотрудника
                 - created_at: str - дата создания
@@ -275,19 +278,8 @@ class OvertimeCard(QFrame):
         self.edit_clicked.emit(self.overtime_id)
 
     def _on_delete_clicked(self):
-        """Обработчик нажатия кнопки удаления"""
-        # Диалог подтверждения удаления
-        reply = QMessageBox.question(
-            self,
-            "Подтверждение удаления",
-            f"Вы действительно хотите удалить запись о сверхурочной работе?\n\n"
-            f"Сотрудник: {self.data.get('employee_name', 'Не указан')}\n"
-            f"Дата: {self.data.get('date', 'Не указана')}",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
+        # Используем кастомный диалог удаления
+        if DeleteDialog.show_confirmation(self):
             self.delete_clicked.emit(self.overtime_id)
 
     def update_data(self, new_data: dict):

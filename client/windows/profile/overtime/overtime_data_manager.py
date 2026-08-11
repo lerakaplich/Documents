@@ -100,10 +100,3 @@ class OvertimeDataManager:
 
         return my_data, all_data
 
-    def get_overtime_by_id(self, overtime_id):
-        my_data, all_data = self.get_test_data()
-        all_items = my_data + all_data
-        for item in all_items:
-            if item.get('id') == overtime_id:
-                return item
-        return None
