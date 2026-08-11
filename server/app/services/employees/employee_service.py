@@ -301,3 +301,19 @@ class EmployeeService:
 
         # 3. Обновление флага
         return await self.emp_repo.update_is_leader(pos_id, is_leader)
+
+    async def get_my_profile(
+        self, current_user: CurrentUser
+    ) -> Optional[EmployeeDetailRead]:
+        """Получение профиля текущего авторизованного пользователя."""
+        employee = await self.emp_repo.get_by_id(current_user.id)
+        if not employee:
+            return None
+
+        rights_data = await self.doc_repo.get_rights_map([current_user.id])
+        user_rights = rights_data.get(current_user.id, "user")
+
+        emp_dict = employee.__dict__.copy()
+        emp_dict["rights"] = user_rights
+
+        return EmployeeDetailRead.model_validate(emp_dict)

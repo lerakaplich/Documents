@@ -24,6 +24,23 @@ async def get_all_employees(
 ):
     return await service.get_employees_list(page, limit, show_fired)
 
+@router.get("/me", response_model=EmployeeDetailRead)
+async def get_current_user_profile(
+    current_user: CurrentUser = Depends(get_current_user),
+    service: EmployeeService = Depends(get_employee_service)
+):
+    """
+    Получение данных профиля текущего вошедшего пользователя.
+    """
+    employee = await service.get_my_profile(current_user)
+
+    if not employee:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Профиль пользователя не найден"
+        )
+
+    return employee
 
 @router.get("/{emp_id}", response_model=EmployeeDetailRead)
 async def get_employee_detail(
@@ -58,7 +75,7 @@ async def update_my_profile(
 ):
     return await service.update_own_profile(current_user.id, data)
 
-@router.patch("/{employee_id}", response_model=EmployeeFullUpdate)
+@router.patch("/{employee_id}", response_model=EmployeeDetailRead)
 async def update_employee_by_manager(
     employee_id: int,
     data: EmployeeFullUpdate,

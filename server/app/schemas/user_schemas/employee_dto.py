@@ -91,6 +91,6 @@ class EmployeeFullUpdate(BaseModel):
     is_active: Optional[bool] = None
 
     # Позиции
-    positions: list[PositionUpdate] # Список позиций
+    positions: Optional[list[PositionUpdate]] = None # Список позиций
 
     model_config = ConfigDict(from_attributes=True)
