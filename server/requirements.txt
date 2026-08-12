@@ -2,4 +2,4 @@ xlrd
 apscheduler
 bcrypt
 PyJWT
-pythonjsonlogger
+cachetools
