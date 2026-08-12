@@ -55,11 +55,11 @@ class RedirectDialog(QDialog):
                 background-color: transparent;
             }}
             QListWidget::indicator:unchecked {{
-                image: url('{images_dir}/cb_unchecked.png');
+                image: url('{images_dir}/cb_unchecked.svg');
                 background-color: transparent;
             }}
             QListWidget::indicator:checked {{
-                image: url('{images_dir}/cb_checked.png');
+                image: url('{images_dir}/cb_checked.svg');
                 background-color: transparent;
             }}
         """)

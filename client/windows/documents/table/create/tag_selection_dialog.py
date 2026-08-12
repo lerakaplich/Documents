@@ -211,8 +211,8 @@ class TagSelectionDialog(QDialog):
         self.selected_tags = []
 
         # Пути к иконкам чекбоксов
-        self.checked_icon_path = self.get_icon_path("cb_checked.png")
-        self.unchecked_icon_path = self.get_icon_path("cb_unchecked.png")
+        self.checked_icon_path = self.get_icon_path("cb_checked.svg")
+        self.unchecked_icon_path = self.get_icon_path("cb_unchecked.svg")
 
         # Загружаем UI
         ui_path = self.get_ui_path()

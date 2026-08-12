@@ -45,12 +45,12 @@ class ReadCheckBox(QWidget):
                 width: 18px;
                 height: 18px;
                 /* Картинка для НЕнажатого состояния */
-                image: url("D:/Documents/client/icons/cb_unchecked.png");
+                image: url("D:/Documents/client/icons/cb_unchecked.svg");
             }
 
             QCheckBox::indicator:checked {
                 /* Картинка для НАЖАТОГО состояния */
-                image: url("D:/Documents/client/icons/cb_checked.png");
+                image: url("D:/Documents/client/icons/cb_checked.svg");
             }
 
             /* Если хотите добавить эффект при наведении, можно использовать другой файл,

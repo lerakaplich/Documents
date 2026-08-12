@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import traceback
@@ -30,39 +31,44 @@ sys.excepthook = global_exception_handler
 
 
 # ===== ProfileLoader - класс для загрузки данных в отдельном потоке =====
+# client/windows/profile/profile_window.py
 class ProfileLoader(QThread):
     """Загрузка профиля в отдельном потоке"""
     finished = pyqtSignal(dict)
     error = pyqtSignal(str)
 
-    def __init__(self, http_client: HttpClient, employee_id: int = None):
+    def __init__(self, http_client: HttpClient, use_current_user: bool = True):
         super().__init__()
         self.http_client = http_client
-        self.employee_id = employee_id  # ← Будет 1
+        self.use_current_user = use_current_user  # True = /me, False = /{id}
 
     def run(self):
         try:
             service = EmployeeService(self.http_client)
 
-            # Если передан ID - загружаем конкретного сотрудника
-            if self.employee_id:
-                data = service.get_employee(self.employee_id)  # ← Вызовет GET /employees/{emp_id}
-            else:
+            if self.use_current_user:
+                # Используем /me для текущего пользователя
+                print("📥 Загружаем профиль текущего пользователя (/me)")
                 data = service.get_my_profile()
+            else:
+                # Или загружаем конкретного сотрудника (для отладки)
+                print("📥 Загружаем сотрудника с ID: 1")
+                data = service.get_employee(1)
 
             self.finished.emit(data)
 
         except requests.exceptions.ConnectionError:
-            self.error.emit("Не удалось подключиться к серверу.")
+            self.error.emit("Не удалось подключиться к серверу. Проверьте, что сервер запущен.")
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 401:
-                self.error.emit("Ошибка авторизации.")
+                self.error.emit(f"Ошибка авторизации. Токен истек или неверный.\n{e.response.text}")
             elif e.response.status_code == 404:
-                self.error.emit("Сотрудник не найден.")
+                self.error.emit("Профиль пользователя не найден.")
             else:
-                self.error.emit(f"Ошибка сервера: {e.response.status_code}")
+                self.error.emit(f"Ошибка сервера: {e.response.status_code}\n{e.response.text}")
         except Exception as e:
             self.error.emit(f"Ошибка загрузки профиля: {str(e)}")
+
 
 
 # ===== Конец класса ProfileLoader =====
@@ -73,18 +79,19 @@ class ProfileForm(QWidget):
     def __init__(self, parent=None, employee_id: int = None):
         super().__init__(parent)
 
-        if employee_id is None:
-            employee_id = 1  # ← Жестко задаем ID=1
-
+        # Если передан employee_id - загружаем конкретного, иначе - текущего
         self.employee_id = employee_id
+        self.use_current_user = employee_id is None  # ← Если ID нет - используем /me
 
-        # ===== Инициализация HTTP клиента =====
-        print(f"Загружаем профиль сотрудника с ID: {self.employee_id}")
+        if self.use_current_user:
+            print("👤 Загружаем профиль текущего пользователя")
+        else:
+            print(f"👤 Загружаем профиль сотрудника с ID: {self.employee_id}")
 
         # ===== Инициализация HTTP клиента с реальным токеном =====
         self.base_url = "http://localhost:8000/api/v1"
         # ВСТАВЬТЕ ВАШ ТОКЕН СЮДА:
-        self.token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic2VydmljZV9udW1iZXIiOiJNQVowMDEiLCJpc19sZWFkZXIiOnRydWUsImV4cCI6MTc4NjQ0ODE1NX0.Weyp03B8iA6x_gdMx22jF-u8C07S2jLU3QdLwIFTVnU"
+        self.token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic2VydmljZV9udW1iZXIiOiJNQVowMDEiLCJpc19sZWFkZXIiOnRydWUsImV4cCI6MTc4NjQ0OTY3MH0.INMWABaTjeBYztZeZ835DG4RUWSo-SIgvVLjplQh6Os"
 
         self.http_client = HttpClient(self.base_url, self.token)
 
@@ -159,64 +166,118 @@ class ProfileForm(QWidget):
 
     def load_profile_from_api(self):
         """Загрузка профиля через API в отдельном потоке"""
-        # Показываем состояние загрузки
         if self.profile_info.labelTitle:
-            self.profile_info.labelTitle.setText("Загрузка...")
+            self.profile_info.labelTitle.setText("⏳ Загрузка...")
 
-        # Создаем и запускаем поток загрузки
-        self.loader = ProfileLoader(self.http_client, self.employee_id)
+        # Создаем загрузчик с параметром use_current_user
+        self.loader = ProfileLoader(
+            self.http_client,
+            use_current_user=self.use_current_user
+        )
         self.loader.finished.connect(self.on_profile_loaded)
         self.loader.error.connect(self.on_profile_error)
         self.loader.start()
-        print("Загрузка профиля начата...")
+        print("📥 Загрузка профиля начата...")
 
     def on_profile_loaded(self, data: dict):
         """Обработка успешной загрузки профиля"""
         try:
-            print("Данные профиля получены:", data)
+            print("=" * 60)
+            print("✅ ДАННЫЕ ПРОФИЛЯ ПОЛУЧЕНЫ:")
+            print("=" * 60)
+            print(json.dumps(data, indent=2, ensure_ascii=False))
+            print("=" * 60)
 
-            # Извлекаем данные из ответа
-            full_name = data.get('full_name', 'Не указано')
+            # ==== 1. ФИО ====
+            # Собираем из отдельных полей
+            last_name = data.get('last_name', '')
+            first_name = data.get('first_name', '')
+            patronymic = data.get('patronymic', '')
 
-            # Должность может быть объектом или строкой
-            position = data.get('position', {})
-            if isinstance(position, dict):
-                position_name = position.get('name', 'Не указана')
-            else:
-                position_name = str(position) if position else 'Не указана'
+            # Формируем полное ФИО
+            full_name_parts = []
+            if last_name:
+                full_name_parts.append(last_name)
+            if first_name:
+                full_name_parts.append(first_name)
+            if patronymic:
+                full_name_parts.append(patronymic)
 
-            # Цепочка подразделений
+            full_name = ' '.join(full_name_parts) if full_name_parts else 'Не указано'
+            print(f"📝 Собрано ФИО: {full_name}")
+
+            # ==== 2. Должность ====
+            positions = data.get('positions', [])
+            position_name = 'Не указана'
             department_chain = []
-            if 'department' in data and data['department']:
-                dept = data['department']
-                if isinstance(dept, dict):
-                    dept_name = dept.get('name', 'Не указано')
-                    dept_type = dept.get('type_name', 'Подразделение')
-                    department_chain.append((dept_type, dept_name))
-                else:
-                    department_chain.append(("Подразделение", str(dept)))
+            department_ids = []  # Для дополнительной информации
+
+            if positions and len(positions) > 0:
+                # Берем первую должность (обычно основная)
+                first_position = positions[0]
+                position_name = first_position.get('position_name', 'Не указана')
+
+                # Если есть department_id - получаем название отдела
+                department_id = first_position.get('department_id')
+                if department_id:
+                    department_ids.append(department_id)
+                    # Пока используем ID, потом можно загрузить название через API
+                    department_chain.append(("Отдел", f"ID: {department_id}"))
+
+            print(f"📋 Должность: {position_name}")
+            print(f"📋 Отделы: {department_chain}")
+
+            # ==== 3. Телефон ====
+            phone = data.get('phone_number', '')
+            print(f"📞 Телефон: {phone}")
+
+            # ==== 4. Email ====
+            email = data.get('email', '')
+            print(f"📧 Email: {email}")
+
+            # ==== 5. Дата рождения ====
+            birth_date = data.get('birth_date', 'Не указана')
+            # Форматируем дату если нужно
+            if birth_date and birth_date != 'Не указана':
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(birth_date)
+                    birth_date = dt.strftime('%d.%m.%Y')
+                except:
+                    pass
+            print(f"🎂 Дата рождения: {birth_date}")
+
+            # ==== 6. Дополнительная информация ====
+            service_number = data.get('service_number', '')
+            rights = data.get('rights', '')
+            is_active = data.get('is_active', False)
+
+            print(f"📋 Дополнительно:")
+            print(f"  - Табельный номер: {service_number}")
+            print(f"  - Права: {rights}")
+            print(f"  - Активен: {is_active}")
 
             # Обновляем профиль
             self.profile_info.update_profile(
                 full_name=full_name,
                 position=position_name,
                 department_chain=department_chain,
-                phone=data.get('phone', ''),
-                email=data.get('email', ''),
-                birth_date=data.get('birth_date', 'Не указана')
+                phone=phone,
+                email=email,
+                birth_date=birth_date
             )
 
             # Сохраняем данные для редактирования
-            self.profile_info.current_phone_raw = data.get('phone', '')
-            self.profile_info.current_email_raw = data.get('email', '')
+            self.profile_info.current_phone_raw = phone
+            self.profile_info.current_email_raw = email
 
-            # Загружаем переработки (если есть)
+            # Загружаем переработки
             self.load_overtime_data()
 
-            print("Профиль успешно обновлен")
+            print("✅ Профиль успешно обновлен")
 
         except Exception as e:
-            print(f"Ошибка обработки данных: {e}")
+            print(f"❌ Ошибка обработки данных: {e}")
             import traceback
             traceback.print_exc()
             QMessageBox.warning(self, "Ошибка", f"Не удалось обработать данные профиля:\n{str(e)}")

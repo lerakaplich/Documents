@@ -33,13 +33,13 @@ class EmployeeSelection:
                     height: 18px;
                 }}
                 QTreeWidget::indicator:unchecked {{
-                    image: url('{images_dir}/cb_unchecked.png');
+                    image: url('{images_dir}/cb_unchecked.svg');
                 }}
                 QTreeWidget::indicator:checked {{
-                    image: url('{images_dir}/cb_checked.png');
+                    image: url('{images_dir}/cb_checked.svg');
                 }}
                 QTreeWidget::indicator:indeterminate {{
-                    image: url('{images_dir}/cb_partial.png');
+                    image: url('{images_dir}/cb_partial.svg');
                 }}
             """
 
