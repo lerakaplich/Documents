@@ -1,7 +1,8 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import date
 from server.app.database.document_models import AppRights  # Используется в SystemEmployee
+from server.app.schemas.org import DepartmentPathItem
 
 
 class EmployeeBase(BaseModel):
@@ -27,12 +28,15 @@ class EmployeeCreate(EmployeeBase):
     rights: AppRights  # Права в системе (user/admin/superadmin)
     position: PositionCreate  # Данные о должности
 
+
 class EmployeePositionRead(BaseModel):
-    """Должностная позиция сотрудника (Где и кем работает)"""
+    """Должность сотрудника с полной цепочкой подразделений"""
     id: int
     department_id: int
     position_name: str
     is_leader: bool
+
+    department_chain: list[DepartmentPathItem] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

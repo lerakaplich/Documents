@@ -4,7 +4,7 @@ from server.app.deps import get_auth_service, get_current_user
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.authorization.auth_service import AuthService
 from server.app.schemas.user_schemas.auth_dto import UserLoginRequest, TokenResponse, TokenRefreshRequest, \
-    PasswordChangeRequest, ResetPasswordConfirm, ForgotPasswordRequest
+    PasswordChangeRequest, ResetPasswordConfirm, ForgotPasswordRequest, VerifyResetCodeRequest
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -57,6 +57,14 @@ async def forgot_password(
     await service.send_reset_code(payload.phone_number)
     return {"status": "success", "message": "Код подтверждения отправлен в Telegram."}
 
+@router.post("/verify-reset-code", status_code=status.HTTP_200_OK)
+async def verify_reset_code(
+    payload: VerifyResetCodeRequest,
+    service: AuthService = Depends(get_auth_service)
+):
+    """Шаг 1.5: Валидация кода из Telegram (для двухшагового UX в клиенте)"""
+    await service.verify_reset_code(payload)
+    return {"status": "success", "message": "Код подтвержден."}
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
 async def reset_password(

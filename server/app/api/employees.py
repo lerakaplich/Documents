@@ -32,15 +32,15 @@ async def get_current_user_profile(
     """
     Получение данных профиля текущего вошедшего пользователя.
     """
-    employee = await service.get_my_profile(current_user)
+    employee_profile = await service.get_my_profile(current_user)
 
-    if not employee:
+    if not employee_profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Профиль пользователя не найден"
         )
 
-    return employee
+    return employee_profile
 
 @router.get("/{emp_id}", response_model=EmployeeDetailRead)
 async def get_employee_detail(

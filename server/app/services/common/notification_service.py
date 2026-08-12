@@ -3,7 +3,7 @@ import logging
 from typing import Optional
 from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError, TelegramAPIError
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup
 
 from server.app.database.document_models import DocStatus
 from server.app.repositories.document_repo import DocumentRepository

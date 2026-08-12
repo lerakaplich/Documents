@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.expression import delete
 
 from server.app.database.employee_models import Employee, EmployeePosition, Department
+from server.app.schemas.org import DepartmentPathItem
 from server.app.schemas.user_schemas.employee_dto import PositionCreate, EmployeeCreate, PositionUpdate
 
 
@@ -28,6 +29,32 @@ class EmployeesRepository:
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_by_id_with_departments(self, employee_id: int) -> Optional[Employee]:
+        """Загружает сотрудника вместе с должностями, отделами и их типами."""
+        stmt = (
+            select(Employee)
+            .where(Employee.id == employee_id)
+            .options(
+                selectinload(Employee.positions)
+                .selectinload(EmployeePosition.department)
+                .selectinload(Department.department_type)
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_departments_by_ids(self, dept_ids: set[int]) -> dict[int, Department]:
+        """Вытягивает подразделения по их ID за один запрос."""
+        if not dept_ids:
+            return {}
+        stmt = (
+            select(Department)
+            .where(Department.id.in_(dept_ids))
+            .options(selectinload(Department.department_type))
+        )
+        result = await self.db.execute(stmt)
+        return {d.id: d for d in result.scalars().all()}
 
     async def get_by_department(self, department_id: int, include_inactive: bool = False) -> list[Employee]:
         stmt = (

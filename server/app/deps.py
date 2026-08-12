@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 import jwt
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from server.app.config import JWT_SECRET_KEY, JWT_ALGORITHM, TELEGRAM_BOT_TOKEN
+from server.app.core.security_tokens import decode_access_token
 from server.app.database.document_models import SystemEmployee
 from server.app.database.session import get_docs_db, get_employees_db  # УБРАЛИ кадровый get_employees_db
 from server.app.repositories.attachment_repo import AttachmentRepository
@@ -41,6 +43,7 @@ from server.app.services.common.security_service import SecurityService
 from server.app.services.documents.tag_service import TagService
 
 security = HTTPBearer()
+logger = logging.getLogger("app.deps.auth")
 
 # Глобальный синглтон бота (инициализируется при старте)
 _bot_instance: Optional[Bot] = None
@@ -61,57 +64,57 @@ def get_notification_service(
     emp_repo = EmployeesRepository(db_emp)
     return NotificationService(bot=bot, emp_repo=emp_repo, doc_repo=doc_repo)
 
+
 async def get_current_user(
         credentials: HTTPAuthorizationCredentials = Depends(security),
         db_docs: AsyncSession = Depends(get_docs_db)
 ) -> CurrentUser:
-    """
-    Декодирует реальный JWT-токен и проверяет пользователя в локальной базе документов.
-    """
+    """Декодирует реальный JWT-токен и проверяет пользователя в локальной базе документов."""
     token = credentials.credentials
 
+    # 1. Валидация и декодирование JWT через единую утилиту
+    payload = decode_access_token(token)
+
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        logger.warning(
+            "JWT verification failed: Missing 'sub' claim in payload",
+            extra={"event_type": "jwt_missing_sub"}
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Некорректный токен: отсутствует sub."
+        )
+
     try:
-        # Декодируем НАСТОЯЩИЙ JWT-токен, полученный от AuthService
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-
-        user_id_str = payload.get("sub")
-        if not user_id_str:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Некорректный токен: отсутствует sub."
-            )
         user_id = int(user_id_str)
-
-    except jwt.ExpiredSignatureError:
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Срок действия access-токена истек. Обновите его через /auth/refresh",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except (jwt.PyJWTError, ValueError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Невалидный или искаженный сессионный токен.",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Некорректный токен: sub должен быть числом."
         )
 
-    # Запрашиваем данные пользователя из ЛОКАЛЬНОЙ таблицы system_employees базы документов
+    # 2. Проверяем наличие пользователя в СЭД
     sys_result = await db_docs.execute(select(SystemEmployee).where(SystemEmployee.id == user_id))
     system_user = sys_result.scalar_one_or_none()
 
     if not system_user:
+        logger.warning(
+            f"User with id={user_id} found in JWT but missing in SystemEmployee table",
+            extra={"event_type": "user_not_registered_in_sed", "employee_id": user_id}
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Пользователь не зарегистрирован в системе документооборота."
         )
 
     return CurrentUser(
-        id=int(system_user.id),  # Заворачиваем в int для спокойствия линтера
+        id=int(system_user.id),
         last_name=system_user.last_name,
         first_name=system_user.first_name,
         patronymic=system_user.patronymic,
         rights=system_user.rights,
-        service_number="N/A"
+        service_number=payload.get("service_number", "N/A")  # Берем из токена, если есть!
     )
 
 def get_auth_service(
@@ -217,7 +220,8 @@ async def get_doc_service(
     db_docs: AsyncSession = Depends(get_docs_db),
     db_emp: AsyncSession = Depends(get_employees_db),
     attachment_svc: AttachmentService = Depends(get_attachment_service),
-    notification_svc: NotificationService = Depends(get_notification_service)
+    notification_svc: NotificationService = Depends(get_notification_service),
+    security: SecurityService = Depends(get_security_service)
 ) -> DocumentService:
     doc_repo = DocumentRepository(db_docs)
     emp_repo = EmployeesRepository(db_emp)
@@ -226,7 +230,8 @@ async def get_doc_service(
         repo=doc_repo,
         emp_repo=emp_repo,
         attachment_service=attachment_svc,
-        notification_service=notification_svc
+        notification_service=notification_svc,
+        security=security
     )
 
 
