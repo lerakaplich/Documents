@@ -17,7 +17,7 @@ from server.app.database.document_models import UserSession
 from server.app.database.employee_models import Employee, EmployeePosition
 from server.app.repositories.session_repo import SessionRepository
 from server.app.schemas.user_schemas.auth_dto import TokenResponse, TokenRefreshRequest, UserLoginRequest, \
-    PasswordChangeRequest, ResetPasswordConfirm
+    PasswordChangeRequest, ResetPasswordConfirm, VerifyResetCodeRequest
 
 logger = logging.getLogger("app.services.auth")
 
@@ -249,6 +249,32 @@ class AuthService:
         logger.info(
             f"Reset password code sent via Telegram to employee_id={employee.id}",
             extra={"event_type": "reset_code_sent", "employee_id": employee.id}
+        )
+
+    async def verify_reset_code(self, payload: VerifyResetCodeRequest) -> None:
+        """Валидация кода сброса пароля без его сжигания."""
+        cached_data = reset_codes_storage.get(payload.phone_number)
+        masked_phone = mask_phone_number(payload.phone_number)
+
+        if not cached_data or cached_data["code"] != payload.code:
+            logger.warning(
+                f"Reset code verification failed for phone {masked_phone}: Invalid or expired code",
+                extra={
+                    "event_type": "reset_code_verify_failed",
+                    "phone_number": masked_phone,
+                    "reason": "invalid_or_expired_code"
+                }
+            )
+            # В случае ОШИБКИ стираем запись из кэша, чтобы предотвратить брутфорс
+            reset_codes_storage.pop(payload.phone_number, None)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Неверный код подтверждения или срок его действия истек."
+            )
+
+        logger.info(
+            f"Reset code verified successfully for phone {masked_phone}",
+            extra={"event_type": "reset_code_verified", "phone_number": masked_phone}
         )
 
     async def reset_password_by_code(self, payload: ResetPasswordConfirm) -> None:

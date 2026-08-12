@@ -68,3 +68,8 @@ class ResetPasswordConfirm(BaseModel):
     @classmethod
     def normalize(cls, v: str) -> str:
         return clean_and_normalize_phone(v)
+
+
+class VerifyResetCodeRequest(BaseModel):
+    phone_number: str = Field(..., description="Номер телефона сотрудника")
+    code: str = Field(..., description="6-значный код из Telegram")
