@@ -7,15 +7,16 @@ from client.windows.profile.user_data.phone_edit_window import PhoneEditWindow
 
 
 class ProfileInfo:
-    """Управление информацией профиля сотрудника (ФИО, должность, отделы, телефон, email, дата рождения)."""
+    """Управление информацией профиля сотрудника"""
 
     def __init__(self, parent=None):
         self.parent = parent
         self.current_phone_raw = ""
         self.current_email_raw = ""
         self.department_rows = []
+        self.http_client = None  # Будет установлен из ProfileForm
 
-        # Виджеты (будут переданы через setup_ui_elements)
+        # Виджеты
         self.infoFrame = None
         self.labelTitle = None
         self.label_position_value = None
@@ -25,6 +26,11 @@ class ProfileInfo:
         self.btnEditPhone = None
         self.btnEditEmail = None
         self.mainLayout = None
+
+    def set_http_client(self, http_client):
+        """Устанавливает HTTP клиент для отправки запросов"""
+        self.http_client = http_client
+        print("✅ HTTP клиент установлен в ProfileInfo")
 
     def setup_ui_elements(self, infoFrame, labelTitle, label_position_value, label_phone_value,
                           label_email_value, label_birth_date_value, btnEditPhone, btnEditEmail,
@@ -63,7 +69,6 @@ class ProfileInfo:
         """Полностью перестраивает форму с информацией о сотруднике."""
         print("rebuild_info_layout вызван")
 
-        # Создаём infoFrame, если его нет
         if self.infoFrame is None:
             print("infoFrame не найден, создаём новый")
             self.infoFrame = QFrame(self.parent)
@@ -82,7 +87,6 @@ class ProfileInfo:
                 if layout:
                     layout.insertWidget(1, self.infoFrame)
 
-        # Настраиваем layout внутри infoFrame
         layout = self.infoFrame.layout()
         if layout is None:
             layout = QFormLayout()
@@ -90,7 +94,6 @@ class ProfileInfo:
             layout.setContentsMargins(0, 0, 0, 0)
             self.infoFrame.setLayout(layout)
         else:
-            # Очищаем старые виджеты
             while layout.count():
                 item = layout.takeAt(0)
                 widget = item.widget()
@@ -110,7 +113,7 @@ class ProfileInfo:
         layout.addRow(label_pos_title, label_pos_value)
         self.label_position_value = label_pos_value
 
-        # Подразделения (цепочка)
+        # Подразделения
         self.department_rows = []
         for type_name, dept_name in department_chain:
             title = QLabel(f"{type_name}:")
@@ -170,7 +173,6 @@ class ProfileInfo:
         layout.addRow(label_birth_title, label_birth_value)
         self.label_birth_date_value = label_birth_value
 
-        # Подключаем сигналы (если ещё не подключены)
         self.connect_signals()
         print("rebuild_info_layout завершён")
 
@@ -190,22 +192,17 @@ class ProfileInfo:
         except Exception as e:
             QMessageBox.warning(self.parent, "Ошибка", f"Не удалось открыть окно редактирования телефона\n{str(e)}")
 
-    def set_http_client(self, http_client):
-        """Устанавливает HTTP клиент для отправки запросов"""
-        self.http_client = http_client
-
     def on_phone_updated(self, new_phone: str):
         """Обновляет отображение телефона после редактирования."""
         self.current_phone_raw = new_phone
         if self.label_phone_value:
             self.label_phone_value.setText(self.format_phone_display(new_phone))
 
-        # Отправка обновления на сервер
-        if hasattr(self, 'http_client') and self.http_client:
+        if self.http_client:
             try:
                 from client.services.employee_service import EmployeeService
                 service = EmployeeService(self.http_client)
-                service.update_my_profile({"phone": new_phone})
+                service.update_my_profile({"phone_number": new_phone})
                 QMessageBox.information(self.parent, "Успешно", "Номер телефона обновлён")
             except Exception as e:
                 QMessageBox.warning(self.parent, "Ошибка", f"Не удалось обновить телефон на сервере:\n{str(e)}")
@@ -218,8 +215,7 @@ class ProfileInfo:
         if self.label_email_value:
             self.label_email_value.setText(new_email if new_email else "Не указан")
 
-        # Отправка обновления на сервер
-        if hasattr(self, 'http_client') and self.http_client:
+        if self.http_client:
             try:
                 from client.services.employee_service import EmployeeService
                 service = EmployeeService(self.http_client)
@@ -238,4 +234,3 @@ class ProfileInfo:
             dialog.exec()
         except Exception as e:
             QMessageBox.warning(self.parent, "Ошибка", f"Не удалось открыть окно редактирования email\n{str(e)}")
-

@@ -1,26 +1,36 @@
 import sys
 import os
-from PyQt6.QtWidgets import QMainWindow, QWidget, QGraphicsDropShadowEffect, QApplication, QVBoxLayout
-from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QUrl, QTimer, QPoint, QParallelAnimationGroup
-from PyQt6.QtGui import QColor, QPainter, QPixmap
+from PyQt6.QtWidgets import QMainWindow, QWidget, QGraphicsDropShadowEffect, QApplication
+from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QUrl, QPoint, QParallelAnimationGroup
+from PyQt6.QtGui import QColor, QPixmap
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.uic import loadUi
+import logging
 
-# Импорты из новой структуры
+from client.core.state.app_state import AppState
 from client.windows.login.auth_widget import AuthWidget
 from client.windows.login.new_password_widget import NewPasswordWidget
 from client.windows.login.reset_password_widget import ResetPasswordWidget
-
-# Импортируем MainWindow
 from client.windows.main_window import MainWindow
+from client.windows.animations.animated_notification import NotificationManager
+
+logger = logging.getLogger(__name__)
 
 
 class LoginWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        # 1. Загружаем чистый фон
-        ui_path = os.path.join(os.path.dirname(__file__), "..", "..", "ui", "login", "back_login.ui")
+        # Получаем корневую директорию проекта (client)
+        self.root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+        # Правильный путь к back_login.ui
+        ui_path = os.path.join(self.root_dir, "ui", "login", "back_login.ui")
+        print(f"Загрузка UI: {ui_path}")
+
+        if not os.path.exists(ui_path):
+            raise FileNotFoundError(f"UI файл не найден: {ui_path}")
+
         loadUi(ui_path, self)
 
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -28,14 +38,20 @@ class LoginWindow(QMainWindow):
         self._is_reset_mode = False
         self._is_new_password_mode = False
 
-        # 2. Анимация звезд WebEngine
+        # Состояние приложения
+        self.app_state = AppState()
+
+        # 2. Анимация звезд
         self.web_view = QWebEngineView(self.backgroundWidget)
         self.web_view.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self.setMouseTracking(True)
         self.backgroundWidget.setMouseTracking(True)
 
-        html_path = os.path.join(os.path.dirname(__file__), "..", "..", "html", "star_animation.html")
-        self.web_view.setUrl(QUrl.fromLocalFile(html_path))
+        html_path = os.path.join(self.root_dir, "html", "star_animation.html")
+        if os.path.exists(html_path):
+            self.web_view.setUrl(QUrl.fromLocalFile(html_path))
+        else:
+            print(f"Warning: HTML файл не найден: {html_path}")
         self.web_view.lower()
 
         # 3. Инициализация виджетов-карточек
@@ -48,17 +64,15 @@ class LoginWindow(QMainWindow):
         self.new_password_card = NewPasswordWidget()
         self.new_password_card.setParent(self.backgroundWidget)
 
-        # Добавляем тени
         self._apply_shadow(self.auth_card)
         self._apply_shadow(self.reset_card)
         self._apply_shadow(self.new_password_card)
 
         # 4. Загрузка логотипа
-        logo_path = os.path.join(os.path.dirname(__file__), "..", "..", "icons", "logo.png")
+        logo_path = os.path.join(self.root_dir, "icons", "logo.png")
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path)
             if not pixmap.isNull():
-                # Очищаем стили и устанавливаем изображение
                 self.logoLabel.setStyleSheet("background-color: transparent;")
                 self.logoLabel.setText("")
                 scaled_pixmap = pixmap.scaled(
@@ -69,21 +83,73 @@ class LoginWindow(QMainWindow):
                 self.logoLabel.setPixmap(scaled_pixmap)
                 self.logoLabel.setScaledContents(False)
 
-        # 5. Подключение сигналов переключения
-        self.auth_card.forgotPasswordButton.clicked.connect(self.show_reset_password)
-        self.reset_card.back_to_login.connect(self.show_login_card)
-        self.reset_card.go_to_new_password.connect(self.show_new_password)
+        # ===== ИНИЦИАЛИЗАЦИЯ МЕНЕДЖЕРА УВЕДОМЛЕНИЙ =====
+        self.notification_manager = NotificationManager(self, max_visible=3)
+        # ==============================================
 
-        # Подключаем кнопку "Назад к входу" из окна смены пароля
+        # 5. Подключение сигналов переключения
+
+        if hasattr(self.new_password_card, 'password_changed_successfully'):
+            self.new_password_card.password_changed_successfully.connect(self.switch_to_main_window)
+
+        if hasattr(self.new_password_card, 'password_changed_successfully'):
+            self.new_password_card.password_changed_successfully.connect(self.switch_to_main_window)
+
+        if hasattr(self.auth_card, 'forgotPasswordButton'):
+            self.auth_card.forgotPasswordButton.clicked.connect(self.show_reset_password)
+
+        if hasattr(self.reset_card, 'back_to_login'):
+            self.reset_card.back_to_login.connect(self.show_login_card)
+
+        # ВАЖНО: Подключаем сигнал go_to_new_password к обработчику
+        if hasattr(self.reset_card, 'go_to_new_password'):
+            self.reset_card.go_to_new_password.connect(self._on_go_to_new_password)
+
         if hasattr(self.new_password_card, 'backToLoginButton'):
             self.new_password_card.backToLoginButton.clicked.connect(self.show_login_card)
 
         # 6. Подключение сигналов для перехода в MainWindow
-        self.auth_card.login_successful.connect(self.switch_to_main_window)
-        self.new_password_card.password_changed_successfully.connect(self.switch_to_main_window)
+        if hasattr(self.auth_card, 'login_successful'):
+            self.auth_card.login_successful.connect(self.switch_to_main_window)
+
+        if hasattr(self.new_password_card, 'password_changed_successfully'):
+            self.new_password_card.password_changed_successfully.connect(self.switch_to_main_window)
+
+        # Передаем менеджер уведомлений в виджеты
+        self.auth_card.set_notification_manager(self.notification_manager)
+        self.reset_card.set_notification_manager(self.notification_manager)
+        self.new_password_card.set_notification_manager(self.notification_manager)
 
         # Ссылка на главное окно
         self.main_window = None
+
+        # Проверяем сохраненную сессию
+        self._check_saved_session()
+
+    def switch_to_main_window(self, user_data=None):
+        """Переключение на главное окно с данными пользователя"""
+        print("Переход в главное окно...")
+
+        if self.main_window is None:
+            self.main_window = MainWindow()
+            self.main_window.showMaximized()
+
+        if user_data and hasattr(self.main_window, 'set_user_data'):
+            logger.info(f"📥 Устанавливаем данные пользователя в MainWindow")
+            self.main_window.set_user_data(user_data)
+
+        self.main_window.show()
+        self.main_window.raise_()
+        self.main_window.activateWindow()
+
+        self.hide()
+
+        self.main_window.closeEvent = lambda event: self.on_main_window_closed()
+
+    def _check_saved_session(self):
+        """Проверяем наличие сохраненной сессии"""
+        # TODO: Реализовать проверку сохраненных токенов из QSettings или файла
+        pass
 
     def _apply_shadow(self, widget: QWidget):
         shadow = QGraphicsDropShadowEffect(self)
@@ -97,6 +163,9 @@ class LoginWindow(QMainWindow):
         if hasattr(self, 'web_view') and self.web_view:
             self.web_view.setGeometry(0, 0, self.width(), self.height())
         self._update_cards_position()
+        # Обновляем позиции уведомлений
+        if hasattr(self, 'notification_manager'):
+            self.notification_manager._update_notifications_position()
 
     def _update_cards_position(self):
         bg_size = self.backgroundWidget.size()
@@ -109,26 +178,53 @@ class LoginWindow(QMainWindow):
         new_password_y = (bg_size.height() - new_password_size.height()) // 2
 
         if self._is_new_password_mode:
-            # Показываем окно смены пароля
             new_password_x = (bg_size.width() - new_password_size.width()) // 2
             self.new_password_card.move(new_password_x, new_password_y)
             self.auth_card.move(-auth_size.width() - 100, auth_y)
             self.reset_card.move(bg_size.width() + 100, reset_y)
         elif self._is_reset_mode:
-            # Показываем окно восстановления
             reset_x = (bg_size.width() - reset_size.width()) // 2
             self.reset_card.move(reset_x, reset_y)
             self.auth_card.move(-auth_size.width() - 100, auth_y)
             self.new_password_card.move(bg_size.width() + 100, new_password_y)
         else:
-            # Показываем окно авторизации
             auth_x = (bg_size.width() - auth_size.width()) // 2
             self.auth_card.move(auth_x, auth_y)
             self.reset_card.move(bg_size.width() + 100, reset_y)
             self.new_password_card.move(bg_size.width() + 100, new_password_y)
 
+    def _on_go_to_new_password(self, phone_number: str, code: str):
+        """
+        Обработчик перехода к виджету нового пароля
+        Вызывается из reset_card при успешной верификации кода
+        """
+        logger.info(f"📥 Получены данные в LoginWindow: phone={phone_number}, code={code}")
+
+        # Передаем данные в виджет нового пароля
+        if hasattr(self, 'new_password_card'):
+            self.new_password_card.set_reset_data(phone_number, code)
+            logger.info(f"✅ Данные переданы в NewPasswordWidget")
+        else:
+            logger.error("❌ new_password_card не найден в LoginWindow")
+            return
+
+        # Показываем виджет нового пароля
+        self.show_new_password()
+
     def show_reset_password(self):
         """Показать окно восстановления пароля"""
+        # Получаем номер телефона из поля ввода
+        phone = ""
+        if hasattr(self.auth_card, 'phoneInput'):
+            phone = self.auth_card.phoneInput.text().strip()
+            print(f"📱 Номер телефона для восстановления: {phone}")
+
+        # Передаем номер в виджет восстановления
+        if hasattr(self.reset_card, 'set_phone_number'):
+            self.reset_card.set_phone_number(phone)
+        else:
+            print("⚠️ ResetPasswordWidget не имеет метода set_phone_number")
+
         self._is_reset_mode = True
         self._is_new_password_mode = False
         bg_w, bg_h = self.backgroundWidget.width(), self.backgroundWidget.height()
@@ -228,28 +324,11 @@ class LoginWindow(QMainWindow):
         self.anim_group.addAnimation(anim_new_password)
         self.anim_group.start()
 
-    def switch_to_main_window(self):
-        """Переключение на главное окно"""
-        print("Переход в главное окно...")
 
-        if self.main_window is None:
-            self.main_window = MainWindow()
-            self.main_window.showMaximized()
-
-        self.main_window.show()
-        self.main_window.raise_()
-        self.main_window.activateWindow()
-
-        # Скрываем окно входа
-        self.hide()
-
-        # Обработка закрытия главного окна
-        self.main_window.closeEvent = lambda event: self.on_main_window_closed()
 
     def on_main_window_closed(self):
         """Обработка закрытия главного окна"""
         print("Главное окно закрыто")
-        # Показываем окно входа снова
         self.show()
         self.raise_()
         self.activateWindow()

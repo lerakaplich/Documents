@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import QWidget, QApplication, QMessageBox, QFormLayout, QLa
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.uic import loadUi
 
+from client.core.state.app_state import AppState
 from client.windows.profile.overtime.overtime_panel import OvertimePanel
 from client.windows.profile.profile_info import ProfileInfo
 from client.core.http_client import HttpClient
@@ -31,7 +32,6 @@ sys.excepthook = global_exception_handler
 
 
 # ===== ProfileLoader - класс для загрузки данных в отдельном потоке =====
-# client/windows/profile/profile_window.py
 class ProfileLoader(QThread):
     """Загрузка профиля в отдельном потоке"""
     finished = pyqtSignal(dict)
@@ -70,7 +70,6 @@ class ProfileLoader(QThread):
             self.error.emit(f"Ошибка загрузки профиля: {str(e)}")
 
 
-
 # ===== Конец класса ProfileLoader =====
 
 class ProfileForm(QWidget):
@@ -81,21 +80,17 @@ class ProfileForm(QWidget):
 
         # Если передан employee_id - загружаем конкретного, иначе - текущего
         self.employee_id = employee_id
-        self.use_current_user = employee_id is None  # ← Если ID нет - используем /me
+        self.use_current_user = employee_id is None
 
         if self.use_current_user:
             print("👤 Загружаем профиль текущего пользователя")
         else:
             print(f"👤 Загружаем профиль сотрудника с ID: {self.employee_id}")
 
-        # ===== Инициализация HTTP клиента с реальным токеном =====
-        self.base_url = "http://localhost:8000/api/v1"
-        # ВСТАВЬТЕ ВАШ ТОКЕН СЮДА:
-        self.token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic2VydmljZV9udW1iZXIiOiJNQVowMDEiLCJpc19sZWFkZXIiOnRydWUsImV4cCI6MTc4NjQ0OTY3MH0.INMWABaTjeBYztZeZ835DG4RUWSo-SIgvVLjplQh6Os"
-
-        self.http_client = HttpClient(self.base_url, self.token)
-
-        self.http_client = HttpClient(self.base_url, self.token)
+        # ===== Получаем HTTP клиент из глобального состояния =====
+        self.app_state = AppState()
+        self.http_client = self.app_state.http_client
+        print(f"✅ Используем HTTP клиент из AppState: {self.http_client.base_url}")
         # ===== Конец инициализации HTTP клиента =====
 
         # ===== Загрузка UI =====
@@ -189,12 +184,10 @@ class ProfileForm(QWidget):
             print("=" * 60)
 
             # ==== 1. ФИО ====
-            # Собираем из отдельных полей
             last_name = data.get('last_name', '')
             first_name = data.get('first_name', '')
             patronymic = data.get('patronymic', '')
 
-            # Формируем полное ФИО
             full_name_parts = []
             if last_name:
                 full_name_parts.append(last_name)
@@ -210,22 +203,16 @@ class ProfileForm(QWidget):
             positions = data.get('positions', [])
             position_name = 'Не указана'
             department_chain = []
-            department_ids = []  # Для дополнительной информации
 
             if positions and len(positions) > 0:
-                # Берем первую должность (обычно основная)
                 first_position = positions[0]
                 position_name = first_position.get('position_name', 'Не указана')
 
-                # Если есть department_id - получаем название отдела
                 department_id = first_position.get('department_id')
                 if department_id:
-                    department_ids.append(department_id)
-                    # Пока используем ID, потом можно загрузить название через API
                     department_chain.append(("Отдел", f"ID: {department_id}"))
 
             print(f"📋 Должность: {position_name}")
-            print(f"📋 Отделы: {department_chain}")
 
             # ==== 3. Телефон ====
             phone = data.get('phone_number', '')
@@ -237,7 +224,6 @@ class ProfileForm(QWidget):
 
             # ==== 5. Дата рождения ====
             birth_date = data.get('birth_date', 'Не указана')
-            # Форматируем дату если нужно
             if birth_date and birth_date != 'Не указана':
                 try:
                     from datetime import datetime
@@ -246,16 +232,6 @@ class ProfileForm(QWidget):
                 except:
                     pass
             print(f"🎂 Дата рождения: {birth_date}")
-
-            # ==== 6. Дополнительная информация ====
-            service_number = data.get('service_number', '')
-            rights = data.get('rights', '')
-            is_active = data.get('is_active', False)
-
-            print(f"📋 Дополнительно:")
-            print(f"  - Табельный номер: {service_number}")
-            print(f"  - Права: {rights}")
-            print(f"  - Активен: {is_active}")
 
             # Обновляем профиль
             self.profile_info.update_profile(
@@ -322,23 +298,19 @@ class ProfileForm(QWidget):
 
     def setup_connections(self):
         """Подключает сигналы кнопок и фильтров."""
-        # Кнопки периода
         if hasattr(self, 'btnSelectPeriod') and self.btnSelectPeriod:
             self.btnSelectPeriod.clicked.connect(self.overtime_panel.on_select_period_clicked)
         if hasattr(self, 'btnSelectPeriodAll') and self.btnSelectPeriodAll:
             self.btnSelectPeriodAll.clicked.connect(self.overtime_panel.on_select_period_all_clicked)
 
-        # Кнопки сброса
         if hasattr(self, 'btnResetFilters') and self.btnResetFilters:
             self.btnResetFilters.clicked.connect(self.overtime_panel.reset_my_filters)
         if hasattr(self, 'btnResetFiltersAll') and self.btnResetFiltersAll:
             self.btnResetFiltersAll.clicked.connect(self.overtime_panel.reset_all_filters)
 
-        # Добавление переработки
         if hasattr(self, 'btnAddOvertimeAll') and self.btnAddOvertimeAll:
             self.btnAddOvertimeAll.clicked.connect(self.overtime_panel.on_add_overtime_all_clicked)
 
-        # Экспорт
         if hasattr(self, 'btnExport') and self.btnExport:
             self.btnExport.clicked.connect(self.overtime_panel.on_export_clicked)
 
@@ -361,7 +333,6 @@ class ProfileForm(QWidget):
 
     def load_overtime_data(self):
         """Загружает переработки (пока заглушка)."""
-        # TODO: Загружать переработки через API
         self.overtime_panel.load_overtime_data()
 
     def create_fallback_ui(self):
@@ -387,7 +358,6 @@ class ProfileForm(QWidget):
         self.tabWidget = QTabWidget()
         main_layout.addWidget(self.tabWidget)
 
-        # Передаём в компоненты
         self.profile_info.setup_ui_elements(
             infoFrame=self.infoFrame,
             labelTitle=title,
@@ -404,7 +374,6 @@ class ProfileForm(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    # Проверяем аргументы командной строки для ID сотрудника
     employee_id = None
     if len(sys.argv) > 1:
         try:

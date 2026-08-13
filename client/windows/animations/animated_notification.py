@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import (
     Qt, QPropertyAnimation, QEasingCurve, QTimer,
-    QPoint, QParallelAnimationGroup, QSequentialAnimationGroup, pyqtSignal
+    QPoint, QParallelAnimationGroup, pyqtSignal
 )
 from PyQt6.QtGui import QIcon, QColor, QPalette
 
@@ -21,9 +21,9 @@ class AnimatedNotification(QFrame):
         self.duration = duration
         self.is_closing = False
 
-        # Настройка внешнего вида - шире и выше
-        self.setFixedWidth(400)  # Было 350
-        self.setFixedHeight(60)  # Было 60
+        # Настройка внешнего вида
+        self.setFixedWidth(400)
+        self.setFixedHeight(70)  # Чуть больше высота для читаемости
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setFrameShadow(QFrame.Shadow.Raised)
 
@@ -52,10 +52,10 @@ class AnimatedNotification(QFrame):
 
         # Создаем layout
         self.layout = QHBoxLayout(self)
-        self.layout.setContentsMargins(10, 8, 10, 8)  # Больше отступы
+        self.layout.setContentsMargins(15, 10, 15, 10)
         self.layout.setSpacing(5)
 
-        # Сообщение (только текст, без иконок)
+        # Сообщение
         self.message_label = QLabel(message)
         self.message_label.setWordWrap(True)
         self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -172,7 +172,7 @@ class NotificationManager:
         self.parent = parent_widget
         self.max_visible = max_visible
         self.active_notifications = []
-        self.notification_spacing = 5  # Было 10 - меньше расстояние
+        self.notification_spacing = 5
 
         # Создаем прозрачный контейнер для уведомлений
         self.container = QWidget(parent_widget)
@@ -220,7 +220,7 @@ class NotificationManager:
         # Подключаем сигнал закрытия
         notification.closed.connect(lambda: self._remove_notification(notification))
 
-        # Вычисляем позицию (снизу)
+        # Вычисляем позицию
         x, y = self._calculate_position(len(self.active_notifications))
 
         # Показываем уведомление
@@ -236,13 +236,18 @@ class NotificationManager:
         parent_width = self.container.width()
         parent_height = self.container.height()
 
-        notification_height = 85  # Высота уведомления + отступы
+        # Получаем ширину уведомления
+        notification_width = 400
+        notification_height = 70  # Высота уведомления
 
         # Центрируем по горизонтали
-        x = (parent_width - 500) // 2  # 500 - ширина уведомления
+        x = (parent_width - notification_width) // 2
 
-        # Поднимаем чуть выше от низа
-        y = parent_height - 40 - (index + 1) * (notification_height + self.notification_spacing)
+        # Позиция снизу с учетом отступов между уведомлениями
+        # Отступ от нижнего края
+        bottom_margin = 30
+        # Вычисляем позицию для текущего уведомления
+        y = parent_height - bottom_margin - (index + 1) * (notification_height + self.notification_spacing)
 
         return x, y
 
