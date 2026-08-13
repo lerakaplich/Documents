@@ -300,7 +300,7 @@ class OrganizationsPage(QWidget):
         return sort_func(filtered)
 
     def update_display(self):
-        """Обновление отображения организаций в 1 колонку"""
+        """Обновление отображения организаций в 2 колонки (построчно)"""
         # Очищаем layout
         for i in reversed(range(self.orgsLayout.count())):
             widget = self.orgsLayout.itemAt(i).widget()
@@ -310,13 +310,37 @@ class OrganizationsPage(QWidget):
         # Получаем отфильтрованные и отсортированные организации
         self.filtered_orgs = self.filter_and_sort_orgs()
 
-        # Отображаем организации в 1 КОЛОНКУ
-        for org in self.filtered_orgs:
+        # Создаем контейнер для колонок
+        main_h_layout = QHBoxLayout()
+        main_h_layout.setSpacing(10)  # Расстояние между колонками
+        main_h_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Создаем две колонки
+        left_column = QVBoxLayout()
+        left_column.setSpacing(10)  # Расстояние между карточками
+        left_column.setContentsMargins(0, 0, 0, 0)
+
+        right_column = QVBoxLayout()
+        right_column.setSpacing(10)
+        right_column.setContentsMargins(0, 0, 0, 0)
+
+        # Распределяем карточки построчно (слева направо)
+        for i, org in enumerate(self.filtered_orgs):
             org_card = OrganizationCard(org)
             org_card.edit_clicked.connect(self.on_edit_org)
             org_card.delete_clicked.connect(self.on_delete_org)
 
-            self.orgsLayout.addWidget(org_card)
+            if i % 2 == 0:
+                left_column.addWidget(org_card)
+            else:
+                right_column.addWidget(org_card)
+
+        # Добавляем колонки в основной горизонтальный layout
+        main_h_layout.addLayout(left_column)
+        main_h_layout.addLayout(right_column)
+
+        # Добавляем горизонтальный layout в основной вертикальный
+        self.orgsLayout.addLayout(main_h_layout)
 
         # Добавляем растяжку в конец
         self.orgsLayout.addStretch()

@@ -264,6 +264,12 @@ QPushButton:pressed {
    </item>
    <item>
     <widget class="QScrollArea" name="scrollArea">
+    <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>1</horstretch>
+            <verstretch>1</verstretch>
+        </sizepolicy>
+    </property>
      <property name="styleSheet">
       <string notr="true">
 QScrollArea {

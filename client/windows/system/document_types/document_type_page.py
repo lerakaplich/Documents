@@ -271,7 +271,7 @@ class DocumentTypesPage(QWidget):
         return sort_func(filtered)
 
     def update_display(self):
-        """Обновление отображения типов документов в 1 колонку"""
+        """Обновление отображения типов документов в 2 колонки"""
         # Очищаем layout
         for i in reversed(range(self.typesLayout.count())):
             widget = self.typesLayout.itemAt(i).widget()
@@ -281,13 +281,37 @@ class DocumentTypesPage(QWidget):
         # Получаем отфильтрованные и отсортированные типы
         self.filtered_types = self.filter_and_sort_types()
 
-        # Отображаем типы в 1 КОЛОНКУ
-        for doc_type in self.filtered_types:
+        # Создаем горизонтальный layout для двух колонок
+        h_layout = QHBoxLayout()
+        h_layout.setSpacing(10)  # Расстояние между колонками
+        h_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Создаем две колонки
+        left_column = QVBoxLayout()
+        left_column.setSpacing(10)  # Расстояние между карточками в колонке
+        left_column.setContentsMargins(0, 0, 0, 0)
+
+        right_column = QVBoxLayout()
+        right_column.setSpacing(10)
+        right_column.setContentsMargins(0, 0, 0, 0)
+
+        # Распределяем карточки по двум колонкам (поочередно)
+        for i, doc_type in enumerate(self.filtered_types):
             type_card = DocumentTypeCard(doc_type)
             type_card.edit_clicked.connect(self.on_edit_type)
             type_card.delete_clicked.connect(self.on_delete_type)
 
-            self.typesLayout.addWidget(type_card)
+            if i % 2 == 0:
+                left_column.addWidget(type_card)
+            else:
+                right_column.addWidget(type_card)
+
+        # Добавляем колонки в горизонтальный layout
+        h_layout.addLayout(left_column)
+        h_layout.addLayout(right_column)
+
+        # Добавляем горизонтальный layout в основной вертикальный
+        self.typesLayout.addLayout(h_layout)
 
         # Добавляем растяжку в конец
         self.typesLayout.addStretch()

@@ -71,7 +71,18 @@ class EmployeesPage(QWidget):
 
             # Подключаемся к скроллу
             self.scrollArea.verticalScrollBar().valueChanged.connect(self.on_scroll)
+            # ========== ДОБАВЬТЕ ЭТО ==========
+            # Устанавливаем минимальную высоту для содержимого
+            self.scrollAreaWidgetContents.setMinimumHeight(
+                self.scrollArea.height() - 10
+            )
 
+            # Или используем sizePolicy с приоритетом
+            self.scrollAreaWidgetContents.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.MinimumExpanding
+            )
+            # ==================================
             # Скрываем кнопку сброса при старте
             self.btnResetFilters.hide()
 
@@ -540,7 +551,6 @@ class EmployeesPage(QWidget):
             if org_name in groups:
                 groups = {org_name: groups[org_name]}
 
-        # Сортировка групп
         org_order = sorted(groups.keys(), key=lambda x: (x != "ОАО МАЗ", x))
 
         global_counter = 0
@@ -592,6 +602,11 @@ class EmployeesPage(QWidget):
                 group.add_widget(employee_card)
 
             self.scrollAreaLayout.addWidget(group)
+
+        # ========== ДОБАВЬТЕ ЭТО ==========
+        # Добавляем растягивающийся спейсер в конец
+        self.scrollAreaLayout.addStretch()
+        # ==================================
 
         self.scrollAreaLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.position_floating_button()
