@@ -1,8 +1,10 @@
 # server/app/services/notification_service.py
+import asyncio
+import html
 import logging
 from typing import Optional
 from aiogram import Bot
-from aiogram.exceptions import TelegramForbiddenError, TelegramAPIError
+from aiogram.exceptions import TelegramForbiddenError, TelegramAPIError, TelegramRetryAfter
 from aiogram.types import InlineKeyboardMarkup
 
 from server.app.database.document_models import DocStatus
@@ -43,26 +45,99 @@ class NotificationService:
             )
             return True
         except TelegramForbiddenError:
-            logger.warning(f"Пользователь с chat_id={chat_id} заблокировал бота.")
+            logger.warning(
+                f"Notification skipped: User with chat_id={chat_id} blocked the bot",
+                extra={"event_type": "tg_bot_blocked", "chat_id": chat_id}
+            )
+        except TelegramRetryAfter as e:
+            logger.warning(
+                f"Telegram rate limit hit for chat_id={chat_id}. Sleeping for {e.timeout}s",
+                extra={"event_type": "tg_rate_limit", "chat_id": chat_id, "retry_after": e.timeout}
+            )
+            await asyncio.sleep(e.timeout)
+            return await self._send_safe(chat_id, text, reply_markup)
         except TelegramAPIError as e:
-            logger.error(f"Ошибка Telegram API при отправке на chat_id={chat_id}: {e}")
+            logger.error(
+                f"Telegram API error when sending to chat_id={chat_id}: {e}",
+                extra={"event_type": "tg_api_error", "chat_id": chat_id, "error_details": str(e)}
+            )
         except Exception as e:
-            logger.exception(f"Непредвиденная ошибка при отправке уведомления на chat_id={chat_id}: {e}")
+            logger.exception(
+                f"Unexpected error when sending notification to chat_id={chat_id}: {e}",
+                extra={"event_type": "tg_send_exception", "chat_id": chat_id}
+            )
         return False
+
+    async def _broadcast_messages(self, chat_ids: list[int], text: str) -> int:
+        """Вспомогательный метод для ведения рассылок с соблюдением лимитов Telegram API"""
+        sent_count = 0
+        for chat_id in chat_ids:
+            if await self._send_safe(chat_id, text):
+                sent_count += 1
+            await asyncio.sleep(0.05)
+        return sent_count
 
     async def notify_document_created(self, doc_id: int, actor_id: int):
         """Отправка уведомлений о новом документе исполнителям и получателям"""
         doc = await self.doc_repo.get_by_id(doc_id)
         if not doc:
+            logger.warning(
+                f"Notification 'document_created' skipped: Document doc_id={doc_id} not found",
+                extra={"event_type": "notify_doc_not_found", "doc_id": doc_id}
+            )
             return
 
         participants = await self.doc_repo.get_document_participants_dto(doc_id)
 
-        # Получатели уведомления: исполнители и получатели, исключая самого создателя
+        # Получатели уведомления: исполнители и получатели, исключая создателя
         target_emp_ids = [
             emp_id for emp_id in set(participants.executors + participants.recipients)
-            # if emp_id != actor_id
+            if emp_id != actor_id
         ]
+
+        if not target_emp_ids:
+            return
+
+        chat_map = await self.emp_repo.get_chat_ids_by_employee_ids(target_emp_ids)
+        if not chat_map:
+            logger.debug(
+                f"No Telegram chat_ids found for document creation notification (doc_id={doc_id})",
+                extra={"event_type": "notify_no_chat_ids", "doc_id": doc_id}
+            )
+            return
+
+        reg_num = doc.reg_number or f"ID {doc.id}"
+        escaped_title = html.escape(doc.title or "")
+
+        text = (
+            f"📄 <b>Новый документ №{reg_num}</b>\n\n"
+            f"<b>Заголовок:</b> {escaped_title}\n"
+            f"Вам поступил новый документ на исполнение/ознакомление."
+        )
+
+        sent_count = await self._broadcast_messages(list(chat_map.values()), text)
+        logger.info(
+            f"Sent 'document_created' notifications for doc_id={doc_id} ({sent_count}/{len(chat_map)} delivered)",
+            extra={
+                "event_type": "notify_document_created",
+                "doc_id": doc_id,
+                "delivered": sent_count,
+                "total_targets": len(chat_map)
+            }
+        )
+
+    async def notify_comment_added(self, doc_id: int, author_id: int, comment_text: str):
+        """При добавлении комментария — всем участникам, кроме автора"""
+        doc = await self.doc_repo.get_by_id(doc_id)
+        if not doc:
+            logger.warning(
+                f"Notification 'comment_added' skipped: Document doc_id={doc_id} not found",
+                extra={"event_type": "notify_doc_not_found", "doc_id": doc_id}
+            )
+            return
+
+        participants = await self.doc_repo.get_document_participants_dto(doc_id)
+        target_emp_ids = [emp_id for emp_id in participants.all_unique_ids if emp_id != author_id]
 
         if not target_emp_ids:
             return
@@ -71,36 +146,24 @@ class NotificationService:
         if not chat_map:
             return
 
-        reg_num = doc.reg_number or f"ID {doc.id}"
-        text = (
-            f"📄 <b>Новый документ №{reg_num}</b>\n\n"
-            f"<b>Заголовок:</b> {doc.title}\n"
-            f"Вам поступил новый документ на исполнение/ознакомление."
-        )
-
-        for chat_id in chat_map.values():
-            await self._send_safe(chat_id, text)
-
-
-    async def notify_comment_added(self, doc_id: int, author_id: int, comment_text: str):
-        """2. При добавлении комментария — всем участникам (включая делегатов), кроме автора"""
-        doc = await self.doc_repo.get_by_id(doc_id)
-        if not doc:
-            return
-
-        participants = await self.doc_repo.get_document_participants_dto(doc_id)
-        # Все участники за исключением автора комментария
-        target_emp_ids = [emp_id for emp_id in participants.all_unique_ids if emp_id != author_id]
-
-        chat_map = await self.emp_repo.get_chat_ids_by_employee_ids(target_emp_ids)
+        escaped_comment = html.escape(comment_text or "")
+        reg_num = doc.reg_number or doc.id
 
         text = (
-            f"💬 <b>Новый комментарий к документу №{doc.reg_number or doc.id}</b>\n\n"
-            f"<b>Текст:</b> <i>«{comment_text}»</i>"
+            f"💬 <b>Новый комментарий к документу №{reg_num}</b>\n\n"
+            f"<b>Текст:</b> <i>«{escaped_comment}»</i>"
         )
 
-        for chat_id in chat_map.values():
-            await self._send_safe(chat_id, text)
+        sent_count = await self._broadcast_messages(list(chat_map.values()), text)
+        logger.info(
+            f"Sent 'comment_added' notifications for doc_id={doc_id} ({sent_count}/{len(chat_map)} delivered)",
+            extra={
+                "event_type": "notify_comment_added",
+                "doc_id": doc_id,
+                "author_id": author_id,
+                "delivered": sent_count
+            }
+        )
 
     async def notify_status_changed(
             self,
@@ -108,22 +171,20 @@ class NotificationService:
             new_status: DocStatus,
             actor_id: Optional[int] = None
     ):
-        """
-        Уведомление об изменении статуса документа.
-        Отправляется всем участникам (кроме инициатора действия)
-        ТОЛЬКО при переходе в финальные статусы: approved или rejected.
-        """
-        # Фильтруем статус — отправляем только для утвержденных и отклоненных документов
+        """Уведомление об изменении статуса документа (approved или rejected)"""
         if new_status not in (DocStatus.approved, DocStatus.rejected):
             return
 
         doc = await self.doc_repo.get_by_id(doc_id)
         if not doc:
+            logger.warning(
+                f"Notification 'status_changed' skipped: Document doc_id={doc_id} not found",
+                extra={"event_type": "notify_doc_not_found", "doc_id": doc_id}
+            )
             return
 
         participants = await self.doc_repo.get_document_participants_dto(doc_id)
 
-        # Исключаем инициатора (actor_id), если он указан
         target_emp_ids = [
             emp_id for emp_id in participants.all_unique_ids
             if actor_id is None or emp_id != actor_id
@@ -137,20 +198,23 @@ class NotificationService:
             return
 
         reg_num = doc.reg_number or f"ID {doc.id}"
-
-        # Красивые эмодзи и понятные статусы для пользователей
-        if new_status == DocStatus.approved:
-            status_text = "🟢 <b>Утвержден</b>"
-        else:  # rejected
-            status_text = "🔴 <b>Отклонен</b>"
+        status_text = "🟢 <b>Утвержден</b>" if new_status == DocStatus.approved else "🔴 <b>Отклонен</b>"
 
         text = (
             f"📋 <b>Изменение статуса документа №{reg_num}</b>\n\n"
             f"<b>Новый статус:</b> {status_text}"
         )
 
-        for chat_id in chat_map.values():
-            await self._send_safe(chat_id, text)
+        sent_count = await self._broadcast_messages(list(chat_map.values()), text)
+        logger.info(
+            f"Sent 'status_changed' notifications for doc_id={doc_id} status={new_status.value} ({sent_count}/{len(chat_map)} delivered)",
+            extra={
+                "event_type": "notify_status_changed",
+                "doc_id": doc_id,
+                "new_status": new_status.value,
+                "delivered": sent_count
+            }
+        )
 
     async def notify_delegation_changed(
         self,
@@ -162,12 +226,20 @@ class NotificationService:
         """Уведомление непосредственно делегату при назначении или отзыве доступа"""
         doc = await self.doc_repo.get_by_id(doc_id)
         if not doc:
+            logger.warning(
+                f"Notification 'delegation_changed' skipped: Document doc_id={doc_id} not found",
+                extra={"event_type": "notify_doc_not_found", "doc_id": doc_id}
+            )
             return
 
         delegatee_map = await self.emp_repo.get_chat_ids_by_employee_ids([delegatee_id])
         delegatee_chat_id = delegatee_map.get(delegatee_id)
 
         if not delegatee_chat_id:
+            logger.debug(
+                f"No Telegram chat_id found for delegatee_id={delegatee_id} on doc_id={doc_id}",
+                extra={"event_type": "notify_no_chat_ids", "doc_id": doc_id, "delegatee_id": delegatee_id}
+            )
             return
 
         reg_num = doc.reg_number or f"ID {doc.id}"
@@ -178,26 +250,37 @@ class NotificationService:
                 f"Вам предоставили права на просмотр и согласование данного документа."
             )
             if message and message.strip():
-                text += f"\n\n<b>Сопроводительное сообщение:</b> <i>«{message.strip()}»</i>"
+                escaped_msg = html.escape(message.strip())
+                text += f"\n\n<b>Сопроводительное сообщение:</b> <i>«{escaped_msg}»</i>"
         else:
             text = (
                 f"🚫 <b>Отозван доступ к документу №{reg_num}</b>\n\n"
                 f"Ваш доступ к данному документу был отозван."
             )
 
-        await self._send_safe(delegatee_chat_id, text)
+        success = await self._send_safe(delegatee_chat_id, text)
+        logger.info(
+            f"Sent 'delegation_changed' notification (granted={is_granted}) for doc_id={doc_id} to delegatee_id={delegatee_id}. Success: {success}",
+            extra={
+                "event_type": "notify_delegation_changed",
+                "doc_id": doc_id,
+                "delegatee_id": delegatee_id,
+                "is_granted": is_granted,
+                "success": success
+            }
+        )
 
     async def notify_overtimes_imported(self, employee_ids: set[int]):
-        """
-        Массовое рассылочное уведомление сотрудникам,
-        у которых появились новые импортированные переработки.
-        """
+        """Массовое рассылочное уведомление об импорте переработок"""
         if not employee_ids:
             return
 
-        # Получаем chat_id только тех сотрудников, кому начислили переработки
         chat_map = await self.emp_repo.get_chat_ids_by_employee_ids(list(employee_ids))
         if not chat_map:
+            logger.debug(
+                "No Telegram chat_ids found for overtimes notification batch",
+                extra={"event_type": "notify_no_chat_ids", "target_count": len(employee_ids)}
+            )
             return
 
         text = (
@@ -206,6 +289,12 @@ class NotificationService:
             "Вы можете проверить обновленную информацию в своем личном кабинете."
         )
 
-        # Рассылаем каждому адресату
-        for chat_id in chat_map.values():
-            await self._send_safe(chat_id, text)
+        sent_count = await self._broadcast_messages(list(chat_map.values()), text)
+        logger.info(
+            f"Bulk overtimes import notifications sent ({sent_count}/{len(chat_map)} delivered)",
+            extra={
+                "event_type": "notify_overtimes_imported",
+                "delivered": sent_count,
+                "total_targets": len(chat_map)
+            }
+        )

@@ -1,8 +1,12 @@
 import io
+import logging
 import os
-import fitz as pymupdf
-from PIL import Image, ImageFilter, ImageEnhance
+import time
 
+import fitz as pymupdf
+from PIL import Image, ImageFilter, ImageEnhance, UnidentifiedImageError
+
+logger = logging.getLogger("app.services.document_processor")
 
 class DocumentProcessor:
 
@@ -24,7 +28,13 @@ class DocumentProcessor:
     def is_supported(self, file_path: str) -> bool:
         """Проверяет, поддерживается ли формат файла."""
         _, ext = os.path.splitext(file_path)
-        return ext.lower() in self.ALLOWED_EXTENSIONS
+        supported = ext.lower() in self.ALLOWED_EXTENSIONS
+        if not supported:
+            logger.warning(
+                f"Attempted to process file with unsupported extension '{ext}': {file_path}",
+                extra={"event_type": "doc_unsupported_extension", "file_path": file_path, "ext": ext}
+            )
+        return supported
 
     def get_file_type(self, file_path: str) -> str:
         """Возвращает категорию файла для выбора алгоритма обработки."""
@@ -36,10 +46,14 @@ class DocumentProcessor:
         elif ext in {'.jpg', '.jpeg', '.png', '.tiff', '.tif'}:
             return 'image'
         else:
+            logger.error(
+                f"Cannot classify unsupported file format '{ext}' for path: {file_path}",
+                extra={"event_type": "doc_unknown_type", "file_path": file_path, "ext": ext}
+            )
             raise ValueError(f"Формат {ext} не поддерживается")
 
     def preprocess_image(self, img: Image.Image) -> Image.Image:
-        """Ваш метод предобработки (полная версия)"""
+        """Предобработка"""
         if img.mode != 'L':
             img = img.convert('L')
 
@@ -64,104 +78,233 @@ class DocumentProcessor:
             img = img.convert('1')
         return img
 
-    def convert_image_to_tiff(self, input_path: str, output_path: str):
+    def convert_image_to_tiff(self, input_path: str, output_path: str) -> str:
         """Конвертирует изображение в TIFF (бинарный/CCITT)"""
-        with Image.open(input_path) as img:
-            processed_img = self.preprocess_image(img.convert("RGB"))
-            processed_img.save(
-                output_path,
-                compression='tiff_ccitt',
-                dpi=(self.DEFAULT_DPI, self.DEFAULT_DPI)
-            )
-        return output_path
+        start_time = time.perf_counter()
+        logger.debug(
+            f"Converting image to TIFF: {input_path} -> {output_path}",
+            extra={"event_type": "doc_convert_image_start", "input_path": input_path, "output_path": output_path}
+        )
+        try:
+            with Image.open(input_path) as img:
+                processed_img = self.preprocess_image(img.convert("RGB"))
+                processed_img.save(
+                    output_path,
+                    compression='tiff_ccitt',
+                    dpi=(self.DEFAULT_DPI, self.DEFAULT_DPI)
+                )
 
-    def convert_pdf_to_tiff(self, input_path: str, output_path: str):
+            elapsed = round(time.perf_counter() - start_time, 3)
+            logger.info(
+                f"Successfully converted image to TIFF in {elapsed}s: {output_path}",
+                extra={
+                    "event_type": "doc_convert_image_success",
+                    "input_path": input_path,
+                    "output_path": output_path,
+                    "duration_sec": elapsed
+                }
+            )
+            return output_path
+        except UnidentifiedImageError:
+            logger.error(
+                f"Cannot identify image file (corrupted or invalid format): {input_path}",
+                extra={"event_type": "doc_invalid_image", "input_path": input_path}
+            )
+            raise
+        except Exception as e:
+            logger.exception(
+                f"Failed to convert image '{input_path}' to TIFF: {e}",
+                extra={"event_type": "doc_convert_image_error", "input_path": input_path}
+            )
+            raise
+
+    def convert_pdf_to_tiff(self, input_path: str, output_path: str) -> str:
         """Конвертирует PDF в TIFF и сохраняет по указанному пути."""
-        doc = pymupdf.open(input_path)
-        images = []
-        zoom = self.DEFAULT_DPI / 72
-        matrix = pymupdf.Matrix(zoom, zoom)
+        start_time = time.perf_counter()
+        logger.debug(
+            f"Starting PDF to TIFF conversion: {input_path}",
+            extra={"event_type": "doc_convert_pdf_start", "input_path": input_path}
+        )
+        try:
+            doc = pymupdf.open(input_path)
+            page_count = len(doc)
+            images = []
+            zoom = self.DEFAULT_DPI / 72
+            matrix = pymupdf.Matrix(zoom, zoom)
 
-        for page in doc:
-            pix = page.get_pixmap(matrix=matrix, alpha=False)
-            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            images.append(self.preprocess_image(img))
-        doc.close()
+            for page_num in range(page_count):
+                page = doc.load_page(page_num)
+                pix = page.get_pixmap(matrix=matrix, alpha=False)
+                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                images.append(self.preprocess_image(img))
 
-        if images:
-            images[0].save(
-                output_path,
-                save_all=True,
-                append_images=images[1:],
-                compression='tiff_ccitt',
-                dpi=(self.DEFAULT_DPI, self.DEFAULT_DPI)
+            doc.close()
+
+            if images:
+                images[0].save(
+                    output_path,
+                    save_all=True,
+                    append_images=images[1:],
+                    compression='tiff_ccitt',
+                    dpi=(self.DEFAULT_DPI, self.DEFAULT_DPI)
+                )
+                elapsed = round(time.perf_counter() - start_time, 3)
+                logger.info(
+                    f"PDF ({page_count} pages) converted to TIFF in {elapsed}s: {output_path}",
+                    extra={
+                        "event_type": "doc_convert_pdf_success",
+                        "input_path": input_path,
+                        "output_path": output_path,
+                        "page_count": page_count,
+                        "duration_sec": elapsed
+                    }
+                )
+            else:
+                logger.warning(
+                    f"PDF document had 0 pages: {input_path}",
+                    extra={"event_type": "doc_pdf_empty", "input_path": input_path}
+                )
+
+            return output_path
+        except Exception as e:
+            logger.exception(
+                f"Failed to convert PDF '{input_path}' to TIFF: {e}",
+                extra={"event_type": "doc_convert_pdf_error", "input_path": input_path}
             )
-        return output_path
+            raise
 
-    def create_thumbnail(self, tiff_path: str):
+    def create_thumbnail(self, tiff_path: str) -> str:
         """Создание качественного превью из первой страницы TIFF"""
-        with Image.open(tiff_path) as img:
-            thumb_path = tiff_path.replace('.tiff', '_thumb.jpg')
-            # Важно: берем первую страницу многостраничного TIFF
-            img.seek(0)
-            img.thumbnail((300, 300))
-            img.save(thumb_path, "JPEG", quality=85)
+        thumb_path = tiff_path.replace('.tiff', '_thumb.jpg').replace('.tif', '_thumb.jpg')
+        logger.debug(
+            f"Creating thumbnail from TIFF: {tiff_path}",
+            extra={"event_type": "doc_thumbnail_start", "tiff_path": tiff_path}
+        )
+        try:
+            with Image.open(tiff_path) as img:
+                img.seek(0)
+                img.thumbnail((300, 300))
+                # Переводим в RGB для безопасного сохранения бинарного изображения в JPEG
+                img.convert("RGB").save(thumb_path, "JPEG", quality=85)
+
+            logger.info(
+                f"Thumbnail created: {thumb_path}",
+                extra={"event_type": "doc_thumbnail_success", "thumb_path": thumb_path}
+            )
             return thumb_path
+        except Exception as e:
+            logger.exception(
+                f"Failed to create thumbnail for '{tiff_path}': {e}",
+                extra={"event_type": "doc_thumbnail_error", "tiff_path": tiff_path}
+            )
+            raise
 
-    def analyze_pdf_content(self, pdf_path):
-        doc = pymupdf.open(pdf_path)
-        total_images_size = 0
-        total_page_area = 0
+    def analyze_pdf_content(self, pdf_path: str) -> tuple[int, int]:
+        """Анализ соотношения изображений и текста в PDF."""
+        try:
+            doc = pymupdf.open(pdf_path)
+            total_images_size = 0
+            total_page_area = 0
 
-        for page in doc:
-            # Считаем размер картинок на странице
-            img_list = page.get_images(full=True)
-            for img in img_list:
-                xref = img[0]
-                # Получаем размер картинки в байтах внутри PDF
-                img_info = doc.extract_image(xref)
-                total_images_size += len(img_info["image"])
+            for page in doc:
+                img_list = page.get_images(full=True)
+                for img in img_list:
+                    xref = img[0]
+                    img_info = doc.extract_image(xref)
+                    if img_info:
+                        total_images_size += len(img_info["image"])
 
-            # Считаем "площадь" текста
-            text = page.get_text()
-            total_page_area += len(text)
+                text = page.get_text()
+                total_page_area += len(text)
 
-        doc.close()
+            doc.close()
 
-        # Если картинок много, а текста мало — это 100% скан
-        # Возвращаем процент "картиночности"
-        return total_images_size, total_page_area
+            logger.debug(
+                f"Analyzed PDF metrics: images_bytes={total_images_size}, text_chars={total_page_area}",
+                extra={
+                    "event_type": "doc_analyze_pdf",
+                    "pdf_path": pdf_path,
+                    "images_bytes": total_images_size,
+                    "text_chars": total_page_area
+                }
+            )
+            return total_images_size, total_page_area
+        except Exception as e:
+            logger.error(
+                f"Failed to analyze PDF content for '{pdf_path}': {e}",
+                extra={"event_type": "doc_analyze_pdf_error", "pdf_path": pdf_path}
+            )
+            raise
 
     def get_page_as_stream(self, file_path: str, page_num: int) -> io.BytesIO:
         """Извлекает страницу из TIFF или PDF и отдает как JPEG-поток"""
         ext = os.path.splitext(file_path)[1].lower()
+        logger.debug(
+            f"Getting page stream: page={page_num}, file={file_path}",
+            extra={"event_type": "doc_get_page_stream_start", "file_path": file_path, "page_num": page_num}
+        )
 
-        if ext == '.pdf':
-            doc = pymupdf.open(file_path)
-            page = doc.load_page(page_num)
-            pix = page.get_pixmap(matrix=pymupdf.Matrix(2, 2))  # DPI=144
-            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            doc.close()
-        else:  # Предполагаем TIFF
-            img = Image.open(file_path)
-            img.seek(page_num)
-            img = img.convert("RGB")
+        try:
+            if ext == '.pdf':
+                doc = pymupdf.open(file_path)
+                if page_num >= len(doc):
+                    logger.warning(
+                        f"Requested page {page_num} is out of bounds for PDF with {len(doc)} pages",
+                        extra={"event_type": "doc_page_out_of_bounds", "file_path": file_path, "page_num": page_num}
+                    )
+                    doc.close()
+                    raise IndexError("Page number out of range")
 
-        stream = io.BytesIO()
-        img.save(stream, format="JPEG", quality=80)
-        stream.seek(0)
-        return stream
+                page = doc.load_page(page_num)
+                pix = page.get_pixmap(matrix=pymupdf.Matrix(2, 2))
+                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                doc.close()
+            else:
+                img = Image.open(file_path)
+                img.seek(page_num)
+                img = img.convert("RGB")
+
+            stream = io.BytesIO()
+            img.save(stream, format="JPEG", quality=80)
+            stream.seek(0)
+            return stream
+
+        except (IndexError, EOFError):
+            logger.warning(
+                f"Page index {page_num} out of bounds for file: {file_path}",
+                extra={"event_type": "doc_page_not_found", "file_path": file_path, "page_num": page_num}
+            )
+            raise
+        except Exception as e:
+            logger.exception(
+                f"Error retrieving page stream (page {page_num}) from '{file_path}': {e}",
+                extra={"event_type": "doc_get_page_stream_error", "file_path": file_path, "page_num": page_num}
+            )
+            raise
 
     def get_page_count(self, file_path: str) -> int:
+        """Получает количество страниц в документе."""
         ext = os.path.splitext(file_path)[1].lower()
-        if ext == '.pdf':
-            doc = pymupdf.open(file_path)
-            count = len(doc)
-            doc.close()
+        try:
+            if ext == '.pdf':
+                doc = pymupdf.open(file_path)
+                count = len(doc)
+                doc.close()
+            else:
+                with Image.open(file_path) as img:
+                    count = getattr(img, 'n_frames', 1)
+
+            logger.debug(
+                f"Page count for file '{file_path}': {count}",
+                extra={"event_type": "doc_get_page_count", "file_path": file_path, "count": count}
+            )
             return count
-        else:
-            img = Image.open(file_path)
-            return img.n_frames
+        except Exception as e:
+            logger.error(
+                f"Failed to get page count for '{file_path}': {e}",
+                extra={"event_type": "doc_page_count_error", "file_path": file_path}
+            )
+            raise
 
 
 # =========================================================
