@@ -2,38 +2,64 @@
 
 import os
 import sys
+from typing import List, Dict, Any, Optional
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLineEdit, QScrollArea, QMenu, QMessageBox, QApplication,
     QGridLayout, QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
 
 from client.windows.system.tags.tag_card import TagCard
 from client.windows.animations.floating_action_button import FloatingActionButton
-from client.windows.system.tags.tag_dialog import TagDialog  # Добавлен импорт
+from client.windows.system.tags.tag_dialog import TagDialog
+from client.windows.animations.animated_notification import NotificationManager
+from client.windows.system.delete_dialog import DeleteDialog
+from client.services.tag_service import get_tag_service
+from client.core.http_client import HttpClient
+from client.core.config import config
+from client.core.state.app_state import AppState
 
 
 class TagsPage(QWidget):
     """Страница тегов с поиском, сортировкой и отображением в сетке (2 колонки)"""
 
-    def __init__(self, parent=None):
+    data_loaded = pyqtSignal()
+
+    def __init__(self, parent=None, http_client: Optional[HttpClient] = None):
         super().__init__(parent)
 
+        # Используем переданный HttpClient или создаем новый
+        if http_client is None:
+            app_state = AppState()
+            if app_state.http_client:
+                self.http_client = app_state.http_client
+            else:
+                self.http_client = HttpClient(config.base_url)
+        else:
+            self.http_client = http_client
+
+        self.tag_service = get_tag_service(self.http_client)
+
         # Данные
-        self.tags = []
-        self.filtered_tags = []
+        self.tags: List[Dict[str, Any]] = []
+        self.filtered_tags: List[Dict[str, Any]] = []
 
         # Состояние
         self.current_sort = "А→Я"
+        self.is_loading = False
 
         # Инициализация
         self.init_ui()
-        self.load_test_data()
         self.setup_connections()
-        self.update_display()
+
+        # Создаем менеджер уведомлений
+        self.notification_manager = NotificationManager(self, max_visible=3)
+
+        # Загружаем данные
+        QTimer.singleShot(100, self.load_tags)
 
     def init_ui(self):
         """Инициализация UI из файла"""
@@ -63,66 +89,71 @@ class TagsPage(QWidget):
         self.searchEdit.textChanged.connect(self.on_search_changed)
         self.btnResetFilters.clicked.connect(self.reset_all_filters)
 
-    def load_test_data(self):
-        """Загрузка тестовых данных"""
-        self.tags = [
-            {"id": 1, "name": "Срочно", "color": "#FF4444", "documents_count": 12},
-            {"id": 2, "name": "Важно", "color": "#FF8800", "documents_count": 8},
-            {"id": 3, "name": "На согласовании", "color": "#44AAFF", "documents_count": 5},
-            {"id": 4, "name": "Исполнено", "color": "#44CC44", "documents_count": 23},
-            {"id": 5, "name": "На контроле", "color": "#AA66CC", "documents_count": 3},
-            {"id": 6, "name": "Черновик", "color": "#999999", "documents_count": 7},
-            {"id": 7, "name": "Отклонено", "color": "#CC3333", "documents_count": 2},
-            {"id": 8, "name": "В работе", "color": "#33CC99", "documents_count": 15},
-            {"id": 9, "name": "Архивный", "color": "#6C757D", "documents_count": 45},
-            {"id": 10, "name": "Для руководства", "color": "#E83E8C", "documents_count": 6},
-            {"id": 11, "name": "Публичный", "color": "#17A2B8", "documents_count": 30},
-            {"id": 12, "name": "Конфиденциально", "color": "#DC3545", "documents_count": 4},
-            {"id": 13, "name": "Договор", "color": "#FF6B6B", "documents_count": 18},
-            {"id": 14, "name": "Приказ", "color": "#4ECDC4", "documents_count": 25},
-            {"id": 15, "name": "Распоряжение", "color": "#45B7D1", "documents_count": 14},
-            {"id": 16, "name": "Акт", "color": "#96CEB4", "documents_count": 9},
-            {"id": 17, "name": "Протокол", "color": "#FFEAA7", "documents_count": 11},
-            {"id": 18, "name": "Служебная записка", "color": "#DDA0DD", "documents_count": 33},
-            {"id": 19, "name": "Заявление", "color": "#98D8C8", "documents_count": 7},
-            {"id": 20, "name": "Отчет", "color": "#F7DC6F", "documents_count": 28},
-            {"id": 21, "name": "План работ", "color": "#BB8FCE", "documents_count": 6},
-            {"id": 22, "name": "График", "color": "#85C1E9", "documents_count": 4},
-            {"id": 23, "name": "Смета", "color": "#F8C471", "documents_count": 16},
-            {"id": 24, "name": "Проект", "color": "#82E0AA", "documents_count": 21},
-            {"id": 25, "name": "Спецификация", "color": "#F1948A", "documents_count": 3},
-            {"id": 26, "name": "Инструкция", "color": "#85929E", "documents_count": 19},
-            {"id": 27, "name": "Регламент", "color": "#AED6F1", "documents_count": 8},
-            {"id": 28, "name": "Положение", "color": "#D5F5E3", "documents_count": 5},
-            {"id": 29, "name": "Устав", "color": "#FADBD8", "documents_count": 1},
-            {"id": 30, "name": "Сертификат", "color": "#D4EFDF", "documents_count": 12},
-            {"id": 31, "name": "Лицензия", "color": "#F9E79F", "documents_count": 2},
-            {"id": 32, "name": "Паспорт изделия", "color": "#D2B4DE", "documents_count": 7},
-            {"id": 33, "name": "Технические условия", "color": "#A9DFBF", "documents_count": 4},
-            {"id": 34, "name": "Ревизия", "color": "#F5B7B1", "documents_count": 0},
-            {"id": 35, "name": "Проверено", "color": "#27AE60", "documents_count": 38},
-            {"id": 36, "name": "На доработку", "color": "#E74C3C", "documents_count": 13},
-            {"id": 37, "name": "Ожидает ответа", "color": "#F39C12", "documents_count": 9},
-            {"id": 38, "name": "Просрочено", "color": "#C0392B", "documents_count": 6},
-            {"id": 39, "name": "Выполнено", "color": "#2ECC71", "documents_count": 52},
-            {"id": 40, "name": "Отменено", "color": "#95A5A6", "documents_count": 3},
-            {"id": 41, "name": "Перенесено", "color": "#7F8C8D", "documents_count": 5},
-            {"id": 42, "name": "Приостановлено", "color": "#E67E22", "documents_count": 2},
-            {"id": 43, "name": "На экспертизе", "color": "#9B59B6", "documents_count": 8},
-            {"id": 44, "name": "Утверждено", "color": "#1ABC9C", "documents_count": 41},
-            {"id": 45, "name": "Завизировано", "color": "#3498DB", "documents_count": 17},
-            {"id": 46, "name": "На подпись", "color": "#E91E63", "documents_count": 11},
-            {"id": 47, "name": "Входящий", "color": "#00BCD4", "documents_count": 24},
-            {"id": 48, "name": "Исходящий", "color": "#FF5722", "documents_count": 19},
-            {"id": 49, "name": "Внутренний", "color": "#8BC34A", "documents_count": 35},
-            {"id": 50, "name": "Для служебного пользования", "color": "#673AB7", "documents_count": 10},
-        ]
+    def show_success_notification(self, message: str):
+        """Показать уведомление об успехе"""
+        self.notification_manager.show_notification(
+            f"✅ {message}",
+            duration=2500
+        )
+
+    def show_error_notification(self, message: str):
+        """Показать уведомление об ошибке"""
+        self.notification_manager.show_notification(
+            f"❌ {message}",
+            duration=3000
+        )
+
+    def show_info_notification(self, message: str):
+        """Показать информационное уведомление"""
+        self.notification_manager.show_notification(
+            f"ℹ️ {message}",
+            duration=2500
+        )
+
+    # ==================== ЗАГРУЗКА ДАННЫХ ====================
+
+    def load_tags(self):
+        """Загрузить теги из API"""
+        if self.is_loading:
+            return
+
+        self.is_loading = True
+
+        try:
+            tags = self.tag_service.get_all_tags()
+
+            # Преобразуем данные в нужный формат
+            self.tags = []
+            for tag in tags:
+                self.tags.append({
+                    'id': tag.get('id'),
+                    'name': tag.get('name', ''),
+                    'color': tag.get('color', '#CCAB6E'),
+                    'documents_count': tag.get('documents_count', 0),
+                    'priority': tag.get('priority', 'normal')
+                })
+
+            self.is_loading = False
+            self.update_display()
+            self.data_loaded.emit()
+
+
+        except Exception as e:
+            self.is_loading = False
+            import logging
+            logging.error(f"Ошибка загрузки тегов: {e}")
+
+            if "401" in str(e) or "AuthError" in str(e):
+                self.show_error_notification("Сессия истекла. Войдите заново.")
+            else:
+                self.show_error_notification(f"Не удалось загрузить теги")
+
+    # ==================== СОРТИРОВКА ====================
 
     def show_sort_menu(self):
         """Показать меню сортировки"""
         menu = QMenu(self)
 
-        # Стилизуем меню
         menu.setStyleSheet("""
             QMenu { 
                 background-color: white; 
@@ -160,64 +191,53 @@ class TagsPage(QWidget):
         menu.exec(self.btnSort.mapToGlobal(self.btnSort.rect().bottomLeft()))
 
     def sort_by_name_asc(self, tags):
-        """Сортировка по названию А→Я"""
         return sorted(tags, key=lambda x: x.get('name', '').lower())
 
     def sort_by_name_desc(self, tags):
-        """Сортировка по названию Я→А"""
         return sorted(tags, key=lambda x: x.get('name', '').lower(), reverse=True)
 
     def sort_by_count_asc(self, tags):
-        """Сортировка по количеству документов (возрастание)"""
         return sorted(tags, key=lambda x: x.get('documents_count', 0))
 
     def sort_by_count_desc(self, tags):
-        """Сортировка по количеству документов (убывание)"""
         return sorted(tags, key=lambda x: x.get('documents_count', 0), reverse=True)
 
     def apply_sort(self, sort_func, sort_name):
-        """Применить сортировку"""
         self.current_sort = sort_name
-        # Показываем короткое имя сортировки
         short_name = sort_name.split('(')[0].strip() if '(' in sort_name else sort_name
         self.btnSort.setText(f"Сортировка ▼ ({short_name})")
         self.update_reset_button_visibility()
         self.update_display()
+        self.show_info_notification(f"Сортировка: {short_name}")
+
+    # ==================== ПОИСК И ФИЛЬТРЫ ====================
 
     def on_search_changed(self):
-        """Обработчик изменения текста поиска"""
         self.update_reset_button_visibility()
         self.update_display()
 
     def has_active_filters(self):
-        """Проверяет, есть ли активные фильтры"""
         if self.searchEdit.text().strip():
             return True
-
         if self.current_sort != "А→Я":
             return True
-
         return False
 
     def update_reset_button_visibility(self):
-        """Показать или скрыть кнопку сброса"""
         if self.has_active_filters():
             self.btnResetFilters.show()
         else:
             self.btnResetFilters.hide()
 
     def reset_all_filters(self):
-        """Сброс всех фильтров и поиска"""
         self.searchEdit.clear()
-
         self.current_sort = "А→Я"
         self.btnSort.setText("Сортировка ▼")
-
         self.btnResetFilters.hide()
         self.update_display()
+        self.show_info_notification("Фильтры сброшены")
 
     def filter_and_sort_tags(self):
-        """Фильтрация и сортировка тегов"""
         filtered = self.tags.copy()
 
         # Поиск
@@ -240,6 +260,8 @@ class TagsPage(QWidget):
         sort_func = sort_methods.get(self.current_sort, self.sort_by_name_asc)
         return sort_func(filtered)
 
+    # ==================== ОТОБРАЖЕНИЕ ====================
+
     def update_display(self):
         """Обновление отображения тегов в сетке (2 колонки)"""
         # Очищаем сетку
@@ -259,8 +281,8 @@ class TagsPage(QWidget):
             tag_card = TagCard(tag)
             tag_card.edit_clicked.connect(self.on_edit_tag)
             tag_card.delete_clicked.connect(self.on_delete_tag)
+            tag_card.color_changed.connect(self.on_color_changed)
 
-            # Растягиваем карточку по ширине колонки
             tag_card.setMinimumWidth(350)
 
             self.tagsGridLayout.addWidget(tag_card, row, col)
@@ -270,7 +292,7 @@ class TagsPage(QWidget):
                 col = 0
                 row += 1
 
-        # Добавляем растяжку в конец, чтобы карточки прижимались к верху
+        # Добавляем растяжку
         spacer = QWidget()
         spacer.setSizePolicy(
             QSizePolicy.Policy.Expanding,
@@ -278,11 +300,144 @@ class TagsPage(QWidget):
         )
         self.tagsGridLayout.addWidget(spacer, row + 1, 0, 1, max_cols)
 
-        # Обновляем позицию плавающей кнопки
         self.position_floating_button()
 
+    # ==================== РАБОТА С ТЕГАМИ (CRUD) ====================
+
+    def on_add_tag(self):
+        """Обработчик нажатия на плавающую кнопку добавления тега"""
+        dialog = TagDialog(self)
+
+        if dialog.exec():
+            tag_data = dialog.get_tag_data()
+            self._create_tag(tag_data)
+
+    def _create_tag(self, tag_data: Dict[str, Any]):
+        """Создание тега"""
+        try:
+            tag_data.pop('id', None)
+            result = self.tag_service.create_tag(tag_data)
+
+            if result:
+                self.tags.append({
+                    'id': result.get('id'),
+                    'name': result.get('name', ''),
+                    'color': result.get('color', '#CCAB6E'),
+                    'documents_count': result.get('documents_count', 0),
+                    'priority': result.get('priority', 'normal')
+                })
+
+                self.update_display()
+                self.show_success_notification(f"Тег «{result.get('name')}» создан")
+            else:
+                self.show_error_notification("Не удалось создать тег")
+
+        except Exception as e:
+            import logging
+            logging.error(f"Ошибка создания тега: {e}")
+            if "401" in str(e) or "AuthError" in str(e):
+                self.show_error_notification("Сессия истекла. Войдите заново.")
+            else:
+                self.show_error_notification("Не удалось создать тег")
+
+    def on_edit_tag(self, tag_data: Dict[str, Any]):
+        """Обработка редактирования тега"""
+        full_tag_data = None
+        for tag in self.tags:
+            if tag.get('id') == tag_data.get('id'):
+                full_tag_data = tag.copy()
+                break
+
+        if not full_tag_data:
+            self.show_error_notification("Тег не найден")
+            return
+
+        dialog = TagDialog(self, tag_id=tag_data.get('id'), tag_data=full_tag_data)
+
+        if dialog.exec():
+            updated_data = dialog.get_tag_data()
+            self._update_tag(tag_data.get('id'), updated_data)
+
+    def _update_tag(self, tag_id: int, updated_data: Dict[str, Any]):
+        """Обновление тега"""
+        try:
+            result = self.tag_service.update_tag(tag_id, updated_data)
+
+            if result:
+                for i, tag in enumerate(self.tags):
+                    if tag.get('id') == tag_id:
+                        self.tags[i].update({
+                            'name': result.get('name', ''),
+                            'color': result.get('color', '#CCAB6E'),
+                            'priority': result.get('priority', 'normal'),
+                            'documents_count': result.get('documents_count', 0)
+                        })
+                        break
+
+                self.update_display()
+                self.show_success_notification(f"Тег «{result.get('name')}» обновлен")
+            else:
+                self.show_error_notification("Не удалось обновить тег")
+
+        except Exception as e:
+            import logging
+            logging.error(f"Ошибка обновления тега: {e}")
+            if "401" in str(e) or "AuthError" in str(e):
+                self.show_error_notification("Сессия истекла. Войдите заново.")
+            else:
+                self.show_error_notification("Не удалось обновить тег")
+
+    def on_delete_tag(self, tag_id: int):
+        """Обработка удаления тега"""
+        tag_name = "Неизвестный тег"
+        for tag in self.tags:
+            if tag.get('id') == tag_id:
+                tag_name = tag.get('name', 'Неизвестный тег')
+                break
+
+        # Используем красивый диалог удаления
+        if DeleteDialog.show_confirmation(self):
+            self._delete_tag(tag_id, tag_name)
+
+    def _delete_tag(self, tag_id: int, tag_name: str):
+        """Удаление тега"""
+        try:
+            success = self.tag_service.delete_tag(tag_id)
+
+            if success:
+                self.tags = [tag for tag in self.tags if tag.get('id') != tag_id]
+                self.update_display()
+                self.show_success_notification(f"Тег «{tag_name}» удален")
+            else:
+                self.show_error_notification("Не удалось удалить тег")
+
+        except Exception as e:
+            import logging
+            logging.error(f"Ошибка удаления тега: {e}")
+            if "401" in str(e) or "AuthError" in str(e):
+                self.show_error_notification("Сессия истекла. Войдите заново.")
+            else:
+                self.show_error_notification("Не удалось удалить тег")
+
+    def on_color_changed(self, tag_id: int, new_color: str):
+        """Обработчик изменения цвета тега"""
+        try:
+            result = self.tag_service.update_tag(tag_id, {'color': new_color})
+            if result:
+                for tag in self.tags:
+                    if tag.get('id') == tag_id:
+                        tag['color'] = new_color
+                        break
+                # Показываем уведомление об изменении цвета
+                tag_name = next((t.get('name') for t in self.tags if t.get('id') == tag_id), "Тег")
+                self.show_info_notification(f"Цвет тега «{tag_name}» обновлен")
+        except Exception as e:
+            import logging
+            logging.error(f"Ошибка обновления цвета тега {tag_id}: {e}")
+
+    # ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+
     def position_floating_button(self):
-        """Позиционирование плавающей кнопки в правом нижнем углу"""
         if hasattr(self, 'floating_btn'):
             margin = 20
             x = self.width() - self.floating_btn.width() - margin
@@ -291,138 +446,24 @@ class TagsPage(QWidget):
             self.floating_btn.raise_()
 
     def on_scroll(self, value):
-        """Обработчик скролла"""
         if hasattr(self, 'floating_btn'):
             self.floating_btn.hide_with_animation()
             self.floating_btn.start_hide_timer()
 
     def resizeEvent(self, event):
-        """Обработчик изменения размера для позиционирования кнопки"""
         super().resizeEvent(event)
         self.position_floating_button()
 
-    def on_add_tag(self):
-        """Обработчик нажатия на плавающую кнопку добавления тега"""
-        # Создаем диалог для нового тега
-        dialog = TagDialog(self)
-
-        if dialog.exec():
-            # Получаем данные из диалога
-            tag_data = dialog.get_tag_data()
-
-            # Добавляем ID
-            max_id = max([tag.get('id', 0) for tag in self.tags], default=0)
-            tag_data['id'] = max_id + 1
-
-            # Добавляем количество документов (по умолчанию 0)
-            tag_data['documents_count'] = 0
-
-            # Добавляем в список
-            self.tags.append(tag_data)
-
-            # Обновляем отображение
-            self.update_display()
-
-            # Показываем сообщение об успехе
-            QMessageBox.information(
-                self,
-                "Успешно",
-                f"Тег «{tag_data.get('name')}» успешно создан."
+        # Обновляем размер контейнера уведомлений
+        if hasattr(self, 'notification_manager'):
+            self.notification_manager.container.setGeometry(
+                0, 0, self.width(), self.height()
             )
-
-    def on_edit_tag(self, tag_data):
-        """Обработка редактирования тега"""
-        # Находим полные данные тега
-        full_tag_data = None
-        for tag in self.tags:
-            if tag.get('id') == tag_data.get('id'):
-                full_tag_data = tag.copy()
-                break
-
-        if not full_tag_data:
-            QMessageBox.warning(self, "Ошибка", "Тег не найден")
-            return
-
-        # Создаем диалог с существующими данными
-        dialog = TagDialog(self, tag_id=tag_data.get('id'))
-
-        if dialog.exec():
-            # Получаем обновленные данные
-            updated_data = dialog.get_tag_data()
-
-            # Обновляем существующий тег
-            for i, tag in enumerate(self.tags):
-                if tag.get('id') == tag_data.get('id'):
-                    # Сохраняем ID и другие неизменяемые поля
-                    updated_data['id'] = tag.get('id')
-                    updated_data['documents_count'] = tag.get('documents_count', 0)
-
-                    # Обновляем данные
-                    self.tags[i].update(updated_data)
-                    break
-
-            # Обновляем отображение
-            self.update_display()
-
-            # Показываем сообщение об успехе
-            QMessageBox.information(
-                self,
-                "Успешно",
-                f"Тег «{updated_data.get('name')}» успешно обновлен."
-            )
-
-    def on_delete_tag(self, tag_id):
-        """Обработка удаления тега"""
-        tag_name = "Неизвестный тег"
-        for tag in self.tags:
-            if tag.get('id') == tag_id:
-                tag_name = tag.get('name', 'Неизвестный тег')
-                break
-
-        reply = QMessageBox.question(
-            self,
-            "Подтверждение удаления",
-            f"Вы уверены, что хотите удалить тег «{tag_name}»?\n\n"
-            f"Это действие нельзя отменить.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            print(f"Удаление тега ID: {tag_id}")
-            # Удаляем тег из списка
-            self.tags = [tag for tag in self.tags if tag.get('id') != tag_id]
-            self.update_display()
-            QMessageBox.information(
-                self,
-                "Успешно",
-                f"Тег «{tag_name}» успешно удален."
-            )
-
-    def add_tag(self, tag_data):
-        """Добавление нового тега"""
-        # Генерируем новый ID
-        max_id = max([tag.get('id', 0) for tag in self.tags], default=0)
-        tag_data['id'] = max_id + 1
-
-        self.tags.append(tag_data)
-        self.update_display()
-
-    def update_tag(self, tag_id, new_data):
-        """Обновление существующего тега"""
-        for i, tag in enumerate(self.tags):
-            if tag.get('id') == tag_id:
-                self.tags[i].update(new_data)
-                break
-
-        self.update_display()
 
     def get_all_tags(self):
-        """Возвращает список всех тегов"""
         return self.tags.copy()
 
     def get_filtered_tags(self):
-        """Возвращает список отфильтрованных тегов"""
         return self.filtered_tags.copy()
 
 

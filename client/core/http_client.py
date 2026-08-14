@@ -1,3 +1,5 @@
+# client/core/http_client.py
+
 import requests
 from typing import Optional, Dict, Any
 import logging
@@ -36,7 +38,7 @@ class HttpClient:
         """Проверить, истек ли токен"""
         if not self._token_expiry:
             return True
-        return datetime.now() >= self._token_expiry - timedelta(seconds=30)  # 30 сек запас
+        return datetime.now() >= self._token_expiry - timedelta(seconds=30)
 
     def _refresh_access_token(self) -> bool:
         """Обновить токен доступа"""
@@ -75,12 +77,10 @@ class HttpClient:
         }
 
         if self._access_token:
-            # Проверяем, не истек ли токен
             if self._is_token_expired():
                 logger.info("Токен истек, обновляем...")
                 if not self._refresh_access_token():
                     raise AuthError("Не удалось обновить токен")
-
             headers["Authorization"] = f"Bearer {self._access_token}"
 
         return headers
@@ -90,33 +90,27 @@ class HttpClient:
         url = f"{self.base_url}{endpoint}"
         headers = self._get_headers()
 
-        # Объединяем заголовки
         if "headers" in kwargs:
             headers.update(kwargs.pop("headers"))
 
         try:
             response = self.session.request(method, url, headers=headers, **kwargs)
 
-            # Если 401 - пробуем обновить токен и повторить запрос
             if response.status_code == 401:
                 logger.warning("Получена 401 ошибка, пробуем обновить токен...")
                 if self._refresh_access_token():
-                    # Повторяем запрос с новым токеном
                     headers["Authorization"] = f"Bearer {self._access_token}"
                     response = self.session.request(method, url, headers=headers, **kwargs)
-
                     if response.status_code != 401:
                         logger.info("Запрос повторно выполнен успешно")
                 else:
                     raise AuthError("Не удалось обновить токен, требуется повторная авторизация")
 
-            # Если все еще 401 - выбрасываем исключение
             if response.status_code == 401:
                 raise AuthError("Сессия истекла, требуется повторный вход")
 
             response.raise_for_status()
 
-            # Если ответ пустой
             if not response.content:
                 return {}
 
@@ -125,6 +119,8 @@ class HttpClient:
         except requests.RequestException as e:
             logger.error(f"Ошибка запроса: {e}")
             raise
+
+    # ==================== ОСНОВНЫЕ МЕТОДЫ ====================
 
     def get(self, endpoint: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """GET запрос"""

@@ -1,3 +1,5 @@
+# client/windows/system/tags/tag_card.py
+
 import sys
 import os
 from PyQt6.QtWidgets import QApplication, QFrame, QMessageBox
@@ -7,16 +9,13 @@ from PyQt6.uic import loadUi
 from client.windows.system.tags.color_picker_dialog import ColorPickerDialog
 
 
-# Импортируем ColorPickerDialog в начале файла
-
-
 class TagCard(QFrame):
     """Карточка тега на основе загруженного UI файла"""
 
     # Сигналы для взаимодействия с главным окном
-    edit_clicked = pyqtSignal(dict)  # Передаем данные тега
-    delete_clicked = pyqtSignal(int)  # Передаем ID тега
-    color_changed = pyqtSignal(int, str)  # Передаем ID тега и новый цвет
+    edit_clicked = pyqtSignal(dict)
+    delete_clicked = pyqtSignal(int)
+    color_changed = pyqtSignal(int, str)  # ID тега, новый цвет
 
     def __init__(self, tag_data=None, parent=None):
         super().__init__(parent)
@@ -66,7 +65,6 @@ class TagCard(QFrame):
         # Заполняем количество документов
         if hasattr(self, 'countLabel'):
             count = self.tag_data.get('documents_count', 0)
-            # Склонение слова "документ"
             if count % 10 == 1 and count % 100 != 11:
                 word = "документ"
             elif 2 <= count % 10 <= 4 and (count % 100 < 10 or count % 100 >= 20):
@@ -96,28 +94,25 @@ class TagCard(QFrame):
             self.tag_data['color'] = color
 
     def on_color_button_clicked(self):
-        """Обработчик клика по кружочку цвета - открывает ColorPickerDialog"""
+        """Обработчик клика по кружочку цвета"""
         current_color = self.tag_data.get('color', '#CCAB6E')
         dialog = ColorPickerDialog(current_color=current_color, parent=self)
 
         if dialog.exec() == ColorPickerDialog.DialogCode.Accepted:
             new_color = dialog.get_selected_color()
             self.set_color(new_color)
+            # Испускаем сигнал с ID и новым цветом
             self.color_changed.emit(self.tag_id, new_color)
 
     def on_edit_clicked(self):
-        """Обработчик кнопки редактирования"""
         self.edit_clicked.emit(self.tag_data)
 
     def on_delete_clicked(self):
-        """Обработчик кнопки удаления"""
         self.delete_clicked.emit(self.tag_id)
 
     def update_data(self, new_data):
-        """Обновляет данные карточки"""
         self.tag_data.update(new_data)
         self.setup_card()
 
     def get_data(self):
-        """Возвращает данные тега"""
         return self.tag_data
