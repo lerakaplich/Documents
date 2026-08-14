@@ -1,0 +1,94 @@
+# client/services/doc_type_service.py
+
+"""
+Сервис для работы с типами документов через API
+"""
+import logging
+from typing import List, Dict, Any, Optional
+
+from client.core.http_client import HttpClient
+
+logger = logging.getLogger(__name__)
+
+
+class DocTypeService:
+    """Сервис для управления типами документов"""
+
+    def __init__(self, http_client: HttpClient):
+        self.http = http_client
+        self.base_path = "/doc-types"
+
+    def get_all_types(self) -> List[Dict[str, Any]]:
+        """Получить все типы документов"""
+        try:
+            logger.info("📥 Запрос на получение типов документов...")
+
+            # Пробуем отправить запрос с явными параметрами
+            response = self.http.get(
+                f"{self.base_path}",
+                params={}  # Явно передаем пустые параметры
+            )
+
+            logger.info(f"📥 Получен ответ: {response}")
+            if isinstance(response, list):
+                return response
+            return []
+        except Exception as e:
+            logger.error(f"❌ Ошибка получения типов документов: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    def get_type(self, type_id: int) -> Optional[Dict[str, Any]]:
+        """Получить тип документа по ID"""
+        try:
+            response = self.http.get(f"{self.base_path}/{type_id}")
+            return response
+        except Exception as e:
+            logger.error(f"Ошибка получения типа {type_id}: {e}")
+            return None
+
+    def create_type(self, type_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Создать новый тип документа"""
+        try:
+            response = self.http.post(
+                f"{self.base_path}",
+                json=type_data
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Ошибка создания типа документа: {e}")
+            return None
+
+    def update_type(self, type_id: int, type_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Обновить тип документа"""
+        try:
+            response = self.http.patch(
+                f"{self.base_path}/{type_id}",
+                json=type_data
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Ошибка обновления типа {type_id}: {e}")
+            return None
+
+    def delete_type(self, type_id: int) -> bool:
+        """Удалить тип документа"""
+        try:
+            self.http.delete(f"{self.base_path}/{type_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Ошибка удаления типа {type_id}: {e}")
+            return False
+
+
+# Синглтон
+_doc_type_service_instance: Optional[DocTypeService] = None
+
+
+def get_doc_type_service(http_client: HttpClient) -> DocTypeService:
+    """Получить экземпляр DocTypeService"""
+    global _doc_type_service_instance
+    if _doc_type_service_instance is None:
+        _doc_type_service_instance = DocTypeService(http_client)
+    return _doc_type_service_instance

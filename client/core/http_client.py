@@ -69,19 +69,29 @@ class HttpClient:
             logger.error(f"Ошибка при обновлении токена: {e}")
             return False
 
+    # client/core/http_client.py - проверьте _get_headers
+
+    # client/core/http_client.py - обновите метод _get_headers
+
     def _get_headers(self) -> Dict[str, str]:
         """Получить заголовки для запроса с автоматическим обновлением токена"""
         headers = {
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "User-Agent": "DocumentsClient/1.0",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
         }
 
         if self._access_token:
             if self._is_token_expired():
-                logger.info("Токен истек, обновляем...")
+                logger.info("⏰ Токен истек, обновляем...")
                 if not self._refresh_access_token():
                     raise AuthError("Не удалось обновить токен")
             headers["Authorization"] = f"Bearer {self._access_token}"
+            logger.debug(f"🔑 Используется токен: {self._access_token[:20]}...")
+        else:
+            logger.warning("⚠️ Токен отсутствует в запросе!")
 
         return headers
 
@@ -90,11 +100,32 @@ class HttpClient:
         url = f"{self.base_url}{endpoint}"
         headers = self._get_headers()
 
+        # Логируем запрос
+        logger.info(f"📤 {method} {url}")
+        logger.info(f"📋 Headers: {headers}")
+
+        if "json" in kwargs and kwargs["json"]:
+            logger.debug(f"📦 Body: {kwargs['json']}")
+        if "params" in kwargs and kwargs["params"]:
+            logger.debug(f"📋 Params: {kwargs['params']}")
+
         if "headers" in kwargs:
             headers.update(kwargs.pop("headers"))
 
         try:
-            response = self.session.request(method, url, headers=headers, **kwargs)
+            # Явно передаем все параметры
+            response = self.session.request(
+                method=method,
+                url=url,
+                headers=headers,
+                timeout=30,  # Добавляем таймаут
+                **kwargs
+            )
+
+            # Логируем ответ
+            logger.info(f"📥 Статус ответа: {response.status_code}")
+            if response.status_code >= 400:
+                logger.error(f"❌ Текст ошибки: {response.text[:500]}")
 
             if response.status_code == 401:
                 logger.warning("Получена 401 ошибка, пробуем обновить токен...")

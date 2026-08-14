@@ -1,39 +1,65 @@
-# client/windows/system/document_types/document_types_page.py
+# client/windows/system/document_types/document_type_page.py
 
 import os
 import sys
+from typing import List, Dict, Any, Optional, Union
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLineEdit, QScrollArea, QMenu, QMessageBox, QApplication,
     QSizePolicy
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
 
 from client.windows.system.document_types.document_type_card import DocumentTypeCard
 from client.windows.animations.floating_action_button import FloatingActionButton
-from client.windows.system.document_types.document_type_dialog import DocumentTypeDialog  # Добавлен импорт
+from client.windows.system.document_types.document_type_dialog import DocumentTypeDialog
+from client.windows.system.delete_dialog import DeleteDialog
+from client.windows.animations.animated_notification import NotificationManager
+from client.services.doc_type_service import get_doc_type_service
+from client.core.http_client import HttpClient
+from client.core.config import config
+from client.core.state.app_state import AppState
 
 
 class DocumentTypesPage(QWidget):
     """Страница типов документов с поиском, сортировкой и отображением в 1 колонку"""
 
-    def __init__(self, parent=None):
+    data_loaded = pyqtSignal()
+
+    def __init__(self, parent=None, http_client: Optional[HttpClient] = None):
         super().__init__(parent)
 
+        # Используем переданный HttpClient или создаем новый
+        if http_client is None:
+            app_state = AppState()
+            if app_state.http_client:
+                self.http_client = app_state.http_client
+            else:
+                self.http_client = HttpClient(config.base_url)
+        else:
+            self.http_client = http_client
+
+        self.doc_type_service = get_doc_type_service(self.http_client)
+
         # Данные
-        self.document_types = []
-        self.filtered_types = []
+        self.document_types: List[Dict[str, Any]] = []
+        self.filtered_types: List[Dict[str, Any]] = []
 
         # Состояние
         self.current_sort = "А→Я"
+        self.is_loading = False
 
         # Инициализация
         self.init_ui()
-        self.load_test_data()
         self.setup_connections()
-        self.update_display()
+
+        # Создаем менеджер уведомлений
+        self.notification_manager = NotificationManager(self, max_visible=3)
+
+        # Загружаем данные
+        QTimer.singleShot(100, self.load_types)
 
     def init_ui(self):
         """Инициализация UI из файла"""
@@ -63,82 +89,122 @@ class DocumentTypesPage(QWidget):
         self.searchEdit.textChanged.connect(self.on_search_changed)
         self.btnResetFilters.clicked.connect(self.reset_all_filters)
 
-    def load_test_data(self):
-        """Загрузка тестовых данных"""
-        self.document_types = [
-            {"id": 1, "name": "Приказ", "code": "PR", "description": "Приказы по основной деятельности",
-             "documents_count": 45},
-            {"id": 2, "name": "Распоряжение", "code": "RP", "description": "Распоряжения руководства",
-             "documents_count": 32},
-            {"id": 3, "name": "Договор", "code": "DG", "description": "Договоры с контрагентами",
-             "documents_count": 78},
-            {"id": 4, "name": "Акт", "code": "AK", "description": "Акты выполненных работ", "documents_count": 56},
-            {"id": 5, "name": "Счет-фактура", "code": "SF", "description": "Счета-фактуры", "documents_count": 120},
-            {"id": 6, "name": "Накладная", "code": "NK", "description": "Товарные накладные", "documents_count": 93},
-            {"id": 7, "name": "Протокол", "code": "PRT", "description": "Протоколы совещаний", "documents_count": 28},
-            {"id": 8, "name": "Служебная записка", "code": "SZ", "description": "Внутренние служебные записки",
-             "documents_count": 67},
-            {"id": 9, "name": "Заявление", "code": "ZV", "description": "Заявления сотрудников", "documents_count": 34},
-            {"id": 10, "name": "Отчет", "code": "OT", "description": "Отчеты о проделанной работе",
-             "documents_count": 41},
-            {"id": 11, "name": "План работ", "code": "PL", "description": "Планы работ подразделений",
-             "documents_count": 15},
-            {"id": 12, "name": "График", "code": "GR", "description": "Графики и расписания", "documents_count": 22},
-            {"id": 13, "name": "Смета", "code": "SM", "description": "Сметы расходов", "documents_count": 19},
-            {"id": 14, "name": "Проект", "code": "PJ", "description": "Проектная документация", "documents_count": 37},
-            {"id": 15, "name": "Спецификация", "code": "SP", "description": "Технические спецификации",
-             "documents_count": 25},
-            {"id": 16, "name": "Инструкция", "code": "IN", "description": "Инструкции и руководства",
-             "documents_count": 53},
-            {"id": 17, "name": "Регламент", "code": "RG", "description": "Регламенты процессов", "documents_count": 18},
-            {"id": 18, "name": "Положение", "code": "PL", "description": "Положения о подразделениях",
-             "documents_count": 12},
-            {"id": 19, "name": "Устав", "code": "US", "description": "Устав организации", "documents_count": 1},
-            {"id": 20, "name": "Сертификат", "code": "SR", "description": "Сертификаты соответствия",
-             "documents_count": 8},
-            {"id": 21, "name": "Лицензия", "code": "LC", "description": "Лицензии и разрешения", "documents_count": 3},
-            {"id": 22, "name": "Паспорт изделия", "code": "PS", "description": "Паспорта на изделия",
-             "documents_count": 44},
-            {"id": 23, "name": "Технические условия", "code": "TU", "description": "Технические условия",
-             "documents_count": 16},
-            {"id": 24, "name": "Доверенность", "code": "DV", "description": "Доверенности", "documents_count": 29},
-            {"id": 25, "name": "Журнал", "code": "JR", "description": "Журналы учета", "documents_count": 38},
-            {"id": 26, "name": "Объяснительная записка", "code": "OZ", "description": "Объяснительные записки",
-             "documents_count": 11},
-            {"id": 27, "name": "Представление", "code": "PR", "description": "Представления к наградам",
-             "documents_count": 7},
-            {"id": 28, "name": "Ходатайство", "code": "HD", "description": "Ходатайства", "documents_count": 9},
-            {"id": 29, "name": "Заключение", "code": "ZK", "description": "Экспертные заключения",
-             "documents_count": 14},
-            {"id": 30, "name": "Решение", "code": "RS", "description": "Решения коллегиальных органов",
-             "documents_count": 21},
-            {"id": 31, "name": "Постановление", "code": "PS", "description": "Постановления", "documents_count": 6},
-            {"id": 32, "name": "Уведомление", "code": "UV", "description": "Уведомления и извещения",
-             "documents_count": 48},
-            {"id": 33, "name": "Извещение", "code": "IZ", "description": "Извещения об изменениях",
-             "documents_count": 33},
-            {"id": 34, "name": "Заявка", "code": "ZV", "description": "Заявки на закупку", "documents_count": 52},
-            {"id": 35, "name": "Счет", "code": "SC", "description": "Счета на оплату", "documents_count": 87},
-            {"id": 36, "name": "Акт приема-передачи", "code": "AP", "description": "Акты приема-передачи",
-             "documents_count": 31},
-            {"id": 37, "name": "Дефектный акт", "code": "DA", "description": "Дефектные акты", "documents_count": 13},
-            {"id": 38, "name": "Справка", "code": "SP", "description": "Справки", "documents_count": 42},
-            {"id": 39, "name": "Выписка", "code": "VP", "description": "Выписки из документов", "documents_count": 26},
-            {"id": 40, "name": "Сводка", "code": "SV", "description": "Сводки и обобщения", "documents_count": 17},
-            {"id": 41, "name": "Письмо", "code": "PM", "description": "Деловые письма", "documents_count": 95},
-            {"id": 42, "name": "Телеграмма", "code": "TL", "description": "Телеграммы", "documents_count": 2},
-            {"id": 43, "name": "Факс", "code": "FX", "description": "Факсимильные сообщения", "documents_count": 5},
-            {"id": 44, "name": "Меморандум", "code": "MM", "description": "Меморандумы", "documents_count": 10},
-            {"id": 45, "name": "Презентация", "code": "PR", "description": "Презентационные материалы",
-             "documents_count": 23},
-            {"id": 46, "name": "Бизнес-план", "code": "BP", "description": "Бизнес-планы", "documents_count": 4},
-            {"id": 47, "name": "Техническое задание", "code": "TZ", "description": "Технические задания",
-             "documents_count": 36},
-            {"id": 48, "name": "Реестр", "code": "RR", "description": "Реестры и перечни", "documents_count": 20},
-            {"id": 49, "name": "Номенклатура", "code": "NM", "description": "Номенклатура дел", "documents_count": 8},
-            {"id": 50, "name": "Штатное расписание", "code": "SR", "description": "Штатное расписание",
-             "documents_count": 3},
-        ]
+    def show_success_notification(self, message: str):
+        """Показать уведомление об успехе"""
+        self.notification_manager.show_notification(f"✅ {message}", duration=2500)
+
+    def show_error_notification(self, message: str):
+        """Показать уведомление об ошибке"""
+        self.notification_manager.show_notification(f"❌ {message}", duration=3000)
+
+    def show_info_notification(self, message: str):
+        """Показать информационное уведомление"""
+        self.notification_manager.show_notification(f"ℹ️ {message}", duration=2500)
+
+    def _normalize_fields(self, fields: Union[Dict[str, bool], List[str], None]) -> Dict[str, bool]:
+        """
+        Нормализует поле fields в словарь {field_name: True/False}
+
+        Args:
+            fields: может быть словарем, списком или None
+
+        Returns:
+            Dict[str, bool]: нормализованный словарь
+        """
+        if fields is None:
+            return {}
+
+        # Если это список - конвертируем в словарь со значением True
+        if isinstance(fields, list):
+            return {item: True for item in fields}
+
+        # Если это уже словарь - возвращаем как есть
+        if isinstance(fields, dict):
+            return fields
+
+        # Если что-то другое - возвращаем пустой словарь
+        return {}
+
+    def _convert_fields_to_parameters(self, fields: Union[Dict[str, bool], List[str], None]) -> List[str]:
+        """
+        Конвертирует fields в список активных параметров
+
+        Args:
+            fields: словарь {field: bool} или список полей
+
+        Returns:
+            List[str]: список активных параметров
+        """
+        normalized = self._normalize_fields(fields)
+        # Возвращаем только те поля, у которых значение True
+        return [key for key, value in normalized.items() if value]
+
+    def _convert_parameters_to_fields(self, parameters: List[str]) -> Dict[str, bool]:
+        """
+        Конвертирует список параметров в словарь fields
+
+        Args:
+            parameters: список параметров
+
+        Returns:
+            Dict[str, bool]: словарь {field: True}
+        """
+        if not parameters:
+            return {}
+        return {param: True for param in parameters}
+
+    # ==================== ЗАГРУЗКА ДАННЫХ ====================
+
+    def load_types(self):
+        """Загрузить типы документов из API"""
+        if self.is_loading:
+            return
+
+        self.is_loading = True
+
+        try:
+            types = self.doc_type_service.get_all_types()
+
+            # Преобразуем данные в нужный формат
+            self.document_types = []
+            for doc_type in types:
+                # Нормализуем fields
+                fields = doc_type.get('fields', {})
+                normalized_fields = self._normalize_fields(fields)
+                parameters = self._convert_fields_to_parameters(fields)
+
+                self.document_types.append({
+                    'id': doc_type.get('id'),
+                    'name': doc_type.get('name', ''),
+                    'code': doc_type.get('smdo_code_type', ''),
+                    'description': doc_type.get('description', ''),
+                    'documents_count': doc_type.get('documents_count', 0),
+                    'fields_count': len(parameters),
+                    'auto_numbering': doc_type.get('auto_num', False),
+                    'parameters': parameters,
+                    'fields': normalized_fields,
+                    'auto_num': doc_type.get('auto_num', False),
+                    'smdo_code_type': doc_type.get('smdo_code_type', '')
+                })
+
+            self.is_loading = False
+            self.update_display()
+            self.data_loaded.emit()
+
+            if self.document_types:
+                self.show_success_notification(f"Загружено {len(self.document_types)} типов документов")
+
+        except Exception as e:
+            self.is_loading = False
+            import logging
+            logging.error(f"Ошибка загрузки типов документов: {e}")
+
+            if "401" in str(e) or "AuthError" in str(e):
+                self.show_error_notification("Сессия истекла. Войдите заново.")
+            else:
+                self.show_error_notification("Не удалось загрузить типы документов")
+
+    # ==================== СОРТИРОВКА ====================
 
     def show_sort_menu(self):
         """Показать меню сортировки"""
@@ -181,68 +247,51 @@ class DocumentTypesPage(QWidget):
         menu.exec(self.btnSort.mapToGlobal(self.btnSort.rect().bottomLeft()))
 
     def sort_by_name_asc(self, types):
-        """Сортировка по названию А→Я"""
         return sorted(types, key=lambda x: x.get('name', '').lower())
 
     def sort_by_name_desc(self, types):
-        """Сортировка по названию Я→А"""
         return sorted(types, key=lambda x: x.get('name', '').lower(), reverse=True)
 
     def sort_by_count_asc(self, types):
-        """Сортировка по количеству документов (возрастание)"""
         return sorted(types, key=lambda x: x.get('documents_count', 0))
 
     def sort_by_count_desc(self, types):
-        """Сортировка по количеству документов (убывание)"""
         return sorted(types, key=lambda x: x.get('documents_count', 0), reverse=True)
 
-    def sort_by_code_asc(self, types):
-        """Сортировка по коду А→Я"""
-        return sorted(types, key=lambda x: x.get('code', '').lower())
-
-    def sort_by_code_desc(self, types):
-        """Сортировка по коду Я→А"""
-        return sorted(types, key=lambda x: x.get('code', '').lower(), reverse=True)
-
     def apply_sort(self, sort_func, sort_name):
-        """Применить сортировку"""
         self.current_sort = sort_name
         short_name = sort_name.split('(')[0].strip() if '(' in sort_name else sort_name
         self.btnSort.setText(f"Сортировка ▼ ({short_name})")
         self.update_reset_button_visibility()
         self.update_display()
+        self.show_info_notification(f"Сортировка: {short_name}")
+
+    # ==================== ПОИСК И ФИЛЬТРЫ ====================
 
     def on_search_changed(self):
-        """Обработчик изменения текста поиска"""
         self.update_reset_button_visibility()
         self.update_display()
 
     def has_active_filters(self):
-        """Проверяет, есть ли активные фильтры"""
         if self.searchEdit.text().strip():
             return True
-
         if self.current_sort != "А→Я":
             return True
-
         return False
 
     def update_reset_button_visibility(self):
-        """Показать или скрыть кнопку сброса"""
         if self.has_active_filters():
             self.btnResetFilters.show()
         else:
             self.btnResetFilters.hide()
 
     def reset_all_filters(self):
-        """Сброс всех фильтров и поиска"""
         self.searchEdit.clear()
-
         self.current_sort = "А→Я"
         self.btnSort.setText("Сортировка ▼")
-
         self.btnResetFilters.hide()
         self.update_display()
+        self.show_info_notification("Фильтры сброшены")
 
     def filter_and_sort_types(self):
         """Фильтрация и сортировка типов документов"""
@@ -254,7 +303,7 @@ class DocumentTypesPage(QWidget):
             filtered = [
                 dt for dt in filtered
                 if search_text in dt.get('name', '').lower() or
-                   search_text in dt.get('code', '').lower() or
+                   search_text in dt.get('smdo_code_type', '').lower() or
                    search_text in dt.get('description', '').lower()
             ]
 
@@ -270,6 +319,8 @@ class DocumentTypesPage(QWidget):
         sort_func = sort_methods.get(self.current_sort, self.sort_by_name_asc)
         return sort_func(filtered)
 
+    # ==================== ОТОБРАЖЕНИЕ ====================
+
     def update_display(self):
         """Обновление отображения типов документов в 2 колонки"""
         # Очищаем layout
@@ -283,19 +334,19 @@ class DocumentTypesPage(QWidget):
 
         # Создаем горизонтальный layout для двух колонок
         h_layout = QHBoxLayout()
-        h_layout.setSpacing(10)  # Расстояние между колонками
+        h_layout.setSpacing(10)
         h_layout.setContentsMargins(0, 0, 0, 0)
 
         # Создаем две колонки
         left_column = QVBoxLayout()
-        left_column.setSpacing(10)  # Расстояние между карточками в колонке
+        left_column.setSpacing(10)
         left_column.setContentsMargins(0, 0, 0, 0)
 
         right_column = QVBoxLayout()
         right_column.setSpacing(10)
         right_column.setContentsMargins(0, 0, 0, 0)
 
-        # Распределяем карточки по двум колонкам (поочередно)
+        # Распределяем карточки по двум колонкам
         for i, doc_type in enumerate(self.filtered_types):
             type_card = DocumentTypeCard(doc_type)
             type_card.edit_clicked.connect(self.on_edit_type)
@@ -316,11 +367,173 @@ class DocumentTypesPage(QWidget):
         # Добавляем растяжку в конец
         self.typesLayout.addStretch()
 
-        # Обновляем позицию плавающей кнопки
         self.position_floating_button()
 
+    # ==================== РАБОТА С ТИПАМИ (CRUD) ====================
+
+    def on_add_type(self):
+        """Обработчик нажатия на плавающую кнопку добавления типа"""
+        dialog = DocumentTypeDialog(self, item={})
+
+        if dialog.exec():
+            new_type_data = dialog.get_data()
+            self._create_type(new_type_data)
+
+    def _create_type(self, type_data: Dict[str, Any]):
+        """Создание типа документа"""
+        try:
+            # Убираем ID если есть
+            type_data.pop('id', None)
+
+            # Конвертируем parameters в fields для сервера
+            parameters = type_data.get('parameters', [])
+            fields = self._convert_parameters_to_fields(parameters)
+
+            # Формируем данные для сервера
+            server_data = {
+                'name': type_data.get('name', ''),
+                'fields': fields,
+                'auto_num': type_data.get('auto_numbering', False),
+                'smdo_code_type': type_data.get('smdo_code_type', '')
+            }
+
+            result = self.doc_type_service.create_type(server_data)
+
+            if result:
+                # Нормализуем полученные fields
+                result_fields = result.get('fields', {})
+                normalized_fields = self._normalize_fields(result_fields)
+                parameters_result = self._convert_fields_to_parameters(result_fields)
+
+                self.document_types.append({
+                    'id': result.get('id'),
+                    'name': result.get('name', ''),
+                    'code': result.get('smdo_code_type', ''),
+                    'description': type_data.get('description', ''),
+                    'documents_count': 0,
+                    'fields_count': len(parameters_result),
+                    'auto_numbering': result.get('auto_num', False),
+                    'parameters': parameters_result,
+                    'fields': normalized_fields,
+                    'auto_num': result.get('auto_num', False),
+                    'smdo_code_type': result.get('smdo_code_type', '')
+                })
+
+                self.update_display()
+                self.show_success_notification(f"Тип «{result.get('name')}» создан")
+            else:
+                self.show_error_notification("Не удалось создать тип")
+
+        except Exception as e:
+            import logging
+            logging.error(f"Ошибка создания типа: {e}")
+            if "401" in str(e) or "AuthError" in str(e):
+                self.show_error_notification("Сессия истекла. Войдите заново.")
+            else:
+                self.show_error_notification("Не удалось создать тип")
+
+    def on_edit_type(self, type_data: Dict[str, Any]):
+        """Обработка редактирования типа документа"""
+        full_type_data = None
+        for dt in self.document_types:
+            if dt.get('id') == type_data.get('id'):
+                full_type_data = dt.copy()
+                break
+
+        if not full_type_data:
+            self.show_error_notification("Тип не найден")
+            return
+
+        dialog = DocumentTypeDialog(self, item=full_type_data)
+
+        if dialog.exec():
+            updated_data = dialog.get_data()
+            self._update_type(type_data.get('id'), updated_data)
+
+    def _update_type(self, type_id: int, updated_data: Dict[str, Any]):
+        """Обновление типа документа"""
+        try:
+            # Конвертируем parameters в fields для сервера
+            parameters = updated_data.get('parameters', [])
+            fields = self._convert_parameters_to_fields(parameters)
+
+            # Формируем данные для сервера
+            server_data = {
+                'name': updated_data.get('name', ''),
+                'fields': fields,
+                'auto_num': updated_data.get('auto_numbering', False),
+                'smdo_code_type': updated_data.get('smdo_code_type', '')
+            }
+
+            result = self.doc_type_service.update_type(type_id, server_data)
+
+            if result:
+                # Нормализуем полученные fields
+                result_fields = result.get('fields', {})
+                normalized_fields = self._normalize_fields(result_fields)
+                parameters_result = self._convert_fields_to_parameters(result_fields)
+
+                for i, dt in enumerate(self.document_types):
+                    if dt.get('id') == type_id:
+                        self.document_types[i].update({
+                            'name': result.get('name', ''),
+                            'code': result.get('smdo_code_type', ''),
+                            'fields_count': len(parameters_result),
+                            'auto_numbering': result.get('auto_num', False),
+                            'parameters': parameters_result,
+                            'fields': normalized_fields,
+                            'auto_num': result.get('auto_num', False),
+                            'smdo_code_type': result.get('smdo_code_type', '')
+                        })
+                        break
+
+                self.update_display()
+                self.show_success_notification(f"Тип «{result.get('name')}» обновлен")
+            else:
+                self.show_error_notification("Не удалось обновить тип")
+
+        except Exception as e:
+            import logging
+            logging.error(f"Ошибка обновления типа: {e}")
+            if "401" in str(e) or "AuthError" in str(e):
+                self.show_error_notification("Сессия истекла. Войдите заново.")
+            else:
+                self.show_error_notification("Не удалось обновить тип")
+
+    def on_delete_type(self, type_id: int):
+        """Обработка удаления типа документа"""
+        type_name = "Неизвестный тип"
+        for dt in self.document_types:
+            if dt.get('id') == type_id:
+                type_name = dt.get('name', 'Неизвестный тип')
+                break
+
+        if DeleteDialog.show_confirmation(self):
+            self._delete_type(type_id, type_name)
+
+    def _delete_type(self, type_id: int, type_name: str):
+        """Удаление типа документа"""
+        try:
+            success = self.doc_type_service.delete_type(type_id)
+
+            if success:
+                self.document_types = [dt for dt in self.document_types if dt.get('id') != type_id]
+                self.update_display()
+                self.show_success_notification(f"Тип «{type_name}» удален")
+            else:
+                self.show_error_notification("Не удалось удалить тип")
+
+        except Exception as e:
+            import logging
+            logging.error(f"Ошибка удаления типа: {e}")
+            if "401" in str(e) or "AuthError" in str(e):
+                self.show_error_notification("Сессия истекла. Войдите заново.")
+            else:
+                self.show_error_notification("Не удалось удалить тип")
+
+    # ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+
     def position_floating_button(self):
-        """Позиционирование плавающей кнопки в правом нижнем углу"""
         if hasattr(self, 'floating_btn'):
             margin = 20
             x = self.width() - self.floating_btn.width() - margin
@@ -329,139 +542,23 @@ class DocumentTypesPage(QWidget):
             self.floating_btn.raise_()
 
     def on_scroll(self, value):
-        """Обработчик скролла"""
         if hasattr(self, 'floating_btn'):
             self.floating_btn.hide_with_animation()
             self.floating_btn.start_hide_timer()
 
     def resizeEvent(self, event):
-        """Обработчик изменения размера для позиционирования кнопки"""
         super().resizeEvent(event)
         self.position_floating_button()
 
-    def on_add_type(self):
-        """Обработчик нажатия на плавающую кнопку добавления типа"""
-        # Создаем диалог для нового типа
-        dialog = DocumentTypeDialog(self, item={})
-
-        if dialog.exec():
-            # Получаем данные из диалога
-            new_type_data = dialog.get_data()
-
-            # Добавляем ID
-            max_id = max([dt.get('id', 0) for dt in self.document_types], default=0)
-            new_type_data['id'] = max_id + 1
-
-            # Добавляем стандартные поля
-            new_type_data['code'] = new_type_data.get('name', '')[:3].upper()
-            new_type_data['description'] = new_type_data.get('description', '')
-            new_type_data['documents_count'] = 0
-
-            # Добавляем в список
-            self.document_types.append(new_type_data)
-
-            # Обновляем отображение
-            self.update_display()
-
-            # Показываем сообщение об успехе
-            QMessageBox.information(
-                self,
-                "Успешно",
-                f"Тип документа «{new_type_data.get('name')}» успешно создан."
+        if hasattr(self, 'notification_manager'):
+            self.notification_manager.container.setGeometry(
+                0, 0, self.width(), self.height()
             )
-
-    def on_edit_type(self, type_data):
-        """Обработка редактирования типа документа"""
-        # Находим полные данные типа
-        full_type_data = None
-        for dt in self.document_types:
-            if dt.get('id') == type_data.get('id'):
-                full_type_data = dt.copy()
-                break
-
-        if not full_type_data:
-            QMessageBox.warning(self, "Ошибка", "Тип документа не найден")
-            return
-
-        # Создаем диалог с существующими данными
-        dialog = DocumentTypeDialog(self, item=full_type_data)
-
-        if dialog.exec():
-            # Получаем обновленные данные
-            updated_data = dialog.get_data()
-
-            # Обновляем существующий тип
-            for i, dt in enumerate(self.document_types):
-                if dt.get('id') == type_data.get('id'):
-                    # Сохраняем ID и другие неизменяемые поля
-                    updated_data['id'] = dt.get('id')
-                    updated_data['code'] = dt.get('code', '')
-                    updated_data['documents_count'] = dt.get('documents_count', 0)
-
-                    # Обновляем данные
-                    self.document_types[i].update(updated_data)
-                    break
-
-            # Обновляем отображение
-            self.update_display()
-
-            # Показываем сообщение об успехе
-            QMessageBox.information(
-                self,
-                "Успешно",
-                f"Тип документа «{updated_data.get('name')}» успешно обновлен."
-            )
-
-    def on_delete_type(self, type_id):
-        """Обработка удаления типа документа"""
-        type_name = "Неизвестный тип"
-        for dt in self.document_types:
-            if dt.get('id') == type_id:
-                type_name = dt.get('name', 'Неизвестный тип')
-                break
-
-        reply = QMessageBox.question(
-            self,
-            "Подтверждение удаления",
-            f"Вы уверены, что хотите удалить тип документа «{type_name}»?\n\n"
-            f"Это действие нельзя отменить.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            print(f"Удаление типа ID: {type_id}")
-            self.document_types = [dt for dt in self.document_types if dt.get('id') != type_id]
-            self.update_display()
-            QMessageBox.information(
-                self,
-                "Успешно",
-                f"Тип документа «{type_name}» успешно удален."
-            )
-
-    def add_type(self, type_data):
-        """Добавление нового типа документа"""
-        max_id = max([dt.get('id', 0) for dt in self.document_types], default=0)
-        type_data['id'] = max_id + 1
-
-        self.document_types.append(type_data)
-        self.update_display()
-
-    def update_type(self, type_id, new_data):
-        """Обновление существующего типа документа"""
-        for i, dt in enumerate(self.document_types):
-            if dt.get('id') == type_id:
-                self.document_types[i].update(new_data)
-                break
-
-        self.update_display()
 
     def get_all_types(self):
-        """Возвращает список всех типов документов"""
         return self.document_types.copy()
 
     def get_filtered_types(self):
-        """Возвращает список отфильтрованных типов"""
         return self.filtered_types.copy()
 
 
