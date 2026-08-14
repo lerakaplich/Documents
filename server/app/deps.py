@@ -144,7 +144,7 @@ def get_doc_type_service(
     security: SecurityService = Depends(get_security_service)
 ) -> DocTypeService:
     repo = DocTypeRepository(db)
-    return DocTypeService(db, security, repo)
+    return DocTypeService(security, repo)
 
 def get_tag_service(
     db: AsyncSession = Depends(get_docs_db),

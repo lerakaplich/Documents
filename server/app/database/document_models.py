@@ -75,7 +75,7 @@ class DocumentType(BaseDocuments):
     __tablename__ = "types"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     fields: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     auto_num: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
     smdo_code_type: Mapped[Optional[str]] = mapped_column(String(50))

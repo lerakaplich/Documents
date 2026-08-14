@@ -144,6 +144,10 @@ class RedirectHistoryRead(BaseModel):
     class Config:
         from_attributes = True # Позволяет создавать схему из ORM-объектов
 
+class BulkDelegateCreate(BaseModel):
+    target_ids: list[int] = Field(..., min_length=1, description="Список ID сотрудников для делегирования")
+    message: Optional[str] = Field(None, description="Сопроводительное сообщение/поручение")
+
 class ProposedNumberResponse(BaseModel):
     proposed_number: str
     sequence_number: int

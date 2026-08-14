@@ -65,8 +65,6 @@ class DocumentRepository:
         ))
         return (await self.db.execute(query)).scalar() or False
 
-
-
     async def assign_role_to_employee(self, doc_id: int, emp_id: int, role: DocumentRole):
         """Безопасное добавление участника"""
         stmt = pg_insert(EmployeeDocument).values(
@@ -80,6 +78,26 @@ class DocumentRepository:
 
         result = await self.db.execute(stmt)
         return result.scalar() is not None
+
+    async def assign_role_to_employees_bulk(self, doc_id: int, emp_ids: list[int], role: DocumentRole) -> list[int]:
+        """
+        Массовое безопасное добавление участников.
+        Возвращает список employee_id, которые были успешно добавлены (не были дубликатами).
+        """
+        if not emp_ids:
+            return []
+
+        values = [
+            {"document_id": doc_id, "employee_id": emp_id, "role": role}
+            for emp_id in emp_ids
+        ]
+
+        stmt = pg_insert(EmployeeDocument).values(values).on_conflict_do_nothing(
+            constraint="unique_doc_employee"
+        ).returning(EmployeeDocument.employee_id)
+
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
 
     async def remove_employee_from_doc(self, doc_id: int, emp_id: int):
         """Удаление сотрудника из документа"""
@@ -97,6 +115,23 @@ class DocumentRepository:
             to_employee_id=to_id,
             message=message
         )
+        await self.db.execute(stmt)
+
+    async def add_redirect_history_bulk(self, doc_id: int, from_id: int, to_ids: list[int], message: Optional[str]):
+        """Массовая запись в лог перенаправлений"""
+        if not to_ids:
+            return
+
+        values = [
+            {
+                "document_id": doc_id,
+                "from_employee_id": from_id,
+                "to_employee_id": to_id,
+                "message": message
+            }
+            for to_id in to_ids
+        ]
+        stmt = insert(RedirectHistory).values(values)
         await self.db.execute(stmt)
 
     async def get_participants(self, doc_id: int) -> list[EmployeeDocument]:
