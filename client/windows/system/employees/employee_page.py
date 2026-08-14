@@ -30,7 +30,12 @@ class EmployeesPage(QWidget):
         self.current_department_id = None
 
         self.init_ui()
-        self.load_test_data()
+
+        # Пытаемся загрузить данные из API, при ошибке используем тестовые
+        if not self.data_manager.load_data_from_api(self):
+            print("Загрузка из API не удалась, используем тестовые данные")
+            self.data_manager.load_test_data(self)
+
         self.setup_connections()
 
         self.department_filter.set_children_func(self.get_children_departments_data)
@@ -48,6 +53,14 @@ class EmployeesPage(QWidget):
     def load_test_data(self):
         """Загрузка тестовых данных"""
         self.data_manager.load_test_data(self)
+
+    def refresh_data(self):
+        """Обновить данные из API"""
+        if self.data_manager.refresh_data(self):
+            self.update_display()
+            self.employees_updated.emit()
+            QMessageBox.information(self, "Успешно", "Данные обновлены из базы данных")
+
 
     # ======================== ДИАЛОГИ СОТРУДНИКОВ ========================
 
@@ -183,6 +196,7 @@ class EmployeesPage(QWidget):
         """Обработчик изменения размера"""
         super().resizeEvent(event)
         self.position_floating_button()
+
 
 
 # Для тестирования
