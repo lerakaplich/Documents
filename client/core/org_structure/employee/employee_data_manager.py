@@ -26,13 +26,21 @@ class EmployeeDataManager:
 
         print("[INFO] Заполнение данных сотрудника...")
 
-        self.parent.lastNameEdit.setText(self.employee.get('last_name', ''))
-        self.parent.firstNameEdit.setText(self.employee.get('first_name', ''))
-        self.parent.patronymicEdit.setText(self.employee.get('patronymic', ''))
-        self.parent.serviceNumberEdit.setText(self.employee.get('service_number', ''))
+        # Проверяем наличие виджетов перед заполнением
+        if hasattr(self.parent, 'lastNameEdit'):
+            self.parent.lastNameEdit.setText(self.employee.get('last_name', ''))
+
+        if hasattr(self.parent, 'firstNameEdit'):
+            self.parent.firstNameEdit.setText(self.employee.get('first_name', ''))
+
+        if hasattr(self.parent, 'patronymicEdit'):
+            self.parent.patronymicEdit.setText(self.employee.get('patronymic', ''))
+
+        if hasattr(self.parent, 'serviceNumberEdit'):
+            self.parent.serviceNumberEdit.setText(self.employee.get('service_number', ''))
 
         birth_date = self.employee.get('birth_date')
-        if birth_date:
+        if birth_date and hasattr(self.parent, 'birthDateEdit'):
             if isinstance(birth_date, str):
                 from datetime import datetime
                 try:
@@ -40,28 +48,38 @@ class EmployeeDataManager:
                 except:
                     birth_date = date(1980, 1, 1)
             self.parent.birthDateEdit.setDate(birth_date)
-        else:
+        elif hasattr(self.parent, 'birthDateEdit'):
             self.parent.birthDateEdit.setDate(date(1980, 1, 1))
 
-        self.parent.phoneEdit.setText(self.employee.get('phone_number', ''))
-        self.parent.workPhoneEdit.setText(self.employee.get('work_number', ''))
-        self.parent.emailEdit.setText(self.employee.get('email', ''))
+        if hasattr(self.parent, 'phoneEdit'):
+            self.parent.phoneEdit.setText(self.employee.get('phone_number', ''))
+
+        if hasattr(self.parent, 'workPhoneEdit'):
+            self.parent.workPhoneEdit.setText(self.employee.get('work_number', ''))
+
+        if hasattr(self.parent, 'emailEdit'):
+            self.parent.emailEdit.setText(self.employee.get('email', ''))
+
         chat_id = self.employee.get('chat_id')
-        self.parent.chatIdEdit.setText(str(chat_id) if chat_id else '')
+        if hasattr(self.parent, 'chatIdEdit'):
+            self.parent.chatIdEdit.setText(str(chat_id) if chat_id else '')
 
-        self.parent.positionEdit.setText(self.employee.get('position_name', ''))
+        if hasattr(self.parent, 'positionEdit'):
+            self.parent.positionEdit.setText(self.employee.get('position_name', ''))
 
-        assignment_type = self.employee.get('assignment_kind', 'primary')
-        for i in range(self.parent.assignmentTypeCombo.count()):
-            if self.parent.assignmentTypeCombo.itemData(i) == assignment_type:
-                self.parent.assignmentTypeCombo.setCurrentIndex(i)
-                break
+        if hasattr(self.parent, 'assignmentTypeCombo'):
+            assignment_type = self.employee.get('assignment_kind', 'primary')
+            for i in range(self.parent.assignmentTypeCombo.count()):
+                if self.parent.assignmentTypeCombo.itemData(i) == assignment_type:
+                    self.parent.assignmentTypeCombo.setCurrentIndex(i)
+                    break
 
-        rights = self.employee.get('rights', 'user')
-        for i in range(self.parent.rightsCombo.count()):
-            if self.parent.rightsCombo.itemData(i) == rights:
-                self.parent.rightsCombo.setCurrentIndex(i)
-                break
+        if hasattr(self.parent, 'rightsCombo'):
+            rights = self.employee.get('rights', 'user')
+            for i in range(self.parent.rightsCombo.count()):
+                if self.parent.rightsCombo.itemData(i) == rights:
+                    self.parent.rightsCombo.setCurrentIndex(i)
+                    break
 
         is_leader = self.employee.get('is_leader', False)
         hierarchy_path = self.employee.get('hierarchy_path', [])
@@ -115,10 +133,10 @@ class EmployeeDataManager:
 
     def get_data(self):
         """Возвращает данные из формы"""
-        rights_index = self.parent.rightsCombo.currentIndex()
+        rights_index = self.parent.rightsCombo.currentIndex() if hasattr(self.parent, 'rightsCombo') else -1
         rights = self.parent.rightsCombo.itemData(rights_index) or 'user' if rights_index >= 0 else 'user'
 
-        assignment_index = self.parent.assignmentTypeCombo.currentIndex()
+        assignment_index = self.parent.assignmentTypeCombo.currentIndex() if hasattr(self.parent, 'assignmentTypeCombo') else -1
         assignment_kind = self.parent.assignmentTypeCombo.itemData(
             assignment_index) or 'primary' if assignment_index >= 0 else 'primary'
 
@@ -146,22 +164,22 @@ class EmployeeDataManager:
 
         organization_id = hierarchy_path[0] if hierarchy_path else None
 
-        chat_id_text = self.parent.chatIdEdit.text().strip()
+        chat_id_text = self.parent.chatIdEdit.text().strip() if hasattr(self.parent, 'chatIdEdit') else ''
         chat_id = int(chat_id_text) if chat_id_text and chat_id_text.isdigit() else None
 
         data = {
-            'last_name': self.parent.lastNameEdit.text().strip(),
-            'first_name': self.parent.firstNameEdit.text().strip(),
-            'patronymic': self.parent.patronymicEdit.text().strip(),
-            'phone_number': self.parent.phoneEdit.text().strip(),
-            'work_number': self.parent.workPhoneEdit.text().strip(),
-            'email': self.parent.emailEdit.text().strip(),
-            'birth_date': self.parent.birthDateEdit.date().toPyDate(),
+            'last_name': self.parent.lastNameEdit.text().strip() if hasattr(self.parent, 'lastNameEdit') else '',
+            'first_name': self.parent.firstNameEdit.text().strip() if hasattr(self.parent, 'firstNameEdit') else '',
+            'patronymic': self.parent.patronymicEdit.text().strip() if hasattr(self.parent, 'patronymicEdit') else '',
+            'phone_number': self.parent.phoneEdit.text().strip() if hasattr(self.parent, 'phoneEdit') else '',
+            'work_number': self.parent.workPhoneEdit.text().strip() if hasattr(self.parent, 'workPhoneEdit') else '',
+            'email': self.parent.emailEdit.text().strip() if hasattr(self.parent, 'emailEdit') else '',
+            'birth_date': self.parent.birthDateEdit.date().toPyDate() if hasattr(self.parent, 'birthDateEdit') else date(1980, 1, 1),
             'chat_id': chat_id,
             'organization_id': organization_id,
             'department_id': department_id,
             'hierarchy_path': hierarchy_path,
-            'position_name': self.parent.positionEdit.text().strip(),
+            'position_name': self.parent.positionEdit.text().strip() if hasattr(self.parent, 'positionEdit') else '',
             'assignment_kind': assignment_kind,
             'is_leader': is_leader,
             'rights': rights,
@@ -177,13 +195,13 @@ class EmployeeDataManager:
         """Валидация данных"""
         errors = []
 
-        if not self.parent.lastNameEdit.text().strip():
+        if hasattr(self.parent, 'lastNameEdit') and not self.parent.lastNameEdit.text().strip():
             errors.append("Фамилия обязательна для заполнения")
 
-        if not self.parent.firstNameEdit.text().strip():
+        if hasattr(self.parent, 'firstNameEdit') and not self.parent.firstNameEdit.text().strip():
             errors.append("Имя обязательно для заполнения")
 
-        if not self.parent.positionEdit.text().strip():
+        if hasattr(self.parent, 'positionEdit') and not self.parent.positionEdit.text().strip():
             errors.append("Должность обязательна для заполнения")
 
         hierarchy_path = self.hierarchy_manager.get_current_hierarchy_path()

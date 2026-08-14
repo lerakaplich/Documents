@@ -11,8 +11,10 @@ from PyQt6.uic import loadUi
 from client.core.filtering.hierarchical_department_filter import HierarchicalDepartmentFilter
 from client.windows.animations.collapsible_group import CollapsibleGroup
 from client.windows.animations.floating_action_button import FloatingActionButton
+from client.windows.system.delete_dialog import DeleteDialog
 from client.windows.system.employees.employee_card import EmployeeCard
-from client.windows.system.employees.employee_dialog import EmployeeDialog  # <-- ДОБАВЛЕНО
+from client.windows.system.employees.employee_dialog import EmployeeDialog
+from client.windows.system.employees.employee_edit_dialog import EmployeeEditDialog
 
 
 # ============================================================
@@ -65,24 +67,23 @@ class EmployeesPage(QWidget):
                         self.dynamicFiltersWidget.setLayout(QHBoxLayout())
                     self.dynamicFiltersWidget.layout().addWidget(self.department_filter)
 
-            # Настройка плавающей кнопки - ЗАМЕНЕНО
+            # Настройка плавающей кнопки
             self.floating_btn = FloatingActionButton(self)
-            self.floating_btn.clicked.connect(self.show_add_employee_dialog)  # <-- ИЗМЕНЕНО
+            self.floating_btn.clicked.connect(self.show_add_employee_dialog)
 
             # Подключаемся к скроллу
             self.scrollArea.verticalScrollBar().valueChanged.connect(self.on_scroll)
-            # ========== ДОБАВЬТЕ ЭТО ==========
+
             # Устанавливаем минимальную высоту для содержимого
             self.scrollAreaWidgetContents.setMinimumHeight(
                 self.scrollArea.height() - 10
             )
 
-            # Или используем sizePolicy с приоритетом
             self.scrollAreaWidgetContents.setSizePolicy(
                 QSizePolicy.Policy.Expanding,
                 QSizePolicy.Policy.MinimumExpanding
             )
-            # ==================================
+
             # Скрываем кнопку сброса при старте
             self.btnResetFilters.hide()
 
@@ -111,7 +112,7 @@ class EmployeesPage(QWidget):
         self.searchEdit.textChanged.connect(self.on_search_changed)
         self.btnResetFilters.clicked.connect(self.reset_all_filters)
 
-    # ======================== НОВЫЕ МЕТОДЫ ========================
+    # ======================== ДИАЛОГИ СОТРУДНИКОВ ========================
 
     def show_add_employee_dialog(self):
         """Открывает диалог создания нового сотрудника"""
@@ -136,7 +137,7 @@ class EmployeesPage(QWidget):
                 return
 
             # Определяем права пользователя (можно расширить)
-            current_user_rights = 'admin'  # По умолчанию админ
+            current_user_rights = 'admin'
             is_organization_head = False
             is_division_head = False
             is_department_head = False
@@ -148,11 +149,11 @@ class EmployeesPage(QWidget):
             dialog = EmployeeDialog(
                 parent_editor=self,
                 employee=None,  # None = создание нового
-                is_maz=False,  # Можно определить по организации
-                profile_manager=None,  # Если есть менеджер профилей
+                is_maz=False,
+                profile_manager=None,
                 current_user_rights=current_user_rights,
                 current_user_org_id=self.current_org_id,
-                current_user_div_id=None,  # Если есть подразделения
+                current_user_div_id=None,
                 current_user_dept_id=current_department_id,
                 is_organization_head=is_organization_head,
                 is_division_head=is_division_head,
@@ -177,6 +178,133 @@ class EmployeesPage(QWidget):
             import traceback
             traceback.print_exc()
 
+    def show_edit_employee_dialog(self, employee_data):
+        """Открывает диалог редактирования сотрудника"""
+        try:
+            # Получаем ID сотрудника
+            employee_id = employee_data.get('id')
+            if not employee_id:
+                QMessageBox.warning(self, "Ошибка", "ID сотрудника не найден")
+                return
+
+            # Находим полные данные сотрудника
+            employee = self.employees.get(employee_id)
+            if not employee:
+                QMessageBox.warning(self, "Ошибка", "Сотрудник не найден")
+                return
+
+            # Определяем текущую организацию и подразделение
+            current_org_id = self.current_org_id
+            current_department_id = self.current_department_id
+
+            # Определяем права пользователя
+            current_user_rights = 'admin'
+
+            # Используем EmployeeEditDialog для редактирования
+            dialog = EmployeeEditDialog(
+                parent_editor=self,
+                employee=employee,
+                is_maz=False,
+                profile_manager=None,
+                current_user_rights=current_user_rights,
+                current_user_org_id=current_org_id,
+                current_user_div_id=None,
+                current_user_dept_id=current_department_id,
+                is_organization_head=False,
+                is_division_head=False,
+                is_department_head=False,
+                filter_external_only=False,
+                organization_head_ids=None
+            )
+
+            # Подключаем сигналы
+            dialog.employee_updated.connect(self.on_employee_updated)
+
+            # Показываем диалог
+            dialog.exec()
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Ошибка",
+                f"Не удалось открыть диалог редактирования сотрудника:\n{str(e)}"
+            )
+            import traceback
+            traceback.print_exc()
+
+    def show_delete_employee_dialog(self, employee_id):
+        """Открывает диалог подтверждения удаления"""
+        print(f"[DEBUG] show_delete_employee_dialog вызван с ID: {employee_id}")
+        try:
+            # Находим данные сотрудника
+            employee = self.employees.get(employee_id)
+            if not employee:
+                QMessageBox.warning(self, "Ошибка", "Сотрудник не найден")
+                return
+
+            full_name = f"{employee.get('last_name', '')} {employee.get('first_name', '')} {employee.get('patronymic', '')}".strip()
+            if not full_name:
+                full_name = f"ID: {employee_id}"
+
+            print(f"[DEBUG] Удаляем сотрудника: {full_name}")
+
+            # Создаем диалог подтверждения удаления
+            dialog = DeleteDialog(parent=self)
+
+            # Настраиваем текст для конкретного сотрудника
+            if hasattr(dialog, 'messageLabel'):
+                dialog.messageLabel.setText(f"Вы уверены, что хотите удалить сотрудника:\n\n{full_name}?")
+            if hasattr(dialog, 'nameLabel'):
+                dialog.nameLabel.setText(f"Сотрудник: {full_name}")
+
+            # Подключаем сигнал удаления
+            dialog.deleted.connect(lambda: self._confirm_delete_employee(employee_id))
+
+            # Показываем диалог
+            result = dialog.exec()
+            print(f"[DEBUG] Результат диалога: {result}")
+
+        except Exception as e:
+            print(f"[ERROR] Ошибка в show_delete_employee_dialog: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _confirm_delete_employee(self, employee_id):
+        """Подтверждение удаления сотрудника"""
+        try:
+            # Проверяем, существует ли сотрудник
+            if employee_id not in self.employees:
+                QMessageBox.warning(self, "Ошибка", "Сотрудник не найден")
+                return
+
+            # Удаляем сотрудника
+            del self.employees[employee_id]
+
+            # Удаляем связанные должности
+            self.employee_positions = [
+                pos for pos in self.employee_positions
+                if pos.get('employee_id') != employee_id
+            ]
+
+            QMessageBox.information(
+                self,
+                "Успешно",
+                "Сотрудник успешно удален!"
+            )
+
+            # Обновляем отображение
+            self.update_display()
+            self.employees_updated.emit()
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Ошибка",
+                f"Не удалось удалить сотрудника:\n{str(e)}"
+            )
+            import traceback
+            traceback.print_exc()
+
     def on_employee_created(self, employee_id):
         """Обработчик создания нового сотрудника"""
         QMessageBox.information(
@@ -185,7 +313,7 @@ class EmployeesPage(QWidget):
             f"Сотрудник с ID {employee_id} успешно создан!"
         )
         # Обновляем данные
-        self.load_test_data()  # Или загружаем из БД
+        self.load_test_data()
         self.update_display()
         self.employees_updated.emit()
 
@@ -197,11 +325,11 @@ class EmployeesPage(QWidget):
             f"Сотрудник с ID {employee_id} успешно обновлен!"
         )
         # Обновляем данные
-        self.load_test_data()  # Или загружаем из БД
+        self.load_test_data()
         self.update_display()
         self.employees_updated.emit()
 
-    # ======================== КОНЕЦ НОВЫХ МЕТОДОВ ========================
+    # ======================== КОНЕЦ ДИАЛОГОВ ========================
 
     # -------------------- Обработчики --------------------
     def on_search_changed(self):
@@ -377,9 +505,8 @@ class EmployeesPage(QWidget):
             self.comboOrganization.addItem(org_data["name"], org_id)
 
         # Устанавливаем первую организацию как выбранную по умолчанию
-        if self.comboOrganization.count() > 1:  # Если есть хотя бы одна организация
-            self.comboOrganization.setCurrentIndex(1)  # Индекс 1 - первая организация (индекс 0 - "Все организации")
-            # Это автоматически вызовет on_organization_changed(1)
+        if self.comboOrganization.count() > 1:
+            self.comboOrganization.setCurrentIndex(1)
 
     # -------------------- Сортировка --------------------
     def show_sort_menu(self):
@@ -592,21 +719,27 @@ class EmployeesPage(QWidget):
                 }
 
                 employee_card = EmployeeCard(card_data)
+
+                # Подключаем сигналы - ПРАВИЛЬНО!!!
+                emp_id = emp.get('id')
+
+                # Для редактирования - сигнал передает dict с данными
+                # Используем замыкание с значением по умолчанию
                 employee_card.edit_clicked.connect(
-                    lambda data: QMessageBox.information(self, "Информация", "В разработке")
+                    lambda data, card_data=card_data: self.show_edit_employee_dialog(card_data)
                 )
+
+                # Для удаления - сигнал передает int ID
                 employee_card.delete_clicked.connect(
-                    lambda emp_id: QMessageBox.information(self, "Информация", "В разработке")
+                    lambda eid, emp_id=emp_id: self.show_delete_employee_dialog(emp_id)
                 )
 
                 group.add_widget(employee_card)
 
             self.scrollAreaLayout.addWidget(group)
 
-        # ========== ДОБАВЬТЕ ЭТО ==========
         # Добавляем растягивающийся спейсер в конец
         self.scrollAreaLayout.addStretch()
-        # ==================================
 
         self.scrollAreaLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.position_floating_button()

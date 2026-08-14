@@ -37,6 +37,8 @@ class EmployeeDialog(QtWidgets.QDialog):
         self.ui_builder = EmployeeUIBuilder(self)
         self.hierarchy_manager = HierarchyManager(self)
         self.data_manager = EmployeeDataManager(self, self.hierarchy_manager)
+
+        # СОЗДАЕМ async_ops ДО ВСЕГО ОСТАЛЬНОГО
         self.async_ops = EmployeeAsyncOperations(self, self.data_manager)
 
         # Устанавливаем данные сотрудника
@@ -57,7 +59,8 @@ class EmployeeDialog(QtWidgets.QDialog):
     def _connect_signals(self):
         """Подключает сигналы"""
         print("[DEBUG] _connect_signals() вызван")
-        self.saveButton.clicked.connect(self.save)
+        if hasattr(self, 'saveButton'):
+            self.saveButton.clicked.connect(self.save)
 
     def _load_initial_data(self):
         """Загружает начальные данные"""
@@ -70,7 +73,20 @@ class EmployeeDialog(QtWidgets.QDialog):
                 QTimer.singleShot(100, self._load_data_sync)
         else:
             print("[DEBUG] Нет profile_manager, используем тестовые данные")
+            # Используем правильный метод _fill_test_data
             self.async_ops._fill_test_data()
+            # Заполняем данные сотрудника после загрузки тестовых данных
+            QTimer.singleShot(100, self._fill_employee_data_delayed)
+
+    def _fill_employee_data_delayed(self):
+        """Заполняет данные сотрудника с задержкой"""
+        print("[DEBUG] _fill_employee_data_delayed() вызван")
+        try:
+            self.data_manager.fill_employee_data()
+        except Exception as e:
+            print(f"[ERROR] Ошибка заполнения данных: {e}")
+            import traceback
+            traceback.print_exc()
 
     def _load_data_sync(self):
         """Синхронная загрузка данных (для случаев без event loop)"""
@@ -101,6 +117,10 @@ class EmployeeDialog(QtWidgets.QDialog):
     def closeEvent(self, event):
         """Обработчик закрытия окна"""
         super().closeEvent(event)
+
+    def is_edit_mode(self):
+        """Возвращает True, если диалог в режиме редактирования"""
+        return self.data_manager.employee and self.data_manager.employee.get('id') is not None
 
 
 # Тестовый запуск
