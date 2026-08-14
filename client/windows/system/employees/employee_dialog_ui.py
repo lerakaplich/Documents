@@ -7,7 +7,7 @@ from PyQt6 import QtWidgets, uic
 from PyQt6.QtWidgets import QVBoxLayout
 
 
-class EmployeeUIBuilder:
+class EmployeeUI:
     """Строит и настраивает пользовательский интерфейс"""
 
     def __init__(self, parent_dialog):

@@ -10,10 +10,10 @@ from PyQt6 import QtWidgets
 from PyQt6.QtCore import pyqtSignal, QTimer
 from PyQt6.QtWidgets import QMessageBox
 
-from client.core.org_structure.employee.employee_async_operations import EmployeeAsyncOperations
-from client.core.org_structure.employee.employee_data_manager import EmployeeDataManager
-from client.core.org_structure.employee.hierarchy_manager import HierarchyManager
-from client.windows.system.employees.employee_ui_builder import EmployeeUIBuilder
+from client.core.org_structure.employee.dialog.employee_async_operations import EmployeeAsyncOperations
+from client.core.org_structure.employee.dialog.employee_data_manager import EmployeeDataManager
+from client.core.org_structure.employee.dialog.hierarchy_manager import HierarchyManager
+from client.windows.system.employees.employee_dialog_ui import EmployeeUI
 
 
 class EmployeeDialog(QtWidgets.QDialog):
@@ -34,7 +34,7 @@ class EmployeeDialog(QtWidgets.QDialog):
         self.filter_external_only = filter_external_only
 
         # Инициализируем компоненты
-        self.ui_builder = EmployeeUIBuilder(self)
+        self.ui_builder = EmployeeUI(self)
         self.hierarchy_manager = HierarchyManager(self)
         self.data_manager = EmployeeDataManager(self, self.hierarchy_manager)
 

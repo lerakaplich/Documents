@@ -1,8 +1,8 @@
 # department_card.py
 import sys
-from PyQt6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget, QSizePolicy
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
 import os
 
 
@@ -15,6 +15,14 @@ class DepartmentCard(QFrame):
 
     def __init__(self, department_data=None, parent=None):
         super().__init__(parent)
+
+        # Устанавливаем фиксированную высоту для предотвращения "скамкивания"
+        self.setMinimumHeight(150)
+        self.setMaximumHeight(150)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed  # Фиксированная высота
+        )
 
         # Загружаем UI дизайн
         ui_path = self.get_ui_path()
@@ -33,12 +41,13 @@ class DepartmentCard(QFrame):
         self.setup_card()
 
         # Подключаем сигналы кнопок
-        self.editBtn.clicked.connect(self.on_edit_clicked)
-        self.deleteBtn.clicked.connect(self.on_delete_clicked)
+        if hasattr(self, 'editBtn'):
+            self.editBtn.clicked.connect(self.on_edit_clicked)
+        if hasattr(self, 'deleteBtn'):
+            self.deleteBtn.clicked.connect(self.on_delete_clicked)
 
     def get_ui_path(self):
         """Возвращает путь к UI файлу"""
-        # Путь относительно текущего файла
         current_dir = os.path.dirname(os.path.abspath(__file__))
         ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'departments', 'department_card.ui')
         return os.path.normpath(ui_path)
@@ -89,7 +98,6 @@ class DepartmentCard(QFrame):
         """Создает простую версию карточки, если UI не найден"""
         layout = QVBoxLayout(self)
         from PyQt6.QtWidgets import QLabel, QPushButton
-        from PyQt6.QtCore import Qt
 
         label = QLabel("Department Card (UI not found)")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -102,8 +110,6 @@ class DepartmentCard(QFrame):
 
         self.editBtn.clicked.connect(self.on_edit_clicked)
         self.deleteBtn.clicked.connect(self.on_delete_clicked)
-
-
 
 
 # Точка входа для тестирования карточки

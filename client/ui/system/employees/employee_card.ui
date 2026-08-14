@@ -10,10 +10,16 @@
     <height>150</height>
    </rect>
   </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
   <property name="minimumSize">
    <size>
     <width>350</width>
-    <height>130</height>
+    <height>150</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -21,12 +27,6 @@
     <width>16777215</width>
     <height>200</height>
    </size>
-  </property>
-  <property name="sizePolicy">
-   <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-    <horstretch>0</horstretch>
-    <verstretch>0</verstretch>
-   </sizepolicy>
   </property>
   <property name="styleSheet">
    <string notr="true">
@@ -81,14 +81,14 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 16px; font-weight: bold; color: #4A3B28; background-color: transparent;</string>
          </property>
          <property name="text">
           <string>1. Иванов Иван Иванович</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -100,33 +100,33 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; font-weight: 500; color: #998664; background-color: transparent;</string>
          </property>
          <property name="text">
           <string>Генеральный директор</string>
          </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item>
         <widget class="QLabel" name="departmentLabel">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
          </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; color: #7A6A50; background-color: transparent;</string>
          </property>
          <property name="text">
           <string>ОАО МАЗ, Управление персоналом, Отдел кадров</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -138,33 +138,33 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; color: #7A6A50; background-color: transparent;</string>
          </property>
          <property name="text">
           <string>Номер телефона: 101</string>
          </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item>
         <widget class="QLabel" name="emailLabel">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
          </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; color: #7A6A50; background-color: transparent;</string>
          </property>
          <property name="text">
           <string>Эл. почта: i.ivanov@maz.by</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -176,14 +176,14 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 12px; font-weight: bold; color: #CCAB6E; background-color: transparent;</string>
          </property>
          <property name="text">
           <string>Администратор</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
          </property>
         </widget>
        </item>

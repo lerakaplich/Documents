@@ -211,9 +211,8 @@ class CollapsibleGroup(QWidget):
             self.content_area.setMaximumHeight(0)
             self.content_area.setVisible(False)
         else:
-            # Убеждаемся, что высота правильная
-            if self._content_height > 0:
-                self.content_area.setMaximumHeight(self._content_height)
+            # Разрешаем контейнеру подстраиваться под гибкий размер карточек!
+            self.content_area.setMaximumHeight(16777215)  # QWIDGET_SIZE_MAX
             self.content_area.updateGeometry()
 
     def add_widget(self, widget):
@@ -221,9 +220,8 @@ class CollapsibleGroup(QWidget):
         # Устанавливаем правильную политику размера
         widget.setSizePolicy(
             QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Minimum  # Изменено с Fixed на Minimum
+            QSizePolicy.Policy.Preferred  # Изменено с Fixed на Minimum
         )
-        widget.setMinimumHeight(0)
 
         self.content_area_layout.addWidget(widget)
         self.content_widgets.append(widget)
@@ -244,17 +242,16 @@ class CollapsibleGroup(QWidget):
             self._update_timer = None
 
         if self.is_expanded and self.content_widgets:
-            # Обновляем высоту
             new_height = self.update_content_height()
 
             if new_height > 0:
                 self._content_height = new_height
                 self.content_area.setVisible(True)
-                self.content_area.setMaximumHeight(new_height)
+                # Если анимация не идет, даем layout'у полную свободу
+                if not self._is_animating:
+                    self.content_area.setMaximumHeight(16777215)
                 self.content_area.updateGeometry()
-                # Обновляем весь виджет
                 self.updateGeometry()
-                # Обновляем родительские виджеты
                 if self.parent():
                     self.parent().updateGeometry()
 

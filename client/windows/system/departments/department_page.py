@@ -4,7 +4,7 @@ import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLineEdit, QScrollArea, QMenu, QMessageBox, QApplication,
-    QSizePolicy, QLabel
+    QSizePolicy, QLabel, QSpacerItem
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.uic import loadUi
@@ -29,6 +29,7 @@ class DepartmentPage(QWidget):
 
         # Состояние
         self.current_sort = "А→Я"
+        self._updating = False  # Флаг для предотвращения рекурсивных обновлений
 
         # Инициализация
         self.init_ui()
@@ -42,15 +43,31 @@ class DepartmentPage(QWidget):
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
 
+        # Настраиваем scrollArea для правильного отображения
+        if hasattr(self, 'scrollArea'):
+            self.scrollArea.setWidgetResizable(True)
+            self.scrollArea.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Expanding
+            )
+            # Настраиваем содержимое scrollArea
+            if hasattr(self, 'scrollAreaWidgetContents'):
+                self.scrollAreaWidgetContents.setSizePolicy(
+                    QSizePolicy.Policy.Expanding,
+                    QSizePolicy.Policy.Minimum
+                )
+
         # Создаем плавающую кнопку
         self.floating_btn = FloatingActionButton(self)
         self.floating_btn.clicked.connect(self.on_add_department)
 
         # Подключаемся к скроллу
-        self.scrollArea.verticalScrollBar().valueChanged.connect(self.on_scroll)
+        if hasattr(self, 'scrollArea') and hasattr(self.scrollArea, 'verticalScrollBar'):
+            self.scrollArea.verticalScrollBar().valueChanged.connect(self.on_scroll)
 
         # Скрываем кнопку сброса при старте
-        self.btnResetFilters.hide()
+        if hasattr(self, 'btnResetFilters'):
+            self.btnResetFilters.hide()
 
     def get_ui_path(self):
         """Возвращает путь к UI файлу"""
@@ -60,9 +77,12 @@ class DepartmentPage(QWidget):
 
     def setup_connections(self):
         """Настройка сигналов"""
-        self.btnSort.clicked.connect(self.show_sort_menu)
-        self.searchEdit.textChanged.connect(self.on_search_changed)
-        self.btnResetFilters.clicked.connect(self.reset_all_filters)
+        if hasattr(self, 'btnSort'):
+            self.btnSort.clicked.connect(self.show_sort_menu)
+        if hasattr(self, 'searchEdit'):
+            self.searchEdit.textChanged.connect(self.on_search_changed)
+        if hasattr(self, 'btnResetFilters'):
+            self.btnResetFilters.clicked.connect(self.reset_all_filters)
 
     def collect_all_departments(self):
         """Собирает все отделы (всех типов) из структуры"""
@@ -166,7 +186,8 @@ class DepartmentPage(QWidget):
             action = menu.addAction(name)
             action.triggered.connect(lambda checked, f=func, n=name: self.apply_sort(f, n))
 
-        menu.exec(self.btnSort.mapToGlobal(self.btnSort.rect().bottomLeft()))
+        if hasattr(self, 'btnSort'):
+            menu.exec(self.btnSort.mapToGlobal(self.btnSort.rect().bottomLeft()))
 
     def sort_by_name_asc(self, items):
         """Сортировка по названию А→Я"""
@@ -180,7 +201,8 @@ class DepartmentPage(QWidget):
         """Применить сортировку"""
         self.current_sort = sort_name
         short_name = sort_name.split('(')[0].strip() if '(' in sort_name else sort_name
-        self.btnSort.setText(f"Сортировка ▼ ({short_name})")
+        if hasattr(self, 'btnSort'):
+            self.btnSort.setText(f"Сортировка ▼ ({short_name})")
         self.update_reset_button_visibility()
         self.update_display()
 
@@ -191,7 +213,7 @@ class DepartmentPage(QWidget):
 
     def has_active_filters(self):
         """Проверяет, есть ли активные фильтры"""
-        if self.searchEdit.text().strip():
+        if hasattr(self, 'searchEdit') and self.searchEdit.text().strip():
             return True
 
         if self.current_sort != "А→Я":
@@ -201,19 +223,23 @@ class DepartmentPage(QWidget):
 
     def update_reset_button_visibility(self):
         """Показать или скрыть кнопку сброса"""
-        if self.has_active_filters():
-            self.btnResetFilters.show()
-        else:
-            self.btnResetFilters.hide()
+        if hasattr(self, 'btnResetFilters'):
+            if self.has_active_filters():
+                self.btnResetFilters.show()
+            else:
+                self.btnResetFilters.hide()
 
     def reset_all_filters(self):
         """Сброс всех фильтров и поиска"""
-        self.searchEdit.clear()
+        if hasattr(self, 'searchEdit'):
+            self.searchEdit.clear()
 
         self.current_sort = "А→Я"
-        self.btnSort.setText("Сортировка ▼")
+        if hasattr(self, 'btnSort'):
+            self.btnSort.setText("Сортировка ▼")
 
-        self.btnResetFilters.hide()
+        if hasattr(self, 'btnResetFilters'):
+            self.btnResetFilters.hide()
         self.update_display()
 
     def filter_and_sort_items(self):
@@ -221,14 +247,15 @@ class DepartmentPage(QWidget):
         filtered = self.all_items.copy()
 
         # Поиск
-        search_text = self.searchEdit.text().strip().lower()
-        if search_text:
-            filtered = [
-                item for item in filtered
-                if search_text in item.get('name', '').lower() or
-                   search_text in str(item.get('id', '')).lower() or
-                   search_text in item.get('organization_name', '').lower()
-            ]
+        if hasattr(self, 'searchEdit'):
+            search_text = self.searchEdit.text().strip().lower()
+            if search_text:
+                filtered = [
+                    item for item in filtered
+                    if search_text in item.get('name', '').lower() or
+                       search_text in str(item.get('id', '')).lower() or
+                       search_text in item.get('organization_name', '').lower()
+                ]
 
         # Сортировка
         sort_methods = {
@@ -261,127 +288,175 @@ class DepartmentPage(QWidget):
 
         return hierarchy
 
+    def clear_layout(self, layout):
+        """Безопасная очистка layout"""
+        if layout is None:
+            return
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                widget = item.widget()
+                widget.setParent(None)
+                widget.deleteLater()
+            elif item.spacerItem():
+                spacer = item.spacerItem()
+                # Удаляем спейсер
+                del spacer
+            elif item.layout():
+                self.clear_layout(item.layout())
+
     def update_display(self):
         """Обновление отображения элементов"""
-        # Очищаем layout
-        while self.scrollAreaLayout.count():
-            item = self.scrollAreaLayout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-            elif item.spacerItem():
-                del item
-
-        # Получаем отфильтрованные и отсортированные элементы
-        self.filtered_items = self.filter_and_sort_items()
-
-        if not self.filtered_items:
-            # Показываем сообщение о пустом результате
-            empty_label = QLabel("Нет данных для отображения")
-            empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_label.setStyleSheet("color: #999; font-size: 16px; padding: 40px;")
-            self.scrollAreaLayout.addWidget(empty_label)
-            self.scrollAreaLayout.addStretch()
+        if self._updating:
             return
+        self._updating = True
 
-        hierarchy = self.group_hierarchically(self.filtered_items)
+        try:
+            # Очищаем layout с безопасным удалением
+            if hasattr(self, 'scrollAreaLayout'):
+                self.clear_layout(self.scrollAreaLayout)
 
-        # Сортируем организации: сначала ОАО МАЗ, потом остальные по алфавиту
-        org_order = sorted(
-            hierarchy.keys(),
-            key=lambda x: (x != "ОАО МАЗ", x)
-        )
+            # Получаем отфильтрованные и отсортированные элементы
+            self.filtered_items = self.filter_and_sort_items()
 
-        group_counter = 0
-        for org_name in org_order:
-            # Группа организации
-            is_org_expanded = (group_counter == 0)
-            org_group = CollapsibleGroup(org_name, is_org_expanded)
-            org_group.setStyleSheet("""
-                QGroupBox {
-                    font-size: 16px;
-                    font-weight: bold;
-                    border: 2px solid #D22730;
-                    border-radius: 8px;
-                    margin-top: 10px;
-                    padding-top: 10px;
-                    background-color: #fafafa;
-                }
-                QGroupBox::title {
-                    subcontrol-origin: margin;
-                    left: 15px;
-                    padding: 0 10px 0 10px;
-                    color: #D22730;
-                }
-            """)
+            if not self.filtered_items:
+                # Показываем сообщение о пустом результате
+                empty_label = QLabel("Нет данных для отображения")
+                empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                empty_label.setStyleSheet("color: #999; font-size: 16px; padding: 40px;")
+                if hasattr(self, 'scrollAreaLayout'):
+                    self.scrollAreaLayout.addWidget(empty_label)
+                    self.scrollAreaLayout.addStretch()
+                return
 
-            # Типы подразделений внутри организации
-            types = hierarchy[org_name]
-            type_counter = 0
-            for type_name, items in types.items():
-                # Группа типа подразделения
-                is_type_expanded = (type_counter == 0)
-                type_group = CollapsibleGroup(type_name, is_type_expanded)
-                type_group.setStyleSheet("""
+            hierarchy = self.group_hierarchically(self.filtered_items)
+
+            # Сортируем организации: сначала ОАО МАЗ, потом остальные по алфавиту
+            org_order = sorted(
+                hierarchy.keys(),
+                key=lambda x: (x != "ОАО МАЗ", x)
+            )
+
+            group_counter = 0
+            for org_name in org_order:
+                # Группа организации
+                is_org_expanded = (group_counter == 0)
+                org_group = CollapsibleGroup(org_name, is_org_expanded)
+                org_group.setSizePolicy(
+                    QSizePolicy.Policy.Expanding,
+                    QSizePolicy.Policy.Minimum
+                )
+                org_group.setStyleSheet("""
                     QGroupBox {
-                        font-size: 14px;
+                        font-size: 16px;
                         font-weight: bold;
-                        border: 1px solid #cccccc;
-                        border-radius: 6px;
-                        margin-top: 8px;
-                        padding-top: 8px;
-                        background-color: #f5f5f5;
+                        border: 2px solid #D22730;
+                        border-radius: 8px;
+                        margin-top: 10px;
+                        padding-top: 10px;
+                        background-color: #fafafa;
                     }
                     QGroupBox::title {
                         subcontrol-origin: margin;
                         left: 15px;
-                        padding: 0 8px 0 8px;
-                        color: #333333;
+                        padding: 0 10px 0 10px;
+                        color: #D22730;
                     }
                 """)
 
-                # Карточки отделов
-                for item in items:
-                    # Получаем информацию о руководителе
-                    leader_name = self._get_department_leader(item["id"])
+                # Типы подразделений внутри организации
+                types = hierarchy[org_name]
+                type_counter = 0
+                for type_name, items in types.items():
+                    # Группа типа подразделения
+                    is_type_expanded = (type_counter == 0)
+                    type_group = CollapsibleGroup(type_name, is_type_expanded)
+                    type_group.setSizePolicy(
+                        QSizePolicy.Policy.Expanding,
+                        QSizePolicy.Policy.Minimum
+                    )
+                    type_group.setStyleSheet("""
+                        QGroupBox {
+                            font-size: 14px;
+                            font-weight: bold;
+                            border: 1px solid #cccccc;
+                            border-radius: 6px;
+                            margin-top: 8px;
+                            padding-top: 8px;
+                            background-color: #f5f5f5;
+                        }
+                        QGroupBox::title {
+                            subcontrol-origin: margin;
+                            left: 15px;
+                            padding: 0 8px 0 8px;
+                            color: #333333;
+                        }
+                    """)
 
-                    card_data = {
-                        "name": item["name"],
-                        "code": str(item["id"]),
-                        "leader": leader_name or "Не назначен",
-                        "phone": f"{item['id']}00",
-                        "description": f"{item['name']} ({item.get('parent_name', '')})"
-                    }
+                    # Карточки отделов
+                    for item in items:
+                        # Получаем информацию о руководителе
+                        leader_name = self._get_department_leader(item["id"])
 
-                    item_card = DepartmentCard(card_data)
-                    item_card.edit_clicked.connect(self.on_edit_department)
-                    item_card.delete_clicked.connect(self.on_delete_department)
+                        card_data = {
+                            "name": item["name"],
+                            "code": str(item["id"]),
+                            "leader": leader_name or "Не назначен",
+                            "phone": f"{item['id']}00",
+                            "description": f"{item['name']} ({item.get('parent_name', '')})",
+                            "id": item["id"],
+                            "type": item.get("type_display", "Не указан"),
+                            "organization": item.get("organization_name", "")
+                        }
 
-                    type_group.add_widget(item_card)
+                        item_card = DepartmentCard(card_data)
+                        # Убеждаемся, что карточка имеет правильный размер
+                        item_card.setMinimumHeight(150)
+                        item_card.setMaximumHeight(150)
+                        item_card.setSizePolicy(
+                            QSizePolicy.Policy.Expanding,
+                            QSizePolicy.Policy.Fixed
+                        )
 
-                org_group.add_widget(type_group)
-                type_counter += 1
+                        item_card.edit_clicked.connect(self.on_edit_department)
+                        item_card.delete_clicked.connect(self.on_delete_department)
 
-                # Обновляем высоту после добавления
-                QTimer.singleShot(50, type_group._delayed_height_update)
+                        type_group.add_widget(item_card)
 
-            self.scrollAreaLayout.addWidget(org_group)
-            group_counter += 1
+                    org_group.add_widget(type_group)
+                    type_counter += 1
 
-            # Обновляем высоту организации после добавления всех типов
-            if is_org_expanded:
-                QTimer.singleShot(100, org_group._delayed_height_update)
+                    # Обновляем высоту после добавления
+                    QTimer.singleShot(50, type_group._delayed_height_update)
 
-        # Добавляем растяжку в конце
-        self.scrollAreaLayout.addStretch()
+                if hasattr(self, 'scrollAreaLayout'):
+                    self.scrollAreaLayout.addWidget(org_group)
+                group_counter += 1
 
-        # Сбрасываем скролл в начало
-        self.scrollArea.verticalScrollBar().setValue(0)
-        self.scrollArea.update()
+                # Обновляем высоту организации после добавления всех типов
+                if is_org_expanded:
+                    QTimer.singleShot(100, org_group._delayed_height_update)
+
+            # Добавляем растяжку в конце
+            if hasattr(self, 'scrollAreaLayout'):
+                self.scrollAreaLayout.addStretch()
+
+            # Сбрасываем скролл в начало
+            if hasattr(self, 'scrollArea') and hasattr(self.scrollArea, 'verticalScrollBar'):
+                self.scrollArea.verticalScrollBar().setValue(0)
+
+        finally:
+            self._updating = False
+            # Принудительно обновляем геометрию
+            if hasattr(self, 'scrollAreaWidgetContents'):
+                self.scrollAreaWidgetContents.updateGeometry()
+            if hasattr(self, 'scrollArea'):
+                self.scrollArea.updateGeometry()
+            self.updateGeometry()
 
     def _get_department_leader(self, department_id):
         """Получает ФИО руководителя отдела (заглушка)"""
         # TODO: Реализовать получение из базы данных
-        # Пока возвращаем None
         return None
 
     def position_floating_button(self):
@@ -403,30 +478,33 @@ class DepartmentPage(QWidget):
         """Обработчик изменения размера для позиционирования кнопки"""
         super().resizeEvent(event)
         self.position_floating_button()
+        # Обновляем отображение при изменении размера
+        QTimer.singleShot(100, self.refresh_layout)
+
+    def refresh_layout(self):
+        """Принудительное обновление layout"""
+        if hasattr(self, 'scrollAreaWidgetContents'):
+            self.scrollAreaWidgetContents.updateGeometry()
+        if hasattr(self, 'scrollArea'):
+            self.scrollArea.updateGeometry()
+        self.updateGeometry()
+        QApplication.processEvents()
 
     def on_add_department(self):
         """Обработчик нажатия на плавающую кнопку добавления"""
-        # Создаем диалог для добавления нового отдела
         dialog = DepartmentDialog(self)
 
-        # Если пользователь нажал "Сохранить"
         if dialog.exec():
-            # Получаем данные из диалога
             data = dialog.get_data()
 
             if data:
-                # Здесь можно добавить логику сохранения в БД
                 print(f"[DEBUG] Добавлен новый отдел: {data}")
 
-                # Показываем сообщение об успехе
                 QMessageBox.information(
                     self,
                     "Успешно",
                     f"Отдел '{data.get('name')}' успешно добавлен!"
                 )
-
-                # TODO: Обновить список отделов
-                # self.refresh_departments()
             else:
                 QMessageBox.warning(
                     self,
@@ -438,10 +516,8 @@ class DepartmentPage(QWidget):
         """Обработчик редактирования отдела"""
         print(f"[DEBUG] Редактирование отдела: {data.get('name')}")
 
-        # Ищем отдел в списке по ID
         department_id = data.get('id') or data.get('code')
         if department_id:
-            # Пытаемся найти полные данные отдела
             department_data = None
             for item in self.all_items:
                 if str(item.get('id')) == str(department_id):
@@ -449,37 +525,28 @@ class DepartmentPage(QWidget):
                         'id': item.get('id'),
                         'name': item.get('name'),
                         'organization_id': item.get('organization_id'),
-                        'parent_department_id': None,  # Пока нет родительского
-                        'type_id': None,  # Пока нет типа
+                        'parent_department_id': None,
+                        'type_id': None,
                         'department_number': str(item.get('id')),
-                        'phone': '',  # Пока нет телефона
-                        'head_id': None  # Пока нет руководителя
+                        'phone': '',
+                        'head_id': None
                     }
                     break
 
-            # Если нашли данные, открываем диалог редактирования
             if department_data:
                 dialog = DepartmentDialog(self, department_data=department_data)
 
                 if dialog.exec():
-                    # Получаем обновленные данные
                     updated_data = dialog.get_data()
                     print(f"[DEBUG] Обновлены данные отдела: {updated_data}")
-
-                    # TODO: Сохранить изменения в БД
-                    # self.update_department(updated_data)
 
                     QMessageBox.information(
                         self,
                         "Успешно",
                         f"Отдел '{updated_data.get('name')}' успешно обновлен!"
                     )
-
-                    # TODO: Обновить список отделов
-                    # self.refresh_departments()
                 return
 
-        # Если не нашли данные, открываем диалог создания с предзаполненными полями
         QMessageBox.warning(
             self,
             "Предупреждение",
@@ -491,14 +558,12 @@ class DepartmentPage(QWidget):
         """Обработчик удаления отдела"""
         print(f"[DEBUG] Удаление отдела с ID: {item_id}")
 
-        # Ищем название отдела для сообщения
         department_name = f"ID: {item_id}"
         for item in self.all_items:
             if str(item.get('id')) == str(item_id):
                 department_name = item.get('name', department_name)
                 break
 
-        # Подтверждение удаления
         reply = QMessageBox.question(
             self,
             "Подтверждение удаления",
@@ -508,17 +573,11 @@ class DepartmentPage(QWidget):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            # TODO: Удалить из БД
-            # self.delete_department(item_id)
-
             QMessageBox.information(
                 self,
                 "Успешно",
                 f"Отдел '{department_name}' успешно удален!"
             )
-
-            # TODO: Обновить список отделов
-            # self.refresh_departments()
 
 
 def main():
