@@ -1,7 +1,16 @@
-from server.app.database.document_models import Document, AppRights, DocStatus, DocDirection
+from server.app.database.document_models import AppRights
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.schemas.doc.doc_employee_dto import ParticipantItem
-from server.app.schemas.doc.document_dto import DocumentListItem, TagItem
+from server.app.schemas.doc.document_dto import DocumentListItem
+from server.app.schemas.doc.tag_dto import TagRead
+
+
+def _format_fio(emp) -> str:
+    """Форматирование ФИО вида: Фамилия И.О."""
+    if not emp:
+        return "Неизвестно"
+    patronymic = f"{emp.patronymic[0]}." if emp.patronymic else ""
+    return f"{emp.last_name} {emp.first_name[0]}.{patronymic}"
 
 
 class RegistryService:
@@ -97,11 +106,11 @@ class RegistryService:
             item.type_name = doc.type.name if doc.type else "Без типа"
 
             item.participants = [
-                ParticipantItem(fio=self._format_fio(ed.employee), role=ed.role)
+                ParticipantItem(fio=_format_fio(ed.employee), role=ed.role)
                 for ed in doc.employees
             ]
             item.tags = [
-                TagItem(name=tag.name, priority=tag.priority, color=tag.color)
+                TagRead(id=tag.id, name=tag.name, priority=tag.priority, color=tag.color)
                 for tag in doc.tags
             ]
 
@@ -109,9 +118,3 @@ class RegistryService:
 
         return total, items
 
-    def _format_fio(self, emp) -> str:
-        """Форматирование ФИО вида: Фамилия И.О."""
-        if not emp:
-            return "Неизвестно"
-        patronymic = f"{emp.patronymic[0]}." if emp.patronymic else ""
-        return f"{emp.last_name} {emp.first_name[0]}.{patronymic}"

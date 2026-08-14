@@ -77,6 +77,14 @@ class Employee(BaseEmployees):
 
     overtimes: Mapped[list["Overtime"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
 
+    @property
+    def short_fio(self) -> str:
+        """Форматирует ФИО в формат 'Фамилия И. О.'"""
+        first_init = f"{self.first_name[0]}." if self.first_name else ""
+        patronymic_init = f"{self.patronymic[0]}." if self.patronymic else ""
+        inits = f"{first_init}{patronymic_init}".strip()
+
+        return f"{self.last_name} {inits}".strip()
 
 class EmployeePosition(BaseEmployees):
     """Промежуточная таблица должностей (КТО ГДЕ РАБОТАЕТ)"""

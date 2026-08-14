@@ -90,7 +90,7 @@ async def get_document_by_id(
         service: DocumentService = Depends(get_doc_service)
 ):
     """Получение детальной информации о документе с фиксацией прочтения"""
-    return await service.get_user(doc_id, current_user)
+    return await service.get_detail(doc_id, current_user)
 
 
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -6,7 +6,6 @@ from server.app.database.document_models import DocStatus, DocDirection, TagPrio
 from server.app.schemas.doc.doc_employee_dto import DocEmployeeItem, ParticipantItem
 from server.app.schemas.doc.tag_dto import TagRead
 from server.app.schemas.doc.attachment_dto import DocumentAttachmentRead
-from server.app.schemas.doc.receiver_dto import DocumentReceiverRead
 
 
 class DocumentCreateForm(BaseModel):
@@ -31,13 +30,6 @@ class DocumentCreateForm(BaseModel):
 
     needs_response: bool = False
 
-class TagItem(BaseModel):
-    name: str
-    priority: TagPriority
-    color: str
-
-    model_config = ConfigDict(from_attributes=True)
-
 class DocumentListItem(BaseModel):
     """Усеченная модель для отображения в главной таблице PyQt6"""
     id: int
@@ -55,7 +47,7 @@ class DocumentListItem(BaseModel):
     sent_date: Optional[date] = None
     deadline: Optional[date] = None
     last_comment_text: Optional[str] = None
-    tags: list[TagItem] = []
+    tags: list[TagRead] = []
     participants: list[ParticipantItem] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -95,9 +87,12 @@ class DocumentDetailRead(BaseModel):
     tags: list[TagRead] = []
     employees: list[DocEmployeeItem] = []
     attachments: list[DocumentAttachmentRead] = []  # Заменило старые плоские пути файлов!
-    receivers: list[DocumentReceiverRead] = []  # Веерная рассылка пакета
 
     model_config = ConfigDict(from_attributes=True)
+
+class MarkReadRequest(BaseModel):
+    """Схема для пакетной фиксации прочтения"""
+    document_ids: list[int]
 
 
 class DocumentPaginationResponse(BaseModel):

@@ -550,3 +550,64 @@ class DocumentRepository:
 
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_detail_by_id(self, doc_id: int, user_id: int):
+        """
+        Получает документ со всеми атрибутами (вложения, теги, участники)
+        и вычисляемыми статусами пользователя (is_read, is_archived, is_pinned, reply_id).
+        """
+        query = (
+            select(Document)
+            .where(Document.id == doc_id)
+            .options(
+                selectinload(Document.employees).joinedload(EmployeeDocument.employee),
+                selectinload(Document.tags),
+                selectinload(Document.attachments),
+                selectinload(Document.type)
+            )
+        )
+
+        # Применяем вычисляемые поля
+        query = self.apply_read_status(query, user_id)
+        query = self.apply_archive_status(query, user_id)
+        query = self.apply_pin_status(query, user_id)
+        query = self.apply_reply_status(query)
+        query = self.apply_attachments_status(query)
+
+        result = await self.db.execute(query)
+        return result.unique().first()
+
+    async def mark_as_read_bulk(self, doc_ids: list[int], employee_id: int) -> list[int]:
+        """
+        Массовая безопасная фиксация прочтения документов через PostgreSQL ON CONFLICT DO NOTHING.
+        Возвращает список id документов, которые были успешно обработаны.
+        """
+        if not doc_ids:
+            return []
+
+        values = [
+            {
+                "document_id": d_id,
+                "employee_id": employee_id,
+                "read_at": datetime.now(timezone.utc)
+            }
+            for d_id in doc_ids
+        ]
+
+        stmt = (
+            pg_insert(Read)
+            .values(values)
+            .on_conflict_do_nothing(index_elements=['employee_id', 'document_id'])
+        )
+
+        await self.db.execute(stmt)
+        await self.db.commit()
+        return doc_ids
+
+    async def ensure_read_mark(self, doc_id: int, employee_id: int) -> None:
+        """Фиксирует прочтение документа сотрудником, если отметка еще не стоит"""
+        stmt = select(Read).where(Read.document_id == doc_id, Read.employee_id == employee_id)
+        result = await self.db.execute(stmt)
+        if not result.scalar_one_or_none():
+            self.db.add(Read(document_id=doc_id, employee_id=employee_id))
+            await self.db.commit()
