@@ -43,7 +43,7 @@ class DocumentTypeDialog(QtWidgets.QDialog):
             "has_answer": "Ответ",
             "redirect": "Перенаправление",
             "comments": "Правки",
-            "direction_name": "Направление",  # Теперь можно выключать!
+            "direction_name": "Направление",
         }
 
         # СПИСОК ПАРАМЕТРОВ, КОТОРЫЕ НЕЛЬЗЯ ВЫКЛЮЧИТЬ
@@ -52,37 +52,53 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         self.available_parameters = list(self.parameter_names.keys())
         self.toggle_buttons = {}  # Словарь для кнопок
 
-        # --- ЖЕСТКАЯ ЛОГИКА ВЫБОРА ---
+        # ⚠️ ВАЖНО: Инициализируем selected_parameters ДО того, как используем
         self.selected_parameters = []
 
-        # Получаем auto_number из item
-        if item and 'auto_number' in item:
-            self.auto_number = item.get('auto_number', True)
+        # --- ИСПРАВЛЕНИЕ: Получаем auto_number из item ---
+        # Проверяем все возможные названия поля
+        if item:
+            # Проверяем в порядке приоритета
+            if 'auto_number' in item:
+                self.auto_number = item.get('auto_number', True)
+            elif 'auto_num' in item:
+                self.auto_number = item.get('auto_num', True)
+            elif 'auto_numbering' in item:
+                self.auto_number = item.get('auto_numbering', True)
+            else:
+                self.auto_number = True
         else:
             self.auto_number = True
 
         print(f"[DEBUG] DocumentTypeDialog __init__: auto_number = {self.auto_number} (из item={item})")
 
-        # 1. ПЕРВЫМ ДЕЛОМ смотрим в columns (строка из БД "send_date,subject")
-        raw_columns = self.item.get('columns', "")
+        # Теперь обрабатываем параметры
+        # 1. Сначала пробуем взять из fields (новый формат)
+        if isinstance(self.item.get('fields'), dict):
+            fields_dict = self.item.get('fields', {})
+            # Берем только те поля, у которых значение True
+            self.selected_parameters = [key for key, value in fields_dict.items() if value]
+            print(f"[DEBUG] Взяли данные из fields: {self.selected_parameters}")
 
-        if isinstance(raw_columns, str) and raw_columns.strip():
+        # 2. Если fields нет, смотрим в columns (строка из БД "send_date,subject")
+        elif isinstance(self.item.get('columns'), str) and self.item.get('columns', '').strip():
+            raw_columns = self.item.get('columns', '')
             self.selected_parameters = [f.strip() for f in raw_columns.split(',') if f.strip()]
             print(f"[DEBUG] Взяли данные из строки columns: {self.selected_parameters}")
 
-        # 2. Если в columns пусто, но в parameters лежит список
+        # 3. Если в columns пусто, но в parameters лежит список
         elif isinstance(self.item.get('parameters'), list):
             p_list = self.item.get('parameters', [])
-            if len(p_list) < len(self.available_parameters) and len(p_list) > 0:
+            if len(p_list) > 0:
                 self.selected_parameters = [str(p).strip() for p in p_list]
-                print(f"[DEBUG] Взяли данные из специфичного списка parameters: {self.selected_parameters}")
+                print(f"[DEBUG] Взяли данные из списка parameters: {self.selected_parameters}")
 
-        # 3. Если это НОВЫЙ документ (нет id), только тогда включаем всё
+        # 4. Если это НОВЫЙ документ (нет id) И selected_parameters пуст, включаем всё
         if not self.item.get('id') and not self.selected_parameters:
             self.selected_parameters = self.available_parameters.copy()
             print("[DEBUG] Новый документ: включили всё по дефолту")
 
-        # 4. УБЕДИМСЯ, ЧТО ОБЯЗАТЕЛЬНЫЕ ПАРАМЕТРЫ ВСЕГДА В СПИСКЕ
+        # 5. УБЕДИМСЯ, ЧТО ОБЯЗАТЕЛЬНЫЕ ПАРАМЕТРЫ ВСЕГДА В СПИСКЕ
         for param in self.mandatory_parameters:
             if param not in self.selected_parameters:
                 self.selected_parameters.append(param)
@@ -95,8 +111,8 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         self.setWindowTitle("Редактировать тип документа" if is_edit else "Добавить тип документа")
 
         # Устанавливаем заголовок в UI (если есть)
-        if hasattr(self, 'title_label'):
-            self.title_label.setText("Редактировать тип документа" if is_edit else "Новый тип документа")
+        if hasattr(self, 'titleLabel'):
+            self.titleLabel.setText("Редактировать тип документа" if is_edit else "Новый тип документа")
 
         # Устанавливаем размер окна
         self.resize(600, 850)
@@ -105,38 +121,51 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         self.setup_parameters_ui()
 
         # Заполняем текстовое поле
-        if hasattr(self, 'name_input'):
-            self.name_input.setText(self.item.get('name', ''))
+        if hasattr(self, 'nameInput'):
+            self.nameInput.setText(self.item.get('name', ''))
         else:
-            print("[WARNING] name_input не найден в UI")
+            print("[WARNING] nameInput не найден в UI")
 
         # Устанавливаем чекбокс
-        if hasattr(self, 'auto_number_checkbox'):
-            self.auto_number_checkbox.setChecked(self.auto_number)
+        if hasattr(self, 'autoNumberCheckbox'):
+            self.autoNumberCheckbox.setChecked(self.auto_number)
             print(f"[DEBUG] Чекбокс установлен в {self.auto_number}")
         else:
-            print("[WARNING] auto_number_checkbox не найден в UI")
+            print("[WARNING] autoNumberCheckbox не найден в UI")
 
         # Настройка шаблона
-        if hasattr(self, 'template_path_input'):
+        if hasattr(self, 'templatePathInput'):
             # Загружаем сохраненный путь к шаблону
             template_path = self.item.get('template_path', '')
-            self.template_path_input.setText(template_path)
+            self.templatePathInput.setText(template_path)
 
             # Подключаем кнопки
-            if hasattr(self, 'browse_template_btn'):
-                self.browse_template_btn.clicked.connect(self.browse_template)
-            if hasattr(self, 'clear_template_btn'):
-                self.clear_template_btn.clicked.connect(self.clear_template)
+            if hasattr(self, 'browseBtn'):
+                self.browseBtn.clicked.connect(self.browse_template)
+            if hasattr(self, 'clearBtn'):
+                self.clearBtn.clicked.connect(self.clear_template)
             print(f"[DEBUG] Загружен шаблон: {template_path}")
         else:
-            print("[WARNING] template_path_input не найден в UI")
+            print("[WARNING] templatePathInput не найден в UI")
 
         # Подключаем сигналы
-        if hasattr(self, 'save_btn'):
-            self.save_btn.clicked.connect(self.save_and_accept)
+        if hasattr(self, 'saveButton'):
+            self.saveButton.clicked.connect(self.save_and_accept)
         else:
-            print("[WARNING] save_btn не найден в UI")
+            print("[WARNING] saveButton не найден в UI")
+
+    def set_auto_number_state(self, value: bool):
+        """
+        Устанавливает состояние чекбокса автоматической нумерации.
+        Используется для синхронизации при загрузке данных.
+        """
+        if hasattr(self, 'autoNumberCheckbox'):
+            self.autoNumberCheckbox.setChecked(value)
+            self.auto_number = value
+            print(f"[DEBUG] Установлен чекбокс autoNumberCheckbox = {value}")
+        else:
+            print("[WARNING] autoNumberCheckbox не найден, сохраняем значение в self.auto_number")
+            self.auto_number = value
 
     def setup_ui_fallback(self):
         """Создает UI программно, если файл .ui не найден"""
@@ -144,24 +173,24 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(10)
 
-        self.title_label = QtWidgets.QLabel("Новый тип документа")
-        self.title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: black;")
-        main_layout.addWidget(self.title_label)
+        self.titleLabel = QtWidgets.QLabel("Новый тип документа")
+        self.titleLabel.setStyleSheet("font-size: 18px; font-weight: bold; color: black;")
+        main_layout.addWidget(self.titleLabel)
 
         name_label = QtWidgets.QLabel("Название типа*:")
         name_label.setStyleSheet("color: black;")
         main_layout.addWidget(name_label)
 
-        self.name_input = QtWidgets.QLineEdit()
-        self.name_input.setStyleSheet("border-radius: 8px; border: 1px solid #ccab6e; padding: 8px; color: black;")
-        main_layout.addWidget(self.name_input)
+        self.nameInput = QtWidgets.QLineEdit()
+        self.nameInput.setStyleSheet("border-radius: 8px; border: 1px solid #ccab6e; padding: 8px; color: black;")
+        main_layout.addWidget(self.nameInput)
 
         auto_number_label = QtWidgets.QLabel("Настройки номера:")
         auto_number_label.setStyleSheet("color: black;")
         main_layout.addWidget(auto_number_label)
 
-        self.auto_number_checkbox = QtWidgets.QCheckBox("Автоматически формировать номер документа")
-        self.auto_number_checkbox.setStyleSheet("""
+        self.autoNumberCheckbox = QtWidgets.QCheckBox("Автоматически формировать номер документа")
+        self.autoNumberCheckbox.setStyleSheet("""
             QCheckBox {
                 spacing: 10px;
                 font-size: 14px;
@@ -172,7 +201,7 @@ class DocumentTypeDialog(QtWidgets.QDialog):
                 color: black;
             }
         """)
-        main_layout.addWidget(self.auto_number_checkbox)
+        main_layout.addWidget(self.autoNumberCheckbox)
 
         # Поле для шаблона
         template_label = QtWidgets.QLabel("Шаблон документа:")
@@ -180,15 +209,15 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         main_layout.addWidget(template_label)
 
         template_layout = QtWidgets.QHBoxLayout()
-        self.template_path_input = QtWidgets.QLineEdit()
-        self.template_path_input.setPlaceholderText("Путь к файлу шаблона...")
-        self.template_path_input.setStyleSheet(
+        self.templatePathInput = QtWidgets.QLineEdit()
+        self.templatePathInput.setPlaceholderText("Путь к файлу шаблона...")
+        self.templatePathInput.setStyleSheet(
             "border-radius: 8px; border: 1px solid #ccab6e; padding: 8px; color: black; background: white;")
-        self.template_path_input.setReadOnly(True)
-        template_layout.addWidget(self.template_path_input)
+        self.templatePathInput.setReadOnly(True)
+        template_layout.addWidget(self.templatePathInput)
 
-        self.browse_template_btn = QtWidgets.QPushButton("Обзор...")
-        self.browse_template_btn.setStyleSheet("""
+        self.browseBtn = QtWidgets.QPushButton("Обзор...")
+        self.browseBtn.setStyleSheet("""
             QPushButton {
                 background-color: #f0f0f0;
                 color: #333;
@@ -202,11 +231,11 @@ class DocumentTypeDialog(QtWidgets.QDialog):
                 background-color: #e0e0e0;
             }
         """)
-        self.browse_template_btn.clicked.connect(self.browse_template)
-        template_layout.addWidget(self.browse_template_btn)
+        self.browseBtn.clicked.connect(self.browse_template)
+        template_layout.addWidget(self.browseBtn)
 
-        self.clear_template_btn = QtWidgets.QPushButton("Очистить")
-        self.clear_template_btn.setStyleSheet("""
+        self.clearBtn = QtWidgets.QPushButton("Очистить")
+        self.clearBtn.setStyleSheet("""
             QPushButton {
                 background-color: #f0f0f0;
                 color: #333;
@@ -220,8 +249,8 @@ class DocumentTypeDialog(QtWidgets.QDialog):
                 background-color: #e0e0e0;
             }
         """)
-        self.clear_template_btn.clicked.connect(self.clear_template)
-        template_layout.addWidget(self.clear_template_btn)
+        self.clearBtn.clicked.connect(self.clear_template)
+        template_layout.addWidget(self.clearBtn)
         main_layout.addLayout(template_layout)
 
         main_layout.addSpacing(10)
@@ -240,8 +269,8 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         self.scroll_area.setWidget(self.scroll_content)
         main_layout.addWidget(self.scroll_area, 1)
 
-        self.save_btn = QtWidgets.QPushButton("Сохранить")
-        self.save_btn.setStyleSheet("""
+        self.saveButton = QtWidgets.QPushButton("Сохранить")
+        self.saveButton.setStyleSheet("""
             QPushButton {
                 background-color: #ccab6e;
                 color: white;
@@ -255,7 +284,7 @@ class DocumentTypeDialog(QtWidgets.QDialog):
                 background-color: #998664;
             }
         """)
-        main_layout.addWidget(self.save_btn)
+        main_layout.addWidget(self.saveButton)
 
     def setup_parameters_ui(self):
         """Создает интерфейс для выбора параметров"""
@@ -319,6 +348,7 @@ class DocumentTypeDialog(QtWidgets.QDialog):
             btn = QtWidgets.QPushButton()
             btn.setFixedSize(70, 26)
             btn.setObjectName(f"toggleBtn_{param}")
+            btn.setProperty("toggle_btn", True)  # Для стилей
 
             # Проверяем наличие параметра в загруженном списке
             is_active = param in self.selected_parameters
@@ -351,27 +381,12 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         )
 
         if file_path:
-            self.template_path_input.setText(file_path)
+            self.templatePathInput.setText(file_path)
             print(f"[DEBUG] Выбран шаблон: {file_path}")
-
-    def clear_parameter_widgets(self):
-        """Очищает все виджеты параметров"""
-        layout = None
-
-        if hasattr(self, 'paramsScrollLayout'):
-            layout = self.paramsScrollLayout
-        elif hasattr(self, 'scroll_layout'):
-            layout = self.scroll_layout
-
-        if layout:
-            while layout.count():
-                child = layout.takeAt(0)
-                if child.widget():
-                    child.widget().deleteLater()
 
     def clear_template(self):
         """Очистить путь к шаблону"""
-        self.template_path_input.clear()
+        self.templatePathInput.clear()
         print("[DEBUG] Шаблон очищен")
 
     def toggle_param(self, param, btn):
@@ -396,8 +411,8 @@ class DocumentTypeDialog(QtWidgets.QDialog):
     def save_and_accept(self):
         """Сохранение с приведением к единому стандарту"""
         name = ""
-        if hasattr(self, 'name_input'):
-            name = self.name_input.text().strip()
+        if hasattr(self, 'nameInput'):
+            name = self.nameInput.text().strip()
 
         if not name:
             QtWidgets.QMessageBox.warning(self, "Ошибка", "Введите название!")
@@ -408,20 +423,30 @@ class DocumentTypeDialog(QtWidgets.QDialog):
             if param not in self.selected_parameters:
                 self.selected_parameters.append(param)
 
-        # Записываем и как список, и как строку
+        # --- ИЗМЕНЕНИЕ: Формируем данные для сервера ---
+        # 1. Преобразуем параметры в словарь fields (как ожидает сервер)
+        fields_dict = {param: True for param in self.selected_parameters}
+
+        # 2. Получаем auto_num
+        auto_num = False
+        if hasattr(self, 'autoNumberCheckbox'):
+            auto_num = self.autoNumberCheckbox.isChecked()
+        else:
+            auto_num = self.auto_number
+
+        # 3. Формируем данные для сервера
         self.item['name'] = name
+        self.item['fields'] = fields_dict
+        self.item['auto_num'] = auto_num
+
+        # 4. Сохраняем также в старом формате для совместимости с UI
         self.item['columns'] = ",".join(self.selected_parameters)
         self.item['parameters'] = self.selected_parameters
-
-        # Получаем значение auto_number
-        if hasattr(self, 'auto_number_checkbox'):
-            self.item['auto_number'] = self.auto_number_checkbox.isChecked()
-        else:
-            self.item['auto_number'] = self.auto_number
+        self.item['auto_numbering'] = auto_num
 
         # Сохраняем путь к шаблону
-        if hasattr(self, 'template_path_input'):
-            template_path = self.template_path_input.text().strip()
+        if hasattr(self, 'templatePathInput'):
+            template_path = self.templatePathInput.text().strip()
             self.item['template_path'] = template_path if template_path else None
             print(f"[DEBUG] Сохранен шаблон: {self.item.get('template_path')}")
 
@@ -439,42 +464,50 @@ class DocumentTypeDialog(QtWidgets.QDialog):
             self.item['direction_ids'] = []
             self.item['direction_id'] = None
 
-        print(f"[DEBUG] Диалог закрыт. Подготовлено колонок: {self.item['columns']}")
+        print(
+            f"[DEBUG] Диалог закрыт. Данные для сервера: fields={self.item['fields']}, auto_num={self.item['auto_num']}")
         print(f"[DEBUG] Направление включено: {'direction_name' in self.selected_parameters}")
         print(f"[DEBUG] Выбрано направлений: {self.item.get('direction_ids')}")
-        print(f"[DEBUG] auto_number: {self.item.get('auto_number')}")
-        print(f"[DEBUG] template_path: {self.item.get('template_path')}")
         self.accept()
 
     def get_data(self):
-        """Возвращает полный набор данных"""
+        """Возвращает полный набор данных в формате для сервера"""
         name = ""
-        if hasattr(self, 'name_input'):
-            name = self.name_input.text().strip()
+        if hasattr(self, 'nameInput'):
+            name = self.nameInput.text().strip()
 
+        # Убедимся, что обязательные параметры в списке
         for param in self.mandatory_parameters:
             if param not in self.selected_parameters:
                 self.selected_parameters.append(param)
 
-        columns_str = ",".join(self.selected_parameters)
+        # Преобразуем параметры в словарь fields
+        fields_dict = {param: True for param in self.selected_parameters}
 
+        # Получаем auto_num
+        auto_num = False
+        if hasattr(self, 'autoNumberCheckbox'):
+            auto_num = self.autoNumberCheckbox.isChecked()
+        else:
+            auto_num = self.auto_number
+
+        # Формируем результат
         result = {
             'name': name,
-            'columns': columns_str,
+            'fields': fields_dict,
+            'auto_num': auto_num,
+            # Сохраняем также старые поля для совместимости
+            'columns': ",".join(self.selected_parameters),
             'parameters': self.selected_parameters,
             'parameter_names': {p: self.parameter_names[p] for p in self.selected_parameters}
         }
 
-        if hasattr(self, 'auto_number_checkbox'):
-            result['auto_number'] = self.auto_number_checkbox.isChecked()
-        else:
-            result['auto_number'] = self.auto_number
-
-        # Добавляем шаблон в результат
-        if hasattr(self, 'template_path_input'):
-            template_path = self.template_path_input.text().strip()
+        # Добавляем шаблон
+        if hasattr(self, 'templatePathInput'):
+            template_path = self.templatePathInput.text().strip()
             result['template_path'] = template_path if template_path else None
 
+        # Добавляем направления
         if 'direction_name' in self.selected_parameters:
             if hasattr(self, 'direction_btn'):
                 selected_ids = self.direction_btn.property("selected_ids") or []
@@ -576,8 +609,8 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         errors = []
 
         name = ""
-        if hasattr(self, 'name_input'):
-            name = self.name_input.text().strip()
+        if hasattr(self, 'nameInput'):
+            name = self.nameInput.text().strip()
 
         if not name:
             errors.append("Название типа обязательно для заполнения")

@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional, Union
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLineEdit, QScrollArea, QMenu, QMessageBox, QApplication,
-    QSizePolicy
+    QSizePolicy, QLabel
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
@@ -321,16 +321,31 @@ class DocumentTypesPage(QWidget):
 
     # ==================== ОТОБРАЖЕНИЕ ====================
 
+    # client/windows/system/document_types/document_type_page.py
+
     def update_display(self):
-        """Обновление отображения типов документов в 2 колонки"""
-        # Очищаем layout
-        for i in reversed(range(self.typesLayout.count())):
-            widget = self.typesLayout.itemAt(i).widget()
-            if widget:
-                widget.deleteLater()
+        """Обновление отображения типов документов в 2 колонки с выравниванием по верхнему краю"""
+        # ⚠️ КРИТИЧНО: Полностью очищаем layout
+        # Сначала удаляем все виджеты
+        while self.typesLayout.count():
+            item = self.typesLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                # Если это вложенный layout, очищаем его
+                self._clear_layout(item.layout())
 
         # Получаем отфильтрованные и отсортированные типы
         self.filtered_types = self.filter_and_sort_types()
+
+        # Если нет типов, показываем сообщение
+        if not self.filtered_types:
+            empty_label = QLabel("Нет типов документов")
+            empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_label.setStyleSheet("color: #6c757d; font-size: 16px; padding: 40px;")
+            self.typesLayout.addWidget(empty_label)
+            self.position_floating_button()
+            return
 
         # Создаем горизонтальный layout для двух колонок
         h_layout = QHBoxLayout()
@@ -341,16 +356,19 @@ class DocumentTypesPage(QWidget):
         left_column = QVBoxLayout()
         left_column.setSpacing(10)
         left_column.setContentsMargins(0, 0, 0, 0)
+        left_column.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         right_column = QVBoxLayout()
         right_column.setSpacing(10)
         right_column.setContentsMargins(0, 0, 0, 0)
+        right_column.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Распределяем карточки по двум колонкам
         for i, doc_type in enumerate(self.filtered_types):
             type_card = DocumentTypeCard(doc_type)
             type_card.edit_clicked.connect(self.on_edit_type)
             type_card.delete_clicked.connect(self.on_delete_type)
+            type_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
             if i % 2 == 0:
                 left_column.addWidget(type_card)
@@ -364,10 +382,22 @@ class DocumentTypesPage(QWidget):
         # Добавляем горизонтальный layout в основной вертикальный
         self.typesLayout.addLayout(h_layout)
 
-        # Добавляем растяжку в конец
+        # Добавляем растяжку в конец, чтобы контент был сверху
         self.typesLayout.addStretch()
 
         self.position_floating_button()
+
+    def _clear_layout(self, layout):
+        """Рекурсивно очищает layout и все его дочерние элементы"""
+        if layout is None:
+            return
+
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                self._clear_layout(item.layout())
 
     # ==================== РАБОТА С ТИПАМИ (CRUD) ====================
 
@@ -379,31 +409,39 @@ class DocumentTypesPage(QWidget):
             new_type_data = dialog.get_data()
             self._create_type(new_type_data)
 
+    # client/windows/system/document_types/document_type_page.py
+
     def _create_type(self, type_data: Dict[str, Any]):
         """Создание типа документа"""
         try:
-            # Убираем ID если есть
-            type_data.pop('id', None)
-
-            # Конвертируем parameters в fields для сервера
-            parameters = type_data.get('parameters', [])
-            fields = self._convert_parameters_to_fields(parameters)
-
             # Формируем данные для сервера
             server_data = {
                 'name': type_data.get('name', ''),
-                'fields': fields,
-                'auto_num': type_data.get('auto_numbering', False),
+                'fields': type_data.get('fields', {}),
+                'auto_num': type_data.get('auto_num',
+                                          type_data.get('auto_number', type_data.get('auto_numbering', False))),
                 'smdo_code_type': type_data.get('smdo_code_type', '')
             }
+
+            # Если fields пустой, берем из parameters (для обратной совместимости)
+            if not server_data['fields'] and type_data.get('parameters'):
+                server_data['fields'] = {param: True for param in type_data['parameters']}
+
+            print(f"[DEBUG] Создание типа: server_data={server_data}")
 
             result = self.doc_type_service.create_type(server_data)
 
             if result:
+                print(f"[DEBUG] Результат создания: {result}")
+
                 # Нормализуем полученные fields
                 result_fields = result.get('fields', {})
                 normalized_fields = self._normalize_fields(result_fields)
                 parameters_result = self._convert_fields_to_parameters(result_fields)
+
+                # Получаем значение auto_num из результата
+                auto_num = result.get('auto_num', False)
+                print(f"[DEBUG] auto_num из результата: {auto_num}")
 
                 self.document_types.append({
                     'id': result.get('id'),
@@ -412,10 +450,11 @@ class DocumentTypesPage(QWidget):
                     'description': type_data.get('description', ''),
                     'documents_count': 0,
                     'fields_count': len(parameters_result),
-                    'auto_numbering': result.get('auto_num', False),
+                    'auto_numbering': auto_num,  # Для совместимости
+                    'auto_num': auto_num,  # Для сервера
+                    'auto_number': auto_num,  # Для UI
                     'parameters': parameters_result,
                     'fields': normalized_fields,
-                    'auto_num': result.get('auto_num', False),
                     'smdo_code_type': result.get('smdo_code_type', '')
                 })
 
@@ -432,46 +471,39 @@ class DocumentTypesPage(QWidget):
             else:
                 self.show_error_notification("Не удалось создать тип")
 
-    def on_edit_type(self, type_data: Dict[str, Any]):
-        """Обработка редактирования типа документа"""
-        full_type_data = None
-        for dt in self.document_types:
-            if dt.get('id') == type_data.get('id'):
-                full_type_data = dt.copy()
-                break
-
-        if not full_type_data:
-            self.show_error_notification("Тип не найден")
-            return
-
-        dialog = DocumentTypeDialog(self, item=full_type_data)
-
-        if dialog.exec():
-            updated_data = dialog.get_data()
-            self._update_type(type_data.get('id'), updated_data)
+    # client/windows/system/document_types/document_type_page.py
 
     def _update_type(self, type_id: int, updated_data: Dict[str, Any]):
         """Обновление типа документа"""
         try:
-            # Конвертируем parameters в fields для сервера
-            parameters = updated_data.get('parameters', [])
-            fields = self._convert_parameters_to_fields(parameters)
-
             # Формируем данные для сервера
             server_data = {
                 'name': updated_data.get('name', ''),
-                'fields': fields,
-                'auto_num': updated_data.get('auto_numbering', False),
+                'fields': updated_data.get('fields', {}),
+                'auto_num': updated_data.get('auto_num', updated_data.get('auto_number',
+                                                                          updated_data.get('auto_numbering', False))),
                 'smdo_code_type': updated_data.get('smdo_code_type', '')
             }
+
+            # Если fields пустой, берем из parameters (для обратной совместимости)
+            if not server_data['fields'] and updated_data.get('parameters'):
+                server_data['fields'] = {param: True for param in updated_data['parameters']}
+
+            print(f"[DEBUG] Обновление типа {type_id}: server_data={server_data}")
 
             result = self.doc_type_service.update_type(type_id, server_data)
 
             if result:
+                print(f"[DEBUG] Результат обновления: {result}")
+
                 # Нормализуем полученные fields
                 result_fields = result.get('fields', {})
                 normalized_fields = self._normalize_fields(result_fields)
                 parameters_result = self._convert_fields_to_parameters(result_fields)
+
+                # Получаем значение auto_num из результата
+                auto_num = result.get('auto_num', False)
+                print(f"[DEBUG] auto_num из результата: {auto_num}")
 
                 for i, dt in enumerate(self.document_types):
                     if dt.get('id') == type_id:
@@ -479,12 +511,14 @@ class DocumentTypesPage(QWidget):
                             'name': result.get('name', ''),
                             'code': result.get('smdo_code_type', ''),
                             'fields_count': len(parameters_result),
-                            'auto_numbering': result.get('auto_num', False),
+                            'auto_numbering': auto_num,  # Для совместимости
+                            'auto_num': auto_num,  # Для сервера
+                            'auto_number': auto_num,  # Для UI
                             'parameters': parameters_result,
                             'fields': normalized_fields,
-                            'auto_num': result.get('auto_num', False),
                             'smdo_code_type': result.get('smdo_code_type', '')
                         })
+                        print(f"[DEBUG] Обновлен тип в памяти: {self.document_types[i]}")
                         break
 
                 self.update_display()
@@ -499,6 +533,65 @@ class DocumentTypesPage(QWidget):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
                 self.show_error_notification("Не удалось обновить тип")
+
+    # client/windows/system/document_types/document_type_page.py
+
+    def on_edit_type(self, type_data: Dict[str, Any]):
+        """Обработка редактирования типа документа"""
+        type_id = type_data.get('id')
+        if not type_id:
+            self.show_error_notification("ID типа не найден")
+            return
+
+        try:
+            # Получаем актуальные данные с сервера
+            server_type = self.doc_type_service.get_type(type_id)
+            if not server_type:
+                self.show_error_notification("Тип не найден на сервере")
+                return
+
+            print(f"[DEBUG] Загружен тип с сервера: {server_type}")
+
+            # Преобразуем данные в формат для диалога
+            fields = server_type.get('fields', {})
+            normalized_fields = self._normalize_fields(fields)
+            parameters = self._convert_fields_to_parameters(fields)
+
+            # Получаем auto_num
+            auto_num = server_type.get('auto_num', False)
+
+            full_type_data = {
+                'id': server_type.get('id'),
+                'name': server_type.get('name', ''),
+                'code': server_type.get('smdo_code_type', ''),
+                'description': server_type.get('description', ''),
+                'documents_count': server_type.get('documents_count', 0),
+                'fields_count': len(parameters),
+                'auto_numbering': auto_num,
+                'auto_num': auto_num,
+                'auto_number': auto_num,
+                'parameters': parameters,
+                'fields': normalized_fields,
+                'smdo_code_type': server_type.get('smdo_code_type', '')
+            }
+
+            print(f"[DEBUG] Подготовлены данные для диалога: {full_type_data}")
+
+            # Открываем диалог
+            dialog = DocumentTypeDialog(self, item=full_type_data)
+
+            if dialog.exec():
+                updated_data = dialog.get_data()
+                print(f"[DEBUG] Получены данные из диалога: {updated_data}")
+                self._update_type(type_id, updated_data)
+
+        except Exception as e:
+            import logging
+            import traceback
+            logging.error(f"Ошибка загрузки типа для редактирования: {e}")
+            traceback.print_exc()
+            self.show_error_notification("Не удалось загрузить данные типа")
+
 
     def on_delete_type(self, type_id: int):
         """Обработка удаления типа документа"""

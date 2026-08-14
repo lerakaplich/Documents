@@ -48,39 +48,59 @@ class DocTypeService:
             logger.error(f"Ошибка получения типа {type_id}: {e}")
             return None
 
+    # client/services/doc_type_service.py
+
     def create_type(self, type_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Создать новый тип документа"""
         try:
+            # Убедимся, что отправляем правильные поля
+            server_data = {
+                'name': type_data.get('name', ''),
+                'fields': type_data.get('fields', {}),
+                'auto_num': type_data.get('auto_num', False),
+                'smdo_code_type': type_data.get('smdo_code_type', '')
+            }
+
             response = self.http.post(
                 f"{self.base_path}",
-                json=type_data
+                json=server_data
             )
+            logger.info(f"✅ Тип документа создан: {response}")
             return response
         except Exception as e:
-            logger.error(f"Ошибка создания типа документа: {e}")
+            logger.error(f"❌ Ошибка создания типа документа: {e}")
             return None
 
     def update_type(self, type_id: int, type_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Обновить тип документа"""
         try:
+            # Убедимся, что отправляем правильные поля
+            server_data = {
+                'name': type_data.get('name', ''),
+                'fields': type_data.get('fields', {}),
+                'auto_num': type_data.get('auto_num', False),
+                'smdo_code_type': type_data.get('smdo_code_type', '')
+            }
+
             response = self.http.patch(
                 f"{self.base_path}/{type_id}",
-                json=type_data
+                json=server_data
             )
+            logger.info(f"✅ Тип документа обновлен: {response}")
             return response
         except Exception as e:
-            logger.error(f"Ошибка обновления типа {type_id}: {e}")
+            logger.error(f"❌ Ошибка обновления типа {type_id}: {e}")
             return None
 
     def delete_type(self, type_id: int) -> bool:
         """Удалить тип документа"""
         try:
             self.http.delete(f"{self.base_path}/{type_id}")
+            logger.info(f"✅ Тип документа {type_id} удален")
             return True
         except Exception as e:
-            logger.error(f"Ошибка удаления типа {type_id}: {e}")
+            logger.error(f"❌ Ошибка удаления типа {type_id}: {e}")
             return False
-
 
 # Синглтон
 _doc_type_service_instance: Optional[DocTypeService] = None
