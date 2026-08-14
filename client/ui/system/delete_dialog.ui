@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DeleteDialog</class>
+ <widget class="QDialog" name="DeleteDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>146</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Подтверждение удаления</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">background-color: white;
+
+QDialog {
+    background-color: white;
+}
+QLabel {
+    color: #333333;
+    font-size: 14px;
+}
+#messageLabel {
+    font-size: 16px;
+    font-weight: bold;
+}
+QPushButton {
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    min-width: 80px;
+}
+QPushButton#buttonYes {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+}
+QPushButton#buttonYes:hover {
+    background-color: #c82333;
+}
+QPushButton#buttonNo {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+}
+QPushButton#buttonNo:hover {
+    background-color: #5a6268;
+}
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Вы действительно хотите удалить?</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="nameLabel">
+     <property name="styleSheet">
+      <string notr="true">font-size: 16px; font-weight: bold; color: #dc3545;</string>
+     </property>
+     <property name="text">
+      <string>Сотрудник: </string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="buttonYes">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string>QPushButton {
+             background-color: #ccab6e;
+             color: white;
+             border-radius: 10px;
+             font-weight: bold;
+             font-size: 18px;
+             border: none;
+           }
+           QPushButton:hover {
+             background-color: #998664;
+           }
+           QPushButton:pressed {
+             background-color: #7a6a50;
+           }</string>
+       </property>
+       <property name="text">
+        <string>Да</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="buttonNo">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton {
+             background-color: #D22730;
+             color: white;
+             border-radius: 10px;
+             font-weight: bold;
+             font-size: 16px;
+             border: none;
+           }
+           QPushButton:hover {
+             background-color: #862633;
+           }
+           QPushButton:pressed {
+             background-color: #6a1e29;
+           }</string>
+       </property>
+       <property name="text">
+        <string>Нет</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
