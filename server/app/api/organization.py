@@ -1,7 +1,7 @@
 from server.app.deps import get_org_service, get_current_user
 from server.app.schemas.org import OrganizationRead, OrganizationUpdate, DepartmentNode, OrganizationCreate
 
-from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.schemas.user_schemas.employee_dto import CurrentUser, EmployeeRead
 
 from server.app.services.org.org_service import OrgService
 from fastapi import APIRouter, Depends, status, Query
@@ -59,6 +59,17 @@ async def get_org_structure(
 ):
     return await service.get_org_structure(org_id)
 
+@router.get(
+    "/{org_id}/employees",
+    response_model=list[EmployeeRead],
+    summary="Получить всех сотрудников организации"
+)
+async def get_org_employees(
+    org_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: OrgService = Depends(get_org_service),
+):
+    return await service.get_organization_employees(current_user, org_id)
 
 @router.patch(
     "/{org_id}",

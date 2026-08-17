@@ -152,8 +152,19 @@ def get_tag_service(
     repo = TagRepository(db)
     return TagService(security, repo)
 
-def get_org_service(db: AsyncSession = Depends(get_employees_db), security: SecurityService = Depends(get_security_service)) -> OrgService:
-    return OrgService(OrgRepository(db), security)
+
+def get_org_service(
+        db: AsyncSession = Depends(get_employees_db),
+        security: SecurityService = Depends(get_security_service)
+) -> OrgService:
+    org_repo = OrgRepository(db)
+    emp_repo = EmployeesRepository(db)
+
+    return OrgService(
+        repo=org_repo,
+        emp_repo=emp_repo,
+        security=security
+    )
 
 def get_dept_service(db: AsyncSession = Depends(get_employees_db), security: SecurityService = Depends(get_security_service)) -> DepartmentService:
     return DepartmentService(OrgRepository(db), EmployeesRepository(db), security)
@@ -165,9 +176,7 @@ def get_employee_service(
 ) -> EmployeeService:
     emp_repo = EmployeesRepository(emp_db)
     doc_repo = DocumentRepository(doc_db)
-    org_repo = OrgRepository(emp_db)
-
-    return EmployeeService(emp_repo, doc_repo, org_repo, security)
+    return EmployeeService(emp_repo, doc_repo, security)
 
 def get_overtime_service(
     emp_db: AsyncSession = Depends(get_employees_db),

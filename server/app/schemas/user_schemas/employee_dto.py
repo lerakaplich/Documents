@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing import Optional
 from datetime import date
 from server.app.database.document_models import AppRights  # Используется в SystemEmployee
@@ -37,6 +37,11 @@ class EmployeePositionRead(BaseModel):
     is_leader: bool
 
     department_chain: list[DepartmentPathItem] = Field(default_factory=list)
+
+    @computed_field
+    def department_path(self) -> list[str]:
+        """Автоматически извлекает названия подразделений из цепочки"""
+        return [item.name for item in self.department_chain]
 
     model_config = ConfigDict(from_attributes=True)
 

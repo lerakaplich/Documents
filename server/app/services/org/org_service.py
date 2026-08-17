@@ -1,19 +1,50 @@
+import logging
+
 from fastapi import HTTPException, status
 
+from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
 
 from server.app.schemas.org import DepartmentNode, OrganizationUpdate, OrganizationRead, OrganizationCreate
-from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.schemas.user_schemas.employee_dto import CurrentUser, EmployeeRead
 
 from server.app.services.common.security_service import SecurityService
 
+logger = logging.getLogger(__name__)
+
 
 class OrgService:
-    def __init__(self, repo: OrgRepository, security: SecurityService):
+    def __init__(
+        self,
+        repo: OrgRepository,
+        emp_repo: EmployeesRepository,
+        security: SecurityService
+    ):
         self.repo = repo
+        self.emp_repo = emp_repo
         self.security = security
 
+    async def get_organization_employees(
+        self, current_user: CurrentUser, org_id: int
+    ) -> list[EmployeeRead]:
+        org = await self.repo.get_organization_by_id(org_id)
+        if not org:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Организация не найдена",
+            )
+
+        employees = await self.emp_repo.get_employees_by_org_id(org_id)
+        return [EmployeeRead.model_validate(e) for e in employees]
+
     async def get_org_structure(self, org_id: int) -> list[DepartmentNode]:
+        org = await self.repo.get_organization_by_id(org_id)
+        if not org:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Организация не найдена",
+            )
+
         depts = await self.repo.get_departments_by_org(org_id)
 
         nodes = {
@@ -38,14 +69,16 @@ class OrgService:
     async def update_organization(
         self, current_user: CurrentUser, org_id: int, data: OrganizationUpdate
     ) -> OrganizationRead:
-        # 1. Проверяем права на управление организацией
         if not await self.security.can_manage_org(current_user, org_id):
+            logger.warning(
+                "Access denied for organization update",
+                extra={"user_id": current_user.id, "org_id": org_id},
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Нет прав на редактирование этой организации",
             )
 
-        # 2. Проверяем существование организации ДО обновления
         existing_org = await self.repo.get_organization_by_id(org_id)
         if not existing_org:
             raise HTTPException(
@@ -53,7 +86,6 @@ class OrgService:
                 detail="Организация не найдена",
             )
 
-        # 3. Валидируем наличие передаваемых полей
         update_data = data.model_dump(exclude_unset=True)
         if not update_data:
             raise HTTPException(
@@ -62,6 +94,10 @@ class OrgService:
             )
 
         await self.repo.update_organization(org_id, update_data)
+        logger.info(
+            "Organization updated",
+            extra={"org_id": org_id, "user_id": current_user.id},
+        )
 
         updated_org = await self.repo.get_organization_by_id(org_id)
         return OrganizationRead.model_validate(updated_org)
@@ -69,14 +105,16 @@ class OrgService:
     async def create_organization(
         self, current_user: CurrentUser, data: OrganizationCreate
     ) -> OrganizationRead:
-        # 1. Синхронный метод is_admin — вызываем БЕЗ await
         if not self.security.is_admin(current_user):
+            logger.warning(
+                "Non-admin user attempted to create organization",
+                extra={"user_id": current_user.id},
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Недостаточно прав: требуется роль администратора",
             )
 
-        # 2. Проверяем уникальность УНП
         existing_org = await self.repo.get_organization_by_unp(data.unp)
         if existing_org:
             raise HTTPException(
@@ -85,6 +123,10 @@ class OrgService:
             )
 
         new_org = await self.repo.create_organization(data)
+        logger.info(
+            "Organization created",
+            extra={"org_id": new_org.id, "user_id": current_user.id},
+        )
         return OrganizationRead.model_validate(new_org)
 
     async def get_all_organizations(
@@ -105,8 +147,11 @@ class OrgService:
     async def delete_organization(
         self, current_user: CurrentUser, org_id: int
     ) -> None:
-        # 1. Синхронный метод is_admin — вызываем БЕЗ await
         if not self.security.is_admin(current_user):
+            logger.warning(
+                "Non-admin user attempted to delete organization",
+                extra={"user_id": current_user.id, "org_id": org_id},
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Недостаточно прав: требуется роль администратора",
@@ -119,12 +164,15 @@ class OrgService:
                 detail="Организация не найдена",
             )
 
-        # 2. Проверка связей перед удалением
         if await self.repo.has_linked_entities(org_id):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Нельзя удалить организацию, у которой есть привязанные подразделения",
             )
 
         await self.repo.delete_organization(org_id)
+        logger.info(
+            "Organization deleted",
+            extra={"org_id": org_id, "user_id": current_user.id},
+        )
 
