@@ -3,7 +3,7 @@ from datetime import date, time
 from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from server.app.database.employee_models import Overtime, EmployeePosition
+from server.app.database.employee_models import Overtime, EmployeePosition, Department
 
 
 class OvertimeRepository:
@@ -51,12 +51,40 @@ class OvertimeRepository:
         return result.scalars().all()
 
     async def get_by_dept_id(self, dept_id: int):
+        # 1. Получаем hierarchy_path целевого отдела
+        target_dept_path = await self.db.scalar(
+            select(Department.hierarchy_path).where(Department.id == dept_id)
+        )
+
+        # Если отдел не найден или путь не заполнен, делаем фолбэк на точное совпадение
+        if not target_dept_path:
+            stmt = (
+                select(Overtime)
+                .join(
+                    EmployeePosition,
+                    Overtime.employee_id == EmployeePosition.employee_id,
+                )
+                .where(EmployeePosition.department_id == dept_id)
+                .order_by(Overtime.overtime_date.desc())
+                .distinct()
+            )
+            result = await self.db.execute(stmt)
+            return result.scalars().all()
+
+        # 2. Выбираем переработки всех сотрудников из целевого и всех вложенных отделов
+        # Сравнение по префиксу: hierarchy_path LIKE '1/4%'
         stmt = (
             select(Overtime)
-            .join(EmployeePosition, Overtime.employee_id == EmployeePosition.employee_id)
-            .where(EmployeePosition.department_id == dept_id)
+            .join(
+                EmployeePosition,
+                Overtime.employee_id == EmployeePosition.employee_id,
+            )
+            .join(Department, EmployeePosition.department_id == Department.id)
+            .where(Department.hierarchy_path.like(f"{target_dept_path}%"))
             .order_by(Overtime.overtime_date.desc())
+            .distinct()
         )
+
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
