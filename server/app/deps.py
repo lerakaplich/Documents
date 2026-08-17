@@ -1,14 +1,13 @@
 import logging
 from typing import Optional
 
-import jwt
 from aiogram import Bot
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from server.app.config import JWT_SECRET_KEY, JWT_ALGORITHM, TELEGRAM_BOT_TOKEN
+from server.app.config import TELEGRAM_BOT_TOKEN
 from server.app.core.security_tokens import decode_access_token
 from server.app.database.document_models import SystemEmployee
 from server.app.database.session import get_docs_db, get_employees_db  # УБРАЛИ кадровый get_employees_db
@@ -151,7 +150,7 @@ def get_tag_service(
     security: SecurityService = Depends(get_security_service)
 ) -> TagService:
     repo = TagRepository(db)
-    return TagService(db, security, repo)
+    return TagService(security, repo)
 
 def get_org_service(db: AsyncSession = Depends(get_employees_db), security: SecurityService = Depends(get_security_service)) -> OrgService:
     return OrgService(OrgRepository(db), security)
@@ -249,10 +248,9 @@ def get_delegation_service(
 
 def get_workflow_service(
     db_docs: AsyncSession = Depends(get_docs_db),
-    delegation_svc: DelegationService = Depends(get_delegation_service)
 ) -> WorkflowService:
     repo = DocumentRepository(db_docs)
-    return WorkflowService(repo, delegation_svc)
+    return WorkflowService(repo)
 
 
 def get_review_service(

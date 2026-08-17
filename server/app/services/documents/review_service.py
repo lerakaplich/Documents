@@ -10,7 +10,7 @@ from server.app.services.common.notification_service import NotificationService
 from server.app.services.common.security_service import SecurityService
 from server.app.services.documents.comment_service import CommentService
 
-audit_logger = logging.getLogger("sed_audit")
+logger = logging.getLogger(__name__)
 
 
 class DocumentReviewService:
@@ -28,67 +28,133 @@ class DocumentReviewService:
 
     async def get_document_status_history(self, document_id: int, current_user: CurrentUser) -> list:
         """Получение истории статусов документа (Доступно участникам документа ИЛИ администраторам)"""
-        # 1. Администраторам доступ разрешен всегда
+        # 1. Проверка существования документа
+        document = await self.repo.get_by_id(document_id)
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Документ не найден."
+            )
+
+        # 2. Проверка прав доступа (Администраторам доступ разрешен всегда)
         if not self.security.is_admin(current_user):
-            # 2. Для остальных проверяем, имеет ли пользователь доступ к документу
             has_access = await self.security.can_access_document(current_user, document_id)
             if not has_access:
+                logger.warning(
+                    f"Access denied to status history for doc_id={document_id}, user_id={current_user.id}",
+                    extra={"event_type": "status_history_access_denied", "doc_id": document_id, "user_id": current_user.id}
+                )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="У вас нет прав на просмотр истории статусов этого документа."
                 )
+
         return await self.repo.get_status_history_by_doc_id(document_id)
 
-    async def process_review(self, document_id: int, user_id: int, approved: bool, comment_text: str = None):
-        relation = await self.repo.get_user_relation(document_id, user_id)
+    async def process_review(self, document_id: int, user_id: int, approved: bool, comment_text: Optional[str] = None) -> None:
+        """Принятие решения по документу (Утвердить / Отклонить)"""
+        # 1. Проверка существования документа
+        document = await self.repo.get_by_id(document_id)
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Документ не найден."
+            )
 
-        # Проверяем, может ли пользователь утверждать/отклонять документ
-        if not self.security.can_review_document(relation):
+        # 2. Проверка связки пользователя и документа
+        relation = await self.repo.get_user_relation(document_id, user_id)
+        if not relation or not self.security.can_review_document(relation):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="У вас нет прав на согласование данного документа."
             )
 
+        # 3. Проверка на повторное согласование
         if relation.is_approved is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Решение уже принято."
+                detail="Решение по документу уже было принято ранее."
             )
 
+        # 4. Фиксация решения
         relation.is_approved = approved
 
         if comment_text and comment_text.strip():
-            await self.comment_service.create_comment(document_id, user_id, comment_text)
-            await self.repo.update_last_comment(document_id, comment_text)
+            await self.comment_service.create_comment(document_id, user_id, comment_text.strip())
+            await self.repo.update_last_comment(document_id, comment_text.strip())
 
-        # Передаем user_id в пересчет статуса
-        await self._recalculate_document_status(document_id, changed_by_user_id=user_id)
-        await self.repo.db.commit()
+        # Аудит решения
+        action_name = "document_approved" if approved else "document_rejected"
+        logger.info(
+            f"User user_id={user_id} submitted decision '{action_name}' for doc_id={document_id}",
+            extra={
+                "event_type": action_name,
+                "document_id": document_id,
+                "user_id": user_id,
+                "has_comment": bool(comment_text and comment_text.strip())
+            }
+        )
+
+        # 5. Пересчет и сохранение
+        try:
+            await self._recalculate_document_status(document_id, changed_by_user_id=user_id)
+            await self.repo.db.commit()
+        except Exception as e:
+            await self.repo.db.rollback()
+            logger.error(
+                f"Failed to process review for doc_id={document_id} by user_id={user_id}: {str(e)}",
+                exc_info=True
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Ошибка при сохранении решения согласования."
+            )
 
     async def make_revisions(self, document_id: int, user_id: int, text: str) -> None:
         """Внесение замечаний (правок) к документу без вынесения финального решения"""
-        relation = await self.repo.get_user_relation(document_id, user_id)
+        if not text or not text.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Текст замечания не может быть пустым."
+            )
 
-        if not self.security.can_review_document(relation):
+        document = await self.repo.get_by_id(document_id)
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Документ не найден."
+            )
+
+        relation = await self.repo.get_user_relation(document_id, user_id)
+        if not relation or not self.security.can_review_document(relation):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="У вас нет прав на внесение замечаний к этому документу."
             )
 
-        document = await self.repo.get_by_id(document_id)
-        if not document:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден")
+        await self.comment_service.create_comment(document_id, user_id, text.strip())
+        await self.repo.update_last_comment(document_id, text.strip())
 
-        await self.comment_service.create_comment(document_id, user_id, text)
-        await self.repo.update_last_comment(document_id, text)
+        logger.info(
+            f"User user_id={user_id} added revision comment to doc_id={document_id}",
+            extra={
+                "event_type": "document_revision_added",
+                "document_id": document_id,
+                "user_id": user_id
+            }
+        )
 
         try:
             await self.repo.db.commit()
         except Exception as e:
             await self.repo.db.rollback()
+            logger.error(
+                f"Error saving revision for doc_id={document_id} by user_id={user_id}: {str(e)}",
+                exc_info=True
+            )
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ошибка сохранения замечания: {str(e)}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Ошибка сохранения замечания."
             )
 
     async def change_status_manually(
@@ -97,9 +163,13 @@ class DocumentReviewService:
         current_user: CurrentUser,
         new_status: DocStatus,
         reason: Optional[str] = None
-    ):
+    ) -> None:
         """Ручное (административное) изменение статуса документа"""
         if not self.security.is_admin(current_user):
+            logger.warning(
+                f"Non-admin user_id={current_user.id} attempted manual status change on doc_id={document_id}",
+                extra={"event_type": "unauthorized_manual_status_change", "user_id": current_user.id, "doc_id": document_id}
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Изменение статуса вручную доступно только администраторам."
@@ -107,7 +177,10 @@ class DocumentReviewService:
 
         document = await self.repo.get_by_id(document_id)
         if not document:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Документ не найден."
+            )
 
         old_status = document.status
         if old_status == new_status:
@@ -124,10 +197,10 @@ class DocumentReviewService:
         )
         await self.repo.add_status_history(history_entry)
 
-        audit_logger.info(
-            "Статус документа изменен вручную администратором",
+        logger.info(
+            f"Document status manually changed for doc_id={document_id} by admin_id={current_user.id}",
             extra={
-                "action": "manual_document_status_changed",
+                "event_type": "manual_document_status_changed",
                 "document_id": document_id,
                 "old_status": old_status.value if hasattr(old_status, 'value') else str(old_status),
                 "new_status": new_status.value if hasattr(new_status, 'value') else str(new_status),
@@ -136,7 +209,15 @@ class DocumentReviewService:
             }
         )
 
-        await self.repo.db.commit()
+        try:
+            await self.repo.db.commit()
+        except Exception as e:
+            await self.repo.db.rollback()
+            logger.error(f"Error executing manual status change for doc_id={document_id}: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Ошибка при вручную изменении статуса документа."
+            )
 
         # Уведомляем участников о ручном изменении статуса
         await self.notifications.notify_status_changed(
@@ -145,7 +226,7 @@ class DocumentReviewService:
             actor_id=current_user.id
         )
 
-    async def _recalculate_document_status(self, document_id: int, changed_by_user_id: Optional[int] = None):
+    async def _recalculate_document_status(self, document_id: int, changed_by_user_id: Optional[int] = None) -> None:
         """Внутренний конечный автомат пересчета статусов веток согласования"""
         document = await self.repo.get_by_id(document_id)
         if not document:
@@ -180,10 +261,10 @@ class DocumentReviewService:
             )
             await self.repo.add_status_history(history_entry)
 
-            audit_logger.info(
-                "Статус документа изменен",
+            logger.info(
+                f"Document status recalculated for doc_id={document_id}: {old_status} -> {new_status}",
                 extra={
-                    "action": "document_status_changed",
+                    "event_type": "document_status_changed",
                     "document_id": document_id,
                     "old_status": old_status.value if hasattr(old_status, 'value') else str(old_status),
                     "new_status": new_status.value if hasattr(new_status, 'value') else str(new_status),
