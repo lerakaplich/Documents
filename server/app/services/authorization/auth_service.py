@@ -11,7 +11,7 @@ from sqlalchemy import select
 from cachetools import TTLCache
 
 from server.app.config import TELEGRAM_BOT_TOKEN
-from server.app.core.security_tokens import verify_password, create_access_token
+from server.app.core.security_tokens import verify_password, create_access_token, hash_refresh_token
 from server.app.core.utils import mask_phone_number
 from server.app.database.document_models import UserSession
 from server.app.database.employee_models import Employee, EmployeePosition
@@ -71,15 +71,30 @@ class AuthService:
 
         # 5. Если стоит галочка "Запомнить меня" — генерируем refresh-токен
         if payload.remember_me:
-            refresh_token = secrets.token_urlsafe(64)
-            new_session = UserSession(
-                employee_id=employee.id,
-                refresh_token=refresh_token,
-                device_info=payload.device_info,
-                expires_at=datetime.now(timezone.utc) + timedelta(days=30)
-            )
-            await self.session_repo.create(new_session)
+            raw_refresh_token = secrets.token_urlsafe(64)
+            token_hash = hash_refresh_token(raw_refresh_token)
+            expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+
+            # 1. Ищем существующую сессию в БД
+            existing_session = await self.session_repo.get_by_device(employee.id, payload.device_info)
+
+            if existing_session:
+                # ОБНОВЛЯЕМ поля найденного объекта из БД (SQLAlchemy сам сделает UPDATE)
+                existing_session.refresh_token = token_hash
+                existing_session.expires_at = expires_at
+            else:
+                # СОЗДАЕМ новый объект только если старого нет (сделает INSERT)
+                new_session = UserSession(
+                    employee_id=employee.id,
+                    refresh_token=token_hash,
+                    device_info=payload.device_info,
+                    expires_at=expires_at
+                )
+                await self.session_repo.create(new_session)
+
+            # Коммитим изменения (UPDATE или INSERT)
             await self.session_repo.db.commit()
+            refresh_token = raw_refresh_token
 
         logger.info(
             f"User id={employee.id} (tab_num={employee.service_number}) logged in successfully",
@@ -100,7 +115,10 @@ class AuthService:
 
     async def refresh_access_token(self, payload: TokenRefreshRequest) -> TokenResponse:
         """Обновляет пару токенов по действующему refresh-токену"""
-        session = await self.session_repo.get_by_token(payload.refresh_token)
+        # 1. Хешируем входящий токен для поиска в БД
+        incoming_hash = hash_refresh_token(payload.refresh_token)
+        session = await self.session_repo.get_by_token(incoming_hash)
+
         if not session:
             logger.warning(
                 "Token refresh failed: Session not found",
@@ -108,6 +126,7 @@ class AuthService:
             )
             raise HTTPException(status_code=401, detail="Сессия не найдена.")
 
+        # 2. Проверяем срок годности
         db_expires = session.expires_at.replace(
             tzinfo=timezone.utc) if session.expires_at.tzinfo is None else session.expires_at
 
@@ -121,12 +140,12 @@ class AuthService:
             await self.session_repo.db.commit()
             raise HTTPException(status_code=401, detail="Срок действия сессии истек.")
 
-        # Проверяем, что сотрудник всё ещё активен
+        # 3. Проверяем статус сотрудника
         result = await self.db_emp.execute(
             select(Employee).where(Employee.id == session.employee_id, Employee.is_active == True)
         )
-
         employee = result.scalar_one_or_none()
+
         if not employee:
             logger.warning(
                 f"Token refresh blocked: Employee id={session.employee_id} is inactive or deleted",
@@ -136,12 +155,14 @@ class AuthService:
 
         is_leader = await self._check_leader_status(session.employee_id)
 
-        # Ротируем токены
+        # 4. Генерируем новый Access токен
         new_access_token = create_access_token(session.employee_id, str(employee.service_number), is_leader)
-        new_refresh_token = secrets.token_urlsafe(64)
 
-        session.refresh_token = new_refresh_token
+        # 5. Ротируем Refresh токен: создаем новый сырой токен, а в БД сохраняем его ХЕШ
+        new_raw_refresh_token = secrets.token_urlsafe(64)
+        session.refresh_token = hash_refresh_token(new_raw_refresh_token)
         session.expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+
         await self.session_repo.db.commit()
 
         logger.info(
@@ -149,15 +170,17 @@ class AuthService:
             extra={"event_type": "token_refreshed", "employee_id": session.employee_id}
         )
 
+        # 6. Отдаем клиенту новый Access токен и СЫРОЙ Refresh токен
         return TokenResponse(
             access_token=new_access_token,
-            refresh_token=new_refresh_token,
+            refresh_token=new_raw_refresh_token,
             token_type="bearer"
         )
 
     async def terminate_session(self, refresh_token: str) -> None:
         """Удаляет сессию при выходе из аккаунта"""
-        session = await self.session_repo.get_by_token(refresh_token)
+        incoming_hash = hash_refresh_token(refresh_token)
+        session = await self.session_repo.get_by_token(incoming_hash)
         if session:
             employee_id = session.employee_id
             await self.session_repo.delete(session)
@@ -176,12 +199,32 @@ class AuthService:
         if not employee:
             raise HTTPException(status_code=404, detail="Сотрудник не найден.")
 
+        # 1. Проверка старого пароля
         if not verify_password(payload.old_password, employee.password_hash):
             logger.warning(
                 f"Password change failed: Incorrect old password for employee_id={employee_id}",
-                extra={"event_type": "password_change_failed", "employee_id": employee_id}
+                extra={
+                    "event_type": "password_change_failed",
+                    "employee_id": employee_id,
+                },
             )
-            raise HTTPException(status_code=400, detail="Неверно указан старый пароль.")
+            raise HTTPException(
+                status_code=400, detail="Неверно указан старый пароль."
+            )
+
+        # 2. Проверка, что новый пароль отличается от старого
+        if verify_password(payload.new_password, employee.password_hash):
+            logger.warning(
+                f"Password change failed: New password is identical to the old password for employee_id={employee_id}",
+                extra={
+                    "event_type": "password_change_same_as_old",
+                    "employee_id": employee_id,
+                },
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Новый пароль не должен совпадать со старым паролем.",
+            )
 
         # Хэшируем новый и сохраняем
         hashed_new = bcrypt.hashpw(payload.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')

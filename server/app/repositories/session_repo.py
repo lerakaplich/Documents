@@ -8,10 +8,22 @@ class SessionRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_token(self, refresh_token: str) -> Optional[UserSession]:
-        """Поиск активной сессии по refresh-токену"""
+    async def get_by_token(self, token_hash: str) -> Optional[UserSession]:
+        """Поиск сессии по хешу refresh-токена."""
         result = await self.db.execute(
-            select(UserSession).where(UserSession.refresh_token == refresh_token)
+            select(UserSession).where(UserSession.refresh_token == token_hash)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_by_device(self, employee_id: int, device_info: Optional[str]) -> Optional[UserSession]:
+        """Поиск существующей сессии для конкретного устройства пользователя."""
+        if not device_info:
+            return None
+        result = await self.db.execute(
+            select(UserSession).where(
+                UserSession.employee_id == employee_id,
+                UserSession.device_info == device_info
+            )
         )
         return result.scalar_one_or_none()
 

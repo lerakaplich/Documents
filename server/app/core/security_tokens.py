@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
@@ -55,3 +56,7 @@ def decode_access_token(token: str) -> Dict[str, Any]:
             detail="Невалидный или искаженный сессионный токен.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+def hash_refresh_token(token: str) -> str:
+    """Хеширует refresh-токен перед сохранением в БД."""
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()

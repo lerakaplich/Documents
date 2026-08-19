@@ -48,7 +48,37 @@ class TokenRefreshRequest(BaseModel):
 
 class PasswordChangeRequest(BaseModel):
     old_password: str = Field(..., description="Текущий пароль")
-    new_password: str = Field(..., min_length=6, description="Новый надежный пароль")
+    new_password: str = Field(
+        ...,
+        min_length=8,
+        max_length=64,
+        description="Новый надежный пароль (8-64 символа, заглавные/строчные буквы, цифры)",
+    )
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        # 1. Проверка наличия хотя бы одной заглавной буквы
+        if not re.search(r"[A-ZА-ЯЁ]", value):
+            raise ValueError(
+                "Пароль должен содержать хотя бы одну заглавную букву (латиница или кириллица)."
+            )
+
+        # 2. Проверка наличия хотя бы одной строчной буквы
+        if not re.search(r"[a-zа-яё]", value):
+            raise ValueError(
+                "Пароль должен содержать хотя бы одну строчную букву."
+            )
+
+        # 3. Проверка наличия хотя бы одной цифры
+        if not re.search(r"\d", value):
+            raise ValueError("Пароль должен содержать хотя бы одну цифру.")
+
+        # 4. (Опционально) Проверка наличия спецсимволов
+        # if not re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>/?]", value):
+        #     raise ValueError("Пароль должен содержать хотя бы один спецсимвол.")
+
+        return value
 
 
 class ForgotPasswordRequest(BaseModel):
