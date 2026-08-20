@@ -1,115 +1,73 @@
 from io import BytesIO
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from sqlalchemy import select
 
-from server.app.database.employee_models import Department, Overtime, Employee
-from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.overtime_repo import OvertimeRepository
 from server.app.services.common.security_service import SecurityService
 
 
 class OvertimeExportService:
     def __init__(
-        self,
-        overtime_repo: OvertimeRepository,
-        employee_repo: EmployeesRepository,
-        security: SecurityService
+            self,
+            overtime_repo: OvertimeRepository,
+            security: SecurityService
     ):
         self.overtime_repo = overtime_repo
-        self.employee_repo = employee_repo
         self.security = security
 
-    async def get_department_name(self, dept_id: int) -> str:
-        """Получить название департамента по ID"""
-        stmt = select(Department.name).where(Department.id == dept_id)
-        result = await self.db.execute(stmt)
-        name = result.scalar_one_or_none()
-        return name or f"Отдел ID {dept_id}"
+    def calculate_hours(self, start_time, end_time) -> float:
+        """Вспомогательный расчет длительности в десятичных часах"""
+        if not start_time or not end_time:
+            return 0.0
 
-    async def get_department_overtimes(
-            self,
-            dept_id: int,
-            start_date: Optional[date] = None,
-            end_date: Optional[date] = None
-    ) -> list[dict]:
-        """Получить все переработки сотрудников отдела за период"""
-        stmt = (
-            select(
-                Overtime,
-                Employee.last_name,
-                Employee.first_name,
-                Employee.patronymic,
-                Employee.positions
-            )
-            .join(Employee, Overtime.employee_id == Employee.id)
-            .where(Employee.dept_id == dept_id)
-        )
+        dt_start = datetime.combine(date.today(), start_time)
+        dt_end = datetime.combine(date.today(), end_time)
 
-        if start_date:
-            stmt = stmt.where(Overtime.overtime_date >= start_date)
-        if end_date:
-            stmt = stmt.where(Overtime.overtime_date <= end_date)
+        # Если переработка перешла через полночь
+        if dt_end < dt_start:
+            dt_end += timedelta(days=1)
 
-        # Сортируем по ФИО, а затем по дате переработки
-        stmt = stmt.order_by(Employee.last_name, Employee.first_name, Overtime.overtime_date)
-
-        result = await self.db.execute(stmt)
-
-        notes = []
-        for row in result.all():
-            ot, last_name, first_name, middle_name, position = row
-            fio = f"{last_name or ''} {first_name or ''} {middle_name or ''}".strip()
-
-            notes.append({
-                "fio": fio if fio else f"Сотрудник ID: {ot.employee_id}",
-                "position": position or "Не указана",
-                "overtime_date": ot.overtime_date,
-                "overtime_start": ot.time_start,
-                "overtime_end": ot.time_end,
-                "duration_hours": float(ot.duration),
-                "note_text": ot.note_text or ""
-            })
-        return notes
+        diff_seconds = (dt_end - dt_start).total_seconds()
+        return round(diff_seconds / 3600.0, 2)
 
     def format_hours(self, decimal_hours: float) -> str:
-        """Преобразование десятичных часов в формат ЧЧ:ММ (как в Desktop-приложении)"""
-        hours = int(decimal_hours)
-        minutes = int(round((decimal_hours - hours) * 60))
-        # Корректировка округления минут до 60
-        if minutes == 60:
-            hours += 1
-            minutes = 0
+        """Преобразование десятичных часов в формат ЧЧ:ММ"""
+        total_minutes = int(round(decimal_hours * 60))
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
         return f"{hours}:{minutes:02d}"
 
-    async def generate_department_excel_report(
+    async def generate_report_buffer(
             self,
-            dept_id: int,
+            dept_id: Optional[int] = None,
             start_date: Optional[date] = None,
             end_date: Optional[date] = None
     ) -> tuple[BytesIO, str]:
-        """Генерация Excel-файла в буфер памяти"""
 
-        # 1. Получаем данные
-        notes = await self.get_department_overtimes(dept_id, start_date, end_date)
-        dept_name = await self.get_department_name(dept_id)
+        # 1. Запрашиваем записи
+        rows = await self.overtime_repo.get_overtimes_for_export(
+            dept_id=dept_id,
+            start_date=start_date,
+            end_date=end_date
+        )
 
         # 2. Создаем Excel книгу
         wb = Workbook()
         ws = wb.active
-        ws.title = "Сводный отчет"
+        ws.title = "Переработки"
 
-        # Стилизация шрифтов и рамок
+        # Стили
         font_title = Font(name="Calibri", size=14, bold=True)
+        font_dept_header = Font(name="Calibri", size=12, bold=True, color="1B232A")
         font_header = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
         font_regular = Font(name="Calibri", size=11)
         font_bold = Font(name="Calibri", size=11, bold=True)
 
-        # Красивая шапка (темно-синий цвет, как в СЭД)
         header_fill = PatternFill(start_color="1B232A", end_color="1B232A", fill_type="solid")
-        subtotal_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+        dept_fill = PatternFill(start_color="E6ECF2", end_color="E6ECF2", fill_type="solid")
+        subtotal_fill = PatternFill(start_color="F7F9FA", end_color="F7F9FA", fill_type="solid")
 
         thin_border = Border(
             left=Side(style='thin', color='D3D3D3'),
@@ -118,28 +76,19 @@ class OvertimeExportService:
             bottom=Side(style='thin', color='D3D3D3')
         )
 
-        # Записываем название отчета
-        period_str = f"за период с {start_date.strftime('%d.%m.%Y')} по {end_date.strftime('%d.%m.%Y')}" if start_date and end_date else "за всё время"
-        ws.append([f"Сводный отчет по переработкам: {dept_name} ({period_str})"])
+        # Название и период
+        period_str = f"с {start_date.strftime('%d.%m.%Y')} по {end_date.strftime('%d.%m.%Y')}" if start_date and end_date else "за весь период"
+        ws.append([f"Сводный отчет по переработкам ({period_str})"])
         ws.cell(row=1, column=1).font = font_title
         ws.row_dimensions[1].height = 30
-        ws.append([])  # Пустая строка
+        ws.append([])
 
         # Заголовки таблицы
-        headers = [
-            "ФИО",
-            "Должность",
-            "Дата переработки",
-            "Время начала",
-            "Время окончания",
-            "Длительность (часы)",
-            "Описание переработки"
-        ]
+        headers = ["ФИО", "Должность", "Дата", "Начало", "Окончание", "Часы", "Примечание"]
         ws.append(headers)
-
-        # Стилизуем строку заголовков
         header_row_idx = 3
         ws.row_dimensions[header_row_idx].height = 25
+
         for col_idx in range(1, len(headers) + 1):
             cell = ws.cell(row=header_row_idx, column=col_idx)
             cell.font = font_header
@@ -147,107 +96,98 @@ class OvertimeExportService:
             cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = thin_border
 
-        # 3. Группируем записи по сотрудникам для расчета промежуточных итогов
-        employee_hours = {}
-        employee_notes = {}
+        # 3. Группируем данные: Dept -> Employee -> List of Overtimes
+        grouped_data = {}
+        total_period_hours = 0.0
 
-        for note in notes:
-            fio = note["fio"]
-            if fio not in employee_hours:
-                employee_hours[fio] = 0.0
-                employee_notes[fio] = []
+        for ot, last_name, first_name, patronymic, pos_name, d_id, d_name in rows:
+            fio = f"{last_name or ''} {first_name or ''} {patronymic or ''}".strip()
+            duration = self.calculate_hours(ot.overtime_start, ot.overtime_end)
+            total_period_hours += duration
 
-            employee_hours[fio] += note["duration_hours"]
-            employee_notes[fio].append(note)
+            if d_name not in grouped_data:
+                grouped_data[d_name] = {}
+            if fio not in grouped_data[d_name]:
+                grouped_data[d_name][fio] = {"position": pos_name, "items": [], "total": 0.0}
 
-        # 4. Заполняем таблицу данными
-        sorted_employees = sorted(employee_hours.keys())
+            grouped_data[d_name][fio]["items"].append({
+                "date": ot.overtime_date,
+                "start": ot.overtime_start,
+                "end": ot.overtime_end,
+                "duration": duration,
+                "note": ot.note_text or ""
+            })
+            grouped_data[d_name][fio]["total"] += duration
 
-        for employee in sorted_employees:
-            notes_list = employee_notes[employee]
+        # 4. Вывод данных в Excel
+        for d_name, employees in grouped_data.items():
+            # Заголовок Подразделения
+            ws.append([f"Подразделение: {d_name}"])
+            dept_row = ws.max_row
+            ws.merge_cells(start_row=dept_row, start_column=1, end_row=dept_row, end_column=7)
+            ws.cell(row=dept_row, column=1).font = font_dept_header
+            ws.cell(row=dept_row, column=1).fill = dept_fill
+            ws.row_dimensions[dept_row].height = 24
 
-            for i, note_data in enumerate(notes_list):
-                date_str = note_data['overtime_date'].strftime('%d.%m.%Y') if note_data['overtime_date'] else ''
-                start_str = note_data['overtime_start'].strftime('%H:%M') if note_data['overtime_start'] else ''
-                end_str = note_data['overtime_end'].strftime('%H:%M') if note_data['overtime_end'] else ''
-                hours_str = self.format_hours(note_data['duration_hours'])
+            dept_total_hours = 0.0
 
-                row_values = [
-                    note_data['fio'],
-                    note_data['position'],
-                    date_str,
-                    start_str,
-                    end_str,
-                    hours_str,
-                    note_data['note_text']
-                ]
-                ws.append(row_values)
-
-                # Стилизуем добавленную строку
-                current_row = ws.max_row
-                ws.row_dimensions[current_row].height = 20
-                for col_idx in range(1, len(row_values) + 1):
-                    cell = ws.cell(row=current_row, column=col_idx)
-                    cell.font = font_regular
-                    cell.border = thin_border
-                    if col_idx in [3, 4, 5, 6]:
-                        cell.alignment = Alignment(horizontal="center", vertical="center")
-                    else:
-                        cell.alignment = Alignment(horizontal="left", vertical="center")
-
-                # Добавляем строку «ИТОГО» для каждого сотрудника
-                if i == len(notes_list) - 1:
-                    total_hours_emp = self.format_hours(employee_hours[employee])
-
-                    # Создаем строку с пустыми ячейками и итогом
-                    ws.append(["", "", "", "", "", f"ИТОГО: {total_hours_emp}", ""])
-                    subtotal_row = ws.max_row
-                    ws.row_dimensions[subtotal_row].height = 22
-
-                    # Стилизуем ячейку ИТОГО
-                    for col_idx in range(1, len(headers) + 1):
-                        cell = ws.cell(row=subtotal_row, column=col_idx)
-                        cell.fill = subtotal_fill
+            for fio, emp_data in employees.items():
+                for item in emp_data["items"]:
+                    ws.append([
+                        fio,
+                        emp_data["position"],
+                        item["date"].strftime('%d.%m.%Y') if item["date"] else '',
+                        item["start"].strftime('%H:%M') if item["start"] else '',
+                        item["end"].strftime('%H:%M') if item["end"] else '',
+                        self.format_hours(item["duration"]),
+                        item["note"]
+                    ])
+                    cur_row = ws.max_row
+                    ws.row_dimensions[cur_row].height = 20
+                    for c in range(1, 8):
+                        cell = ws.cell(row=cur_row, column=c)
+                        cell.font = font_regular
                         cell.border = thin_border
+                        if c in [3, 4, 5, 6]:
+                            cell.alignment = Alignment(horizontal="center", vertical="center")
 
-                    cell_total = ws.cell(row=subtotal_row, column=6)
-                    cell_total.font = font_bold
-                    cell_total.alignment = Alignment(horizontal="center", vertical="center")
+                # Итого по сотруднику
+                ws.append(["", "", "", "", "Итого по сотруднику:", self.format_hours(emp_data["total"]), ""])
+                emp_total_row = ws.max_row
+                for c in range(1, 8):
+                    cell = ws.cell(row=emp_total_row, column=c)
+                    cell.fill = subtotal_fill
+                    cell.border = thin_border
+                ws.cell(row=emp_total_row, column=5).font = font_bold
+                ws.cell(row=emp_total_row, column=6).font = font_bold
+                ws.cell(row=emp_total_row, column=6).alignment = Alignment(horizontal="center")
 
-        # 5. Добавляем общий итог в самый конец таблицы
-        total_hours_all = sum(employee_hours.values())
-        ws.append([])  # Пустая строка-разделитель
+                dept_total_hours += emp_data["total"]
 
-        total_row_idx = ws.max_row + 1
-        ws.append(["", "", "", "", "", f"ОБЩИЙ ИТОГ: {self.format_hours(total_hours_all)}", ""])
-        ws.row_dimensions[total_row_idx].height = 25
+            # Итого по подразделению
+            ws.append(["", "", "", "", f"Итого по {d_name}:", self.format_hours(dept_total_hours), ""])
+            d_total_row = ws.max_row
+            ws.cell(row=d_total_row, column=5).font = font_bold
+            ws.cell(row=d_total_row, column=6).font = font_bold
+            ws.cell(row=d_total_row, column=6).alignment = Alignment(horizontal="center")
+            ws.append([])  # Пустая строка
 
-        # Стилизуем общий итог ярким цветом
-        cell_total_all = ws.cell(row=total_row_idx, column=6)
-        cell_total_all.font = Font(name="Calibri", size=12, bold=True, color="FF0000")  # Красный цвет
-        cell_total_all.alignment = Alignment(horizontal="center", vertical="center")
+        # ОБЩИЙ ИТОГ
+        ws.append(["", "", "", "", "ОБЩИЙ ИТОГ:", self.format_hours(total_period_hours), ""])
+        grand_total_row = ws.max_row
+        ws.cell(row=grand_total_row, column=5).font = Font(name="Calibri", size=12, bold=True)
+        ws.cell(row=grand_total_row, column=6).font = Font(name="Calibri", size=12, bold=True, color="C00000")
+        ws.cell(row=grand_total_row, column=6).alignment = Alignment(horizontal="center")
 
-        # 6. Настраиваем ширину колонок для красивого отображения
-        column_widths = {
-            'A': 35,  # ФИО
-            'B': 25,  # Должность
-            'C': 18,  # Дата
-            'D': 15,  # Начало
-            'E': 15,  # Окончание
-            'F': 22,  # Длительность (часы)
-            'G': 40,  # Описание
-        }
-
-        for col, width in column_widths.items():
+        # Настройка ширины колонок
+        col_widths = {'A': 32, 'B': 28, 'C': 14, 'D': 12, 'E': 12, 'F': 16, 'G': 35}
+        for col, width in col_widths.items():
             ws.column_dimensions[col].width = width
 
-        # 7. Сохраняем книгу в буфер памяти
-        file_stream = BytesIO()
-        wb.save(file_stream)
-        file_stream.seek(0)
+        # Выгрузка в байты
+        stream = BytesIO()
+        wb.save(stream)
+        stream.seek(0)
 
-        # Формируем красивое название файла
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        filename = f"overtime_report_{dept_id}_{timestamp}.xlsx"
-
-        return file_stream, filename
+        filename = f"overtime_report_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        return stream, filename

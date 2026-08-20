@@ -136,7 +136,7 @@ async def export_overtime_to_excel(
     Эндпоинт генерирует и отдаёт Excel-файл со сводным отчетом по переработкам
     """
     # 1. Проверяем права пользователя на выгрузку отчетов внутри сервиса безопасности
-    await export_service.security.verify_can_export(current_user, dept_id)
+    await export_service.security.can_export(current_user, dept_id)
 
     # 2. Генерируем Excel в байтовый поток в памяти (BytesIO)
     file_buffer, filename = await export_service.generate_report_buffer(

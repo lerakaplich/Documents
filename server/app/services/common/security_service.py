@@ -1,5 +1,7 @@
 from typing import Optional, Any
 
+from fastapi import HTTPException, status
+
 from server.app.database.document_models import AppRights, DocumentRole
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
@@ -121,3 +123,29 @@ class SecurityService:
         """Является ли участник согласовантом/делегатом документа."""
         allowed_roles = [DocumentRole.recipient, DocumentRole.delegate]
         return bool(relation and relation.role in allowed_roles)
+
+    async def can_export(self, user: CurrentUser, dept_id: Optional[int] = None) -> None:
+        """
+        Проверяет право на экспорт отчета по переработкам.
+        - Админ / суперадмин может экспортировать всё.
+        - Руководитель может экспортировать только свой отдел и вложенные в него.
+        - Выгружать отчет без указания dept_id (по всей компании) обычным руководителям запрещено.
+        """
+        # 1. Админам и суперадминам разрешено всё
+        if self.is_admin(user):
+            return
+
+        # 2. Если dept_id не передан, обычный пользователь/руководитель не может сгрузить всю базу
+        if dept_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Для экспорта отчета необходимо выбрать подразделение"
+            )
+
+        # 3. Проверяем, является ли пользователь руководителем выбранного отдела (или вышестоящего)
+        can_manage = await self.can_manage_dept(user, dept_id)
+        if not can_manage:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="У вас нет прав на экспорт отчета по данному подразделению"
+            )

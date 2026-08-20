@@ -97,6 +97,17 @@ class EmployeePosition(BaseEmployees):
     position_name: Mapped[str] = mapped_column(Text, nullable=False)
     is_leader: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)  # Заменяет boss_id
 
+    start_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+        comment="Дата вступления в должность / назначения"
+    )
+    end_date: Mapped[Optional[date]] = mapped_column(
+        Date,
+        nullable=True,
+        comment="Дата окончания работы в должности (NULL если текущая)"
+    )
+
     employee: Mapped["Employee"] = relationship(back_populates="positions")
     department: Mapped["Department"] = relationship(back_populates="positions")
 

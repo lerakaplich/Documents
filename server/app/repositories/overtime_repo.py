@@ -1,6 +1,7 @@
 from datetime import date, time
+from typing import Optional
 
-from sqlalchemy import select, delete, update, func
+from sqlalchemy import select, delete, update, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.database.employee_models import Overtime, EmployeePosition, Department, Employee
@@ -226,3 +227,68 @@ class OvertimeRepository:
         await self.db.execute(stmt)
         await self.db.commit()
         return {"updated_count": len(overtime_ids)}
+
+    async def get_overtimes_for_export(
+            self,
+            dept_id: Optional[int] = None,
+            start_date: Optional[date] = None,
+            end_date: Optional[date] = None
+    ):
+        """
+        Выбирает переработки, попадающие в выбранный период,
+        и связывает их с отделом и должностью, которые были у сотрудника НА МОМЕНТ переработки.
+        """
+        # Базовый select нужных полей
+        stmt = (
+            select(
+                Overtime,
+                Employee.last_name,
+                Employee.first_name,
+                Employee.patronymic,
+                EmployeePosition.position_name,
+                Department.id.label("dept_id"),
+                Department.name.label("dept_name")
+            )
+            .join(Employee, Overtime.employee_id == Employee.id)
+            # Связываем с должностью, действующей на дату переработки
+            .join(
+                EmployeePosition,
+                and_(
+                    EmployeePosition.employee_id == Overtime.employee_id,
+                    EmployeePosition.start_date <= Overtime.overtime_date,
+                    or_(
+                        EmployeePosition.end_date >= Overtime.overtime_date,
+                        EmployeePosition.end_date.is_(None)
+                    )
+                )
+            )
+            .join(Department, EmployeePosition.department_id == Department.id)
+        )
+
+        # 1. Фильтрация по отделу и его вложенным поддеревьям
+        if dept_id:
+            # Получаем hierarchy_path выбранного отдела
+            target_path = await self.db.scalar(
+                select(Department.hierarchy_path).where(Department.id == dept_id)
+            )
+            if target_path:
+                stmt = stmt.where(Department.hierarchy_path.like(f"{target_path}%"))
+            else:
+                stmt = stmt.where(Department.id == dept_id)
+
+        # 2. Фильтрация по диапазону дат переработок
+        if start_date:
+            stmt = stmt.where(Overtime.overtime_date >= start_date)
+        if end_date:
+            stmt = stmt.where(Overtime.overtime_date <= end_date)
+
+        # Сортировка: Отдел -> ФИО -> Дата переработки
+        stmt = stmt.order_by(
+            Department.name,
+            Employee.last_name,
+            Employee.first_name,
+            Overtime.overtime_date
+        )
+
+        result = await self.db.execute(stmt)
+        return result.all()

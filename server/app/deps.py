@@ -209,7 +209,6 @@ def get_overtime_export_service(
     employee_repo = EmployeesRepository(emp_db)
     return OvertimeExportService(
         overtime_repo=overtime_repo,
-        employee_repo=employee_repo,
         security=security
     )
 
