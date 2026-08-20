@@ -40,19 +40,17 @@ class ProfileLoader(QThread):
     def __init__(self, http_client: HttpClient, use_current_user: bool = True):
         super().__init__()
         self.http_client = http_client
-        self.use_current_user = use_current_user  # True = /me, False = /{id}
+        self.use_current_user = use_current_user
 
     def run(self):
         try:
             service = EmployeeService(self.http_client)
 
             if self.use_current_user:
-                # Используем /me для текущего пользователя
                 print("📥 Загружаем профиль текущего пользователя (/me)")
                 data = service.get_my_profile()
                 print(f"✅ Данные получены: {data}")
             else:
-                # Или загружаем конкретного сотрудника (для отладки)
                 print("📥 Загружаем сотрудника с ID: 1")
                 data = service.get_employee(1)
 
@@ -73,15 +71,12 @@ class ProfileLoader(QThread):
             self.error.emit(f"Ошибка загрузки профиля: {str(e)}")
 
 
-# ===== Конец класса ProfileLoader =====
-
 class ProfileForm(QWidget):
     """Главная форма профиля, объединяет ProfileInfo и OvertimePanel."""
 
     def __init__(self, parent=None, employee_id: int = None):
         super().__init__(parent)
 
-        # Если передан employee_id - загружаем конкретного, иначе - текущего
         self.employee_id = employee_id
         self.use_current_user = employee_id is None
 
@@ -134,7 +129,6 @@ class ProfileForm(QWidget):
             mainLayout=self.mainLayout if hasattr(self, 'mainLayout') else None
         )
 
-        # Передаем HTTP клиент в ProfileInfo для редактирования
         self.profile_info.set_http_client(self.http_client)
         # ===== Конец передачи виджетов =====
 
@@ -173,13 +167,11 @@ class ProfileForm(QWidget):
         if self.profile_info.labelTitle:
             self.profile_info.labelTitle.setText("⏳ Загрузка...")
 
-        # Проверяем наличие токена
         if not self.http_client._access_token:
             print("⚠️ Нет токена авторизации, пробуем загрузить тестовые данные")
             self.load_test_data()
             return
 
-        # Создаем загрузчик с параметром use_current_user
         self.loader = ProfileLoader(
             self.http_client,
             use_current_user=self.use_current_user
@@ -214,7 +206,7 @@ class ProfileForm(QWidget):
             full_name = ' '.join(full_name_parts) if full_name_parts else 'Не указано'
             print(f"📝 Собрано ФИО: {full_name}")
 
-            # ==== 2. Должность ====
+            # ==== 2. Должность и подразделения ====
             positions = data.get('positions', [])
             position_name = 'Не указана'
             department_chain = []
@@ -223,23 +215,37 @@ class ProfileForm(QWidget):
                 first_position = positions[0]
                 position_name = first_position.get('position_name', 'Не указана')
 
-                # Получаем информацию о подразделении
-                department = first_position.get('department', {})
-                if department:
-                    department_name = department.get('name', '')
-                    if department_name:
-                        department_chain.append(("Отдел", department_name))
+                # Получаем цепочку подразделений
+                dept_chain = first_position.get('department_chain', [])
 
-                    # Рекурсивно получаем родительские подразделения
-                    parent = department.get('parent')
-                    while parent:
-                        parent_name = parent.get('name', '')
-                        if parent_name:
-                            department_chain.insert(0, (parent.get('type', 'Подразделение'), parent_name))
-                        parent = parent.get('parent')
+                if dept_chain:
+                    print(f"📋 Найдена цепочка подразделений: {dept_chain}")
+                    for dept in dept_chain:
+                        # Используем department_type_name как тип подразделения
+                        dept_type = dept.get('department_type_name', 'Подразделение')
+                        dept_name = dept.get('name', '')
+                        if dept_name:
+                            department_chain.append((dept_type, dept_name))
+                    print(f"🏢 Сформирована цепочка: {department_chain}")
+                else:
+                    # Если цепочка пуста, пробуем через department_path
+                    dept_path = first_position.get('department_path', [])
+                    if dept_path:
+                        print(f"📋 Используем department_path: {dept_path}")
+                        # Используем дефолтные типы
+                        types = ['Организация', 'Управление', 'Отдел', 'Сектор']
+                        for i, dept_name in enumerate(dept_path):
+                            dept_type = types[i] if i < len(types) else 'Подразделение'
+                            department_chain.append((dept_type, dept_name))
+                    else:
+                        # Если все пусто - пробуем получить department_id
+                        dept_id = first_position.get('department_id')
+                        if dept_id:
+                            print(f"⚠️ Нет цепочки подразделений, только department_id: {dept_id}")
+                            department_chain.append(("Подразделение", f"ID: {dept_id}"))
 
             print(f"📋 Должность: {position_name}")
-            print(f"🏢 Цепочка подразделений: {department_chain}")
+            print(f"🏢 Итоговая цепочка подразделений: {department_chain}")
 
             # ==== 3. Телефон ====
             phone = data.get('phone_number', '')
@@ -289,8 +295,6 @@ class ProfileForm(QWidget):
         """Обработка ошибки загрузки профиля"""
         print(f"❌ Ошибка загрузки профиля: {error_msg}")
         QMessageBox.warning(self, "Ошибка загрузки", error_msg)
-
-        # Загружаем тестовые данные, если не удалось загрузить с сервера
         self.load_test_data()
 
     def setup_edit_buttons(self):
@@ -345,9 +349,10 @@ class ProfileForm(QWidget):
         """Загружает тестовые данные профиля (для отладки)."""
         print("load_test_data вызван (тестовые данные)")
         department_chain = [
-            ("Отдел", "Телематика"),
-            ("Подразделение", "НТЦ"),
-            ("Сектор", "Разработки")
+            ("Организация", "ОАО 'Минский автомобильный завод'"),
+            ("Управление", "Управление информационных технологий"),
+            ("Отдел", "Отдел разработки ПО"),
+            ("Сектор", "Сектор бэкенд-разработки")
         ]
         self.profile_info.update_profile(
             full_name="Иванов Иван Петрович",
