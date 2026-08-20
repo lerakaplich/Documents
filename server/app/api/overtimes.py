@@ -9,7 +9,7 @@ from server.app.deps import get_current_user, get_overtime_service, get_overtime
 
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.schemas.user_schemas.overtime_dto import OvertimeRead, OvertimeCreate, OvertimeUpdate, \
-    OvertimeBulkUpdateNote
+    OvertimeBulkUpdateNote, PageResponse
 from server.app.services.overtime.overtime import OvertimeService
 from server.app.services.overtime.overtime_export import OvertimeExportService
 from server.app.services.overtime.overtime_import import OvertimeImportService
@@ -53,12 +53,23 @@ async def admin_update_overtime(
 ):
     return await service.update_by_admin(current_user, ot_id, data)
 
-@router.get("/my", response_model=list[OvertimeRead])
+@router.get("/my", response_model=PageResponse[OvertimeRead])
 async def get_my_overtime(
+    start_date: Optional[date] = Query(None, description="Начало периода (ГГГГ-ММ-ДД)"),
+    end_date: Optional[date] = Query(None, description="Конец периода (ГГГГ-ММ-ДД)"),
+    page: int = Query(1, ge=1, description="Номер страницы"),
+    size: int = Query(20, ge=1, le=100, description="Количество элементов на странице"),
     current_user: CurrentUser = Depends(get_current_user),
-    service = Depends(get_overtime_service)
+    service: OvertimeService = Depends(get_overtime_service),
 ):
-    return await service.get_by_employee(current_user, current_user.id)
+    return await service.get_by_employee(
+        current_user=current_user,
+        target_employee_id=current_user.id,
+        start_date=start_date,
+        end_date=end_date,
+        page=page,
+        size=size,
+    )
 
 @router.get("/department/{dept_id}", response_model=list[OvertimeRead])
 async def get_dept_overtime(
@@ -68,12 +79,22 @@ async def get_dept_overtime(
 ):
     return await service.get_by_dept(current_user, dept_id)
 
-@router.get("/all", response_model=list[OvertimeRead])
+@router.get("/all", response_model=PageResponse[OvertimeRead])
 async def get_all_overtime(
+    start_date: Optional[date] = Query(None, description="Начало периода (ГГГГ-ММ-ДД)"),
+    end_date: Optional[date] = Query(None, description="Конец периода (ГГГГ-ММ-ДД)"),
+    page: int = Query(1, ge=1, description="Номер страницы"),
+    size: int = Query(20, ge=1, le=100, description="Количество элементов на странице"),
     current_user: CurrentUser = Depends(get_current_user),
-    service = Depends(get_overtime_service)
+    service: OvertimeService = Depends(get_overtime_service)
 ):
-    return await service.get_all(current_user)
+    return await service.get_all(
+        user=current_user,
+        start_date=start_date,
+        end_date=end_date,
+        page=page,
+        size=size
+    )
 
 @router.delete("/{ot_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_overtime(

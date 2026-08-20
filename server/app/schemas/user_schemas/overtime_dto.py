@@ -1,6 +1,15 @@
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import date, time
-from typing import Optional
+from typing import Optional, TypeVar, Generic
+
+T = TypeVar("T")
+
+class PageResponse(BaseModel, Generic[T]):
+    items: list[T]
+    total: int
+    page: int
+    size: int
+    pages: int
 
 class OvertimeBase(BaseModel):
     employee_id: int
@@ -20,6 +29,8 @@ class OvertimeUpdate(BaseModel):
 
 class OvertimeRead(OvertimeBase):
     id: int
+    full_name: Optional[str] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 class OvertimeBulkUpdateNote(BaseModel):

@@ -1,7 +1,11 @@
 import logging
+import math
+from datetime import date
+from typing import Optional
 
 from fastapi import HTTPException, status
 
+from server.app.core.utils import get_default_pay_period
 from server.app.repositories.overtime_repo import OvertimeRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.schemas.user_schemas.overtime_dto import OvertimeCreate, OvertimeUpdate
@@ -96,7 +100,13 @@ class OvertimeService:
         return updated_record
 
     async def get_by_employee(
-        self, current_user: CurrentUser, target_employee_id: int
+            self,
+            current_user: CurrentUser,
+            target_employee_id: int,
+            start_date: Optional[date] = None,
+            end_date: Optional[date] = None,
+            page: int = 1,
+            size: int = 20,
     ):
         is_admin_user = self.security.is_admin(current_user)
         if not is_admin_user and current_user.id != target_employee_id:
@@ -109,7 +119,27 @@ class OvertimeService:
                 detail="Недостаточно прав: можно просматривать только свои записи",
             )
 
-        return await self.repo.get_by_employee_id(target_employee_id)
+        def_start, def_end = get_default_pay_period()
+        start = start_date or def_start
+        end = end_date or def_end
+
+        items, total = await self.repo.get_by_employee_id_paginated(
+            employee_id=target_employee_id,
+            start_date=start,
+            end_date=end,
+            page=page,
+            size=size,
+        )
+
+        pages = math.ceil(total / size) if total > 0 else 1
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "size": size,
+            "pages": pages,
+        }
 
     async def get_by_dept(self, user: CurrentUser, dept_id: int):
         if not await self.security.can_manage_dept(user, dept_id):
@@ -123,18 +153,41 @@ class OvertimeService:
             )
         return await self.repo.get_by_dept_id(dept_id)
 
-    async def get_all(self, user: CurrentUser):
-        """Доступно только админам/суперадминам"""
+    async def get_all(
+        self,
+        user: CurrentUser,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        page: int = 1,
+        size: int = 20,
+    ):
         if not self.security.is_admin(user):
-            logger.warning(
-                "Access denied for getting all overtimes",
-                extra={"user_id": user.id},
-            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Доступ разрешен только администраторам",
             )
-        return await self.repo.get_all()
+
+        # Если даты не переданы — берем дефолтный расчетный период
+        def_start, def_end = get_default_pay_period()
+        start = start_date or def_start
+        end = end_date or def_end
+
+        items, total = await self.repo.get_all(
+            start_date=start,
+            end_date=end,
+            page=page,
+            size=size
+        )
+
+        pages = math.ceil(total / size) if total > 0 else 1
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "size": size,
+            "pages": pages
+        }
 
     async def delete_by_admin(self, user: CurrentUser, ot_id: int):
         if not self.security.is_admin(user):
