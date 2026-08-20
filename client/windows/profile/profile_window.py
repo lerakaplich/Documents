@@ -50,6 +50,7 @@ class ProfileLoader(QThread):
                 # Используем /me для текущего пользователя
                 print("📥 Загружаем профиль текущего пользователя (/me)")
                 data = service.get_my_profile()
+                print(f"✅ Данные получены: {data}")
             else:
                 # Или загружаем конкретного сотрудника (для отладки)
                 print("📥 Загружаем сотрудника с ID: 1")
@@ -67,6 +68,8 @@ class ProfileLoader(QThread):
             else:
                 self.error.emit(f"Ошибка сервера: {e.response.status_code}\n{e.response.text}")
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.error.emit(f"Ошибка загрузки профиля: {str(e)}")
 
 
@@ -90,7 +93,13 @@ class ProfileForm(QWidget):
         # ===== Получаем HTTP клиент из глобального состояния =====
         self.app_state = AppState()
         self.http_client = self.app_state.http_client
-        print(f"✅ Используем HTTP клиент из AppState: {self.http_client.base_url}")
+        if self.http_client:
+            print(f"✅ Используем HTTP клиент из AppState: {self.http_client.base_url}")
+        else:
+            print("⚠️ HTTP клиент не найден в AppState, создаем новый")
+            from client.core.config import config
+            self.http_client = HttpClient(config.base_url)
+            print(f"✅ Создан новый HTTP клиент: {self.http_client.base_url}")
         # ===== Конец инициализации HTTP клиента =====
 
         # ===== Загрузка UI =====
@@ -164,6 +173,12 @@ class ProfileForm(QWidget):
         if self.profile_info.labelTitle:
             self.profile_info.labelTitle.setText("⏳ Загрузка...")
 
+        # Проверяем наличие токена
+        if not self.http_client._access_token:
+            print("⚠️ Нет токена авторизации, пробуем загрузить тестовые данные")
+            self.load_test_data()
+            return
+
         # Создаем загрузчик с параметром use_current_user
         self.loader = ProfileLoader(
             self.http_client,
@@ -208,11 +223,23 @@ class ProfileForm(QWidget):
                 first_position = positions[0]
                 position_name = first_position.get('position_name', 'Не указана')
 
-                department_id = first_position.get('department_id')
-                if department_id:
-                    department_chain.append(("Отдел", f"ID: {department_id}"))
+                # Получаем информацию о подразделении
+                department = first_position.get('department', {})
+                if department:
+                    department_name = department.get('name', '')
+                    if department_name:
+                        department_chain.append(("Отдел", department_name))
+
+                    # Рекурсивно получаем родительские подразделения
+                    parent = department.get('parent')
+                    while parent:
+                        parent_name = parent.get('name', '')
+                        if parent_name:
+                            department_chain.insert(0, (parent.get('type', 'Подразделение'), parent_name))
+                        parent = parent.get('parent')
 
             print(f"📋 Должность: {position_name}")
+            print(f"🏢 Цепочка подразделений: {department_chain}")
 
             # ==== 3. Телефон ====
             phone = data.get('phone_number', '')
@@ -227,7 +254,7 @@ class ProfileForm(QWidget):
             if birth_date and birth_date != 'Не указана':
                 try:
                     from datetime import datetime
-                    dt = datetime.fromisoformat(birth_date)
+                    dt = datetime.fromisoformat(birth_date.replace('Z', '+00:00'))
                     birth_date = dt.strftime('%d.%m.%Y')
                 except:
                     pass
@@ -260,7 +287,7 @@ class ProfileForm(QWidget):
 
     def on_profile_error(self, error_msg: str):
         """Обработка ошибки загрузки профиля"""
-        print(f"Ошибка загрузки профиля: {error_msg}")
+        print(f"❌ Ошибка загрузки профиля: {error_msg}")
         QMessageBox.warning(self, "Ошибка загрузки", error_msg)
 
         # Загружаем тестовые данные, если не удалось загрузить с сервера

@@ -1,7 +1,3 @@
-"""
-Сервис для работы с отправителями (Бизнес-логика)
-"""
-import print  # Или логирование, если используется
 from typing import Optional, List, Dict, Any
 
 

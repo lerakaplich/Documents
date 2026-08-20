@@ -69,10 +69,6 @@ class HttpClient:
             logger.error(f"Ошибка при обновлении токена: {e}")
             return False
 
-    # client/core/http_client.py - проверьте _get_headers
-
-    # client/core/http_client.py - обновите метод _get_headers
-
     def _get_headers(self) -> Dict[str, str]:
         """Получить заголовки для запроса с автоматическим обновлением токена"""
         headers = {
@@ -118,7 +114,7 @@ class HttpClient:
                 method=method,
                 url=url,
                 headers=headers,
-                timeout=30,  # Добавляем таймаут
+                timeout=30,
                 **kwargs
             )
 
