@@ -1,5 +1,7 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 from typing import Optional
+
+from sqlalchemy.orm import relationship
 
 from server.app.database.document_models import DocumentRole
 
@@ -10,6 +12,7 @@ class DocEmployeeItem(BaseModel):
     role: DocumentRole
     is_approved: Optional[bool] = None  # NULL — решение не принято, TRUE — за, FALSE — против
     is_completed: bool = False
+    fio: Optional[str] = None  # Заполняется в сервисе
 
     model_config = ConfigDict(from_attributes=True)
 

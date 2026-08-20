@@ -1,3 +1,4 @@
+import logging
 import re
 import pandas as pd
 from datetime import datetime, time, date
@@ -5,6 +6,7 @@ from typing import Optional, BinaryIO
 
 from server.app.services.common.notification_service import NotificationService
 
+logger = logging.getLogger(__name__)
 
 class OvertimeImportService:
     """Сервис для парсинга Excel-файлов и импорта переработок в БД"""
@@ -48,7 +50,10 @@ class OvertimeImportService:
                     short_name += f"{middle_initial}."
                 self.employees_cache[short_name.lower()] = emp.id
 
-        print(f"[IMPORT] Загружено {len(self.employees_cache)} вариантов ФИО сотрудников в кэш")
+        logger.info(
+            "Employee cache loaded for overtime import",
+            extra={"cached_names_count": len(self.employees_cache)},
+        )
 
     @staticmethod
     def _normalize_name(name: str) -> str:
@@ -161,6 +166,9 @@ class OvertimeImportService:
                 if detected['date'] is None: detected['date'] = col_idx
             elif re.search(r'[а-яА-ЯёЁ]', val_str) and ' ' in val_str:
                 if detected['name'] is None: detected['name'] = col_idx
+        logger.debug(
+            "Excel columns auto-detected", extra={"detected_columns": detected}
+        )
         return detected
 
     def find_employee_by_name(self, full_name: str) -> Optional[int]:
@@ -175,6 +183,11 @@ class OvertimeImportService:
         for cached_name, emp_id in self.employees_cache.items():
             if cached_name.startswith(last_name):
                 return emp_id
+
+        logger.warning(
+            "Employee not found in cache by name during import",
+            extra={"raw_name": full_name, "normalized_name": norm},
+        )
         return None
 
     async def import_from_excel_file(self, file_stream: BinaryIO) -> dict:
@@ -182,6 +195,7 @@ class OvertimeImportService:
         result = {'total_rows': 0, 'imported': 0, 'duplicates': 0, 'skipped': 0, 'errors': 0, 'error_details': []}
 
         imported_employee_ids: set[int] = set()
+        logger.info("Starting overtime Excel import process")
 
         try:
             await self._load_employees_cache()
@@ -194,16 +208,24 @@ class OvertimeImportService:
             # Байт-код OLE2 (старый формат XLS) начинается с D0 CF 11 E0 A1 B1 1A E1
             is_old_xls = header_bytes.startswith(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1')
 
+            format_str = "XLS (xlrd)" if is_old_xls else "XLSX (openpyxl)"
+            logger.info(
+                "Detected file format for overtime import",
+                extra={"format": format_str},
+            )
+
             if is_old_xls:
                 try:
                     # Для .xls принудительно используем xlrd
                     df = pd.read_excel(file_stream, header=None, dtype=str, engine='xlrd')
-                except ImportError:
-                    # Понятная ошибка, если xlrd всё-таки забыли поставить на сервер
-                    result['errors'] += 1
-                    result['error_details'].append(
-                        "Критическая ошибка: Для поддержки файлов .xls установите пакет xlrd (pip install xlrd)."
+                except ImportError as ie:
+                    msg = "Критическая ошибка: Для поддержки файлов .xls установите пакет xlrd (pip install xlrd)."
+                    logger.error(
+                        "Failed to import .xls file: xlrd engine is missing",
+                        exc_info=ie,
                     )
+                    result["errors"] += 1
+                    result["error_details"].append(msg)
                     return result
             else:
                 # Для .xlsx используем стандартный openpyxl
@@ -222,63 +244,138 @@ class OvertimeImportService:
             result['total_rows'] = len(data_rows)
 
             if not data_rows:
-                result['error_details'].append("В файле не обнаружены строки с данными.")
+                msg = "В файле не обнаружены строки с данными."
+                logger.warning("Overtime import canceled: no data rows found in file")
+                result["error_details"].append(msg)
                 return result
 
             columns = self.detect_columns(data_rows[0])
-            name_col = columns['name'] or 7
-            date_col = columns['date'] or 10
-            time_col = columns['time_range'] or 11
-            shift_col = columns['shift'] or 12
+            name_col = columns["name"] if columns["name"] is not None else 7
+            date_col = columns["date"] if columns["date"] is not None else 10
+            time_col = (
+                columns["time_range"] if columns["time_range"] is not None else 11
+            )
+            shift_col = columns["shift"] if columns["shift"] is not None else 12
 
             for i, row in enumerate(data_rows):
+                row_idx_display = data_start_row + i + 1
                 try:
-                    full_name = str(row.iloc[name_col]) if len(row) > name_col else ""
-                    overtime_date = self.parse_date(row.iloc[date_col] if len(row) > date_col else None)
-                    start_time, end_time = self.parse_time_range(str(row.iloc[time_col]) if len(row) > time_col else "")
-                    shift_start, shift_end = self.parse_shift(str(row.iloc[shift_col]) if len(row) > shift_col else "")
+                    full_name = (
+                        str(row.iloc[name_col]) if len(row) > name_col else ""
+                    )
+                    overtime_date = self.parse_date(
+                        row.iloc[date_col] if len(row) > date_col else None
+                    )
+                    start_time, end_time = self.parse_time_range(
+                        str(row.iloc[time_col]) if len(row) > time_col else ""
+                    )
+                    shift_start, shift_end = self.parse_shift(
+                        str(row.iloc[shift_col]) if len(row) > shift_col else ""
+                    )
 
                     employee_id = self.find_employee_by_name(full_name)
-                    if not employee_id or not overtime_date or not start_time or not end_time:
-                        result['skipped'] += 1
+                    if (
+                            not employee_id
+                            or not overtime_date
+                            or not start_time
+                            or not end_time
+                    ):
+                        logger.warning(
+                            "Skipping row during overtime import due to missing required data",
+                            extra={
+                                "file_row": row_idx_display,
+                                "has_employee_id": bool(employee_id),
+                                "has_date": bool(overtime_date),
+                                "has_start_time": bool(start_time),
+                                "has_end_time": bool(end_time),
+                                "raw_name": full_name,
+                            },
+                        )
+                        result["skipped"] += 1
                         continue
 
-                    overtime_records = self.calculate_overtime_separate(start_time, end_time, shift_start, shift_end)
+                    overtime_records = self.calculate_overtime_separate(
+                        start_time, end_time, shift_start, shift_end
+                    )
                     if not overtime_records:
-                        result['skipped'] += 1
+                        logger.debug(
+                            "Skipping row: work time falls within normal shift hours",
+                            extra={
+                                "file_row": row_idx_display,
+                                "employee_id": employee_id,
+                            },
+                        )
+                        result["skipped"] += 1
                         continue
 
                     for hours, ot_start, ot_end in overtime_records:
-                        # Проверка на дубликат через твой репозиторий
-                        is_dup = await self.overtime_repo.check_exists(employee_id, overtime_date, ot_start, ot_end)
+                        is_dup = await self.overtime_repo.check_exists(
+                            employee_id, overtime_date, ot_start, ot_end
+                        )
                         if is_dup:
-                            result['duplicates'] += 1
+                            logger.info(
+                                "Duplicate overtime record skipped",
+                                extra={
+                                    "employee_id": employee_id,
+                                    "date": str(overtime_date),
+                                    "start_time": str(ot_start),
+                                    "end_time": str(ot_end),
+                                },
+                            )
+                            result["duplicates"] += 1
                             continue
 
-                        # ИСПОЛЬЗУЕМ МЕТОД create_overtime_direct, КОТОРЫЙ МЫ СОЗДАЛИ В РЕПОЗИТОРИИ
                         await self.overtime_repo.create_overtime_direct(
                             employee_id=employee_id,
                             overtime_date=overtime_date,
                             start_time=ot_start,
-                            end_time=ot_end
+                            end_time=ot_end,
+                            description="Импорт из Excel"
                         )
-                        result['imported'] += 1
+                        result["imported"] += 1
                         imported_employee_ids.add(employee_id)
 
                 except Exception as row_error:
-                    result['errors'] += 1
-                    result['error_details'].append(f"Строка {i + 1}: {str(row_error)}")
+                    result["errors"] += 1
+                    err_msg = f"Строка {row_idx_display}: {str(row_error)}"
+                    logger.warning(
+                        "Error parsing individual row in overtime import",
+                        extra={"file_row": row_idx_display, "error": str(row_error)},
+                    )
+                    result["error_details"].append(err_msg)
 
-            await self.overtime_repo.db.commit()  # Фиксируем транзакцию
+            await self.overtime_repo.db.commit()
 
             if imported_employee_ids:
-                await self.notifications.notify_overtimes_imported(imported_employee_ids)
+                logger.info(
+                    "Sending import notifications to employees",
+                    extra={"notified_employees_count": len(imported_employee_ids)},
+                )
+                await self.notifications.notify_overtimes_imported(
+                    imported_employee_ids
+                )
 
+            logger.info(
+                "Overtime import completed successfully",
+                extra={
+                    "total_rows": result["total_rows"],
+                    "imported": result["imported"],
+                    "duplicates": result["duplicates"],
+                    "skipped": result["skipped"],
+                    "errors": result["errors"],
+                },
+            )
             return result
 
         except Exception as file_error:
-            result['errors'] += 1
-            result['error_details'].append(f"Критическая ошибка файла: {str(file_error)}")
+            logger.error(
+                "Critical error during overtime Excel file import",
+                exc_info=file_error,
+            )
+            result["errors"] += 1
+            result["error_details"].append(
+                f"Критическая ошибка файла: {str(file_error)}"
+            )
             return result
 
 

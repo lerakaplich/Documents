@@ -290,3 +290,24 @@ class EmployeesRepository:
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_employees_by_org_id(self, org_id: int) -> list[Employee]:
+        """
+        Возвращает уникальных сотрудников организации с жадной загрузкой их должностей.
+        """
+        stmt = (
+            select(Employee)
+            .options(
+                # Жадно подгружаем positions, чтобы Pydantic смог их прочитать без Lazy Load
+                selectinload(Employee.positions)
+            )
+            .distinct()
+            .join(EmployeePosition, EmployeePosition.employee_id == Employee.id)
+            .join(Department, Department.id == EmployeePosition.department_id)
+            .where(
+                Department.organization_id == org_id,
+                Employee.is_active.is_(True)
+            )
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
