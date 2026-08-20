@@ -9,8 +9,27 @@ EMPLOYEES_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/employees
 DOCS_DB_URL_RAW = "postgresql://postgres:admin@127.0.0.1:5432/documents"
 
 # 1. Создаем асинхронные движки
-engine_docs = create_async_engine(DOCUMENTS_DB_URL, echo=False, pool_pre_ping=True)
-engine_employees = create_async_engine(EMPLOYEES_DB_URL, echo=False, pool_pre_ping=True)
+# Пул для БД документов
+engine_docs = create_async_engine(
+    DOCUMENTS_DB_URL,
+    echo=False,
+    pool_pre_ping=True,
+    pool_size=50,         # Держим 50 постоянных соединений
+    max_overflow=50,      # До 50 временно при пиках (всего 100)
+    pool_timeout=10.0,    # Не ждем свободое соединение дольше 10 сек (выдаст ошибку сразу)
+    pool_recycle=1800,    # Пересоздаем соединения каждые 30 мин
+)
+
+# Пул для БД сотрудников
+engine_employees = create_async_engine(
+    EMPLOYEES_DB_URL,
+    echo=False,
+    pool_pre_ping=True,
+    pool_size=20,
+    max_overflow=30,
+    pool_timeout=10.0,
+    pool_recycle=1800,
+)
 
 # 2. Создаем фабрики сессий
 async_session_docs = async_sessionmaker(
