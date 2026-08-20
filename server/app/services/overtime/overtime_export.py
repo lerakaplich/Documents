@@ -76,15 +76,18 @@ class OvertimeExportService:
             bottom=Side(style='thin', color='D3D3D3')
         )
 
-        # Название и период
+        align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+        # Заголовок отчета
         period_str = f"с {start_date.strftime('%d.%m.%Y')} по {end_date.strftime('%d.%m.%Y')}" if start_date and end_date else "за весь период"
         ws.append([f"Сводный отчет по переработкам ({period_str})"])
         ws.cell(row=1, column=1).font = font_title
         ws.row_dimensions[1].height = 30
         ws.append([])
 
-        # Заголовки таблицы
-        headers = ["ФИО", "Должность", "Дата", "Начало", "Окончание", "Часы", "Примечание"]
+        # Заголовки колонок
+        headers = ["№", "ФИО", "Должность", "Дата", "Время", "Описание переработки", "Всего часов"]
         ws.append(headers)
         header_row_idx = 3
         ws.row_dimensions[header_row_idx].height = 25
@@ -93,10 +96,10 @@ class OvertimeExportService:
             cell = ws.cell(row=header_row_idx, column=col_idx)
             cell.font = font_header
             cell.fill = header_fill
-            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.alignment = align_center
             cell.border = thin_border
 
-        # 3. Группируем данные: Dept -> Employee -> List of Overtimes
+        # 3. Группируем данные: Dept -> Employee -> Items
         grouped_data = {}
         total_period_hours = 0.0
 
@@ -110,18 +113,21 @@ class OvertimeExportService:
             if fio not in grouped_data[d_name]:
                 grouped_data[d_name][fio] = {"position": pos_name, "items": [], "total": 0.0}
 
+            time_str = ""
+            if ot.overtime_start and ot.overtime_end:
+                time_str = f"{ot.overtime_start.strftime('%H:%M')}-{ot.overtime_end.strftime('%H:%M')}"
+
             grouped_data[d_name][fio]["items"].append({
-                "date": ot.overtime_date,
-                "start": ot.overtime_start,
-                "end": ot.overtime_end,
-                "duration": duration,
-                "note": ot.note_text or ""
+                "date": ot.overtime_date.strftime('%d.%m.%Y') if ot.overtime_date else '',
+                "time": time_str,
+                "note": ot.note_text or "",
+                "duration": duration
             })
             grouped_data[d_name][fio]["total"] += duration
 
-        # 4. Вывод данных в Excel
+        # 4. Вывод данных с объединением ячеек
         for d_name, employees in grouped_data.items():
-            # Заголовок Подразделения
+            # Шапка подразделения
             ws.append([f"Подразделение: {d_name}"])
             dept_row = ws.max_row
             ws.merge_cells(start_row=dept_row, start_column=1, end_row=dept_row, end_column=7)
@@ -130,57 +136,83 @@ class OvertimeExportService:
             ws.row_dimensions[dept_row].height = 24
 
             dept_total_hours = 0.0
+            emp_idx = 1
 
             for fio, emp_data in employees.items():
-                for item in emp_data["items"]:
+                items = emp_data["items"]
+                items_count = len(items)
+                start_row = ws.max_row + 1
+
+                for item in items:
                     ws.append([
+                        emp_idx,
                         fio,
                         emp_data["position"],
-                        item["date"].strftime('%d.%m.%Y') if item["date"] else '',
-                        item["start"].strftime('%H:%M') if item["start"] else '',
-                        item["end"].strftime('%H:%M') if item["end"] else '',
-                        self.format_hours(item["duration"]),
-                        item["note"]
+                        item["date"],
+                        item["time"],
+                        item["note"],
+                        self.format_hours(emp_data["total"])
                     ])
                     cur_row = ws.max_row
-                    ws.row_dimensions[cur_row].height = 20
+                    ws.row_dimensions[cur_row].height = 22
+
+                    # Применяем стили ко всем ячейкам строки
                     for c in range(1, 8):
                         cell = ws.cell(row=cur_row, column=c)
                         cell.font = font_regular
                         cell.border = thin_border
-                        if c in [3, 4, 5, 6]:
-                            cell.alignment = Alignment(horizontal="center", vertical="center")
+                        if c in [1, 4, 5, 7]:
+                            cell.alignment = align_center
+                        else:
+                            cell.alignment = align_left
 
-                # Итого по сотруднику
-                ws.append(["", "", "", "", "Итого по сотруднику:", self.format_hours(emp_data["total"]), ""])
-                emp_total_row = ws.max_row
-                for c in range(1, 8):
-                    cell = ws.cell(row=emp_total_row, column=c)
-                    cell.fill = subtotal_fill
-                    cell.border = thin_border
-                ws.cell(row=emp_total_row, column=5).font = font_bold
-                ws.cell(row=emp_total_row, column=6).font = font_bold
-                ws.cell(row=emp_total_row, column=6).alignment = Alignment(horizontal="center")
+                end_row = ws.max_row
+
+                # Объединяем ячейки по вертикали для одного сотрудника (№, ФИО, Должность, Всего часов)
+                if items_count > 1:
+                    ws.merge_cells(start_row=start_row, start_column=1, end_row=end_row, end_column=1)  # №
+                    ws.merge_cells(start_row=start_row, start_column=2, end_row=end_row, end_column=2)  # ФИО
+                    ws.merge_cells(start_row=start_row, start_column=3, end_row=end_row, end_column=3)  # Должность
+                    ws.merge_cells(start_row=start_row, start_column=7, end_row=end_row, end_column=7)  # Всего часов
+
+                # Для ячейки "Всего часов" ставим жирный шрифт
+                ws.cell(row=start_row, column=7).font = font_bold
 
                 dept_total_hours += emp_data["total"]
+                emp_idx += 1
 
             # Итого по подразделению
-            ws.append(["", "", "", "", f"Итого по {d_name}:", self.format_hours(dept_total_hours), ""])
+            ws.append(["", "Итого по подразделению:", "", "", "", "", self.format_hours(dept_total_hours)])
             d_total_row = ws.max_row
-            ws.cell(row=d_total_row, column=5).font = font_bold
-            ws.cell(row=d_total_row, column=6).font = font_bold
-            ws.cell(row=d_total_row, column=6).alignment = Alignment(horizontal="center")
+            ws.merge_cells(start_row=d_total_row, start_column=2, end_row=d_total_row, end_column=6)
+
+            for c in range(1, 8):
+                cell = ws.cell(row=d_total_row, column=c)
+                cell.fill = subtotal_fill
+                cell.border = thin_border
+                cell.font = font_bold
+
+            ws.cell(row=d_total_row, column=2).alignment = align_left
+            ws.cell(row=d_total_row, column=7).alignment = align_center
+            ws.row_dimensions[d_total_row].height = 22
             ws.append([])  # Пустая строка
 
         # ОБЩИЙ ИТОГ
-        ws.append(["", "", "", "", "ОБЩИЙ ИТОГ:", self.format_hours(total_period_hours), ""])
-        grand_total_row = ws.max_row
-        ws.cell(row=grand_total_row, column=5).font = Font(name="Calibri", size=12, bold=True)
-        ws.cell(row=grand_total_row, column=6).font = Font(name="Calibri", size=12, bold=True, color="C00000")
-        ws.cell(row=grand_total_row, column=6).alignment = Alignment(horizontal="center")
+        ws.append(["", "ОБЩИЙ ИТОГ:", "", "", "", "", self.format_hours(total_period_hours)])
+        grand_row = ws.max_row
+        ws.merge_cells(start_row=grand_row, start_column=2, end_row=grand_row, end_column=6)
+
+        for c in range(1, 8):
+            cell = ws.cell(row=grand_row, column=c)
+            cell.border = thin_border
+            cell.font = Font(name="Calibri", size=12, bold=True)
+
+        ws.cell(row=grand_row, column=7).font = Font(name="Calibri", size=12, bold=True, color="C00000")
+        ws.cell(row=grand_row, column=7).alignment = align_center
+        ws.row_dimensions[grand_row].height = 25
 
         # Настройка ширины колонок
-        col_widths = {'A': 32, 'B': 28, 'C': 14, 'D': 12, 'E': 12, 'F': 16, 'G': 35}
+        col_widths = {'A': 6, 'B': 30, 'C': 26, 'D': 14, 'E': 16, 'F': 38, 'G': 16}
         for col, width in col_widths.items():
             ws.column_dimensions[col].width = width
 
