@@ -13,6 +13,7 @@ from client.windows.profile.overtime.overtime_panel import OvertimePanel
 from client.windows.profile.profile_info import ProfileInfo
 from client.core.http_client import HttpClient
 from client.services.employee_service import EmployeeService
+from client.services.overtime_service import OvertimeService
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -116,6 +117,12 @@ class ProfileForm(QWidget):
         self.overtime_panel = OvertimePanel(self)
         # ===== Конец создания компонентов =====
 
+        # Создаем сервис переработок
+        self.overtime_service = OvertimeService(self.http_client)
+
+        # Передаем сервис в overtime_panel ДО настройки UI элементов
+        self.overtime_panel.set_overtime_service(self.overtime_service)
+
         # ===== Передаём виджеты в компоненты =====
         self.profile_info.setup_ui_elements(
             infoFrame=self.infoFrame if hasattr(self, 'infoFrame') else None,
@@ -133,21 +140,33 @@ class ProfileForm(QWidget):
         # ===== Конец передачи виджетов =====
 
         # ===== Настройка overtime panel =====
-        if hasattr(self, 'tabWidget'):
-            self.overtime_panel.setup_ui_elements(
-                tabWidget=self.tabWidget,
-                btnSelectPeriod=self.btnSelectPeriod if hasattr(self, 'btnSelectPeriod') else None,
-                btnSelectPeriodAll=self.btnSelectPeriodAll if hasattr(self, 'btnSelectPeriodAll') else None,
-                btnResetFilters=self.btnResetFilters if hasattr(self, 'btnResetFilters') else None,
-                btnResetFiltersAll=self.btnResetFiltersAll if hasattr(self, 'btnResetFiltersAll') else None,
-                btnAddOvertimeAll=self.btnAddOvertimeAll if hasattr(self, 'btnAddOvertimeAll') else None,
-                btnExport=self.btnExport if hasattr(self, 'btnExport') else None,
-                labelTotalHoursMy=self.labelTotalHoursMy if hasattr(self, 'labelTotalHoursMy') else None,
-                labelTotalHoursAll=self.labelTotalHoursAll if hasattr(self, 'labelTotalHoursAll') else None,
-                allOvertimeFiltersLayout=self.allOvertimeFiltersLayout if hasattr(self,
-                                                                                  'allOvertimeFiltersLayout') else None,
-                btnAddOvertime=self.btnAddOvertime if hasattr(self, 'btnAddOvertime') else None
-            )
+        # Проверяем наличие виджетов перед передачей
+        tabWidget = self.tabWidget if hasattr(self, 'tabWidget') else None
+        btnSelectPeriod = self.btnSelectPeriod if hasattr(self, 'btnSelectPeriod') else None
+        btnSelectPeriodAll = self.btnSelectPeriodAll if hasattr(self, 'btnSelectPeriodAll') else None
+        btnResetFilters = self.btnResetFilters if hasattr(self, 'btnResetFilters') else None
+        btnResetFiltersAll = self.btnResetFiltersAll if hasattr(self, 'btnResetFiltersAll') else None
+        btnAddOvertimeAll = self.btnAddOvertimeAll if hasattr(self, 'btnAddOvertimeAll') else None
+        btnExport = self.btnExport if hasattr(self, 'btnExport') else None
+        labelTotalHoursMy = self.labelTotalHoursMy if hasattr(self, 'labelTotalHoursMy') else None
+        labelTotalHoursAll = self.labelTotalHoursAll if hasattr(self, 'labelTotalHoursAll') else None
+        allOvertimeFiltersLayout = self.allOvertimeFiltersLayout if hasattr(self, 'allOvertimeFiltersLayout') else None
+        btnAddOvertime = self.btnAddOvertime if hasattr(self, 'btnAddOvertime') else None
+
+        # Настраиваем UI элементы панели переработок
+        self.overtime_panel.setup_ui_elements(
+            tabWidget=tabWidget,
+            btnSelectPeriod=btnSelectPeriod,
+            btnSelectPeriodAll=btnSelectPeriodAll,
+            btnResetFilters=btnResetFilters,
+            btnResetFiltersAll=btnResetFiltersAll,
+            btnAddOvertimeAll=btnAddOvertimeAll,
+            btnExport=btnExport,
+            labelTotalHoursMy=labelTotalHoursMy,
+            labelTotalHoursAll=labelTotalHoursAll,
+            allOvertimeFiltersLayout=allOvertimeFiltersLayout,
+            btnAddOvertime=btnAddOvertime
+        )
         # ===== Конец настройки overtime panel =====
 
         # ===== Стилизация кнопок =====
@@ -158,8 +177,10 @@ class ProfileForm(QWidget):
         self.setup_connections()
         # ===== Конец подключения сигналов =====
 
-        # ===== Загрузка данных через API =====
+        # ===== Загрузка данных =====
         self.load_profile_from_api()
+        # Загружаем переработки
+        self.overtime_panel.load_overtime_data()
         # ===== Конец загрузки =====
 
     def load_profile_from_api(self):
@@ -221,24 +242,20 @@ class ProfileForm(QWidget):
                 if dept_chain:
                     print(f"📋 Найдена цепочка подразделений: {dept_chain}")
                     for dept in dept_chain:
-                        # Используем department_type_name как тип подразделения
                         dept_type = dept.get('department_type_name', 'Подразделение')
                         dept_name = dept.get('name', '')
                         if dept_name:
                             department_chain.append((dept_type, dept_name))
                     print(f"🏢 Сформирована цепочка: {department_chain}")
                 else:
-                    # Если цепочка пуста, пробуем через department_path
                     dept_path = first_position.get('department_path', [])
                     if dept_path:
                         print(f"📋 Используем department_path: {dept_path}")
-                        # Используем дефолтные типы
                         types = ['Организация', 'Управление', 'Отдел', 'Сектор']
                         for i, dept_name in enumerate(dept_path):
                             dept_type = types[i] if i < len(types) else 'Подразделение'
                             department_chain.append((dept_type, dept_name))
                     else:
-                        # Если все пусто - пробуем получить department_id
                         dept_id = first_position.get('department_id')
                         if dept_id:
                             print(f"⚠️ Нет цепочки подразделений, только department_id: {dept_id}")
@@ -279,9 +296,6 @@ class ProfileForm(QWidget):
             # Сохраняем данные для редактирования
             self.profile_info.current_phone_raw = phone
             self.profile_info.current_email_raw = email
-
-            # Загружаем переработки
-            self.load_overtime_data()
 
             print("✅ Профиль успешно обновлен")
 
@@ -362,10 +376,6 @@ class ProfileForm(QWidget):
             email="ivan.ivanov@company.by",
             birth_date="15.05.1985"
         )
-
-    def load_overtime_data(self):
-        """Загружает переработки (пока заглушка)."""
-        self.overtime_panel.load_overtime_data()
 
     def create_fallback_ui(self):
         """Создаёт простой UI, если не удалось загрузить profile.ui."""

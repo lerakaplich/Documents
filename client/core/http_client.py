@@ -123,6 +123,10 @@ class HttpClient:
             if response.status_code >= 400:
                 logger.error(f"❌ Текст ошибки: {response.text[:500]}")
 
+            if response.status_code >= 400:
+                logger.error(f"❌ Текст ошибки: {response.text[:500]}")
+                raise Exception(f"Ошибка {response.status_code}: {response.text[:200]}")
+
             if response.status_code == 401:
                 logger.warning("Получена 401 ошибка, пробуем обновить токен...")
                 if self._refresh_access_token():

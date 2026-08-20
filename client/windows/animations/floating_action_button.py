@@ -74,7 +74,11 @@ class FloatingActionButton(QPushButton):
     def _set_icon_from_file(self):
         """Установить иконку из файла SVG с динамическим размером"""
         # Путь к файлу иконки
-        icon_path = r"D:\Documents\client\icons\plus28_gold.svg"
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # Поднимаемся на один уровень вверх (из windows/documnets/... в client)
+        client_dir = os.path.dirname(current_dir)
+        # Формируем путь к иконке
+        icon_path = os.path.join(client_dir, "icons", "plus28_gold.svg")
 
         try:
             from PyQt6.QtSvg import QSvgRenderer
