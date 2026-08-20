@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from server.app.deps import get_current_user, get_employee_service
 from server.app.schemas.user_schemas.employee_dto import EmployeeRead, EmployeeListRead, CurrentUser, \
-    EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate
+    EmployeeDetailRead, EmployeeCreate, EmployeeProfileUpdate, EmployeeFullUpdate, EmployeeShortRead
 from server.app.services.employees.employee_service import EmployeeService
 
 router = APIRouter(prefix="/employees", tags=["Employees"])

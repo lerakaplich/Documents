@@ -1,4 +1,5 @@
 import logging
+import math
 
 from fastapi import HTTPException, status
 
@@ -36,6 +37,56 @@ class OrgService:
 
         employees = await self.emp_repo.get_employees_by_org_id(org_id)
         return [EmployeeRead.model_validate(e) for e in employees]
+
+    async def get_org_employees_short(
+            self,
+            org_id: int,
+            show_fired: bool = False,
+            page: int = 1,
+            size: int = 20
+    ) -> dict:
+        logger.info(
+            "Fetching short employee list for organization",
+            extra={"org_id": org_id, "page": page, "size": size, "show_fired": show_fired}
+        )
+
+        # Проверка существования организации
+        org = await self.repo.get_organization_by_id(org_id)
+        if not org:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Организация не найдена"
+            )
+
+        rows, total = await self.emp_repo.get_short_by_org_id_paginated(
+            org_id=org_id,
+            show_fired=show_fired,
+            page=page,
+            size=size
+        )
+
+        items = []
+        for row in rows:
+            patronymic_str = f" {row.patronymic}" if row.patronymic else ""
+            items.append({
+                "id": row.id,
+                "full_name": f"{row.last_name} {row.first_name}{patronymic_str}".strip()
+            })
+
+        pages = math.ceil(total / size) if total > 0 else 1
+
+        logger.info(
+            "Successfully fetched short employee list for organization",
+            extra={"org_id": org_id, "count": len(items), "total": total}
+        )
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "size": size,
+            "pages": pages
+        }
 
     async def get_org_structure(self, org_id: int) -> list[DepartmentNode]:
         org = await self.repo.get_organization_by_id(org_id)

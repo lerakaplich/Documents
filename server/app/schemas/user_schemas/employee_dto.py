@@ -16,6 +16,21 @@ class EmployeeBase(BaseModel):
     birth_date: Optional[date] = None
     chat_id: Optional[int] = None
 
+    @computed_field
+    def full_name(self) -> str:
+        """Автоматическая сборка ФИО формата 'Иванов И.И.'"""
+        init_f = f"{self.first_name[0]}." if self.first_name else ""
+        init_p = f"{self.patronymic[0]}." if self.patronymic else ""
+        inits = f"{init_f}{init_p}".strip()
+        return f"{self.last_name} {inits}".strip()
+
+class EmployeeShortRead(BaseModel):
+    """Компактная модель для dropdown/select списков"""
+    id: int
+    full_name: str  # "Иванов И.И." или "Иванов Иван Иванович"
+
+    model_config = ConfigDict(from_attributes=True)
+
 class PositionData(BaseModel):
     department_id: int
     position_name: str

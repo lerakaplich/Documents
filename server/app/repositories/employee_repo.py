@@ -2,7 +2,7 @@
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, distinct
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.expression import delete
 
@@ -20,6 +20,49 @@ class EmployeesRepository:
         stmt = select(Employee).where(Employee.is_active == True)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_short_by_org_id_paginated(
+        self,
+        org_id: int,
+        show_fired: bool = False,
+        page: int = 1,
+        size: int = 20
+    ):
+        # Базовые условия фильтрации
+        where_conditions = [Department.organization_id == org_id]
+        if not show_fired:
+            where_conditions.append(Employee.is_active == True)
+
+        # 1. Считаем общее количество уникальных сотрудников в организации
+        count_stmt = (
+            select(func.count(distinct(Employee.id)))
+            .select_from(Employee)
+            .join(EmployeePosition, EmployeePosition.employee_id == Employee.id)
+            .join(Department, Department.id == EmployeePosition.department_id)
+            .where(*where_conditions)
+        )
+        total = await self.db.scalar(count_stmt) or 0
+
+        # 2. Выбираем только необходимые поля с пагинацией
+        offset = (page - 1) * size
+        stmt = (
+            select(
+                Employee.id,
+                Employee.last_name,
+                Employee.first_name,
+                Employee.patronymic
+            )
+            .distinct()
+            .join(EmployeePosition, EmployeePosition.employee_id == Employee.id)
+            .join(Department, Department.id == EmployeePosition.department_id)
+            .where(*where_conditions)
+            .order_by(Employee.last_name, Employee.first_name)
+            .offset(offset)
+            .limit(size)
+        )
+
+        result = await self.db.execute(stmt)
+        return result.all(), total
 
     async def get_by_id(self, emp_id: int):
         stmt = (
