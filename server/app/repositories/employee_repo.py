@@ -1,8 +1,9 @@
 # server/app/repositories/employees_repo.py
+from datetime import date
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update, distinct
+from sqlalchemy import select, func, update, distinct, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.expression import delete
 
@@ -69,6 +70,25 @@ class EmployeesRepository:
             select(Employee)
             .options(selectinload(Employee.positions))  # ЗАГРУЖАЕМ СРАЗУ!
             .where(Employee.id == emp_id)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_primary_department_id(self, employee_id: int) -> Optional[int]:
+        """Получает ID текущего (активного) подразделения сотрудника"""
+        today = date.today()
+        stmt = (
+            select(EmployeePosition.department_id)
+            .where(
+                EmployeePosition.employee_id == employee_id,
+                EmployeePosition.start_date <= today,
+                or_(
+                    EmployeePosition.end_date >= today,
+                    EmployeePosition.end_date.is_(None)
+                )
+            )
+            .order_by(EmployeePosition.start_date.desc())
+            .limit(1)
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()

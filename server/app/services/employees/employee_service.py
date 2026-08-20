@@ -477,3 +477,7 @@ class EmployeeService:
             rights=user_rights,
             positions=positions_dto
         )
+
+    async def get_user_primary_dept_id(self, user_id: int) -> Optional[int]:
+        """Получение ID основного актуального подразделения сотрудника"""
+        return await self.emp_repo.get_primary_department_id(user_id)
