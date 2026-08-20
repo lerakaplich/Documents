@@ -93,13 +93,27 @@
 QPushButton:hover {
     background-color: #3A4A54;
     color: #DDB87A;
+}
+QPushButton::icon {
+    width: 20px;
+    height: 20px;
 }</string>
         </property>
         <property name="text">
-         <string>👤 Мой профиль</string>
+         <string>Мой профиль</string>
         </property>
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="icon">
+         <iconset resource="icons.qrc">
+          <normaloff>profile_white.svg</normaloff>profile_white.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
         </property>
        </widget>
       </item>
@@ -135,13 +149,27 @@ min-height: 1px;</string>
 QPushButton:hover {
     background-color: #3A4A54;
     color: #DDB87A;
+}
+QPushButton::icon {
+    width: 20px;
+    height: 20px;
 }</string>
         </property>
         <property name="text">
-         <string>📄 Все документы</string>
+         <string>Все документы</string>
         </property>
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="icon">
+         <iconset resource="icons.qrc">
+          <normaloff>folder.svg</normaloff>folder.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
         </property>
        </widget>
       </item>
@@ -384,13 +412,27 @@ min-height: 1px;</string>
 QPushButton:hover {
     background-color: #3A4A54;
     color: #DDB87A;
+}
+QPushButton::icon {
+    width: 20px;
+    height: 20px;
 }</string>
         </property>
         <property name="text">
-         <string>⚙️ Система</string>
+         <string>Система</string>
         </property>
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="icon">
+         <iconset resource="icons.qrc">
+          <normaloff>gear.svg</normaloff>gear.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
         </property>
        </widget>
       </item>
@@ -412,6 +454,10 @@ QPushButton:hover {
 QPushButton:hover {
     background-color: #3A4A54;
     color: #DDB87A;
+}
+QPushButton::icon {
+    width: 20px;
+    height: 20px;
 }</string>
         </property>
         <property name="text">
@@ -420,10 +466,20 @@ QPushButton:hover {
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
         </property>
+        <property name="icon">
+         <iconset resource="icons.qrc">
+          <normaloff>logout.svg</normaloff>logout.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
+        </property>
        </widget>
       </item>
 
-      <!-- Кнопка скрытия панели -->
+      <!-- Кнопка скрытия панели с иконкой -->
       <item>
        <widget class="QPushButton" name="hidePanelBtn">
         <property name="styleSheet">
@@ -440,13 +496,27 @@ QPushButton:hover {
 QPushButton:hover {
     background-color: #3A4A54;
     color: #DDB87A;
+}
+QPushButton::icon {
+    width: 20px;
+    height: 20px;
 }</string>
         </property>
         <property name="text">
-         <string>◀ Скрыть панель</string>
+         <string>Скрыть панель</string>
         </property>
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="icon">
+         <iconset resource="icons.qrc">
+          <normaloff>hide.svg</normaloff>hide.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
         </property>
        </widget>
       </item>

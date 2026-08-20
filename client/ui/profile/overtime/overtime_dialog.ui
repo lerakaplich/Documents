@@ -69,7 +69,7 @@ QDateEdit::drop-down, QTimeEdit::drop-down {
 
 /* Иконка календаря вместо стрелочки для QDateEdit */
 QDateEdit::down-arrow {
-    image: url(D:/Documents/client/icons/calendar_date.png);
+    image: url(D:/Documents/client/icons/calendar_date.svg);
     width: 18px;
     height: 18px;
     margin-right: 8px;

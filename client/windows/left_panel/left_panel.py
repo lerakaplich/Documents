@@ -6,22 +6,6 @@ from PyQt6.QtWidgets import (
     QSpacerItem, QSizePolicy, QScrollArea
 )
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal, QSize
-from PyQt6.uic import loadUi
-
-from client.core.data.document_data import DocumentDataConfig
-from client.windows.left_panel.direction_group import DirectionGroup
-
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-
-import os
-import sys
-from typing import List, Dict, Any
-from PyQt6.QtWidgets import (
-    QWidget, QPushButton, QVBoxLayout, QApplication,
-    QSpacerItem, QSizePolicy, QScrollArea
-)
-from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal
 from PyQt6.QtGui import QIcon
 from PyQt6.uic import loadUi
 
@@ -40,14 +24,14 @@ class LeftPanel(QWidget):
     profile_clicked = pyqtSignal()
     all_documents_clicked = pyqtSignal()
     system_clicked = pyqtSignal()
-    logout_clicked = pyqtSignal()  # Новый сигнал для выхода
+    logout_clicked = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
         # Константы для размеров панели
-        self.COLLAPSED_WIDTH = 80  # Ширина в свернутом состоянии
-        self.EXPANDED_WIDTH = 280  # Ширина в развернутом состоянии
+        self.COLLAPSED_WIDTH = 80
+        self.EXPANDED_WIDTH = 280
 
         self.setMinimumWidth(self.COLLAPSED_WIDTH)
         self.setMaximumWidth(self.EXPANDED_WIDTH)
@@ -60,8 +44,8 @@ class LeftPanel(QWidget):
 
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
-        # Настройка иконки для кнопки выхода
-        self.setup_logout_button()
+        # Настройка иконок для всех кнопок (унифицированный размер 20x20)
+        self.setup_icons()
 
         # Скрываем старые виджеты
         for widget_name in ['externalWidget', 'internalWidget']:
@@ -84,15 +68,29 @@ class LeftPanel(QWidget):
         # Загружаем данные из DocumentDataConfig
         self.load_from_data()
 
-    def setup_logout_button(self):
-        """Настраивает иконку для кнопки выхода"""
-        if hasattr(self, 'logoutBtn'):
-            # Загружаем иконку из файла
-            icon_path = os.path.join(ROOT_DIR, "icons", "logout.svg")
-            if os.path.exists(icon_path):
-                icon = QIcon(icon_path)
-                self.logoutBtn.setIcon(icon)
-                self.logoutBtn.setIconSize(icon.availableSizes()[0] if icon.availableSizes() else QSize(20, 20))
+    def setup_icons(self):
+        """Настраивает иконки для всех кнопок с единым размером"""
+        icons_path = "D:/Documents/client/icons"
+        icon_size = QSize(20, 20)  # Унифицированный размер для всех иконок
+
+        icon_mapping = {
+            'profileBtn': 'profile_white.svg',
+            'allDocsBtn': 'folder.svg',
+            'systemBtn': 'gear.svg',
+            'logoutBtn': 'logout.svg',
+            'hidePanelBtn': 'hide.svg'  # Добавляем иконку для скрытия панели
+        }
+
+        for btn_name, icon_file in icon_mapping.items():
+            if hasattr(self, btn_name):
+                btn = getattr(self, btn_name)
+                icon_path = os.path.join(icons_path, icon_file)
+                if os.path.exists(icon_path):
+                    icon = QIcon(icon_path)
+                    btn.setIcon(icon)
+                    btn.setIconSize(icon_size)
+                else:
+                    print(f"Предупреждение: иконка не найдена - {icon_path}")
 
     def create_fallback_ui(self):
         """Создает UI с разделением на верхнюю и нижнюю части"""
@@ -100,20 +98,22 @@ class LeftPanel(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # ====================== ВЕРХНЯЯ ЧАСТЬ ======================
+        # ВЕРХНЯЯ ЧАСТЬ
         self.top_widget = QWidget()
         top_layout = QVBoxLayout(self.top_widget)
         top_layout.setContentsMargins(0, 0, 0, 0)
         top_layout.setSpacing(6)
 
-        self.profileBtn = QPushButton("👤 Мой профиль")
+        self.profileBtn = QPushButton("Мой профиль")
         self.profileBtn.setStyleSheet(self._get_button_style())
         self.profileBtn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.set_button_icon(self.profileBtn, "profile_white.svg", QSize(20, 20))
         top_layout.addWidget(self.profileBtn)
 
-        self.allDocsBtn = QPushButton("📄 Все документы")
+        self.allDocsBtn = QPushButton("Все документы")
         self.allDocsBtn.setStyleSheet(self._get_button_style())
         self.allDocsBtn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.set_button_icon(self.allDocsBtn, "folder.svg", QSize(20, 20))
         top_layout.addWidget(self.allDocsBtn)
 
         # ScrollArea
@@ -133,34 +133,40 @@ class LeftPanel(QWidget):
 
         main_layout.addWidget(self.top_widget)
 
-        # ====================== НИЖНЯЯ ЧАСТЬ (всегда внизу) ======================
+        # НИЖНЯЯ ЧАСТЬ
         self.bottom_widget = QWidget()
         bottom_layout = QVBoxLayout(self.bottom_widget)
         bottom_layout.setContentsMargins(8, 8, 8, 12)
         bottom_layout.setSpacing(6)
 
-        self.systemBtn = QPushButton("⚙️ Система")
+        self.systemBtn = QPushButton("Система")
         self.systemBtn.setStyleSheet(self._get_button_style())
         self.systemBtn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.set_button_icon(self.systemBtn, "gear.svg", QSize(20, 20))
         bottom_layout.addWidget(self.systemBtn)
 
-        # Кнопка выхода
-        self.logoutBtn = QPushButton("Выйти")
+        self.logoutBtn = QPushButton("Выйти из аккаунта")
         self.logoutBtn.setStyleSheet(self._get_button_style())
         self.logoutBtn.setCursor(Qt.CursorShape.PointingHandCursor)
-        # Загружаем иконку
-        icon_path = os.path.join(ROOT_DIR, "icons", "logout.svg")
-        if os.path.exists(icon_path):
-            icon = QIcon(icon_path)
-            self.logoutBtn.setIcon(icon)
+        self.set_button_icon(self.logoutBtn, "logout.svg", QSize(20, 20))
         bottom_layout.addWidget(self.logoutBtn)
 
-        self.hidePanelBtn = QPushButton("◀ Скрыть панель")
+        self.hidePanelBtn = QPushButton("Скрыть панель")
         self.hidePanelBtn.setStyleSheet(self._get_collapse_button_style())
         self.hidePanelBtn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.set_button_icon(self.hidePanelBtn, "hide.svg", QSize(20, 20))
         bottom_layout.addWidget(self.hidePanelBtn)
 
         main_layout.addWidget(self.bottom_widget)
+
+    def set_button_icon(self, button, icon_name, icon_size):
+        """Устанавливает иконку для кнопки с указанным размером"""
+        icons_path = "D:/Documents/client/icons"
+        icon_path = os.path.join(icons_path, icon_name)
+        if os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+            button.setIcon(icon)
+            button.setIconSize(icon_size)
 
     def _get_button_style(self):
         return """
@@ -178,6 +184,10 @@ class LeftPanel(QWidget):
                     background-color: #3A4A54;
                     color: #DDB87A;
                 }
+                QPushButton::icon {
+                    width: 20px;
+                    height: 20px;
+                }
             """
 
     def _get_collapse_button_style(self):
@@ -193,6 +203,10 @@ class LeftPanel(QWidget):
                 }
                 QPushButton:hover {
                     background-color: #3A4A54;
+                }
+                QPushButton::icon {
+                    width: 20px;
+                    height: 20px;
                 }
             """
 
@@ -211,10 +225,13 @@ class LeftPanel(QWidget):
                 QPushButton:hover {
                     background-color: #3A4A54;
                 }
+                QPushButton::icon {
+                    width: 24px;
+                    height: 24px;
+                }
             """
 
     def _get_compact_logout_style(self):
-        """Стиль для кнопки выхода в свернутом состоянии"""
         return """
                 QPushButton {
                     background-color: transparent;
@@ -230,6 +247,10 @@ class LeftPanel(QWidget):
                 }
                 QPushButton QIcon {
                     padding: 8px;
+                }
+                QPushButton::icon {
+                    width: 24px;
+                    height: 24px;
                 }
             """
 
@@ -279,40 +300,51 @@ class LeftPanel(QWidget):
         except Exception as e:
             print(f"LeftPanel: ошибка при создании контейнера групп - {e}")
 
-    # ... (остальные методы без изменений) ...
-
     def toggle_buttons_visibility(self, visible: bool):
         """Только скрываем/показываем контент, не трогаем структуру layout"""
         # Верхние кнопки
         if hasattr(self, 'profileBtn'):
-            self.profileBtn.setText("👤 Мой профиль" if visible else "👤")
+            self.profileBtn.setText("Мой профиль" if visible else "")
             self.profileBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+            if not visible:
+                self.profileBtn.setIconSize(QSize(24, 24))
+            else:
+                self.profileBtn.setIconSize(QSize(20, 20))
 
         if hasattr(self, 'allDocsBtn'):
-            self.allDocsBtn.setText("📄 Все документы" if visible else "📄")
+            self.allDocsBtn.setText("Все документы" if visible else "")
             self.allDocsBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+            if not visible:
+                self.allDocsBtn.setIconSize(QSize(24, 24))
+            else:
+                self.allDocsBtn.setIconSize(QSize(20, 20))
 
         # Нижние кнопки
         if hasattr(self, 'systemBtn'):
-            self.systemBtn.setText("⚙️ Система" if visible else "⚙️")
+            self.systemBtn.setText("Система" if visible else "")
             self.systemBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+            if not visible:
+                self.systemBtn.setIconSize(QSize(24, 24))
+            else:
+                self.systemBtn.setIconSize(QSize(20, 20))
 
-        # Кнопка выхода - в свернутом состоянии показываем только иконку
         if hasattr(self, 'logoutBtn'):
             if visible:
-                self.logoutBtn.setText("Выйти")
+                self.logoutBtn.setText("Выйти из аккаунта")
                 self.logoutBtn.setStyleSheet(self._get_button_style())
                 self.logoutBtn.setIconSize(QSize(20, 20))
             else:
                 self.logoutBtn.setText("")
                 self.logoutBtn.setStyleSheet(self._get_compact_logout_style())
-                self.logoutBtn.setIconSize(QSize(32, 32))  # Увеличиваем иконку в свернутом состоянии
+                self.logoutBtn.setIconSize(QSize(24, 24))
 
         if hasattr(self, 'hidePanelBtn'):
-            self.hidePanelBtn.setText("◀ Скрыть панель" if visible else "▶")
             if visible:
+                self.hidePanelBtn.setText("Скрыть панель")
                 self.hidePanelBtn.setStyleSheet(self._get_collapse_button_style())
+                self.hidePanelBtn.setIconSize(QSize(20, 20))
             else:
+                self.hidePanelBtn.setText("")
                 self.hidePanelBtn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
@@ -320,14 +352,18 @@ class LeftPanel(QWidget):
                 border: none;
                 border-radius: 5px;
                 padding: 10px;
-                font-size: 20px;
                 text-align: center;
                 min-height: 42px;
             }
             QPushButton:hover {
                 background-color: #3A4A54;
             }
+            QPushButton::icon {
+                width: 24px;
+                height: 24px;
+            }
         """)
+                self.hidePanelBtn.setIconSize(QSize(24, 24))
 
         # Главное — скрываем только содержимое групп
         if hasattr(self, 'scrollArea'):
@@ -358,7 +394,6 @@ class LeftPanel(QWidget):
         """Обработчик клика по кнопке выхода"""
         print("Нажата кнопка выхода из аккаунта")
         self.logout_clicked.emit()
-
 
     def add_group(self, group_name: str) -> DirectionGroup:
         """Добавляет новую группу направлений"""
@@ -437,13 +472,12 @@ class LeftPanel(QWidget):
         self.collapse_animation.stop()
 
         if self.is_expanded:
-            # Сворачиваем - используем константы
             self.collapse_animation.setStartValue(self.EXPANDED_WIDTH)
             self.collapse_animation.setEndValue(self.COLLAPSED_WIDTH)
             self.is_expanded = False
             self.toggle_buttons_visibility(False)
+            self.update_hide_button_icon()
         else:
-            # Разворачиваем - используем константы
             self.collapse_animation.setStartValue(self.COLLAPSED_WIDTH)
             self.collapse_animation.setEndValue(self.EXPANDED_WIDTH)
             self.is_expanded = True
@@ -455,22 +489,17 @@ class LeftPanel(QWidget):
         """Обработчик завершения анимации"""
         print(f"LeftPanel: анимация завершена, ширина: {self.width()}")
 
-        # Принудительно обновляем геометрию
         self.updateGeometry()
         if self.parent():
             self.parent().update()
-
-
 
     def on_direction_clicked(self, direction_name: str, group_name: str, type_id: int = None):
         """Обработчик клика по направлению (типу документа)"""
         print(f"Выбрано направление: {direction_name} (группа: {group_name}, type_id: {type_id})")
 
         if type_id is not None:
-            # Это тип документа - отправляем сигнал с type_id
             self.type_clicked.emit(type_id, direction_name)
         else:
-            # Это обычное направление - отправляем старый сигнал
             self.direction_clicked.emit(direction_name, group_name)
 
     # ========== УПРАВЛЕНИЕ ГРУППАМИ ==========
@@ -500,6 +529,24 @@ class LeftPanel(QWidget):
     def get_group_by_name(self, group_name: str) -> DirectionGroup:
         """Получить группу по имени"""
         return self.groups.get(group_name)
+
+    def update_hide_button_icon(self):
+        """Обновляет иконку кнопки скрытия панели в зависимости от состояния"""
+        if hasattr(self, 'hidePanelBtn'):
+            icons_path = "D:/Documents/client/icons"
+
+            if self.is_expanded:
+                # Панель развернута - показываем стрелку влево (свернуть)
+                icon_file = "hide.svg"  # Стрелка влево
+            else:
+                # Панель свернута - показываем стрелку вправо (развернуть)
+                icon_file = "show.svg"  # Стрелка вправо
+
+            icon_path = os.path.join(icons_path, icon_file)
+            if os.path.exists(icon_path):
+                icon = QIcon(icon_path)
+                self.hidePanelBtn.setIcon(icon)
+                self.hidePanelBtn.setIconSize(QSize(20, 20) if self.is_expanded else QSize(24, 24))
 
 
 # Для тестирования

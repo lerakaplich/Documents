@@ -359,13 +359,14 @@ class SystemTab(QWidget):
         self.organizations_page = OrganizationsPage()
         self.tabWidget.addTab(self.organizations_page, "Организации")
 
+    # В методе create_structure_tabs замените:
+
     def create_structure_tabs(self):
         """Создание единой вкладки для структуры с иерархическим отображением"""
         # Создаем одну страницу со всей структурой
         page = DepartmentPage(
-            tab_name="Структура",
-            structure_data=self.structure_data,
-            parent=self
+            parent=self,
+            structure_data=self.structure_data
         )
         self.tabWidget.addTab(page, "Структура")
 

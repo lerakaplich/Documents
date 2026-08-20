@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="76" y="390" width="40" height="40" fill="#CCAB6E"/>
+<path d="M450 40C484.242 40 512 67.7583 512 102V450C512 484.242 484.242 512 450 512H62C27.7583 512 0 484.242 0 450V102C2.31964e-06 67.7583 27.7583 40 62 40H450ZM58 82C48.0589 82 40 90.0589 40 100V452C40 461.941 48.0589 470 58 470H454C463.941 470 472 461.941 472 452V100C472 90.0589 463.941 82 454 82H58Z" fill="#CCAB6E"/>
+<rect x="31" y="148" width="451" height="42" fill="#CCAB6E"/>
+<path d="M76 230H116V270H76V230Z" fill="#CCAB6E"/>
+<path d="M156 390H196V430H156V390Z" fill="#CCAB6E"/>
+<path d="M236 390H276V430H236V390Z" fill="#CCAB6E"/>
+<path d="M236 310H276V350H236V310Z" fill="#CCAB6E"/>
+<path d="M236 230H276V270H236V230Z" fill="#CCAB6E"/>
+<path d="M316 390H356V430H316V390Z" fill="#CCAB6E"/>
+<path d="M316 310H356V350H316V310Z" fill="#CCAB6E"/>
+<path d="M396 310H436V350H396V310Z" fill="#CCAB6E"/>
+<path d="M396 230H436V270H396V230Z" fill="#CCAB6E"/>
+<path d="M316 230H356V270H316V230Z" fill="#CCAB6E"/>
+<path d="M388 80H428V120H388V80Z" fill="#CCAB6E"/>
+<path d="M84 80H124V120H84V80Z" fill="#CCAB6E"/>
+<path d="M84 0H124V40H84V0Z" fill="#CCAB6E"/>
+<path d="M388 0H428V40H388V0Z" fill="#CCAB6E"/>
+<rect x="156" y="310" width="40" height="40" fill="#CCAB6E"/>
+<rect x="156" y="230" width="40" height="40" fill="#CCAB6E"/>
+<rect x="76" y="310" width="40" height="40" fill="#CCAB6E"/>
+</svg>
