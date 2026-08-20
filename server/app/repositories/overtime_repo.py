@@ -1,9 +1,9 @@
 from datetime import date, time
 
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from server.app.database.employee_models import Overtime, EmployeePosition, Department
+from server.app.database.employee_models import Overtime, EmployeePosition, Department, Employee
 
 
 class OvertimeRepository:
@@ -44,11 +44,55 @@ class OvertimeRepository:
         await self.db.commit()
         return result.scalar_one_or_none()
 
-    async def get_by_employee_id(self, employee_id: int):
-        result = await self.db.execute(
-            select(Overtime).where(Overtime.employee_id == employee_id).order_by(Overtime.overtime_date.desc())
+    async def get_by_employee_id_paginated(
+            self,
+            employee_id: int,
+            start_date: date,
+            end_date: date,
+            page: int = 1,
+            size: int = 20,
+    ):
+        full_name_expr = func.concat(
+            Employee.last_name, ' ',
+            Employee.first_name, ' ',
+            func.coalesce(Employee.patronymic, '')
+        ).label("full_name")
+
+        where_clause = (
+                (Overtime.employee_id == employee_id) &
+                (Overtime.overtime_date.between(start_date, end_date))
         )
-        return result.scalars().all()
+
+        # 1. Подсчет общего количества
+        count_stmt = select(func.count()).select_from(Overtime).where(where_clause)
+        total = await self.db.scalar(count_stmt) or 0
+
+        # 2. Получение страницы данных
+        offset = (page - 1) * size
+        stmt = (
+            select(Overtime, full_name_expr)
+            .join(Employee, Overtime.employee_id == Employee.id)
+            .where(where_clause)
+            .order_by(Overtime.overtime_date.desc())
+            .offset(offset)
+            .limit(size)
+        )
+
+        result = await self.db.execute(stmt)
+
+        items = []
+        for ot_obj, full_name in result.all():
+            items.append({
+                "id": ot_obj.id,
+                "employee_id": ot_obj.employee_id,
+                "overtime_date": ot_obj.overtime_date,
+                "overtime_start": ot_obj.overtime_start,
+                "overtime_end": ot_obj.overtime_end,
+                "note_text": ot_obj.note_text,
+                "full_name": full_name.strip(),
+            })
+
+        return items, total
 
     async def get_by_dept_id(self, dept_id: int):
         # 1. Получаем hierarchy_path целевого отдела
@@ -88,9 +132,52 @@ class OvertimeRepository:
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
-    async def get_all(self):
-        result = await self.db.execute(select(Overtime).order_by(Overtime.overtime_date.desc()))
-        return result.scalars().all()
+    async def get_all(
+            self,
+            start_date: date,
+            end_date: date,
+            page: int = 1,
+            size: int = 20
+    ):
+        full_name_expr = func.concat(
+            Employee.last_name, ' ',
+            Employee.first_name, ' ',
+            func.coalesce(Employee.patronymic, '')
+        ).label("full_name")
+
+        # Базовый фильтр по диапазону дат
+        where_clause = Overtime.overtime_date.between(start_date, end_date)
+
+        # 1. Считаем общее количество подходящих записей
+        count_stmt = select(func.count()).select_from(Overtime).where(where_clause)
+        total = await self.db.scalar(count_stmt) or 0
+
+        # 2. Выбираем пагинированную страницу с JOIN ФИО
+        offset = (page - 1) * size
+        stmt = (
+            select(Overtime, full_name_expr)
+            .join(Employee, Overtime.employee_id == Employee.id)
+            .where(where_clause)
+            .order_by(Overtime.overtime_date.desc())
+            .offset(offset)
+            .limit(size)
+        )
+
+        result = await self.db.execute(stmt)
+
+        items = []
+        for ot_obj, full_name in result.all():
+            items.append({
+                "id": ot_obj.id,
+                "employee_id": ot_obj.employee_id,
+                "overtime_date": ot_obj.overtime_date,
+                "overtime_start": ot_obj.overtime_start,
+                "overtime_end": ot_obj.overtime_end,
+                "note_text": ot_obj.note_text,
+                "full_name": full_name.strip()
+            })
+
+        return items, total
 
     async def delete(self, ot_id: int):
         result = await self.db.execute(
