@@ -14,7 +14,7 @@ class ProfileInfo:
         self.current_phone_raw = ""
         self.current_email_raw = ""
         self.department_rows = []
-        self.http_client = None  # Будет установлен из ProfileForm
+        self.http_client = None
 
         # Виджеты
         self.infoFrame = None
@@ -94,7 +94,6 @@ class ProfileInfo:
             layout.setContentsMargins(0, 0, 0, 0)
             self.infoFrame.setLayout(layout)
         else:
-            # Очищаем layout, но сохраняем стили
             while layout.count():
                 item = layout.takeAt(0)
                 widget = item.widget()
@@ -103,8 +102,8 @@ class ProfileInfo:
                 if item.layout():
                     item.layout().deleteLater()
 
-        title_style = "font-size: 24px; color: black; background-color: transparent;"
-        value_style = "font-size: 24px; color: black; background-color: transparent;"
+        title_style = "font-size: 24px; color: #333; background-color: transparent; font-weight: 600;"
+        value_style = "font-size: 24px; color: #333; background-color: transparent;"
         label_style = "font-size: 24px; color: #555; background-color: transparent; font-weight: 500;"
 
         # Должность
@@ -115,17 +114,14 @@ class ProfileInfo:
         layout.addRow(label_pos_title, label_pos_value)
         self.label_position_value = label_pos_value
 
-        # Подразделения - древовидная структура
+        # Подразделения - без отступов
         self.department_rows = []
 
         if department_chain and len(department_chain) > 0:
-            # Отображаем все отделы в цепочке
-            for idx, (dept_type, dept_name) in enumerate(department_chain):
-                # Добавляем отступы для вложенности
-                indent = "  " * idx
-                title_text = f"{indent}{dept_type}:"
-
-                title = QLabel(title_text)
+            print(f"📋 Отображаем цепочку подразделений: {department_chain}")
+            for dept_type, dept_name in department_chain:
+                # Без отступов
+                title = QLabel(f"{dept_type}:")
                 title.setStyleSheet(label_style)
                 title.setWordWrap(True)
 
@@ -135,8 +131,9 @@ class ProfileInfo:
 
                 layout.addRow(title, value)
                 self.department_rows.append((title, value))
+                print(f"  ✅ Добавлен ряд: {dept_type} -> {dept_name}")
         else:
-            # Если цепочка пуста - показываем отдел напрямую (из department_id)
+            print("⚠️ Цепочка подразделений пуста")
             title = QLabel("Подразделение:")
             title.setStyleSheet(label_style)
             value = QLabel("Не указано")
