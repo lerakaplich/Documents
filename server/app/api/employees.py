@@ -7,14 +7,6 @@ from server.app.services.employees.employee_service import EmployeeService
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
 
-@router.get("/departments/{department_id}/staff", response_model=list[EmployeeRead])
-async def get_department_staff(
-    department_id: int,
-    service: EmployeeService = Depends(get_employee_service)
-):
-    """Список сотрудников в конкретном подразделении"""
-    return await service.get_staff_by_department(department_id)
-
 @router.get("/all", response_model=list[EmployeeListRead])
 async def get_all_employees(
     page: int = 1,

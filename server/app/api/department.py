@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends
-from server.app.deps import get_dept_service, get_current_user
+from server.app.deps import get_dept_service, get_current_user, get_employee_service
 from server.app.schemas.org import DepartmentRead, DepartmentCreate, DepartmentUpdate, DepartmentMove
-from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.schemas.user_schemas.employee_dto import CurrentUser, EmployeeRead
+from server.app.services.employees.employee_service import EmployeeService
 from server.app.services.org.department_service import DepartmentService
 
 router = APIRouter(prefix="/departments", tags=["Departments"])
@@ -17,6 +18,14 @@ async def create_department(
 ):
     """Создание нового подразделения с проверкой связей"""
     return await service.create_department(current_user, data)
+
+@router.get("/{department_id}/staff", response_model=list[EmployeeRead])
+async def get_department_staff(
+    department_id: int,
+    service: EmployeeService = Depends(get_employee_service)
+):
+    """Список сотрудников в конкретном подразделении"""
+    return await service.get_staff_by_department(department_id)
 
 @router.patch("/{dept_id}", response_model=DepartmentRead)
 async def update_department(
