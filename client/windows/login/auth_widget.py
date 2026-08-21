@@ -41,6 +41,7 @@ class BelarusianPhoneValidator(QValidator):
 
         return f"+375 ({c_code}) {p1}-{p2}-{p3}"
 
+
 class LoginWorker(QObject):
     """Рабочий поток для выполнения запроса входа"""
     finished = pyqtSignal(dict)
@@ -98,6 +99,10 @@ class AuthWidget(QWidget):
         self.eye_closed_path = os.path.join(self.root_dir, "icons", "eye-closed.svg")
         self.eye_open_path = os.path.join(self.root_dir, "icons", "eye-open.svg")
 
+        # Пути к иконкам для чекбокса
+        self.cb_unchecked_path = os.path.join(self.root_dir, "icons", "cb_unchecked.svg")
+        self.cb_checked_path = os.path.join(self.root_dir, "icons", "cb_checked.svg")
+
         # --- НАСТРОЙКА ВВОДА ТЕЛЕФОНА С МАСКОЙ ---
         if hasattr(self, 'phoneInput'):
             self.phoneInput.setInputMask("+375 (99) 999-99-99;_")
@@ -122,11 +127,13 @@ class AuthWidget(QWidget):
             self.togglePasswordButton.clicked.connect(self._toggle_password_visibility)
             self._update_eye_icon()
 
+        # Настройка иконок для чекбокса
+        if hasattr(self, 'rememberCheckBox'):
+            self._setup_checkbox_icons()
+            self.rememberCheckBox.stateChanged.connect(self._on_remember_me_changed)
+
         if hasattr(self, 'loginButton'):
             self.loginButton.clicked.connect(self._on_login_clicked)
-
-        if hasattr(self, 'rememberCheckBox'):
-            self.rememberCheckBox.stateChanged.connect(self._on_remember_me_changed)
 
         if hasattr(self, 'forgotPasswordButton'):
             self.forgotPasswordButton.setEnabled(False)
@@ -149,6 +156,58 @@ class AuthWidget(QWidget):
                 }
             """)
             self.forgotPasswordButton.clicked.connect(self._on_forgot_password_clicked)
+
+    def _setup_checkbox_icons(self):
+        """Настройка иконок для чекбокса через QSS с относительными путями"""
+        if hasattr(self, 'rememberCheckBox'):
+            # Проверяем существование файлов иконок
+            if os.path.exists(self.cb_unchecked_path) and os.path.exists(self.cb_checked_path):
+                # Используем QSS с путями, экранируя обратные слэши для Windows
+                unchecked_path = self.cb_unchecked_path.replace('\\', '/')
+                checked_path = self.cb_checked_path.replace('\\', '/')
+
+                style = f"""
+                    QCheckBox {{
+                        color: #1B232A;
+                        font-size: 21px;
+                        background: transparent;
+                        spacing: 12px;
+                        border: none;
+                    }}
+
+                    QCheckBox::indicator {{
+                        width: 28px;
+                        height: 28px;
+                    }}
+
+                    QCheckBox::indicator:unchecked {{
+                        image: url({unchecked_path});
+                    }}
+
+                    QCheckBox::indicator:checked {{
+                        image: url({checked_path});
+                    }}
+
+                    QCheckBox::indicator:hover:unchecked {{
+                        image: url({unchecked_path});
+                    }}
+
+                    QCheckBox::indicator:hover:checked {{
+                        image: url({checked_path});
+                    }}
+
+                    QCheckBox::indicator:pressed:unchecked {{
+                        image: url({unchecked_path});
+                    }}
+
+                    QCheckBox::indicator:pressed:checked {{
+                        image: url({checked_path});
+                    }}
+                """
+                self.rememberCheckBox.setStyleSheet(style)
+            else:
+                logger.warning(
+                    f"Файлы иконок для чекбокса не найдены: {self.cb_unchecked_path}, {self.cb_checked_path}")
 
     def _get_clean_phone(self) -> str:
         """Возвращает чистые цифры из поля ввода (например: 375291234567)"""

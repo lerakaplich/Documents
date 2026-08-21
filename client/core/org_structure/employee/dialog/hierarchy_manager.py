@@ -2,7 +2,17 @@
 Модуль управления иерархической структурой организаций и подразделений
 """
 
+import os
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QComboBox, QCheckBox
+
+
+# Определяем путь к папке с иконками
+# Текущий файл: client/windows/system/employees/employee_dialog.py (или подобное)
+# Поднимаемся на нужное количество уровней к корню проекта
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+ICONS_DIR = os.path.join(ROOT_DIR, "client", "icons")
+# Для корректного отображения в CSS используем прямые слеши
+ICONS_PATH_CSS = ICONS_DIR.replace('\\', '/')
 
 
 class HierarchyManager:
@@ -191,55 +201,59 @@ class HierarchyManager:
         label.setProperty("base_text", f"{level_name}:")
 
         combo = QComboBox()
-        combo.setStyleSheet("""
-            QComboBox {
+
+        # Используем относительный путь к иконке через f-строку
+        down_arrow_path = os.path.join(ICONS_DIR, "down_arrow.svg").replace('\\', '/')
+
+        combo.setStyleSheet(f"""
+            QComboBox {{
                 border: 1px solid #dee2e6;
                 border-radius: 6px;
                 padding: 5px;
                 background-color: white;
                 color: #1B232A;
                 font-size: 13px;
-            }
-            QComboBox:hover {
+            }}
+            QComboBox:hover {{
                 border-color: #ccab6e;
-            }
-            QComboBox:focus {
+            }}
+            QComboBox:focus {{
                 border: 2px solid #ccab6e;
-            }
-            QComboBox::drop-down {
+            }}
+            QComboBox::drop-down {{
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
                 width: 30px;
                 border: none;
-            }
-            QComboBox::down-arrow {
-                image: url(D:/Documents/client/icons/down_arrow.svg);
+            }}
+            QComboBox::down-arrow {{
+                image: url("{down_arrow_path}");
                 width: 16px;
                 height: 16px;
                 margin-right: 6px;
-            }
-            QComboBox QAbstractItemView {
+            }}
+            QComboBox QAbstractItemView {{
                 border-radius: 6px;
                 background-color: white;
                 color: #1B232A;
                 padding: 4px;
                 outline: none;
                 border: 1px solid #ccab6e;
-            }
-            QComboBox QAbstractItemView::item {
+            }}
+            QComboBox QAbstractItemView::item {{
                 padding: 8px;
                 color: #1B232A;
                 border: none;
                 outline: none;
-            }
-            QComboBox QAbstractItemView::item:hover {
+            }}
+            QComboBox QAbstractItemView::item:hover {{
                 background-color: #e3f2fd;
                 color: #1B232A;
-            }
-            QComboBox QAbstractItemView::item:selected {
+            }}
+            QComboBox QAbstractItemView::item:selected {{
                 background-color: #e3f2fd;
                 color: #1B232A;
-            }
+            }}
         """)
 
         combo.addItem("Не выбрано", None)

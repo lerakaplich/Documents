@@ -39,6 +39,12 @@ class DocumentsPanel(QWidget):
     type_changed = pyqtSignal(int)
     direction_changed = pyqtSignal(str)
 
+    # Кэш для данных
+    _cached_organizations = None
+    _cached_employees = None
+    _cached_tags = None
+    _cached_departments = None
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -54,7 +60,121 @@ class DocumentsPanel(QWidget):
         self.load_all_documents()
         self.documents_table.document_action_triggered.connect(self._on_document_action)
 
+        # Загружаем справочные данные
+        self._load_reference_data()
+
+    # ========== ЗАГРУЗКА СПРАВОЧНЫХ ДАННЫХ ==========
+
+    def _load_reference_data(self):
+        """Загрузка справочных данных через сервисы"""
+        try:
+            from client.core.state.app_state import AppState
+            app_state = AppState()
+            http_client = app_state.http_client
+
+            if not http_client:
+                print("[DocumentsPanel] HTTP клиент не доступен")
+                return
+
+            # 1. Загружаем организации через OrgService
+            from client.services.org_service import OrgService
+            org_service = OrgService(http_client)
+            self._cached_organizations = org_service.get_all_organizations()
+            print(f"[DocumentsPanel] Загружено организаций: {len(self._cached_organizations)}")
+
+            # 2. Загружаем сотрудников через EmployeeService
+            from client.services.employee_service import EmployeeService
+            emp_service = EmployeeService(http_client)
+            employees_raw = emp_service.get_all_employees()  # ← убрал limit=1000
+            self._cached_employees = self._transform_employees(employees_raw)
+            print(f"[DocumentsPanel] Загружено сотрудников: {len(self._cached_employees)}")
+
+            # 3. Загружаем теги через TagService
+            from client.services.tag_service import TagService
+            tag_service = TagService(http_client)
+            self._cached_tags = tag_service.get_all_tags()
+            print(f"[DocumentsPanel] Загружено тегов: {len(self._cached_tags)}")
+
+            # 4. Подразделения (если есть эндпоинт)
+            try:
+                from client.services.department_service import DepartmentService
+                dept_service = DepartmentService(http_client)
+                self._cached_departments = dept_service.get_all_departments()
+                print(f"[DocumentsPanel] Загружено подразделений: {len(self._cached_departments)}")
+            except Exception as e:
+                print(f"[DocumentsPanel] Не удалось загрузить подразделения: {e}")
+                self._cached_departments = []
+
+        except Exception as e:
+            print(f"[DocumentsPanel] Ошибка загрузки справочных данных: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _transform_employees(self, employees_raw: list) -> list:
+        """Трансформирует сотрудников из API в формат для UI"""
+        result = []
+        for emp in employees_raw:
+            # Если у сотрудника есть positions - берем первую позицию
+            positions = emp.get('positions', [])
+            primary_position = positions[0] if positions else {}
+
+            patronymic = f" {emp.get('patronymic', '')}" if emp.get('patronymic') else ""
+            full_name = f"{emp.get('last_name', '')} {emp.get('first_name', '')}{patronymic}"
+
+            result.append({
+                'id': emp.get('id'),
+                'name': full_name.strip(),
+                'full_name': full_name.strip(),
+                'last_name': emp.get('last_name', ''),
+                'first_name': emp.get('first_name', ''),
+                'patronymic': emp.get('patronymic', ''),
+                'department_id': primary_position.get('department_id'),
+                'organization_id': primary_position.get('organization_id'),
+                'is_leader': primary_position.get('is_leader', False),
+                'position_name': primary_position.get('position_name', ''),
+                'service_number': emp.get('service_number', ''),
+                'phone_number': emp.get('phone_number', ''),
+                'email': emp.get('email', ''),
+            })
+        return result
+
+    # ========== МЕТОДЫ ПОЛУЧЕНИЯ ДАННЫХ ==========
+
+    def _get_organizations_data(self) -> list:
+        """Получает список организаций из кэша или загружает"""
+        if self._cached_organizations is not None:
+            return self._cached_organizations
+
+        # Если кэш пуст - загружаем
+        self._load_reference_data()
+        return self._cached_organizations or []
+
+    def _get_employees_data(self) -> list:
+        """Получает список сотрудников из кэша или загружает"""
+        if self._cached_employees is not None:
+            return self._cached_employees
+
+        self._load_reference_data()
+        return self._cached_employees or []
+
+    def _get_tags_data(self) -> list:
+        """Получает список тегов из кэша или загружает"""
+        if self._cached_tags is not None:
+            return self._cached_tags
+
+        self._load_reference_data()
+        return self._cached_tags or []
+
+    def _get_departments_data(self) -> list:
+        """Получает список отделов из кэша или загружает"""
+        if self._cached_departments is not None:
+            return self._cached_departments
+
+        self._load_reference_data()
+        return self._cached_departments or []
+
     # ========== UI И КНОПКИ ==========
+
     def _init_ui(self):
         ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "table", "documents_panel.ui")
         loadUi(ui_path, self)
@@ -112,6 +232,7 @@ class DocumentsPanel(QWidget):
             )
 
     # ========== ЛОГИКА ПЛАВАЮЩЕЙ КНОПКИ ==========
+
     def position_floating_button(self):
         if hasattr(self, 'floating_btn'):
             margin = 30
@@ -129,18 +250,21 @@ class DocumentsPanel(QWidget):
         super().resizeEvent(event)
         self.position_floating_button()
 
-    # client/windows/documents/table/documents_panel.py
-
-    # Измените импорт
-
     def on_add_document_clicked(self):
         """Обработка нажатия на плавающую кнопку '+'"""
         try:
             current_user = self.controller.get_current_user()
+
+            # Получаем реальные данные
             organizations = self._get_organizations_data()
             departments = self._get_departments_data()
             employees = self._get_employees_data()
             tags = self._get_tags_data()
+
+            print(f"[DocumentsPanel] Передаем в диалог:")
+            print(f"  - Организаций: {len(organizations)}")
+            print(f"  - Сотрудников: {len(employees)}")
+            print(f"  - Тегов: {len(tags)}")
 
             # Создаем универсальный диалог в режиме 'create'
             self.document_dialog = DocumentDialog(
@@ -165,33 +289,11 @@ class DocumentsPanel(QWidget):
             import traceback
             traceback.print_exc()
 
-    def _get_tags_data(self) -> list:
-        """Получает список доступных тегов из контроллера"""
-        try:
-            if hasattr(self.controller, 'get_tags'):
-                return self.controller.get_tags()
-            else:
-                # Возвращаем теги из конфига
-                from client.core.data.document_data import DocumentDataConfig
-                # Если есть метод в конфиге
-                if hasattr(DocumentDataConfig, 'get_tags_data'):
-                    return DocumentDataConfig.get_tags_data()
-                # Или возвращаем тестовые данные
-                return [
-                    {'id': 1, 'name': 'Срочно', 'priority': 'urgent', 'color': '#FF0000'},
-                    {'id': 2, 'name': 'Важно', 'priority': 'important', 'color': '#FFA500'},
-                    {'id': 3, 'name': 'Обычный', 'priority': 'normal', 'color': '#808080'},
-                    {'id': 4, 'name': 'Финансы', 'priority': 'important', 'color': '#008000'},
-                    {'id': 5, 'name': 'Кадры', 'priority': 'normal', 'color': '#0000FF'},
-                ]
-        except Exception as e:
-            print(f"[DocumentsPanel] Ошибка получения тегов: {e}")
-            return []
+    # ========== ОСТАЛЬНЫЕ МЕТОДЫ (без изменений) ==========
 
     def _handle_edit_document(self, document_data: dict):
         """Открывает диалог редактирования документа"""
         try:
-            # Получаем полные данные документа
             full_document = self.controller.get_full_document_for_edit(document_data)
 
             if not full_document:
@@ -203,7 +305,6 @@ class DocumentsPanel(QWidget):
             employees = self._get_employees_data()
             tags = self._get_tags_data()
 
-            # Используем тот же диалог, но в режиме 'edit'
             self.document_dialog = DocumentDialog(
                 parent=self,
                 mode='edit',
@@ -227,19 +328,11 @@ class DocumentsPanel(QWidget):
             traceback.print_exc()
             QMessageBox.critical(self, "Ошибка", f"Не удалось открыть редактор: {str(e)}")
 
-    # client/windows/documents/table/documents_panel.py
-
     def _on_document_updated(self, updated_data: dict):
-        """
-        Обработка обновления документа
-
-        Args:
-            updated_data: обновленные данные документа
-        """
+        """Обработка обновления документа"""
         try:
             print(f"[DocumentsPanel] Обновление документа: {updated_data}")
 
-            # Сохраняем через контроллер
             success = self.controller.update_document(updated_data)
 
             if success:
@@ -248,7 +341,6 @@ class DocumentsPanel(QWidget):
                     "Успешно",
                     "Документ успешно обновлен!"
                 )
-                # Обновляем таблицу
                 self.refresh()
             else:
                 QMessageBox.warning(
@@ -265,88 +357,15 @@ class DocumentsPanel(QWidget):
                 "Ошибка",
                 f"Произошла ошибка при обновлении: {str(e)}"
             )
-    def _get_organizations_data(self) -> list:
-        """Получает список организаций из контроллера"""
-        try:
-            if hasattr(self.controller, 'get_organizations'):
-                return self.controller.get_organizations()
-            # Если метод отсутствует, пробуем получить через репозиторий
-            elif hasattr(self.controller, 'organization_repo'):
-                return self.controller.organization_repo.get_all()
-            else:
-                # Возвращаем тестовые данные для отладки
-                print("[DocumentsPanel] Используются тестовые данные организаций")
-                return [
-                    {"id": 1, "name": "ОАО МАЗ", "unp": "123456789"},
-                    {"id": 2, "name": "ОАО БелАЗ", "unp": "987654321"},
-                    {"id": 3, "name": "ОАО Гомсельмаш", "unp": "456789123"},
-                ]
-        except Exception as e:
-            print(f"[DocumentsPanel] Ошибка получения организаций: {e}")
-            return []
-
-    def _get_departments_data(self) -> list:
-        """Получает список отделов из контроллера"""
-        try:
-            if hasattr(self.controller, 'get_departments'):
-                return self.controller.get_departments()
-            elif hasattr(self.controller, 'department_repo'):
-                return self.controller.department_repo.get_all()
-            else:
-                # Тестовые данные
-                print("[DocumentsPanel] Используются тестовые данные отделов")
-                return [
-                    {"id": 1, "organization_id": 1, "parent_id": None, "name": "Заводоуправление", "number": 1},
-                    {"id": 2, "organization_id": 1, "parent_id": None, "name": "Сборочный цех", "number": 2},
-                    {"id": 3, "organization_id": 1, "parent_id": 2, "name": "Участок 1", "number": 1},
-                    {"id": 4, "organization_id": 1, "parent_id": 2, "name": "Участок 2", "number": 2},
-                    {"id": 5, "organization_id": 2, "parent_id": None, "name": "Главная дирекция", "number": 1},
-                ]
-        except Exception as e:
-            print(f"[DocumentsPanel] Ошибка получения отделов: {e}")
-            return []
-
-    def _get_employees_data(self) -> list:
-        """Получает список сотрудников из контроллера"""
-        try:
-            if hasattr(self.controller, 'get_employees'):
-                return self.controller.get_employees()
-            elif hasattr(self.controller, 'employee_repo'):
-                return self.controller.employee_repo.get_all()
-            else:
-                # Тестовые данные
-                print("[DocumentsPanel] Используются тестовые данные сотрудников")
-                return [
-                    {"id": 1, "last_name": "Иванов", "first_name": "Иван", "patronymic": "Иванович",
-                     "name": "Иванов И.И.", "positions": [{"department_id": 1}]},
-                    {"id": 2, "last_name": "Петров", "first_name": "Петр", "patronymic": "Петрович",
-                     "name": "Петров П.П.", "positions": [{"department_id": 1}]},
-                    {"id": 3, "last_name": "Сидоров", "first_name": "Сидор", "patronymic": "Сидорович",
-                     "name": "Сидоров С.С.", "positions": [{"department_id": 2}]},
-                    {"id": 4, "last_name": "Кузнецов", "first_name": "Алексей", "patronymic": "Алексеевич",
-                     "name": "Кузнецов А.А.", "positions": [{"department_id": 3}]},
-                    {"id": 5, "last_name": "Смирнова", "first_name": "Елена", "patronymic": "Владимировна",
-                     "name": "Смирнова Е.В.", "positions": [{"department_id": 4}]},
-                    {"id": 6, "last_name": "Фёдоров", "first_name": "Фёдор", "patronymic": "Фёдорович",
-                     "name": "Фёдоров Ф.Ф.", "positions": [{"department_id": 5}]},
-                ]
-        except Exception as e:
-            print(f"[DocumentsPanel] Ошибка получения сотрудников: {e}")
-            return []
 
     def _on_document_created_success(self, document_data: dict):
-        """Слот, который вызывается, когда документ успешно сохранен в диалоге"""
+        """Слот, который вызывается, когда документ успешно сохранен"""
         print(f"[DocumentsPanel] Документ успешно создан: {document_data}")
-        # Обновляем таблицу, чтобы увидеть новый документ
         self.refresh()
-        # Закрываем окно создания
-        if hasattr(self, 'create_doc_window'):
-            self.create_doc_window.close()
 
     def on_document_created(self, document_data: dict):
         """Обработка события создания нового документа"""
         try:
-            # Через контроллер сохраняем документ
             success = self.controller.create_document(document_data)
 
             if success:
@@ -355,7 +374,6 @@ class DocumentsPanel(QWidget):
                     "Успешно",
                     "Документ успешно создан и добавлен в список!"
                 )
-                # Обновляем таблицу
                 self.refresh()
             else:
                 QMessageBox.warning(
@@ -431,7 +449,7 @@ class DocumentsPanel(QWidget):
             self._handle_comment_document(document_data)
         elif action_type == "history":
             self._handle_history_document(document_data)
-        elif action_type == "edit":  # <-- ДОБАВИТЬ ЭТОТ БЛОК
+        elif action_type == "edit":
             self._handle_edit_document(document_data)
         elif action_type == "delete":
             self._handle_delete_document(document_data)
@@ -446,8 +464,6 @@ class DocumentsPanel(QWidget):
             self._handle_pin_toggle_document(document_data)
         else:
             print(f"[DocumentsPanel] Неизвестное действие: {action_type}")
-
-    # client/windows/documents/table/documents_panel.py
 
     def _handle_delete_document(self, document_data: dict):
         """Обработка удаления документа"""
@@ -475,23 +491,12 @@ class DocumentsPanel(QWidget):
                 QMessageBox.critical(self, "Ошибка", f"Ошибка удаления: {str(e)}")
 
     def _handle_attachment_document(self, document_data: dict):
-        """Обработка прикрепления вложения"""
-        QMessageBox.information(
-            self,
-            "Вложения",
-            "Функция вложений будет добавлена в следующей версии"
-        )
+        QMessageBox.information(self, "Вложения", "Функция вложений будет добавлена в следующей версии")
 
     def _handle_reply_attachment_document(self, document_data: dict):
-        """Обработка ответного вложения"""
-        QMessageBox.information(
-            self,
-            "Ответные вложения",
-            "Функция ответных вложений будет добавлена в следующей версии"
-        )
+        QMessageBox.information(self, "Ответные вложения", "Функция ответных вложений будет добавлена в следующей версии")
 
     def _handle_read_status_document(self, document_data: dict, is_read: bool):
-        """Обработка изменения статуса прочтения"""
         doc_id = document_data.get('id')
         if hasattr(self.controller, 'change_read_status'):
             success = self.controller.change_read_status(doc_id, is_read)
@@ -500,12 +505,10 @@ class DocumentsPanel(QWidget):
                 status_text = "прочитанным" if is_read else "непрочитанным"
                 QMessageBox.information(self, "Успешно", f"Документ отмечен как {status_text}")
         else:
-            # Локальное обновление статуса
             self.documents_table.update_document_read_status(doc_id, is_read)
             QMessageBox.information(self, "Информация", "Статус прочтения обновлен локально")
 
     def _handle_pin_toggle_document(self, document_data: dict):
-        """Обработка закрепления/открепления документа"""
         doc_id = document_data.get('id')
         if hasattr(self.controller, 'toggle_pin_status'):
             success = self.controller.toggle_pin_status(doc_id)
@@ -513,32 +516,20 @@ class DocumentsPanel(QWidget):
                 self.refresh()
                 QMessageBox.information(self, "Успешно", "Статус закрепления обновлен")
         else:
-            # Локальное обновление
             current_pin = document_data.get('is_pinned', False)
             new_pin = not current_pin
             self.documents_table._controller.toggle_pin(doc_id, new_pin)
             QMessageBox.information(self, "Информация", "Статус закрепления обновлен локально")
 
     def _handle_history_document(self, document_data: dict):
-        """
-        Отображение диалога истории документа
-
-        Args:
-            document_data: данные документа
-        """
         try:
-            # Получаем полные данные документа с историей
             full_document_data = self.controller.get_full_document_for_history(document_data)
 
-            # Если контроллер не имеет метода, используем переданные данные
             if not full_document_data:
-                # Добавляем историю из имеющихся данных
                 full_document_data = self._enrich_document_with_history(document_data)
 
-            # Получаем текущего пользователя
             current_user = self.controller.get_current_user() if hasattr(self.controller, 'get_current_user') else {}
 
-            # Создаем и показываем диалог истории
             dialog = HistoryDialog(
                 document_data=full_document_data,
                 parent=self,
@@ -550,51 +541,25 @@ class DocumentsPanel(QWidget):
             print(f"[DocumentsPanel] Ошибка при открытии диалога истории: {e}")
             import traceback
             traceback.print_exc()
-            QMessageBox.warning(
-                self,
-                "Ошибка",
-                f"Не удалось открыть историю документа: {str(e)}"
-            )
+            QMessageBox.warning(self, "Ошибка", f"Не удалось открыть историю документа: {str(e)}")
 
     def _enrich_document_with_history(self, document_data: dict) -> dict:
-        """
-        Обогащает данные документа историей из базы данных
-
-        Args:
-            document_data: базовые данные документа
-
-        Returns:
-            dict: обогащенные данные документа с историей
-        """
         enriched_data = document_data.copy()
 
-        # Получаем историю из контроллера
         if hasattr(self.controller, 'get_document_history'):
             history = self.controller.get_document_history(document_data.get('id'))
             if history:
                 enriched_data['history'] = history
                 return enriched_data
 
-        # Если истории нет - генерируем из имеющихся данных
         enriched_data['history'] = self._generate_history_from_document(document_data)
-
         return enriched_data
 
     def _generate_history_from_document(self, document_data: dict) -> list:
-        """
-        Генерирует историю из имеющихся данных документа
-
-        Args:
-            document_data: данные документа
-
-        Returns:
-            list: список событий истории
-        """
         from datetime import datetime
 
         history = []
 
-        # Событие создания
         created_at = document_data.get('created_at')
         if created_at:
             creator = document_data.get('creator', document_data.get('author', 'Неизвестный пользователь'))
@@ -609,7 +574,6 @@ class DocumentsPanel(QWidget):
                 'created_at': created_at
             })
 
-        # Комментарии
         comments = document_data.get('comments', [])
         for comment in comments:
             author = comment.get('author_name', comment.get('author', 'Неизвестный пользователь'))
@@ -620,7 +584,6 @@ class DocumentsPanel(QWidget):
                 'created_at': comment.get('created_at', datetime.now())
             })
 
-        # Перенаправления
         redirects = document_data.get('redirects', [])
         for redirect in redirects:
             from_user = redirect.get('from_user', 'Неизвестный пользователь')
@@ -632,7 +595,6 @@ class DocumentsPanel(QWidget):
                 'created_at': redirect.get('redirected_at', datetime.now())
             })
 
-        # Изменения статуса
         status_changes = document_data.get('status_changes', [])
         for change in status_changes:
             user = change.get('user', 'Неизвестный пользователь')
@@ -644,19 +606,15 @@ class DocumentsPanel(QWidget):
                 'created_at': change.get('changed_at', datetime.now())
             })
 
-        # Сортируем по дате
         history.sort(key=lambda x: x.get('created_at', datetime.min))
-
         return history
 
     def _handle_redirect_document(self, document_data: dict):
-        """Отображение диалога перенаправления"""
         try:
             from client.windows.documents.redirect.redirect_dialog import RedirectDialog
 
             doc_id = document_data.get("id")
             current_recipients = document_data.get("delegates", [])
-
             all_employees = self.controller.get_employees_for_redirect()
 
             dialog = RedirectDialog(current_recipients, all_employees, parent=self)
@@ -674,7 +632,6 @@ class DocumentsPanel(QWidget):
             self.refresh()
 
     def _handle_comment_document(self, document_data: dict):
-        """Отображение диалога комментариев"""
         try:
             from client.windows.documents.comments.comment_dialog import CommentDialog
 

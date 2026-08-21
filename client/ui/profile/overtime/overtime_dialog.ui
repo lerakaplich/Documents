@@ -69,7 +69,6 @@ QDateEdit::drop-down, QTimeEdit::drop-down {
 
 /* Иконка календаря вместо стрелочки для QDateEdit */
 QDateEdit::down-arrow {
-    image: url(D:/Documents/client/icons/calendar_date.svg);
     width: 18px;
     height: 18px;
     margin-right: 8px;
@@ -82,20 +81,17 @@ QTimeEdit::up-button, QTimeEdit::down-button {
     background: transparent;
 }
 QTimeEdit::up-arrow {
-    image: url(D:/Documents/client/icons/up_arrow.svg);
     width: 16px;
     height: 16px;
     margin-right: 6px;
 }
 QTimeEdit::down-arrow {
-    image: url(D:/Documents/client/icons/down_arrow.svg);
     width: 16px;
     height: 16px;
     margin-right: 6px;
 }
 
 QComboBox::down-arrow {
-    image: url(D:/Documents/client/icons/down_arrow.svg);
     width: 16px;
     height: 16px;
     margin-right: 6px;

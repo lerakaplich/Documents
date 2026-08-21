@@ -5,6 +5,8 @@ from client.services.employee_service import EmployeeService
 from client.core.config import config
 import logging
 
+from client.services.tag_service import TagService
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,6 +32,7 @@ class AppState:
         self.http_client = HttpClient(self.base_url)
         self.auth_service = AuthService(self.http_client)
         self.employee_service = EmployeeService(self.http_client)
+        self.tag_service = TagService(self.http_client)  # Добавить
         self.current_user: Optional[Dict[str, Any]] = None
         self.is_authenticated = False
 

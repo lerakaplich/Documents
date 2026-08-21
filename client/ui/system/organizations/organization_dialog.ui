@@ -31,11 +31,11 @@ QCheckBox {
 QCheckBox::indicator {
     width: 18px;
     height: 18px;
-    image: url(&quot;D:/Documents/client/icons/cb_unchecked.svg&quot;);
+    image: url(../../icons/cb_unchecked.svg);
 }
 
 QCheckBox::indicator:checked {
-    image: url(&quot;D:/Documents/client/icons/cb_checked.svg&quot;);
+    image: url(../../icons/cb_checked.svg);
 }
 
 QScrollBar::vertical {
@@ -571,6 +571,8 @@ QScrollBar::sub-page:horizontal {
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

@@ -1,139 +1,171 @@
 # client/core/data/document_repository.py
-"""
-Репозиторий для работы с документами - ЕДИНЫЙ ИСТОЧНИК ДАННЫХ
-"""
 from typing import List, Dict, Any, Optional
 from client.core.data.document_data import DocumentDataConfig
+from client.services.document_service import DocumentService
 
 
 class DocumentRepository:
-    """
-    Репозиторий для работы с документами.
-    Singleton - единый источник данных для всего приложения.
-    """
-
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    """Репозиторий документов - единый источник данных"""
 
     def __init__(self):
-        if not hasattr(self, '_initialized'):
-            self._documents = DocumentDataConfig.TEST_DATA.copy()
-            self._document_types = DocumentDataConfig.DOCUMENT_TYPES.copy()
-            self._current_type_id = None  # Текущий выбранный тип
-            self._initialized = True
-            print("[DocumentRepository] Инициализирован")
+        self._documents: List[Dict[str, Any]] = []
+        self._document_types = DocumentDataConfig.DOCUMENT_TYPES
+        self._service: Optional[DocumentService] = None
+        self._initialized = False
 
-    # ========== ДОКУМЕНТЫ ==========
+    def set_service(self, service: DocumentService):
+        """Установить сервис для работы с API"""
+        self._service = service
+        print("✅ DocumentService установлен в DocumentRepository")
+
+    def initialize(self):
+        """Инициализация репозитория"""
+        if self._initialized:
+            return
+
+        if self._service:
+            # Загружаем данные с сервера
+            self._documents = self._service.get_all_documents()
+            print(f"📥 Загружено {len(self._documents)} документов с сервера")
+        else:
+            # Используем тестовые данные
+            self._documents = DocumentDataConfig._initialize_test_data()
+            print(f"📥 Используются тестовые данные: {len(self._documents)} документов")
+
+        self._initialized = True
+
+    def refresh(self):
+        """Обновить данные из API"""
+        if self._service:
+            self._documents = self._service.get_all_documents()
+            print(f"🔄 Обновлено: {len(self._documents)} документов")
+        return self._documents
+
+    # ============ ПОЛУЧЕНИЕ ДАННЫХ ============
 
     def get_all_documents(self) -> List[Dict[str, Any]]:
         """Получить все документы"""
+        if not self._initialized:
+            self.initialize()
         return self._documents.copy()
-
-    def get_documents_by_type(self, type_id: int) -> List[Dict[str, Any]]:
-        """Получить документы по типу"""
-        return [doc for doc in self._documents if doc.get('type_id') == type_id]
-
-    def get_documents_by_direction(self, direction: str) -> List[Dict[str, Any]]:
-        """Получить документы по направлению"""
-        return [doc for doc in self._documents if doc.get('direction') == direction]
 
     def get_document_by_id(self, doc_id: int) -> Optional[Dict[str, Any]]:
         """Получить документ по ID"""
         for doc in self._documents:
             if doc.get('id') == doc_id:
-                return doc.copy()
+                return doc
         return None
+
+    def get_documents_by_type(self, type_id: int) -> List[Dict[str, Any]]:
+        """Получить документы по типу"""
+        if self._service:
+            return self._service.get_documents_by_type(type_id)
+        return [doc for doc in self._documents if doc.get('type_id') == type_id]
+
+    def get_documents_by_direction(self, direction: str) -> List[Dict[str, Any]]:
+        """Получить документы по направлению"""
+        if self._service:
+            return self._service.get_documents_by_direction(direction)
+        return [doc for doc in self._documents if doc.get('direction') == direction]
 
     def search_documents(self, query: str) -> List[Dict[str, Any]]:
         """Поиск документов"""
-        if not query or len(query) < 3:
-            return self._documents.copy()
-
         query_lower = query.lower()
         results = []
-
         for doc in self._documents:
-            searchable_fields = ['title', 'reg_number', 'about', 'type_name']
-            for field in searchable_fields:
-                value = doc.get(field, '')
-                if query_lower in str(value).lower():
-                    results.append(doc)
-                    break
-
+            if (query_lower in str(doc.get('title', '')).lower() or
+                    query_lower in str(doc.get('about', '')).lower() or
+                    query_lower in str(doc.get('reg_number', '')).lower()):
+                results.append(doc)
         return results
-
-    def update_document(self, doc_id: int, data: Dict[str, Any]) -> bool:
-        """Обновить документ"""
-        for i, doc in enumerate(self._documents):
-            if doc.get('id') == doc_id:
-                self._documents[i].update(data)
-                return True
-        return False
-
-    # ========== ТИПЫ ДОКУМЕНТОВ ==========
-
-    def get_document_types(self) -> List[Dict[str, Any]]:
-        """Получить все типы документов"""
-        return self._document_types.copy()
 
     def get_document_type_by_id(self, type_id: int) -> Optional[Dict[str, Any]]:
         """Получить тип документа по ID"""
         for doc_type in self._document_types:
             if doc_type.get('id') == type_id:
-                return doc_type.copy()
+                return doc_type
         return None
 
-    def get_types_by_direction(self, direction: str) -> List[Dict[str, Any]]:
-        """Получить типы документов по направлению"""
-        type_ids = DocumentDataConfig.TYPE_DIRECTION_MAPPING.get(direction, [])
-        return [t for t in self._document_types if t.get('id') in type_ids]
+    def get_document_types(self) -> List[Dict[str, Any]]:
+        """Получить все типы документов"""
+        return self._document_types.copy()
 
-    def get_current_type_id(self) -> Optional[int]:
-        """Получить текущий выбранный тип"""
-        return self._current_type_id
+    # ============ УПРАВЛЕНИЕ ДОКУМЕНТАМИ ============
 
-    def set_current_type_id(self, type_id: Optional[int]):
-        """Установить текущий выбранный тип"""
-        self._current_type_id = type_id
+    def create_document(self, document_data: Dict[str, Any]) -> bool:
+        """Создать документ"""
+        if self._service:
+            try:
+                result = self._service.create_document(document_data)
+                if result:
+                    self._documents.append(result)
+                    return True
+            except Exception as e:
+                print(f"❌ Ошибка создания документа: {e}")
+                return False
+        else:
+            # Локальное создание
+            new_doc = document_data.copy()
+            new_doc['id'] = max([d.get('id', 0) for d in self._documents] + [0]) + 1
+            if 'created_at' not in new_doc:
+                from datetime import datetime
+                new_doc['created_at'] = datetime.now().isoformat()
+            self._documents.append(new_doc)
+            return True
 
-    # ========== ДЛЯ ЛЕВОЙ ПАНЕЛИ ==========
+    def update_document(self, doc_id: int, document_data: Dict[str, Any]) -> bool:
+        """Обновить документ"""
+        if self._service:
+            try:
+                result = self._service.update_document(doc_id, document_data)
+                if result:
+                    # Обновляем локальный кэш
+                    for i, doc in enumerate(self._documents):
+                        if doc.get('id') == doc_id:
+                            self._documents[i] = result
+                            break
+                    return True
+            except Exception as e:
+                print(f"❌ Ошибка обновления документа: {e}")
+                return False
+        else:
+            # Локальное обновление
+            for i, doc in enumerate(self._documents):
+                if doc.get('id') == doc_id:
+                    self._documents[i].update(document_data)
+                    return True
+            return False
 
-    def get_directions_data(self) -> List[Dict[str, Any]]:
-        """Получить данные для левой панели"""
-        return DocumentDataConfig.get_directions_data()
+    def delete_document(self, doc_id: int) -> bool:
+        """Удалить документ"""
+        if self._service:
+            try:
+                success = self._service.delete_document(doc_id)
+                if success:
+                    self._documents = [d for d in self._documents if d.get('id') != doc_id]
+                return success
+            except Exception as e:
+                print(f"❌ Ошибка удаления документа: {e}")
+                return False
+        else:
+            # Локальное удаление
+            for i, doc in enumerate(self._documents):
+                if doc.get('id') == doc_id:
+                    self._documents.pop(i)
+                    return True
+            return False
 
-    # ========== КОЛОНКИ ==========
-
-    # client/core/data/document_repository.py
-
-    def get_columns_for_type(self, type_id: int) -> Dict[int, str]:
-        """Получить конфигурацию колонок для типа"""
-        return DocumentDataConfig.get_columns_for_type(type_id)
-
-    def get_default_columns(self) -> Dict[int, str]:
-        """Получить стандартные колонки"""
-        return DocumentDataConfig.COLUMNS_CONFIG.copy()
-
-    def get_type_name_for_columns(self, type_id: int) -> str:
-        """
-        Получить имя типа для сохранения настроек колонок.
-        Используется как ключ в SettingsManager.
-        """
-        if type_id is None:
-            return "default"
-
-        type_info = self.get_document_type_by_id(type_id)
-        if type_info:
-            # Используем имя типа как ключ, но заменяем пробелы и спецсимволы
-            name = type_info.get('name', f"type_{type_id}")
-            # Транслитерация или замена пробелов
-            return name.replace(' ', '_').replace('(', '').replace(')', '')
-        return f"type_{type_id}"
+    def mark_documents_as_read(self, doc_ids: List[int]) -> int:
+        """Отметить документы как прочитанные"""
+        if self._service:
+            try:
+                result = self._service.mark_as_read(doc_ids)
+                return result.get('marked_count', 0)
+            except Exception as e:
+                print(f"❌ Ошибка отметки о прочтении: {e}")
+                return 0
+        return 0
 
 
-# Глобальный экземпляр (Singleton)
+# Создаем глобальный экземпляр
 document_repository = DocumentRepository()

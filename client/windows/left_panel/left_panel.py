@@ -12,7 +12,11 @@ from PyQt6.uic import loadUi
 from client.core.data.document_data import DocumentDataConfig
 from client.windows.left_panel.direction_group import DirectionGroup
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Определяем корневую директорию проекта
+# Текущий файл: client/windows/left_panel/left_panel.py
+# Поднимаемся на 3 уровня вверх: left_panel -> windows -> client -> корень проекта
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+ICONS_DIR = os.path.join(ROOT_DIR, "client", "icons")  # Путь к папке с иконками
 
 
 class LeftPanel(QWidget):
@@ -38,7 +42,7 @@ class LeftPanel(QWidget):
         self.is_expanded = True
 
         # Загружаем UI
-        ui_path = os.path.join(ROOT_DIR, "ui", "left_panel.ui")
+        ui_path = os.path.join(ROOT_DIR, "client", "ui", "left_panel.ui")
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
 
@@ -70,7 +74,6 @@ class LeftPanel(QWidget):
 
     def setup_icons(self):
         """Настраивает иконки для всех кнопок с единым размером"""
-        icons_path = "D:/Documents/client/icons"
         icon_size = QSize(20, 20)  # Унифицированный размер для всех иконок
 
         icon_mapping = {
@@ -84,7 +87,7 @@ class LeftPanel(QWidget):
         for btn_name, icon_file in icon_mapping.items():
             if hasattr(self, btn_name):
                 btn = getattr(self, btn_name)
-                icon_path = os.path.join(icons_path, icon_file)
+                icon_path = os.path.join(ICONS_DIR, icon_file)
                 if os.path.exists(icon_path):
                     icon = QIcon(icon_path)
                     btn.setIcon(icon)
@@ -161,8 +164,7 @@ class LeftPanel(QWidget):
 
     def set_button_icon(self, button, icon_name, icon_size):
         """Устанавливает иконку для кнопки с указанным размером"""
-        icons_path = "D:/Documents/client/icons"
-        icon_path = os.path.join(icons_path, icon_name)
+        icon_path = os.path.join(ICONS_DIR, icon_name)
         if os.path.exists(icon_path):
             icon = QIcon(icon_path)
             button.setIcon(icon)
@@ -533,8 +535,6 @@ class LeftPanel(QWidget):
     def update_hide_button_icon(self):
         """Обновляет иконку кнопки скрытия панели в зависимости от состояния"""
         if hasattr(self, 'hidePanelBtn'):
-            icons_path = "D:/Documents/client/icons"
-
             if self.is_expanded:
                 # Панель развернута - показываем стрелку влево (свернуть)
                 icon_file = "hide.svg"  # Стрелка влево
@@ -542,7 +542,7 @@ class LeftPanel(QWidget):
                 # Панель свернута - показываем стрелку вправо (развернуть)
                 icon_file = "show.svg"  # Стрелка вправо
 
-            icon_path = os.path.join(icons_path, icon_file)
+            icon_path = os.path.join(ICONS_DIR, icon_file)
             if os.path.exists(icon_path):
                 icon = QIcon(icon_path)
                 self.hidePanelBtn.setIcon(icon)

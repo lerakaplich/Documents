@@ -69,19 +69,7 @@ class LoginWindow(QMainWindow):
         self._apply_shadow(self.new_password_card)
 
         # 4. Загрузка логотипа
-        logo_path = os.path.join(self.root_dir, "icons", "logo.png")
-        if os.path.exists(logo_path):
-            pixmap = QPixmap(logo_path)
-            if not pixmap.isNull():
-                self.logoLabel.setStyleSheet("background-color: transparent;")
-                self.logoLabel.setText("")
-                scaled_pixmap = pixmap.scaled(
-                    200, 150,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
-                )
-                self.logoLabel.setPixmap(scaled_pixmap)
-                self.logoLabel.setScaledContents(False)
+        self._load_logo()
 
         # ===== ИНИЦИАЛИЗАЦИЯ МЕНЕДЖЕРА УВЕДОМЛЕНИЙ =====
         self.notification_manager = NotificationManager(self, max_visible=3)
@@ -126,25 +114,77 @@ class LoginWindow(QMainWindow):
         # Проверяем сохраненную сессию
         self._check_saved_session()
 
+    def _load_logo(self):
+        """Загрузка логотипа с относительным путем"""
+        logo_path = os.path.join(self.root_dir, "icons", "logo.png")
+
+        if os.path.exists(logo_path):
+            try:
+                pixmap = QPixmap(logo_path)
+                if not pixmap.isNull():
+                    self.logoLabel.setStyleSheet("background-color: transparent;")
+                    self.logoLabel.setText("")
+                    scaled_pixmap = pixmap.scaled(
+                        200, 150,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation
+                    )
+                    self.logoLabel.setPixmap(scaled_pixmap)
+                    self.logoLabel.setScaledContents(False)
+                    print(f"[DEBUG] Логотип загружен: {logo_path}")
+                else:
+                    print(f"[WARNING] Не удалось загрузить логотип: {logo_path}")
+            except Exception as e:
+                print(f"[ERROR] Ошибка загрузки логотипа: {e}")
+        else:
+            print(f"[WARNING] Логотип не найден: {logo_path}")
+
     def switch_to_main_window(self, user_data=None):
-        """Переключение на главное окно с данными пользователя"""
+        """Переключение на главное окно с удалением окна авторизации и очисткой памяти"""
         print("Переход в главное окно...")
 
+        # 1. Очищаем Chromium/QtWebEngine перед переходом
+        self.cleanup_web_engine()
+
+        # 2. Инициализируем и отображаем главное окно
         if self.main_window is None:
             self.main_window = MainWindow()
-            self.main_window.showMaximized()
 
         if user_data and hasattr(self.main_window, 'set_user_data'):
             logger.info(f"📥 Устанавливаем данные пользователя в MainWindow")
             self.main_window.set_user_data(user_data)
 
-        self.main_window.show()
+        self.main_window.showMaximized()
         self.main_window.raise_()
         self.main_window.activateWindow()
 
-        self.hide()
+        # 3. Закрываем и удаляем окно авторизации из памяти полностью
+        # Если вам нужно возвращаться к окну входа при выходе (Logout),
+        # лучше пересоздавать LoginWindow заново.
+        self.close()
+        self.deleteLater()
 
-        self.main_window.closeEvent = lambda event: self.on_main_window_closed()
+    def cleanup_web_engine(self):
+        """Корректное выгружение QtWebEngineView из памяти."""
+        if hasattr(self, 'web_view') and self.web_view is not None:
+            try:
+                # 1. Отключаем обработку JavaScript / событий
+                self.web_view.stop()
+
+                # 2. Загружаем пустую страницу ("about:blank"), чтобы выгрузить HTML/JS контекст
+                self.web_view.setUrl(QUrl("about:blank"))
+
+                # 3. Отключаем родителя, чтобы отвязать виджет от иерархии Qt
+                self.web_view.setParent(None)
+
+                # 4. Помечаем объект C++ для немедленного/планового удаления
+                self.web_view.deleteLater()
+
+                # 5. Сбрасываем ссылку Python
+                self.web_view = None
+                logger.info("✅ QtWebEngineView успешно очищен и выгружен.")
+            except Exception as e:
+                logger.error(f"❌ Ошибка при очистке QtWebEngineView: {e}")
 
     def _check_saved_session(self):
         """Проверяем наличие сохраненной сессии"""
@@ -323,8 +363,6 @@ class LoginWindow(QMainWindow):
         self.anim_group.addAnimation(anim_reset)
         self.anim_group.addAnimation(anim_new_password)
         self.anim_group.start()
-
-
 
     def on_main_window_closed(self):
         """Обработка закрытия главного окна"""

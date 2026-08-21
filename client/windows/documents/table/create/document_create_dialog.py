@@ -1,4 +1,3 @@
-# client/windows/documents/table/create/document_dialog.py
 """
 Универсальный диалог для создания и редактирования документа
 """
@@ -10,9 +9,11 @@ from typing import Optional, List, Dict, Any
 from PyQt6 import uic
 from PyQt6.QtCore import pyqtSignal, Qt, QDate
 from PyQt6.QtWidgets import QWidget, QMessageBox, QComboBox, QCompleter
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
+from PyQt6.QtGui import QStandardItemModel, QStandardItem, QIcon
 
 from client.core.data.sender_service import SenderService
+from client.core.state.app_state import AppState
+from client.services.tag_service import TagService
 from client.windows.documents.table.create.employee_selection_dialog import EmployeeSelectionDialog
 from client.windows.documents.table.create.tag_selection_dialog import TagSelectionDialog
 
@@ -64,7 +65,6 @@ class DocumentDialog(QWidget):
         self.selected_executors = []
         self.selected_tags = []  # Уже есть, но оставляем
 
-
         # Сервисы
         self.sender_service = SenderService()
 
@@ -72,9 +72,13 @@ class DocumentDialog(QWidget):
         self.directions = ["Входящий", "Исходящий", "Внутренний"]
         self.create_methods = ["Создать новый", "Из шаблона", "Загрузить файл"]
 
+        # Определяем корневую директорию проекта
+        self.root_dir = self._get_root_dir()
+
         # Настройка UI
         self._load_ui()
         self._setup_widgets()
+        self._setup_icons()
 
         # Если режим редактирования - загружаем данные
         if self.mode == 'edit' and self.document_data:
@@ -86,13 +90,87 @@ class DocumentDialog(QWidget):
         self._connect_signals()
         self._set_default_dates()
 
+        if not self.available_tags:
+            self._load_tags()
+
+    def _get_root_dir(self):
+        """
+        Определение корневой директории проекта
+        """
+        # Получаем путь к текущему файлу (document_dialog.py в windows/documents/table/create/)
+        current_file = os.path.abspath(__file__)
+        current_dir = os.path.dirname(current_file)
+
+        # Поднимаемся на 4 уровня вверх: windows/documents/table/create/ -> client/
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
+
+        return root_dir
+
+    def _setup_icons(self):
+        """
+        Настройка иконок для кнопок и QDateEdit через QSS с абсолютными путями
+        """
+        icons_dir = os.path.join(self.root_dir, 'icons')
+
+        # Пути к иконкам
+        calendar_icon_path = os.path.join(icons_dir, 'calendar_date.svg')
+        down_arrow_path = os.path.join(icons_dir, 'down_arrow.svg')
+        plus_icon_path = os.path.join(icons_dir, 'plus24_gold.svg')
+
+        # Формируем стили для иконок
+        icon_styles = []
+
+        # Иконка календаря для QDateEdit
+        if os.path.exists(calendar_icon_path):
+            icon_path = calendar_icon_path.replace('\\', '/')
+            icon_styles.append(f"""
+                QDateEdit::down-arrow {{
+                    image: url({icon_path});
+                    width: 18px;
+                    height: 18px;
+                    margin-right: 8px;
+                }}
+            """)
+            print(f"[DEBUG] Иконка календаря установлена")
+
+        # Иконка стрелки для QComboBox
+        if os.path.exists(down_arrow_path):
+            icon_path = down_arrow_path.replace('\\', '/')
+            icon_styles.append(f"""
+                QComboBox::down-arrow {{
+                    image: url({icon_path});
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 6px;
+                }}
+            """)
+            print(f"[DEBUG] Иконка стрелки для комбобокса установлена")
+
+        # Применяем стили
+        if icon_styles:
+            current_style = self.styleSheet() or ""
+            new_style = current_style + '\n' + '\n'.join(icon_styles)
+            self.setStyleSheet(new_style)
+
+        # Устанавливаем иконки для кнопок с плюсом
+        if os.path.exists(plus_icon_path):
+            plus_icon = QIcon(plus_icon_path)
+
+            # Кнопки с плюсом
+            plus_buttons = ['btnAddSender', 'btnAddReceiver', 'btnAddExecutor', 'btnAddTag']
+            for btn_name in plus_buttons:
+                if hasattr(self, btn_name):
+                    button = getattr(self, btn_name)
+                    button.setIcon(plus_icon)
+                    button.setIconSize(button.iconSize())
+            print(f"[DEBUG] Иконки плюса установлены для кнопок")
+
     def _load_ui(self):
         """Загрузка UI из .ui файла"""
         try:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            # Поднимаемся на 4 уровня вверх до client
-            client_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
-            ui_path = os.path.normpath(os.path.join(client_dir, 'ui', 'documents', 'create', 'document_create_dialog.ui'))
+            # Путь к UI файлу относительно корня проекта
+            ui_path = os.path.join(self.root_dir, 'ui', 'documents', 'create', 'document_create_dialog.ui')
+            ui_path = os.path.normpath(ui_path)
 
             if os.path.exists(ui_path):
                 uic.loadUi(ui_path, self)
@@ -106,9 +184,21 @@ class DocumentDialog(QWidget):
             traceback.print_exc()
             self._setup_fallback_ui()
 
+    def _load_tags(self):
+        """Загрузить теги через сервис"""
+        try:
+            app_state = AppState()
+            tag_service = TagService(app_state.http_client)
+            self.available_tags = tag_service.get_all_tags()
+            print(f"[DocumentDialog] Загружено тегов: {len(self.available_tags)}")
+        except Exception as e:
+            print(f"[DocumentDialog] Ошибка загрузки тегов: {e}")
+            self.available_tags = []
+
     def _setup_fallback_ui(self):
         """Создает простой UI если файл не найден"""
-        from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit, QDateEdit, QComboBox, QLineEdit
+        from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit, QDateEdit, QComboBox, \
+            QLineEdit
 
         self.setWindowTitle("Документ")
         self.setMinimumSize(800, 600)
@@ -472,7 +562,6 @@ class DocumentDialog(QWidget):
             {'id': 10, 'name': 'Маркетинг', 'priority': 'normal', 'color': '#FF1493'},
         ]
         return test_tags
-
 
     def _update_receiver_button_text(self):
         """Обновляет текст кнопки получателей"""

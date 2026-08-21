@@ -73,35 +73,50 @@ class FloatingActionButton(QPushButton):
 
     def _set_icon_from_file(self):
         """Установить иконку из файла SVG с динамическим размером"""
-        # Путь к файлу иконки
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        # Поднимаемся на один уровень вверх (из windows/documnets/... в client)
-        client_dir = os.path.dirname(current_dir)
-        # Формируем путь к иконке
+        client_dir = os.path.dirname(os.path.dirname(current_dir))
         icon_path = os.path.join(client_dir, "icons", "plus28_gold.svg")
+
+        print(f"[FloatingActionButton] Поиск иконки по пути: {icon_path}")
 
         try:
             from PyQt6.QtSvg import QSvgRenderer
 
-            # Проверяем существование файла
             if not os.path.exists(icon_path):
                 print(f"[FloatingActionButton] Файл иконки не найден: {icon_path}")
                 self._set_fallback_icon()
                 return
 
-            # Загружаем SVG из файла
+            # Создаем renderer
             renderer = QSvgRenderer(icon_path)
 
-            # Создаем pixmap нужного размера
-            pixmap = QPixmap(self.icon_width, self.icon_height)
+            # Создаем pixmap с большим разрешением для лучшего качества
+            # Увеличиваем размер в 2 раза для сглаживания
+            scale_factor = 2
+            scaled_width = self.icon_width * scale_factor
+            scaled_height = self.icon_height * scale_factor
+
+            pixmap = QPixmap(scaled_width, scaled_height)
             pixmap.fill(Qt.GlobalColor.transparent)
 
             painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+
+            # Рендерим в увеличенный pixmap
             renderer.render(painter)
             painter.end()
 
-            self.setIcon(QIcon(pixmap))
-            self.setIconSize(pixmap.rect().size())
+            # Масштабируем обратно с сглаживанием
+            scaled_pixmap = pixmap.scaled(
+                self.icon_width, self.icon_height,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+
+            self.setIcon(QIcon(scaled_pixmap))
+            self.setIconSize(scaled_pixmap.rect().size())
+            print(f"[FloatingActionButton] Иконка успешно загружена: {icon_path}")
 
         except ImportError:
             print("[FloatingActionButton] QtSvg не доступен, используем fallback иконку")

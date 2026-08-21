@@ -1,5 +1,3 @@
-# client/windows/system/departments/department_dialog.py
-
 """
 Модуль диалога для создания/редактирования отдела
 """
@@ -35,11 +33,17 @@ class DepartmentDialog(QDialog):
         self.departments = departments or []
         self.employees = employees or []
 
+        # Определяем корневую директорию проекта
+        self.root_dir = self._get_root_dir()
+
         # Загружаем UI
         self._load_ui()
 
         # Настраиваем окно
         self._setup_window()
+
+        # Настраиваем иконки
+        self._setup_icons()
 
         # Заполняем комбобоксы
         self._populate_combos()
@@ -50,10 +54,74 @@ class DepartmentDialog(QDialog):
         # Подключаем сигналы
         self._connect_signals()
 
+    def _get_root_dir(self):
+        """
+        Определение корневой директории проекта
+        """
+        # Получаем путь к текущему файлу (department_dialog.py в windows/system/departments/)
+        current_file = os.path.abspath(__file__)
+        current_dir = os.path.dirname(current_file)
+
+        # Поднимаемся на 4 уровня вверх: windows/system/departments/ -> client/
+        # department_dialog.py -> windows -> system -> departments -> client
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
+
+        return root_dir
+
+    def _setup_icons(self):
+        """
+        Настройка иконок для QCheckBox и QComboBox через QSS с абсолютными путями
+        """
+        icons_dir = os.path.join(self.root_dir, 'icons')
+
+        # Пути к иконкам
+        cb_unchecked_path = os.path.join(icons_dir, 'cb_unchecked.svg')
+        cb_checked_path = os.path.join(icons_dir, 'cb_checked.svg')
+        down_arrow_path = os.path.join(icons_dir, 'down_arrow.svg')
+
+        # Формируем стили для иконок
+        icon_styles = []
+
+        # Иконки для чекбоксов
+        if os.path.exists(cb_unchecked_path) and os.path.exists(cb_checked_path):
+            unchecked_path = cb_unchecked_path.replace('\\', '/')
+            checked_path = cb_checked_path.replace('\\', '/')
+
+            icon_styles.append(f"""
+                QCheckBox::indicator:unchecked {{
+                    image: url({unchecked_path});
+                }}
+
+                QCheckBox::indicator:checked {{
+                    image: url({checked_path});
+                }}
+            """)
+            print(f"[DEBUG] Иконки для чекбоксов установлены")
+
+        # Иконка для комбобокса
+        if os.path.exists(down_arrow_path):
+            arrow_path = down_arrow_path.replace('\\', '/')
+
+            icon_styles.append(f"""
+                QComboBox::down-arrow {{
+                    image: url({arrow_path});
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 6px;
+                }}
+            """)
+            print(f"[DEBUG] Иконка для комбобокса установлена")
+
+        # Применяем стили
+        if icon_styles:
+            current_style = self.styleSheet() or ""
+            new_style = current_style + '\n' + '\n'.join(icon_styles)
+            self.setStyleSheet(new_style)
+
     def _load_ui(self):
         """Загружает UI из файла"""
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(current_dir, '../../../ui/system/departments/department_dialog.ui')
+        # Путь к UI файлу относительно корня проекта
+        ui_path = os.path.join(self.root_dir, 'ui', 'system', 'departments', 'department_dialog.ui')
         ui_path = os.path.normpath(ui_path)
 
         if os.path.exists(ui_path):

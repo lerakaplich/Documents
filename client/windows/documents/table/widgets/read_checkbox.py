@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QCheckBox, QHBoxLayout
 from PyQt6.QtCore import pyqtSignal, Qt
+import os
 
 
 class ReadCheckBox(QWidget):
@@ -31,33 +32,34 @@ class ReadCheckBox(QWidget):
             }
         """)
 
-        # ИСПРАВЛЕННЫЕ СТИЛИ: Используем ваши локальные картинки
-        # Обратите внимание на прямые слеши (/) вместо обратных (\)
-        self.readCheckBox.setStyleSheet("""
-            QCheckBox {
+        # Получаем путь к директории с иконками относительно текущего файла
+        # Текущий файл: windows/documents/table/widgets/read_checkbox.py
+        # Поднимаемся на 4 уровня вверх: widgets -> table -> documents -> windows -> client
+        icons_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))), 'icons')
+
+        # Используем прямые слеши для путей в CSS
+        unchecked_icon = os.path.join(icons_dir, 'cb_unchecked.svg').replace('\\', '/')
+        checked_icon = os.path.join(icons_dir, 'cb_checked.svg').replace('\\', '/')
+
+        # ИСПРАВЛЕННЫЕ СТИЛИ: Используем относительные пути к иконкам
+        self.readCheckBox.setStyleSheet(f"""
+            QCheckBox {{
                 color: #1B232A;
                 spacing: 0px;
                 font-size: 12px;
                 background: transparent;
-            }
+            }}
 
-            QCheckBox::indicator {
+            QCheckBox::indicator {{
                 width: 18px;
                 height: 18px;
-                /* Картинка для НЕнажатого состояния */
-                image: url("D:/Documents/client/icons/cb_unchecked.svg");
-            }
+                image: url("{unchecked_icon}");
+            }}
 
-            QCheckBox::indicator:checked {
-                /* Картинка для НАЖАТОГО состояния */
-                image: url("D:/Documents/client/icons/cb_checked.svg");
-            }
-
-            /* Если хотите добавить эффект при наведении, можно использовать другой файл,
-               либо убрать этот блок, чтобы при наведении ничего не менялось */
-            QCheckBox::indicator:hover {
-                /* image: url("D:/Documents/client/icons/cb_hover.png"); */
-            }
+            QCheckBox::indicator:checked {{
+                image: url("{checked_icon}");
+            }}
         """)
 
     def on_state_changed(self, state):

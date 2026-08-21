@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from PyQt6.QtWidgets import QDialog, QApplication, QMessageBox
 from PyQt6.QtCore import QDate, pyqtSignal
 from PyQt6.uic import loadUi
+from PyQt6.QtGui import QIcon
 
 
 class PeriodDialog(QDialog):
@@ -18,6 +19,7 @@ class PeriodDialog(QDialog):
         # Инициализация атрибутов ДО загрузки UI
         self.quick_buttons = []
         self.active_button = None
+        self.root_dir = self._get_root_dir()
 
         # Загрузка UI
         self.load_ui()
@@ -25,6 +27,23 @@ class PeriodDialog(QDialog):
         # Инициализация
         self.setup_ui(start_date, end_date)
         self.setup_connections()
+
+        # Настройка иконок после загрузки UI
+        self._setup_icons()
+
+    def _get_root_dir(self):
+        """
+        Определение корневой директории проекта
+        """
+        # Получаем путь к текущему файлу (period_dialog.py в windows/)
+        current_file = os.path.abspath(__file__)
+        current_dir = os.path.dirname(current_file)
+
+        # Путь к папке client (родительская для windows)
+        client_dir = os.path.dirname(current_dir)
+
+        # Папка client - это корень проекта
+        return client_dir
 
     def load_ui(self):
         """
@@ -88,6 +107,63 @@ class PeriodDialog(QDialog):
             print(f"Ошибка загрузки UI: {e}")
             # Создаем простой UI в случае ошибки
             self.create_default_ui()
+
+    def _setup_icons(self):
+        """
+        Настройка иконок для QDateEdit через QSS с относительными путями
+        """
+        icon_path = os.path.join(self.root_dir, 'icons', 'calendar_date.svg')
+
+        if os.path.exists(icon_path):
+            # Используем QSS с абсолютным путем
+            icon_path_formatted = icon_path.replace('\\', '/')
+
+            # Получаем текущий стиль
+            current_style = self.styleSheet() or ""
+
+            # Добавляем или заменяем стиль для стрелки
+            arrow_style = f"""
+                QDateEdit::down-arrow {{
+                    image: url({icon_path_formatted});
+                    width: 20px;
+                    height: 20px;
+                    margin-right: 6px;
+                }}
+            """
+
+            # Проверяем, есть ли уже стиль для down-arrow
+            if "QDateEdit::down-arrow" in current_style:
+                # Заменяем существующий стиль
+                lines = current_style.split('\n')
+                new_lines = []
+                skip_arrow = False
+                arrow_found = False
+
+                for line in lines:
+                    if "QDateEdit::down-arrow" in line:
+                        arrow_found = True
+                        skip_arrow = True
+                        # Добавляем новый стиль
+                        new_lines.append(arrow_style)
+                    elif skip_arrow:
+                        # Пропускаем старые строки до конца блока
+                        if line.strip().endswith(';'):
+                            skip_arrow = False
+                        continue
+                    else:
+                        new_lines.append(line)
+
+                if arrow_found:
+                    self.setStyleSheet('\n'.join(new_lines))
+                else:
+                    self.setStyleSheet(current_style + '\n' + arrow_style)
+            else:
+                # Добавляем новый стиль
+                self.setStyleSheet(current_style + '\n' + arrow_style)
+
+            print(f"[DEBUG] Иконка календаря установлена: {icon_path}")
+        else:
+            print(f"[WARNING] Иконка календаря не найдена: {icon_path}")
 
     def create_default_ui(self):
         """Создание UI программно (если файл .ui не найден)"""
@@ -251,6 +327,9 @@ class PeriodDialog(QDialog):
 
         # Сохраняем список кнопок
         self.quick_buttons = [self.todayButton, self.weekButton, self.monthButton, self.quarterButton]
+
+        # Настраиваем иконки для созданного UI
+        self._setup_icons()
 
     def set_default_button_style(self, button):
         """
@@ -463,9 +542,11 @@ if __name__ == "__main__":
 
     dialog = PeriodDialog()
 
+
     def on_period_selected(data):
         print(f"Выбран период: {data['start_date_str']} - {data['end_date_str']}")
         print(f"Объекты дат: {data['start_date_python']} - {data['end_date_python']}")
+
 
     dialog.period_selected.connect(on_period_selected)
 

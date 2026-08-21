@@ -22,24 +22,64 @@ def load_ui(ui_filename):
     return ui_path
 
 
+import os
+from PyQt6 import uic
+from PyQt6.QtWidgets import QDialog
+
+
 class OrganizationDialog(QDialog):
     def __init__(self, parent=None, item=None):
         super().__init__(parent)
 
-        # Сохраняем данные
         self.item = item if item is not None else {}
 
-        try:
-            # Загружаем UI
-            ui_path = load_ui('organization_dialog.ui')
-            uic.loadUi(ui_path, self)
-        except Exception as e:
-            print(f"Ошибка загрузки UI: {e}")
-            raise
+        # Загружаем UI
+        ui_path = self.get_ui_path()
+        uic.loadUi(ui_path, self)
 
-        # Настройка интерфейса
+        # Устанавливаем иконки программно
+        self.setup_icons()
         self.setup_ui()
         self.load_data()
+
+    def get_ui_path(self):
+        """Возвращает путь к UI файлу"""
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        ui_path = os.path.join(
+            current_dir, '..', '..', '..', 'ui', 'system', 'organizations', 'organization_dialog.ui'
+        )
+        return os.path.normpath(ui_path)
+
+    def setup_icons(self):
+        """Устанавливает иконки для чекбокса программно"""
+        if hasattr(self, 'smdoSubscriberCheckbox'):
+            # Получаем путь к папке с иконками
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            icons_dir = os.path.normpath(os.path.join(current_dir, '..', '..', '..', 'icons'))
+
+            # Формируем пути к иконкам с прямыми слешами для CSS
+            unchecked_path = os.path.join(icons_dir, 'cb_unchecked.svg').replace('\\', '/')
+            checked_path = os.path.join(icons_dir, 'cb_checked.svg').replace('\\', '/')
+
+            # Устанавливаем стили программно
+            self.smdoSubscriberCheckbox.setStyleSheet(f"""
+                QCheckBox {{
+                    color: #1B232A;
+                    spacing: 8px;
+                    font-size: 13px;
+                    background: transparent;
+                }}
+
+                QCheckBox::indicator {{
+                    width: 18px;
+                    height: 18px;
+                    image: url({unchecked_path});
+                }}
+
+                QCheckBox::indicator:checked {{
+                    image: url({checked_path});
+                }}
+            """)
 
     def setup_ui(self):
         """Настройка UI"""

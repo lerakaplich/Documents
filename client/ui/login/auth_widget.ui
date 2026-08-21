@@ -225,11 +225,6 @@ margin-right: 10px;</string>
             <property name="text">
              <string/>
             </property>
-            <property name="icon">
-             <iconset>
-              <normaloff>../icons/eye-closed.svg</normaloff>
-              <normalon>../icons/eye-open.svg</normalon>../icons/eye-closed.svg</iconset>
-            </property>
             <property name="iconSize">
              <size>
               <width>28</width>
@@ -292,36 +287,12 @@ border: none;</string>
     font-size: 21px;
     background: transparent;
     spacing: 12px;
-border: none;
+    border: none;
 }
 
 QCheckBox::indicator {
     width: 28px;
     height: 28px;
-}
-
-QCheckBox::indicator:unchecked {
-    image: url(D:/Documents/client/icons/cb_unchecked.svg);
-}
-
-QCheckBox::indicator:checked {
-    image: url(D:/Documents/client/icons/cb_checked.svg);
-}
-
-QCheckBox::indicator:hover:unchecked {
-    image: url(D:/Documents/client/icons/cb_unchecked.svg);
-}
-
-QCheckBox::indicator:hover:checked {
-    image: url(D:/Documents/client/icons/cb_checked.svg);
-}
-
-QCheckBox::indicator:pressed:unchecked {
-    image: url(D:/Documents/client/icons/cb_unchecked.svg);
-}
-
-QCheckBox::indicator:pressed:checked {
-    image: url(D:/Documents/client/icons/cb_checked.svg);
 }</string>
          </property>
          <property name="text">

@@ -127,7 +127,6 @@ QComboBox::drop-down {
 }
 
 QComboBox::down-arrow {
-    image: url(D:/Documents/client/icons/down_arrow.svg);
     width: 16px;
     height: 16px;
     margin-right: 6px;

@@ -1,5 +1,3 @@
-# client/windows/system/tags/tag_dialog.py
-
 """
 Модуль диалогового окна для создания/редактирования хэштегов
 """
@@ -51,7 +49,11 @@ class TagDialog(QDialog):
         self.tag_id = tag_id
         self.tag_data = tag_data or {}
 
+        # Определяем корневую директорию проекта
+        self.root_dir = self._get_root_dir()
+
         self._load_ui()
+        self._setup_icons()
         self._setup_connections()
         self._load_tag_data()
 
@@ -61,12 +63,81 @@ class TagDialog(QDialog):
         else:
             self.titleLabel.setText("Новый хэштег")
 
+    def _get_root_dir(self):
+        """
+        Определение корневой директории проекта
+        """
+        # Получаем путь к текущему файлу (tag_dialog.py в windows/system/tags/)
+        current_file = os.path.abspath(__file__)
+        current_dir = os.path.dirname(current_file)
+
+        # Поднимаемся на 4 уровня вверх: windows/system/tags/ -> client/
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
+
+        return root_dir
+
+    def _setup_icons(self):
+        """
+        Настройка иконок для QComboBox через QSS с абсолютными путями
+        """
+        icons_dir = os.path.join(self.root_dir, 'icons')
+        down_arrow_path = os.path.join(icons_dir, 'down_arrow.svg')
+
+        # Иконка стрелки для QComboBox
+        if os.path.exists(down_arrow_path):
+            icon_path = down_arrow_path.replace('\\', '/')
+
+            # Получаем текущий стиль
+            current_style = self.styleSheet() or ""
+
+            # Добавляем стиль для стрелки
+            arrow_style = f"""
+                QComboBox::down-arrow {{
+                    image: url({icon_path});
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 6px;
+                }}
+            """
+
+            # Проверяем, есть ли уже стиль для down-arrow
+            if "QComboBox::down-arrow" in current_style:
+                # Заменяем существующий стиль
+                lines = current_style.split('\n')
+                new_lines = []
+                skip_arrow = False
+                arrow_found = False
+
+                for line in lines:
+                    if "QComboBox::down-arrow" in line:
+                        arrow_found = True
+                        skip_arrow = True
+                        # Добавляем новый стиль
+                        new_lines.append(arrow_style)
+                    elif skip_arrow:
+                        # Пропускаем старые строки до конца блока
+                        if line.strip().endswith(';'):
+                            skip_arrow = False
+                        continue
+                    else:
+                        new_lines.append(line)
+
+                if arrow_found:
+                    self.setStyleSheet('\n'.join(new_lines))
+                else:
+                    self.setStyleSheet(current_style + '\n' + arrow_style)
+            else:
+                # Добавляем новый стиль
+                self.setStyleSheet(current_style + '\n' + arrow_style)
+
+            print(f"[DEBUG] Иконка стрелки для комбобокса установлена: {icon_path}")
+        else:
+            print(f"[WARNING] Иконка стрелки не найдена: {down_arrow_path}")
+
     def _load_ui(self):
         """Загружает UI из .ui файла"""
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(
-            current_dir, '..', '..', '..', 'ui', 'system', 'tags', 'tag_dialog.ui'
-        )
+        # Путь к UI файлу относительно корня проекта
+        ui_path = os.path.join(self.root_dir, 'ui', 'system', 'tags', 'tag_dialog.ui')
         ui_path = os.path.normpath(ui_path)
 
         if not os.path.exists(ui_path):

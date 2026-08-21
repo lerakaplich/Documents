@@ -66,14 +66,12 @@ QDateEdit::drop-down {
 
 /* Иконка календаря вместо стрелочки */
 QDateEdit::down-arrow {
-    image: url(D:/Documents/client/icons/calendar_date.svg);
     width: 18px;
     height: 18px;
     margin-right: 8px;
 }
 
 QComboBox::down-arrow {
-    image: url(D:/Documents/client/icons/down_arrow.svg);
     width: 16px;
     height: 16px;
     margin-right: 6px;

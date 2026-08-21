@@ -155,8 +155,7 @@ background: transparent;</string>
          </size>
         </property>
         <property name="styleSheet">
-         <string notr="true">border-image: url(D:/Documents/client/icons/logo.png);
-background-color: transparent;</string>
+         <string notr="true">background-color: transparent;</string>
         </property>
         <property name="text">
          <string/>

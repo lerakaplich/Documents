@@ -1,5 +1,3 @@
-# client/windows/system/document_types/document_type_dialog.py
-
 import os
 from PyQt6 import QtWidgets, uic
 from PyQt6.QtCore import Qt
@@ -10,8 +8,11 @@ class DocumentTypeDialog(QtWidgets.QDialog):
     def __init__(self, parent_editor, item=None):
         super().__init__(parent_editor)
 
+        # Определяем корневую директорию проекта
+        self.root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
         # Загружаем UI
-        ui_path = os.path.join(os.path.dirname(__file__), '../../../ui/system/document_types/document_type_dialog.ui')
+        ui_path = os.path.join(self.root_dir, 'ui', 'system', 'document_types', 'document_type_dialog.ui')
         ui_path = os.path.normpath(ui_path)
 
         if os.path.exists(ui_path):
@@ -153,6 +154,49 @@ class DocumentTypeDialog(QtWidgets.QDialog):
             self.saveButton.clicked.connect(self.save_and_accept)
         else:
             print("[WARNING] saveButton не найден в UI")
+
+        # Настройка иконок для чекбоксов в параметрах
+        self._setup_checkbox_icons()
+
+    def _setup_checkbox_icons(self):
+        """Настройка иконок для чекбоксов через QSS с относительными путями"""
+        icons_dir = os.path.join(self.root_dir, 'icons')
+        cb_unchecked_path = os.path.join(icons_dir, 'cb_unchecked.svg')
+        cb_checked_path = os.path.join(icons_dir, 'cb_checked.svg')
+
+        # Проверяем существование файлов иконок
+        if os.path.exists(cb_unchecked_path) and os.path.exists(cb_checked_path):
+            # Используем QSS с путями, экранируя обратные слэши для Windows
+            unchecked_path = cb_unchecked_path.replace('\\', '/')
+            checked_path = cb_checked_path.replace('\\', '/')
+
+            style = f"""
+                QCheckBox {{
+                    color: #1B232A;
+                    spacing: 0px;
+                    font-size: 13px;
+                    background: transparent;
+                }}
+
+                QCheckBox::indicator {{
+                    width: 18px;
+                    height: 18px;
+                }}
+
+                QCheckBox::indicator:unchecked {{
+                    image: url({unchecked_path});
+                }}
+
+                QCheckBox::indicator:checked {{
+                    image: url({checked_path});
+                }}
+            """
+
+            # Применяем стиль ко всем чекбоксам в диалоге
+            self.setStyleSheet(self.styleSheet() + style)
+            print(f"[DEBUG] Иконки для чекбоксов установлены: {cb_unchecked_path}, {cb_checked_path}")
+        else:
+            print(f"[WARNING] Файлы иконок для чекбоксов не найдены: {cb_unchecked_path}, {cb_checked_path}")
 
     def set_auto_number_state(self, value: bool):
         """
