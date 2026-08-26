@@ -35,6 +35,8 @@ class PositionData(BaseModel):
     department_id: int
     position_name: str
     is_leader: bool = False
+    start_date: date = Field(default_factory=date.today)  # Дата назначения
+    end_date: Optional[date] = None  # Дата окончания (None если текущая)
 
 class PositionCreate(PositionData):
     pass
@@ -50,6 +52,8 @@ class EmployeePositionRead(BaseModel):
     department_id: int
     position_name: str
     is_leader: bool
+    start_date: date
+    end_date: Optional[date] = None
 
     department_chain: list[DepartmentPathItem] = Field(default_factory=list)
 
@@ -60,8 +64,13 @@ class EmployeePositionRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class PositionUpdate(PositionData):
+class PositionUpdate(BaseModel):
     id: Optional[int] = None
+    department_id: Optional[int] = None
+    position_name: Optional[str] = None
+    is_leader: Optional[bool] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
 class EmployeeRead(EmployeeBase):
     id: int
@@ -115,6 +124,6 @@ class EmployeeFullUpdate(BaseModel):
     is_active: Optional[bool] = None
 
     # Позиции
-    positions: Optional[list[PositionUpdate]] = None # Список позиций
+    positions: Optional[list[PositionUpdate]] = None  # Список позиций
 
     model_config = ConfigDict(from_attributes=True)

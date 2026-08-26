@@ -2,8 +2,8 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 # Конфигурационные строки подключения (Разработчик 2 уберет их в .env файл)
-DOCUMENTS_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/documents"
-EMPLOYEES_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/employees"
+DOCUMENTS_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/documents_new"
+EMPLOYEES_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/employees_new"
 
 # Добавьте для asyncpg (слушателя):
 DOCS_DB_URL_RAW = "postgresql://postgres:admin@127.0.0.1:5432/documents"

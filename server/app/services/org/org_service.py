@@ -50,7 +50,6 @@ class OrgService:
             extra={"org_id": org_id, "page": page, "size": size, "show_fired": show_fired}
         )
 
-        # Проверка существования организации
         org = await self.repo.get_organization_by_id(org_id)
         if not org:
             raise HTTPException(
@@ -74,11 +73,6 @@ class OrgService:
             })
 
         pages = math.ceil(total / size) if total > 0 else 1
-
-        logger.info(
-            "Successfully fetched short employee list for organization",
-            extra={"org_id": org_id, "count": len(items), "total": total}
-        )
 
         return {
             "items": items,

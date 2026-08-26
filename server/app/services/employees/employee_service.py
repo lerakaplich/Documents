@@ -1,8 +1,10 @@
 import logging
+from datetime import date
 from typing import Optional
 
 from fastapi import HTTPException,status
 
+from server.app.database.employee_models import Employee
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.schemas.org import DepartmentPathItem
@@ -58,10 +60,70 @@ class EmployeeService:
             for r in employees_rows
         ]
 
+    async def _build_employee_detail_dto(self, employee: Employee) -> EmployeeDetailRead:
+        """Вспомогательный метод для сборки EmployeeDetailRead с иерархической цепочкой отделов и правами."""
+        needed_dept_ids: set[int] = set()
+        for pos in employee.positions:
+            if pos.department and pos.department.hierarchy_path:
+                needed_dept_ids.update(self._parse_hierarchy_path(pos.department.hierarchy_path))
+
+        depts_map = await self.emp_repo.get_departments_by_ids(needed_dept_ids)
+        positions_dto: list[EmployeePositionRead] = []
+
+        for pos in employee.positions:
+            pos_chain: list[DepartmentPathItem] = []
+
+            if pos.department and pos.department.hierarchy_path:
+                chain_ids = self._parse_hierarchy_path(pos.department.hierarchy_path)
+
+                for d_id in chain_ids:
+                    dept_obj = depts_map.get(d_id)
+                    if dept_obj:
+                        type_name = dept_obj.department_type.name if dept_obj.department_type else None
+                        pos_chain.append(
+                            DepartmentPathItem(
+                                id=dept_obj.id,
+                                name=dept_obj.name,
+                                number=dept_obj.number,
+                                department_type_name=type_name,
+                            )
+                        )
+
+            positions_dto.append(
+                EmployeePositionRead(
+                    id=pos.id,
+                    department_id=pos.department_id,
+                    position_name=pos.position_name,
+                    is_leader=pos.is_leader,
+                    start_date=pos.start_date,
+                    end_date=pos.end_date,
+                    department_chain=pos_chain
+                )
+            )
+
+        rights_data = await self.doc_repo.get_rights_map([employee.id])
+        user_rights = rights_data.get(employee.id, "user")
+
+        return EmployeeDetailRead(
+            id=employee.id,
+            service_number=employee.service_number,
+            last_name=employee.last_name,
+            first_name=employee.first_name,
+            patronymic=employee.patronymic,
+            phone_number=employee.phone_number,
+            work_number=employee.work_number,
+            email=employee.email,
+            birth_date=employee.birth_date,
+            chat_id=employee.chat_id,
+            is_active=employee.is_active,
+            rights=user_rights,
+            positions=positions_dto
+        )
+
     async def get_full_employee_info(
-        self, current_user: CurrentUser, emp_id: int
+            self, current_user: CurrentUser, emp_id: int
     ) -> Optional[EmployeeDetailRead]:
-        """Получение полной информации о сотруднике"""
+        """Получение полной информации о сотруднике со всеми цепочками отделов"""
         if not await self.security.can_view_employee(current_user, emp_id):
             logger.warning(
                 f"User user_id={current_user.id} denied view access to emp_id={emp_id}",
@@ -72,17 +134,12 @@ class EmployeeService:
                 detail="Нет прав на просмотр данных этого сотрудника.",
             )
 
-        employee = await self.emp_repo.get_by_id(emp_id)
+        # Используем метод с selectinload для отделов и их типов
+        employee = await self.emp_repo.get_by_id_with_departments(emp_id)
         if not employee:
             return None
 
-        rights_data = await self.doc_repo.get_rights_map([emp_id])
-        user_rights = rights_data.get(emp_id, "user")
-
-        emp_dict = employee.__dict__.copy()
-        emp_dict["rights"] = user_rights
-
-        return EmployeeDetailRead.model_validate(emp_dict)
+        return await self._build_employee_detail_dto(employee)
 
     async def create_employee(
         self, current_user: CurrentUser, data: EmployeeCreate
@@ -103,10 +160,12 @@ class EmployeeService:
         try:
             new_emp = await self.emp_repo.add_employee(data)
             await self.emp_repo.add_position(
-                new_emp.id,
-                data.position.department_id,
-                data.position.position_name,
-                data.position.is_leader,
+                employee_id=new_emp.id,
+                dept_id=data.position.department_id,
+                name=data.position.position_name,
+                is_leader=data.position.is_leader,
+                start_date=data.position.start_date or date.today(),
+                end_date=data.position.end_date
             )
             await self.doc_repo.upsert_system_employee(
                 id=new_emp.id,
@@ -262,26 +321,29 @@ class EmployeeService:
             )
 
     async def sync_employee_positions(
-        self, employee_id: int, new_positions: list[PositionUpdate]
+            self, employee_id: int, new_positions: list[PositionUpdate]
     ) -> None:
-        """Синхронизация должностей сотрудника без принудительного commit"""
+        """Синхронизация должностей сотрудника с учетом периода действия"""
         current_positions = await self.emp_repo.get_positions_by_employee(employee_id)
         current_map = {p.id: p for p in current_positions}
         new_ids = {p.id for p in new_positions if p.id is not None}
 
-        for p_id in current_map:
-            if p_id not in new_ids:
-                await self.emp_repo.delete_position(p_id)
+        # Вместо жесткого delete_position выставляем end_date для снятых должностей
+        for p_id, pos in current_map.items():
+            if p_id not in new_ids and pos.end_date is None:
+                await self.emp_repo.close_position(p_id, end_date=date.today())
 
         for pos_data in new_positions:
             if pos_data.id and pos_data.id in current_map:
                 await self.emp_repo.update_position(pos_data)
             else:
                 await self.emp_repo.add_position(
-                    employee_id,
-                    pos_data.department_id,
-                    pos_data.position_name,
-                    pos_data.is_leader,
+                    employee_id=employee_id,
+                    dept_id=pos_data.department_id,
+                    name=pos_data.position_name,
+                    is_leader=pos_data.is_leader,
+                    start_date=pos_data.start_date or date.today(),
+                    end_date=pos_data.end_date,
                 )
 
     async def add_employee_position(
@@ -300,6 +362,8 @@ class EmployeeService:
                 dept_id=data.department_id,
                 name=data.position_name,
                 is_leader=data.is_leader,
+                start_date=data.start_date or date.today(),
+                end_date=data.end_date
             )
             await self.emp_repo.db.commit()
 
@@ -414,70 +478,56 @@ class EmployeeService:
         return [int(x) for x in path.split("/") if x.strip().isdigit()]
 
     async def get_my_profile(self, current_user: CurrentUser) -> Optional[EmployeeDetailRead]:
-        """Получение и сборка полного профиля текущего сотрудника со всеми цепочками отделов и правами"""
+        """Получение и сборка полного профиля текущего сотрудника"""
         employee = await self.emp_repo.get_by_id_with_departments(current_user.id)
         if not employee:
             return None
 
-        needed_dept_ids: set[int] = set()
-        for pos in employee.positions:
-            if pos.department and pos.department.hierarchy_path:
-                needed_dept_ids.update(self._parse_hierarchy_path(pos.department.hierarchy_path))
-
-        depts_map = await self.emp_repo.get_departments_by_ids(needed_dept_ids)
-
-        positions_dto: list[EmployeePositionRead] = []
-
-        for pos in employee.positions:
-            pos_chain: list[DepartmentPathItem] = []
-            pos_path_names: list[str] = []
-
-            if pos.department and pos.department.hierarchy_path:
-                chain_ids = self._parse_hierarchy_path(pos.department.hierarchy_path)
-
-                for d_id in chain_ids:
-                    dept_obj = depts_map.get(d_id)
-                    if dept_obj:
-                        type_name = dept_obj.department_type.name if dept_obj.department_type else None
-
-                        pos_chain.append(
-                            DepartmentPathItem(
-                                id=dept_obj.id,
-                                name=dept_obj.name,
-                                number=dept_obj.number,
-                                department_type_name=type_name,
-                            )
-                        )
-                        pos_path_names.append(dept_obj.name)
-
-            pos_dto = EmployeePositionRead(
-                id=pos.id,
-                department_id=pos.department_id,
-                position_name=pos.position_name,
-                is_leader=pos.is_leader,
-                department_chain=pos_chain
-            )
-            positions_dto.append(pos_dto)
-
-        rights_data = await self.doc_repo.get_rights_map([current_user.id])
-        user_rights = rights_data.get(current_user.id, "user")
-
-        return EmployeeDetailRead(
-            id=employee.id,
-            service_number=employee.service_number,
-            last_name=employee.last_name,
-            first_name=employee.first_name,
-            patronymic=employee.patronymic,
-            phone_number=employee.phone_number,
-            work_number=employee.work_number,
-            email=employee.email,
-            birth_date=employee.birth_date,
-            chat_id=employee.chat_id,
-            is_active=employee.is_active,
-            rights=user_rights,
-            positions=positions_dto
-        )
+        return await self._build_employee_detail_dto(employee)
 
     async def get_user_primary_dept_id(self, user_id: int) -> Optional[int]:
         """Получение ID основного актуального подразделения сотрудника"""
         return await self.emp_repo.get_primary_department_id(user_id)
+
+    async def dismiss_from_position(
+            self, current_user: CurrentUser, emp_id: int, pos_id: int, dismiss_date: Optional[date] = None
+    ):
+        """Снятие сотрудника с должности (установка end_date)"""
+        positions = await self.emp_repo.get_positions_by_employee(emp_id)
+        pos_to_dismiss = next((p for p in positions if p.id == pos_id), None)
+
+        if not pos_to_dismiss:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Должность не найдена.",
+            )
+
+        if not await self.security.can_manage_dept(current_user, pos_to_dismiss.department_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Нет прав на изменение должности в этом подразделении.",
+            )
+
+        try:
+            end_date = dismiss_date or date.today()
+            result = await self.emp_repo.close_position(pos_id, end_date=end_date)
+            await self.emp_repo.db.commit()
+
+            logger.info(
+                f"Position pos_id={pos_id} closed (end_date={end_date}) for emp_id={emp_id} by user_id={current_user.id}",
+                extra={
+                    "event_type": "employee_position_closed",
+                    "target_emp_id": emp_id,
+                    "pos_id": pos_id,
+                    "user_id": current_user.id,
+                    "end_date": str(end_date)
+                }
+            )
+            return result
+        except Exception as e:
+            await self.emp_repo.db.rollback()
+            logger.error(f"Error closing pos_id={pos_id} for emp_id={emp_id}: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Ошибка при завершении действия должности."
+            )

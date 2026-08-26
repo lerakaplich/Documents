@@ -17,6 +17,7 @@ class Organization(BaseEmployees):
     unp: Mapped[str] = mapped_column(String(9), unique=True, nullable=False)
     smdo_code: Mapped[Optional[str]] = mapped_column(String(100), index=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    short_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     phone_number: Mapped[Optional[str]] = mapped_column(Text)
     address: Mapped[Optional[str]] = mapped_column(Text)
     email: Mapped[Optional[str]] = mapped_column(Text)

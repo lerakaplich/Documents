@@ -29,8 +29,16 @@ class EmployeesRepository:
         page: int = 1,
         size: int = 20
     ):
+        today = date.today()
         # Базовые условия фильтрации
-        where_conditions = [Department.organization_id == org_id]
+        where_conditions = [
+            Department.organization_id == org_id,
+            EmployeePosition.start_date <= today,
+            or_(
+                EmployeePosition.end_date.is_(None),
+                EmployeePosition.end_date >= today
+            )
+        ]
         if not show_fired:
             where_conditions.append(Employee.is_active == True)
 
@@ -65,10 +73,19 @@ class EmployeesRepository:
         result = await self.db.execute(stmt)
         return result.all(), total
 
-    async def get_by_id(self, emp_id: int):
+    async def get_by_id(self, emp_id: int) -> Optional[Employee]:
+        today = date.today()
         stmt = (
             select(Employee)
-            .options(selectinload(Employee.positions))  # ЗАГРУЖАЕМ СРАЗУ!
+            .options(
+                selectinload(Employee.positions.and_(
+                    EmployeePosition.start_date <= today,
+                    or_(
+                        EmployeePosition.end_date.is_(None),
+                        EmployeePosition.end_date >= today
+                    )
+                ))
+            )
             .where(Employee.id == emp_id)
         )
         result = await self.db.execute(stmt)
@@ -94,12 +111,21 @@ class EmployeesRepository:
         return result.scalar_one_or_none()
 
     async def get_by_id_with_departments(self, employee_id: int) -> Optional[Employee]:
-        """Загружает сотрудника вместе с должностями, отделами и их типами."""
+        """Загружает сотрудника вместе с АКТИВНЫМИ должностями, отделами и их типами."""
+        today = date.today()
         stmt = (
             select(Employee)
             .where(Employee.id == employee_id)
             .options(
-                selectinload(Employee.positions)
+                selectinload(
+                    Employee.positions.and_(
+                        EmployeePosition.start_date <= today,
+                        or_(
+                            EmployeePosition.end_date.is_(None),
+                            EmployeePosition.end_date >= today
+                        )
+                    )
+                )
                 .selectinload(EmployeePosition.department)
                 .selectinload(Department.department_type)
             )
@@ -120,14 +146,32 @@ class EmployeesRepository:
         return {d.id: d for d in result.scalars().all()}
 
     async def get_by_department(self, department_id: int, include_inactive: bool = False) -> list[Employee]:
+        """Возвращает сотрудников отдела, учитывая активность должности по датам."""
+        today = date.today()
         stmt = (
             select(Employee)
             .join(EmployeePosition)
-            .where(EmployeePosition.department_id == department_id)
-            .options(selectinload(Employee.positions))
+            .where(
+                EmployeePosition.department_id == department_id,
+                EmployeePosition.start_date <= today,
+                or_(
+                    EmployeePosition.end_date.is_(None),
+                    EmployeePosition.end_date >= today
+                )
+            )
+            .options(
+                selectinload(
+                    Employee.positions.and_(
+                        EmployeePosition.start_date <= today,
+                        or_(
+                            EmployeePosition.end_date.is_(None),
+                            EmployeePosition.end_date >= today
+                        )
+                    )
+                )
+            )
         )
 
-        # Фильтр по активности
         if not include_inactive:
             stmt = stmt.where(Employee.is_active == True)
 
@@ -136,6 +180,7 @@ class EmployeesRepository:
         return list(result.scalars().all())
 
     async def get_paginated_employees(self, limit: int, offset: int, show_fired: bool = False):
+        today = date.today()
         query = select(
             Employee.id,
             func.concat_ws(' ', Employee.last_name, Employee.first_name, Employee.patronymic).label("full_name"),
@@ -144,7 +189,14 @@ class EmployeesRepository:
             Employee.phone_number
         ).select_from(Employee) \
          .join(EmployeePosition) \
-         .join(Department)
+         .join(Department) \
+         .where(
+            EmployeePosition.start_date <= today,
+            or_(
+                EmployeePosition.end_date.is_(None),
+                EmployeePosition.end_date >= today
+            )
+        )
 
         # Фильтр активности
         if not show_fired:
@@ -155,17 +207,28 @@ class EmployeesRepository:
         return result.all()
 
     async def get_leader_paths(self, employee_id: int) -> list[str]:
+        today = date.today()
         stmt = select(Department.hierarchy_path).join(EmployeePosition).where(
             EmployeePosition.employee_id == employee_id,
-            EmployeePosition.is_leader == True
+            EmployeePosition.is_leader == True,
+            EmployeePosition.start_date <= today,
+            or_(
+                EmployeePosition.end_date.is_(None),
+                EmployeePosition.end_date >= today
+            )
         )
         result = await self.db.execute(stmt)
-        # Приводим к list[str], убирая возможные None
         return [path for path in result.scalars().all() if path]
 
     async def get_target_dept_paths(self, target_emp_id: int) -> list[str]:
+        today = date.today()
         stmt = select(Department.hierarchy_path).join(EmployeePosition).where(
-            EmployeePosition.employee_id == target_emp_id
+            EmployeePosition.employee_id == target_emp_id,
+            EmployeePosition.start_date <= today,
+            or_(
+                EmployeePosition.end_date.is_(None),
+                EmployeePosition.end_date >= today
+            )
         )
         result = await self.db.execute(stmt)
         return [path for path in result.scalars().all() if path]
@@ -185,17 +248,48 @@ class EmployeesRepository:
         await self.db.flush()  # Получаем ID до commit
         return new_emp
 
-    async def add_position(self, employee_id: int, dept_id: int, name: str, is_leader: bool) -> EmployeePosition:
+    async def add_position(
+        self,
+        employee_id: int,
+        dept_id: int,
+        name: str,
+        is_leader: bool,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None
+    ) -> EmployeePosition:
         new_pos = EmployeePosition(
             employee_id=employee_id,
             department_id=dept_id,
             position_name=name,
-            is_leader=is_leader
+            is_leader=is_leader,
+            start_date=start_date or date.today(),
+            end_date=end_date
         )
         self.db.add(new_pos)
         await self.db.flush()
         await self.db.refresh(new_pos)
         return new_pos
+
+    async def close_position(self, position_id: int, end_date: Optional[date] = None) -> bool:
+        close_date = end_date or date.today()
+        stmt = (
+            update(EmployeePosition)
+            .where(
+                EmployeePosition.id == position_id,
+                or_(
+                    EmployeePosition.end_date.is_(None),
+                    EmployeePosition.end_date > close_date
+                )
+            )
+            .values(end_date=close_date)
+            .returning(EmployeePosition.id)  # Возвращаем ID обновленной записи
+        )
+
+        result = await self.db.execute(stmt)
+        updated_id = result.scalar_one_or_none()
+        await self.db.flush()
+
+        return updated_id is not None
 
     async def delete_position(self, position_id: int) -> None:
         stmt = delete(EmployeePosition).where(EmployeePosition.id == position_id)
@@ -207,14 +301,26 @@ class EmployeesRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_employee_with_positions(self, employee_id: int):
+    async def get_employee_with_positions(self, employee_id: int) -> Optional[Employee]:
+        """Загружает сотрудника и только его ТЕКУЩИЕ (активные) должности."""
+        today = date.today()
         stmt = (
             select(Employee)
-            .options(selectinload(Employee.positions))
-            .filter(Employee.id == employee_id)
+            .options(
+                selectinload(
+                    Employee.positions.and_(
+                        EmployeePosition.start_date <= today,
+                        or_(
+                            EmployeePosition.end_date.is_(None),
+                            EmployeePosition.end_date >= today
+                        )
+                    )
+                )
+            )
+            .where(Employee.id == employee_id)
         )
         result = await self.db.execute(stmt)
-        return result.scalars().first()
+        return result.scalar_one_or_none()
 
     async def update_employee_profile(self, employee_id: int, update_data: dict):
         # Обновляем все переданные поля (включая is_active)
@@ -228,30 +334,26 @@ class EmployeesRepository:
         await self.db.flush()
         return result.scalar_one()
 
-    async def update_employee_position(self, employee_id: int, position_data: PositionCreate):
-        # Предполагаем, что у сотрудника одна активная позиция или нам нужно обновить конкретную
+    async def update_is_leader(self, position_id: int, is_leader: bool) -> bool:
+        """Обновляет статус руководителя у конкретной активной должности."""
+        today = date.today()
         stmt = (
             update(EmployeePosition)
-            .where(EmployeePosition.employee_id == employee_id)
-            .values(
-                department_id=position_data.department_id,
-                position_name=position_data.position_name,
-                assignment_kind=position_data.assignment_kind,
-                is_leader=position_data.is_leader
+            .where(
+                EmployeePosition.id == position_id,
+                EmployeePosition.start_date <= today,
+                or_(
+                    EmployeePosition.end_date.is_(None),
+                    EmployeePosition.end_date >= today
+                )
             )
-        )
-        await self.db.execute(stmt)
-        await self.db.flush()
-
-    async def update_is_leader(self, position_id: int, is_leader: bool):
-        stmt = (
-            update(EmployeePosition)
-            .where(EmployeePosition.id == position_id)
             .values(is_leader=is_leader)
+            .returning(EmployeePosition.id)
         )
-        await self.db.execute(stmt)
+        result = await self.db.execute(stmt)
+        updated_id = result.scalar_one_or_none()
         await self.db.flush()
-        return True
+        return updated_id is not None
 
     async def get_position_by_id(self, position_id: int) -> Optional[EmployeePosition]:
         result = await self.db.execute(
@@ -270,51 +372,116 @@ class EmployeesRepository:
 
     async def get_position_by_employee_and_dept(self, employee_id: int, department_id: int) -> Optional[
         EmployeePosition]:
+        today = date.today()
         stmt = select(EmployeePosition).where(
             EmployeePosition.employee_id == employee_id,
-            EmployeePosition.department_id == department_id
+            EmployeePosition.department_id == department_id,
+            EmployeePosition.start_date <= today,
+            or_(
+                EmployeePosition.end_date.is_(None),
+                EmployeePosition.end_date >= today
+            )
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_positions_by_employee(self, employee_id: int) -> list[EmployeePosition]:
+    async def get_positions_by_employee(
+            self,
+            employee_id: int,
+            only_active: bool = True
+    ) -> list[EmployeePosition]:
+        """
+        Возвращает список должностей сотрудника.
+        По умолчанию (only_active=True) возвращает только текущие активные должности.
+        """
         stmt = select(EmployeePosition).where(EmployeePosition.employee_id == employee_id)
+
+        if only_active:
+            today = date.today()
+            stmt = stmt.where(
+                EmployeePosition.start_date <= today,
+                or_(
+                    EmployeePosition.end_date.is_(None),
+                    EmployeePosition.end_date >= today
+                )
+            )
+
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
     async def update_position(self, data: PositionUpdate) -> None:
-        # Используем update() для изменения полей записи по ID
+        update_values = {}
+        if data.department_id is not None:
+            update_values["department_id"] = data.department_id
+        if data.position_name is not None:
+            update_values["position_name"] = data.position_name
+        if data.is_leader is not None:
+            update_values["is_leader"] = data.is_leader
+        if data.start_date is not None:
+            update_values["start_date"] = data.start_date
+        if data.end_date is not None:
+            update_values["end_date"] = data.end_date
+
+        if update_values:
+            stmt = (
+                update(EmployeePosition)
+                .where(EmployeePosition.id == data.id)
+                .values(**update_values)
+            )
+            await self.db.execute(stmt)
+            await self.db.flush()
+
+    async def update_employee_position(self, employee_id: int, position_data: PositionCreate) -> None:
+        """Обновляет текущую позицию сотрудника с учетом дат."""
+        update_values = {
+            "department_id": position_data.department_id,
+            "position_name": position_data.position_name,
+            "is_leader": position_data.is_leader,
+            "start_date": position_data.start_date,
+            "end_date": position_data.end_date,
+        }
+        today = date.today()
         stmt = (
             update(EmployeePosition)
-            .where(EmployeePosition.id == data.id)
-            .values(
-                department_id=data.department_id,
-                position_name=data.position_name,
-                is_leader=data.is_leader
+            .where(
+                EmployeePosition.employee_id == employee_id,
+                EmployeePosition.start_date <= today,
+                or_(
+                    EmployeePosition.end_date.is_(None),
+                    EmployeePosition.end_date >= today
+                )
             )
+            .values(**update_values)
         )
         await self.db.execute(stmt)
         await self.db.flush()
 
     async def get_department_codes_for_employee(self, employee_id: int) -> tuple[str, str]:
         """
-        Возвращает (код_высшего_подразделения, код_отдела) для сотрудника.
+        Возвращает (код_высшего_подразделения, код_отдела) для сотрудника на основе его активной должности.
         """
-        # Получаем подразделение сотрудника с подгрузкой Department
+        today = date.today()
         stmt = (
             select(Department)
             .join(EmployeePosition, EmployeePosition.department_id == Department.id)
-            .where(EmployeePosition.employee_id == employee_id)
+            .where(
+                EmployeePosition.employee_id == employee_id,
+                EmployeePosition.start_date <= today,
+                or_(
+                    EmployeePosition.end_date.is_(None),
+                    EmployeePosition.end_date >= today
+                )
+            )
+            .order_by(EmployeePosition.start_date.desc())
         )
         result = await self.db.execute(stmt)
-        dept = result.scalar_one_or_none()
+        dept = result.scalars().first()
 
         if not dept:
             return "00", "00"
 
         sub_dept_code = str(dept.number) if getattr(dept, 'number', None) is not None else dept.name
 
-        # Если у нас есть hierarchy_path (например "1/4/12"), извлекаем корень
         if hasattr(dept, 'hierarchy_path') and dept.hierarchy_path:
             top_dept_id = int(dept.hierarchy_path.split('/')[0])
             top_res = await self.db.execute(select(Department).where(Department.id == top_dept_id))
@@ -355,21 +522,32 @@ class EmployeesRepository:
         return list(result.scalars().all())
 
     async def get_employees_by_org_id(self, org_id: int) -> list[Employee]:
-        """
-        Возвращает уникальных сотрудников организации с жадной загрузкой их должностей.
-        """
+        """Возвращает уникальных сотрудников организации с жадной загрузкой их активных должностей."""
+        today = date.today()
         stmt = (
             select(Employee)
             .options(
-                # Жадно подгружаем positions, чтобы Pydantic смог их прочитать без Lazy Load
-                selectinload(Employee.positions)
+                selectinload(
+                    Employee.positions.and_(
+                        EmployeePosition.start_date <= today,
+                        or_(
+                            EmployeePosition.end_date.is_(None),
+                            EmployeePosition.end_date >= today
+                        )
+                    )
+                )
             )
             .distinct()
             .join(EmployeePosition, EmployeePosition.employee_id == Employee.id)
             .join(Department, Department.id == EmployeePosition.department_id)
             .where(
                 Department.organization_id == org_id,
-                Employee.is_active.is_(True)
+                Employee.is_active.is_(True),
+                EmployeePosition.start_date <= today,
+                or_(
+                    EmployeePosition.end_date.is_(None),
+                    EmployeePosition.end_date >= today
+                )
             )
         )
         result = await self.db.execute(stmt)

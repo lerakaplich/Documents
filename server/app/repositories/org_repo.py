@@ -1,6 +1,7 @@
+from datetime import date
 from typing import Optional
 
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -29,11 +30,25 @@ class OrgRepository:
         return result.scalar_one_or_none()
 
     async def get_employees_by_dept(self, dept_id: int) -> list[EmployeePosition]:
-        """Получить всех сотрудников в отделе через таблицу позиций"""
+        """
+        Получить все АКТИВНЫЕ позиции сотрудников в отделе с учетом дат начала и окончания.
+        """
+        today = date.today()
         stmt = (
             select(EmployeePosition)
-            .join(Employee)
-            .where(EmployeePosition.department_id == dept_id)
+            .options(
+                joinedload(EmployeePosition.employee)
+            )
+            .join(Employee, Employee.id == EmployeePosition.employee_id)
+            .where(
+                EmployeePosition.department_id == dept_id,
+                Employee.is_active == True,
+                EmployeePosition.start_date <= today,
+                or_(
+                    EmployeePosition.end_date.is_(None),
+                    EmployeePosition.end_date >= today
+                )
+            )
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
@@ -151,6 +166,7 @@ class OrgRepository:
             unp=data.unp,
             smdo_code=data.smdo_code,
             name=data.name,
+            short_name=data.short_name,  # <-- Передаем в модель
             phone_number=data.phone_number,
             address=data.address,
             email=data.email,
