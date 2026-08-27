@@ -126,7 +126,7 @@ class AttachmentService:
 
         logger.info(
             f"Starting attachment upload for doc_id={doc_id}, file_name='{file.filename}', user_id={user_id}",
-            extra={"event_type": "attach_upload_start", "doc_id": doc_id, "filename": file.filename, "user_id": user_id}
+            extra={"event_type": "attach_upload_start", "doc_id": doc_id, "file_name": file.filename, "user_id": user_id}
         )
 
         try:
@@ -144,27 +144,50 @@ class AttachmentService:
             with open(temp_input, "wb") as f:
                 f.write(contents)
 
-            # 2. Определяем формат и проводим конвертацию
+            # 2. Определяем формат и проводим пробную конвертацию
             file_type = self.processor.get_file_type(file.filename)
+            original_size = os.path.getsize(temp_input)
 
-            if file_type == 'pdf':
-                img_size, text_size = self.processor.analyze_pdf_content(temp_input)
-                if img_size > text_size:
+            temp_tiff_path = os.path.join(work_dir, f"conv_{file_uuid}.tiff")
+            is_tiff_converted = False
+
+            try:
+                if file_type == 'pdf':
+                    img_size, text_size = self.processor.analyze_pdf_content(temp_input)
+                    if img_size > text_size:
+                        self.processor.convert_pdf_to_tiff(temp_input, temp_tiff_path)
+                        is_tiff_converted = True
+                else:
+                    self.processor.convert_image_to_tiff(temp_input, temp_tiff_path)
+                    is_tiff_converted = True
+            except Exception as conv_err:
+                logger.warning(
+                    f"Conversion to TIFF failed for {file.filename}, falling back to original: {conv_err}")
+                is_tiff_converted = False
+
+            # Сравниваем размер: если TIFF создался и он МЕНЬШЕ оригинала -> берем TIFF
+            if is_tiff_converted and os.path.exists(temp_tiff_path):
+                tiff_size = os.path.getsize(temp_tiff_path)
+                if tiff_size < original_size:
                     final_ext = ".tiff"
                     final_path = os.path.join(work_dir, f"{file_uuid}{final_ext}")
-                    self.processor.convert_pdf_to_tiff(temp_input, final_path)
-                    logger.debug(f"PDF identified as scan; converted to TIFF: doc_id={doc_id}")
+                    shutil.move(temp_tiff_path, final_path)
+                    logger.debug(f"TIFF version chosen ({tiff_size} B < {original_size} B) for doc_id={doc_id}")
                 else:
-                    final_ext = ".pdf"
+                    # Исходник весит меньше или равен
+                    final_ext = file_ext
                     final_path = os.path.join(work_dir, f"{file_uuid}{final_ext}")
                     shutil.copy(temp_input, final_path)
-                    logger.debug(f"PDF identified as native text; copied as PDF: doc_id={doc_id}")
+                    os.remove(temp_tiff_path)
+                    logger.debug(
+                        f"Original version chosen ({original_size} B <= {tiff_size} B) for doc_id={doc_id}")
             else:
-                final_ext = ".tiff"
+                # Если конвертировать не удалось или PDF текстовый
+                final_ext = file_ext
                 final_path = os.path.join(work_dir, f"{file_uuid}{final_ext}")
-                self.processor.convert_image_to_tiff(temp_input, final_path)
+                shutil.copy(temp_input, final_path)
 
-            # 3. Генерация превью (только для raster TIFF)
+            # 3. Генерация превью (если итоговый файл TIFF)
             if final_ext == ".tiff":
                 self.processor.create_thumbnail(final_path)
 
@@ -194,7 +217,7 @@ class AttachmentService:
                 extra={
                     "event_type": "attach_upload_success",
                     "doc_id": doc_id,
-                    "filename": file.filename,
+                    "file_name": file.filename,
                     "file_size": final_file_size,
                     "duration_sec": elapsed,
                     "user_id": user_id
@@ -204,7 +227,7 @@ class AttachmentService:
         except Exception as e:
             logger.exception(
                 f"Error occurred while processing attachment upload for doc_id={doc_id}, file='{file.filename}': {e}",
-                extra={"event_type": "attach_upload_error", "doc_id": doc_id, "filename": file.filename}
+                extra={"event_type": "attach_upload_error", "doc_id": doc_id, "file_name": file.filename}
             )
             raise
         finally:

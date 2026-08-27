@@ -4,7 +4,7 @@ import os
 import time
 
 import fitz as pymupdf
-from PIL import Image, ImageFilter, ImageEnhance, UnidentifiedImageError
+from PIL import Image, ImageFilter, ImageEnhance, UnidentifiedImageError, ImageOps
 
 logger = logging.getLogger("app.services.document_processor")
 
@@ -53,7 +53,7 @@ class DocumentProcessor:
             raise ValueError(f"Формат {ext} не поддерживается")
 
     def preprocess_image(self, img: Image.Image) -> Image.Image:
-        """Предобработка"""
+        """Предобработка изображения: перевод в оттенки серого, контраст, резкость и бинаризация."""
         if img.mode != 'L':
             img = img.convert('L')
 
@@ -66,16 +66,14 @@ class DocumentProcessor:
         if self.SHARPEN_RADIUS > 0:
             img = img.filter(ImageFilter.UnsharpMask(radius=self.SHARPEN_RADIUS, percent=100, threshold=5))
 
-        # Бинаризация
+        threshold = self.THRESHOLD
         if self.ADAPTIVE_THRESHOLD:
             enhancer = ImageEnhance.Contrast(img)
             img = enhancer.enhance(1.3)
-            img = img.point(lambda x: 255 if x > self.THRESHOLD else 0, '1')
-        else:
-            img = img.point(lambda x: 255 if x > self.THRESHOLD else 0, '1')
 
-        if self.BLACK_ONLY:
-            img = img.convert('1')
+        # ПРАВИЛЬНАЯ БИНАРИЗАЦИЯ:
+        img = img.point(lambda x: 0 if x > threshold else 255, mode='1')
+
         return img
 
     def convert_image_to_tiff(self, input_path: str, output_path: str) -> str:
@@ -262,10 +260,25 @@ class DocumentProcessor:
             else:
                 img = Image.open(file_path)
                 img.seek(page_num)
-                img = img.convert("RGB")
+
+                # Если изображение бинарное (mode '1')
+                if img.mode == '1':
+                    # Переводим в оттенки серого
+                    gray_img = img.convert("L")
+
+                    # Подсчитываем преобладающий цвет
+                    # Если 0 (черных пикселей) больше, чем 255 (белых),
+                    # значит при открытии Pillow декодировал фон как черный, инвертируем его
+                    hist = gray_img.histogram()
+                    if hist[0] > hist[255]:
+                        gray_img = ImageOps.invert(gray_img)
+
+                    img = gray_img.convert("RGB")
+                else:
+                    img = img.convert("RGB")
 
             stream = io.BytesIO()
-            img.save(stream, format="JPEG", quality=80)
+            img.save(stream, format="JPEG", quality=85)
             stream.seek(0)
             return stream
 
