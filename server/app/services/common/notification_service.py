@@ -6,6 +6,7 @@ from typing import Optional
 from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError, TelegramAPIError, TelegramRetryAfter
 from aiogram.types import InlineKeyboardMarkup
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 from server.app.database.document_models import DocStatus
 from server.app.repositories.document_repo import DocumentRepository
@@ -17,13 +18,13 @@ logger = logging.getLogger(__name__)
 class NotificationService:
     def __init__(
             self,
-            bot: Bot,
-            emp_repo: EmployeesRepository,
-            doc_repo: DocumentRepository
+            bot: Optional[Bot],
+            session_docs_factory: async_sessionmaker[AsyncSession],
+            session_emp_factory: async_sessionmaker[AsyncSession]
     ):
         self.bot = bot
-        self.emp_repo = emp_repo
-        self.doc_repo = doc_repo
+        self.session_docs_factory = session_docs_factory
+        self.session_emp_factory = session_emp_factory
 
     async def _send_safe(
             self,
@@ -78,34 +79,30 @@ class NotificationService:
         return sent_count
 
     async def notify_document_created(self, doc_id: int, actor_id: int):
-        """Отправка уведомлений о новом документе исполнителям и получателям"""
-        doc = await self.doc_repo.get_by_id(doc_id)
-        if not doc:
-            logger.warning(
-                f"Notification 'document_created' skipped: Document doc_id={doc_id} not found",
-                extra={"event_type": "notify_doc_not_found", "doc_id": doc_id}
-            )
-            return
+        # Отдельная короткая сессия для БД документов
+        async with self.session_docs_factory() as session_docs:
+            doc_repo = DocumentRepository(session_docs)
+            doc = await doc_repo.get_by_id(doc_id)
+            if not doc:
+                return
+            participants = await doc_repo.get_document_participants_dto(doc_id)
 
-        participants = await self.doc_repo.get_document_participants_dto(doc_id)
-
-        # Получатели уведомления: исполнители и получатели, исключая создателя
         target_emp_ids = [
             emp_id for emp_id in set(participants.executors + participants.recipients)
             if emp_id != actor_id
         ]
-
         if not target_emp_ids:
             return
 
-        chat_map = await self.emp_repo.get_chat_ids_by_employee_ids(target_emp_ids)
+        # Отдельная короткая сессия для кадровой БД
+        async with self.session_emp_factory() as session_emp:
+            emp_repo = EmployeesRepository(session_emp)
+            chat_map = await emp_repo.get_chat_ids_by_employee_ids(target_emp_ids)
+
         if not chat_map:
-            logger.debug(
-                f"No Telegram chat_ids found for document creation notification (doc_id={doc_id})",
-                extra={"event_type": "notify_no_chat_ids", "doc_id": doc_id}
-            )
             return
 
+        # Рассылка в Telegram (Обе сессии уже закрыты)
         reg_num = doc.reg_number or f"ID {doc.id}"
         escaped_title = html.escape(doc.title or "")
 
@@ -115,34 +112,31 @@ class NotificationService:
             f"Вам поступил новый документ на исполнение/ознакомление."
         )
 
-        sent_count = await self._broadcast_messages(list(chat_map.values()), text)
-        logger.info(
-            f"Sent 'document_created' notifications for doc_id={doc_id} ({sent_count}/{len(chat_map)} delivered)",
-            extra={
-                "event_type": "notify_document_created",
-                "doc_id": doc_id,
-                "delivered": sent_count,
-                "total_targets": len(chat_map)
-            }
-        )
+        await self._broadcast_messages(list(chat_map.values()), text)
 
     async def notify_comment_added(self, doc_id: int, author_id: int, comment_text: str):
         """При добавлении комментария — всем участникам, кроме автора"""
-        doc = await self.doc_repo.get_by_id(doc_id)
-        if not doc:
-            logger.warning(
-                f"Notification 'comment_added' skipped: Document doc_id={doc_id} not found",
-                extra={"event_type": "notify_doc_not_found", "doc_id": doc_id}
-            )
-            return
+        async with self.session_docs_factory() as session_docs:
+            doc_repo = DocumentRepository(session_docs)
+            doc = await doc_repo.get_by_id(doc_id)
+            if not doc:
+                logger.warning(
+                    f"Notification 'comment_added' skipped: Document doc_id={doc_id} not found",
+                    extra={"event_type": "notify_doc_not_found", "doc_id": doc_id}
+                )
+                return
 
-        participants = await self.doc_repo.get_document_participants_dto(doc_id)
+            participants = await doc_repo.get_document_participants_dto(doc_id)
+
         target_emp_ids = [emp_id for emp_id in participants.all_unique_ids if emp_id != author_id]
 
         if not target_emp_ids:
             return
 
-        chat_map = await self.emp_repo.get_chat_ids_by_employee_ids(target_emp_ids)
+        async with self.session_emp_factory() as session_emp:
+            emp_repo = EmployeesRepository(session_emp)
+            chat_map = await emp_repo.get_chat_ids_by_employee_ids(target_emp_ids)
+
         if not chat_map:
             return
 
@@ -175,15 +169,17 @@ class NotificationService:
         if new_status not in (DocStatus.approved, DocStatus.rejected):
             return
 
-        doc = await self.doc_repo.get_by_id(doc_id)
-        if not doc:
-            logger.warning(
-                f"Notification 'status_changed' skipped: Document doc_id={doc_id} not found",
-                extra={"event_type": "notify_doc_not_found", "doc_id": doc_id}
-            )
-            return
+        async with self.session_docs_factory() as session_docs:
+            doc_repo = DocumentRepository(session_docs)
+            doc = await doc_repo.get_by_id(doc_id)
+            if not doc:
+                logger.warning(
+                    f"Notification 'status_changed' skipped: Document doc_id={doc_id} not found",
+                    extra={"event_type": "notify_doc_not_found", "doc_id": doc_id}
+                )
+                return
 
-        participants = await self.doc_repo.get_document_participants_dto(doc_id)
+            participants = await doc_repo.get_document_participants_dto(doc_id)
 
         target_emp_ids = [
             emp_id for emp_id in participants.all_unique_ids
@@ -193,7 +189,10 @@ class NotificationService:
         if not target_emp_ids:
             return
 
-        chat_map = await self.emp_repo.get_chat_ids_by_employee_ids(target_emp_ids)
+        async with self.session_emp_factory() as session_emp:
+            emp_repo = EmployeesRepository(session_emp)
+            chat_map = await emp_repo.get_chat_ids_by_employee_ids(target_emp_ids)
+
         if not chat_map:
             return
 
@@ -224,15 +223,20 @@ class NotificationService:
         message: Optional[str] = None
     ):
         """Уведомление непосредственно делегату при назначении или отзыве доступа"""
-        doc = await self.doc_repo.get_by_id(doc_id)
-        if not doc:
-            logger.warning(
-                f"Notification 'delegation_changed' skipped: Document doc_id={doc_id} not found",
-                extra={"event_type": "notify_doc_not_found", "doc_id": doc_id}
-            )
-            return
+        async with self.session_docs_factory() as session_docs:
+            doc_repo = DocumentRepository(session_docs)
+            doc = await doc_repo.get_by_id(doc_id)
+            if not doc:
+                logger.warning(
+                    f"Notification 'delegation_changed' skipped: Document doc_id={doc_id} not found",
+                    extra={"event_type": "notify_doc_not_found", "doc_id": doc_id}
+                )
+                return
 
-        delegatee_map = await self.emp_repo.get_chat_ids_by_employee_ids([delegatee_id])
+        async with self.session_emp_factory() as session_emp:
+            emp_repo = EmployeesRepository(session_emp)
+            delegatee_map = await emp_repo.get_chat_ids_by_employee_ids([delegatee_id])
+
         delegatee_chat_id = delegatee_map.get(delegatee_id)
 
         if not delegatee_chat_id:
@@ -275,7 +279,10 @@ class NotificationService:
         if not employee_ids:
             return
 
-        chat_map = await self.emp_repo.get_chat_ids_by_employee_ids(list(employee_ids))
+        async with self.session_emp_factory() as session_emp:
+            emp_repo = EmployeesRepository(session_emp)
+            chat_map = await emp_repo.get_chat_ids_by_employee_ids(list(employee_ids))
+
         if not chat_map:
             logger.debug(
                 "No Telegram chat_ids found for overtimes notification batch",

@@ -127,6 +127,11 @@ class DocumentReceiver(BaseDocuments):
     target_official_text: Mapped[Optional[str]] = mapped_column(Text)
     delivery_status: Mapped[str] = mapped_column(String(50), server_default="pending", nullable=False)
 
+    document: Mapped["Document"] = relationship(
+        "Document",
+        back_populates="receivers"
+    )
+
 class DocumentArchive(BaseDocuments):
     """Таблица персонального архива пользователей"""
     __tablename__ = "document_archives"
@@ -257,6 +262,7 @@ class Document(BaseDocuments):
 
     # МИКРОСЕРВИСНЫЕ ССЫЛКИ НА db_employees (Простые INTEGER без Foreign Key)
     source_employee_id: Mapped[Optional[int]] = mapped_column(Integer)
+    source_department_id: Mapped[Optional[int]] = mapped_column(Integer)
     source_organization_id: Mapped[Optional[int]] = mapped_column(Integer)
     source_official_text: Mapped[Optional[str]] = mapped_column(Text)
 
@@ -281,6 +287,12 @@ class Document(BaseDocuments):
     attachments: Mapped[list["DocumentAttachment"]] = relationship(
         cascade="all, delete-orphan",
         lazy="selectin"
+    )
+    receivers: Mapped[list["DocumentReceiver"]] = relationship(
+        "DocumentReceiver",
+        back_populates="document",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
     status_history: Mapped[list["DocumentStatusHistory"]] = relationship(
         back_populates="document",

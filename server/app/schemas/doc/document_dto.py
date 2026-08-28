@@ -3,7 +3,8 @@ from typing import Optional, Union
 from datetime import date, datetime
 
 from server.app.database.document_models import DocStatus, DocDirection, TagPriority
-from server.app.schemas.doc.doc_employee_dto import DocEmployeeItem, ParticipantItem
+from server.app.schemas.doc.doc_employee_dto import DocEmployeeItem, ParticipantItem, DocumentReceiverCreate, \
+    DocumentReceiverRead
 from server.app.schemas.doc.tag_dto import TagRead
 from server.app.schemas.doc.attachment_dto import DocumentAttachmentRead
 
@@ -17,17 +18,27 @@ class DocumentCreateForm(BaseModel):
     sequence_number: Optional[int] = None
     deadline: Optional[date] = None
 
-    # СМДО / Безопасность (Добавлено на основании новых полей БД)
-    global_msg_id: Optional[str] = None  # Локальный UUID или UUID пакета СМДО
+    # СМДО / Входящие реквизиты
+    incoming_number: Optional[str] = None
+    incoming_date: Optional[date] = None
+
+    # Транспорт / Безопасность
+    global_msg_id: Optional[str] = None
     parent_document_id: Optional[int] = None
-    confident_flag: int = 0  # 0 - открытый, 1 - ДСП
+    confident_flag: int = 0
     clearance_id: Optional[int] = None
 
-    sender_id: Optional[int] = None
-    executors: list[int] = []  # ID сотрудников
-    recipients: list[int] = []  # ID сотрудников
-    tag_ids: list[int] = []
+    # --- ОФИЦИАЛЬНЫЙ ИСТОЧНИК / БЛАНК (source_*) ---
+    source_employee_id: Optional[int] = Field(None, description="ID сотрудника-подписанта/отправителя на бланке")
+    source_organization_id: Optional[int] = Field(None, description="ID внешней организации-отправителя (для входящих)")
+    source_official_text: Optional[str] = Field(None, description="Текстовая подпись отправителя на бланке")
 
+    # --- СИСТЕМНЫЕ ДОСТУПЫ В СЭД ---
+    sender_id: Optional[int] = Field(None, description="ID оператора, создающего запись (если создается от имени другого)")
+    executors: list[int] = Field(default_factory=list, description="ID сотрудников-исполнителей")
+    receivers: list[DocumentReceiverCreate] = Field(default_factory=list, description="Список адресатов-получателей")
+
+    tag_ids: list[int] = Field(default_factory=list)
     needs_response: bool = False
 
 class DocumentListItem(BaseModel):
@@ -47,8 +58,13 @@ class DocumentListItem(BaseModel):
     sent_date: Optional[date] = None
     deadline: Optional[date] = None
     last_comment_text: Optional[str] = None
-    tags: list[TagRead] = []
-    participants: list[ParticipantItem] = []
+
+    # Поля отправителя и получателей (ИСПРАВЛЕНО: добавлены поля в Pydantic модель)
+    sender: Optional[ParticipantItem] = None
+    recipients: list[ParticipantItem] = Field(default_factory=list)
+
+    tags: list[TagRead] = Field(default_factory=list)
+    participants: list[ParticipantItem] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -84,9 +100,10 @@ class DocumentDetailRead(BaseModel):
     created_at: datetime
 
     # Вложенные списки
-    tags: list[TagRead] = []
-    employees: list[DocEmployeeItem] = []
-    attachments: list[DocumentAttachmentRead] = []  # Заменило старые плоские пути файлов!
+    tags: list[TagRead] = Field(default_factory=list)
+    employees: list[DocEmployeeItem] = Field(default_factory=list)
+    attachments: list[DocumentAttachmentRead] = Field(default_factory=list)
+    receivers: list[DocumentReceiverRead] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

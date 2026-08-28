@@ -1,7 +1,5 @@
-from pydantic import BaseModel, ConfigDict, computed_field
-from typing import Optional
-
-from sqlalchemy.orm import relationship
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional, Union
 
 from server.app.database.document_models import DocumentRole
 
@@ -17,7 +15,24 @@ class DocEmployeeItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class ParticipantItem(BaseModel):
-    fio: str
-    role: DocumentRole
+    name: str
+    role: Optional[Union[DocumentRole, str]] = Field(None, description="Роль участника в документе")
+
+    model_config = ConfigDict(from_attributes=True)
+
+# --- DTO получателей (DocumentReceiver) ---
+
+class DocumentReceiverCreate(BaseModel):
+    """Схема создания адресата документа"""
+    target_department_id: Optional[int] = Field(None, description="ID отдела-получателя")
+    target_organization_id: Optional[int] = Field(None, description="ID сторонней организации")
+    target_official_text: Optional[str] = Field(None, description="Наименование адресата/должности на бланке")
+
+
+class DocumentReceiverRead(DocumentReceiverCreate):
+    """Схема чтения адресата документа"""
+    id: int
+    document_id: int
+    delivery_status: str
 
     model_config = ConfigDict(from_attributes=True)

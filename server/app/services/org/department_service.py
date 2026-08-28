@@ -208,7 +208,7 @@ class DepartmentService:
                 detail="Нельзя удалить отдел, у которого есть дочерние подразделения",
             )
 
-        employees = await self.repo.get_employees_by_dept(dept_id)
+        employees = await self.emp_repo.get_employees_by_dept(dept_id)
         if employees:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -320,7 +320,7 @@ class DepartmentService:
                 detail="Подразделение не найдено",
             )
 
-        employees = await self.repo.get_employees_by_dept(dept_id)
+        employees = await self.emp_repo.get_employees_by_dept(dept_id)
         if employees:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

@@ -4,13 +4,13 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from typing import Optional
 from datetime import datetime, timezone
 
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 # ИСПРАВЛЕНО: Импортируем сущности строго из новой схемы db_documents
 from server.app.database.document_models import (
     Document, EmployeeDocument, SystemEmployee,
     Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority, DocumentRole, RedirectHistory, Read,
-    DocumentArchive, DocumentPin, DocumentAttachment, DocumentStatusHistory, DocumentType
+    DocumentArchive, DocumentPin, DocumentAttachment, DocumentStatusHistory, DocumentType, DocumentReceiver
 )
 from server.app.database.employee_models import Department, EmployeePosition
 from server.app.schemas.user_schemas.doc_participants import DocumentParticipantsDTO
@@ -255,10 +255,14 @@ class DocumentRepository:
         return result.all()
 
     def prepare_document_list_query(self):
-        """Создает начальный запрос с жадной загрузкой участников для предотвращения N+1."""
-        return select(Document).options(
-            selectinload(Document.employees).joinedload(EmployeeDocument.employee),
-            selectinload(Document.type)  # Убедитесь, что в модели Document есть связь 'type'
+        return (
+            select(Document)
+            .options(
+                selectinload(Document.type),
+                selectinload(Document.tags),
+                selectinload(Document.employees).joinedload(EmployeeDocument.employee),
+                selectinload(Document.receivers)  # Подгружается, т.к. DocumentReceiver живет в этой же БД
+            )
         )
 
     def apply_user_scope(self, query, user_id: int, is_completed: Optional[bool]):
@@ -272,15 +276,6 @@ class DocumentRepository:
         if is_completed is not None:
             stmt = stmt.where(EmployeeDocument.is_completed == is_completed)
         return query.where(stmt.exists())
-
-    def apply_admin_scope(self, query, is_completed: bool):
-        """Применяет глобальный фильтр для админа."""
-        return query.where(exists().where(
-            and_(
-                EmployeeDocument.document_id == Document.id,
-                EmployeeDocument.is_completed == is_completed
-            )
-        ))
 
     def apply_filters(self, query, params: dict):
         """Универсальное применение фильтров из словаря параметров."""

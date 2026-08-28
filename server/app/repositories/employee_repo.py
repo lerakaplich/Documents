@@ -4,7 +4,7 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, distinct, or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.sql.expression import delete
 
 from server.app.database.employee_models import Employee, EmployeePosition, Department
@@ -72,6 +72,54 @@ class EmployeesRepository:
 
         result = await self.db.execute(stmt)
         return result.all(), total
+
+    async def get_employees_by_dept(self, dept_id: int) -> list[EmployeePosition]:
+        """
+        Получить все АКТИВНЫЕ позиции сотрудников в отделе с учетом дат начала и окончания.
+        """
+        today = date.today()
+        stmt = (
+            select(EmployeePosition)
+            .options(
+                joinedload(EmployeePosition.employee)
+            )
+            .join(Employee, Employee.id == EmployeePosition.employee_id)
+            .where(
+                EmployeePosition.department_id == dept_id,
+                Employee.is_active == True,
+                EmployeePosition.start_date <= today,
+                or_(
+                    EmployeePosition.end_date.is_(None),
+                    EmployeePosition.end_date >= today
+                )
+            )
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_department_head_id(self, dept_id: int) -> Optional[int]:
+        """
+        Возвращает employee_id руководителя отдела.
+        Ищет активную позицию с флагом is_head=True (или по названию должности).
+        """
+        today = date.today()
+        stmt = (
+            select(EmployeePosition.employee_id)
+            .join(Employee, Employee.id == EmployeePosition.employee_id)
+            .where(
+                EmployeePosition.department_id == dept_id,
+                Employee.is_active.is_(True),
+                EmployeePosition.is_leader.is_(True),
+                EmployeePosition.start_date <= today,
+                or_(
+                    EmployeePosition.end_date.is_(None),
+                    EmployeePosition.end_date >= today
+                )
+            )
+            .limit(1)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_by_id(self, emp_id: int) -> Optional[Employee]:
         today = date.today()
@@ -456,9 +504,23 @@ class EmployeesRepository:
         await self.db.execute(stmt)
         await self.db.flush()
 
+    @staticmethod
+    def _extract_dept_code(dept: Optional[Department], fallback: str = "00") -> str:
+        """Извлекает числовой/буквенный код подразделения из number или code, избегая наименований."""
+        if not dept:
+            return fallback
+
+        # Проверяем атрибуты code или number (в зависимости от вашей ORM-модели)
+        code_val = getattr(dept, 'number', None) or getattr(dept, 'code', None)
+
+        if code_val is not None and str(code_val).strip():
+            return str(code_val).strip()
+
+        return fallback
+
     async def get_department_codes_for_employee(self, employee_id: int) -> tuple[str, str]:
         """
-        Возвращает (код_высшего_подразделения, код_отдела) для сотрудника на основе его активной должности.
+        Возвращает (код_родительского_подразделения, код_отдела) для сотрудника.
         """
         today = date.today()
         stmt = (
@@ -480,16 +542,33 @@ class EmployeesRepository:
         if not dept:
             return "00", "00"
 
-        sub_dept_code = str(dept.number) if getattr(dept, 'number', None) is not None else dept.name
+        # 1. Получаем код текущего отдела
+        sub_dept_code = self._extract_dept_code(dept, fallback="00")
+
+        # 2. Ищем родительское подразделение на 1 шаг выше
+        top_dept_code = sub_dept_code
 
         if hasattr(dept, 'hierarchy_path') and dept.hierarchy_path:
-            top_dept_id = int(dept.hierarchy_path.split('/')[0])
-            top_res = await self.db.execute(select(Department).where(Department.id == top_dept_id))
-            top_dept = top_res.scalar_one_or_none()
-            top_dept_code = (str(top_dept.number) if top_dept and getattr(top_dept, 'number',
-                                                                          None) is not None else top_dept.name) if top_dept else sub_dept_code
-        else:
-            top_dept_code = sub_dept_code
+            # Массив ID от корня к текущему, например: ["1", "15", "42"]
+            path_ids = [int(p) for p in dept.hierarchy_path.split('/') if p.isdigit()]
+
+            # Нам нужен родитель — элемент, стоящий прямо перед текущим отделом
+            if len(path_ids) > 1:
+                # Берем предпоследний ID (на шаг выше)
+                parent_dept_id = path_ids[-2]
+
+                top_res = await self.db.execute(
+                    select(Department).where(Department.id == parent_dept_id)
+                )
+                parent_dept = top_res.scalar_one_or_none()
+                top_dept_code = self._extract_dept_code(parent_dept, fallback=sub_dept_code)
+        elif getattr(dept, 'parent_id', None) is not None:
+            # Альтернативный фоллбэк через parent_id, если hierarchy_path не заполнен
+            top_res = await self.db.execute(
+                select(Department).where(Department.id == dept.parent_id)
+            )
+            parent_dept = top_res.scalar_one_or_none()
+            top_dept_code = self._extract_dept_code(parent_dept, fallback=sub_dept_code)
 
         return top_dept_code, sub_dept_code
 

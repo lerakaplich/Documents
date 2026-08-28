@@ -10,7 +10,8 @@ from sqlalchemy import select
 from server.app.config import TELEGRAM_BOT_TOKEN
 from server.app.core.security_tokens import decode_access_token
 from server.app.database.document_models import SystemEmployee
-from server.app.database.session import get_docs_db, get_employees_db  # УБРАЛИ кадровый get_employees_db
+from server.app.database.session import get_docs_db, get_employees_db, \
+    async_session_docs, async_session_employees  # УБРАЛИ кадровый get_employees_db
 from server.app.repositories.attachment_repo import AttachmentRepository
 from server.app.repositories.comment_repo import CommentRepository
 from server.app.repositories.doc_type_repo import DocTypeRepository
@@ -55,13 +56,13 @@ def get_telegram_bot() -> Optional[Bot]:
 
 
 def get_notification_service(
-    db_docs: AsyncSession = Depends(get_docs_db),
-    db_emp: AsyncSession = Depends(get_employees_db),
     bot: Optional[Bot] = Depends(get_telegram_bot)
 ) -> NotificationService:
-    doc_repo = DocumentRepository(db_docs)
-    emp_repo = EmployeesRepository(db_emp)
-    return NotificationService(bot=bot, emp_repo=emp_repo, doc_repo=doc_repo)
+    return NotificationService(
+        bot=bot,
+        session_docs_factory=async_session_docs,
+        session_emp_factory=async_session_employees
+    )
 
 
 async def get_current_user(
@@ -278,9 +279,12 @@ def get_review_service(
         notification_service=notification_svc
     )
 
-def get_registry_service(db_docs: AsyncSession = Depends(get_docs_db)) -> RegistryService:
+def get_registry_service(
+    db_docs: AsyncSession = Depends(get_docs_db),
+    db_structure: AsyncSession = Depends(get_employees_db) # <-- Теперь здесь функция get_structure_db
+) -> RegistryService:
     repo = DocumentRepository(db_docs)
-    return RegistryService(repo)
+    return RegistryService(repo=repo, structure_session=db_structure)
 
 def get_comment_service(
     db_docs: AsyncSession = Depends(get_docs_db),

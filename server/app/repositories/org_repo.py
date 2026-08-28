@@ -29,30 +29,6 @@ class OrgRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_employees_by_dept(self, dept_id: int) -> list[EmployeePosition]:
-        """
-        Получить все АКТИВНЫЕ позиции сотрудников в отделе с учетом дат начала и окончания.
-        """
-        today = date.today()
-        stmt = (
-            select(EmployeePosition)
-            .options(
-                joinedload(EmployeePosition.employee)
-            )
-            .join(Employee, Employee.id == EmployeePosition.employee_id)
-            .where(
-                EmployeePosition.department_id == dept_id,
-                Employee.is_active == True,
-                EmployeePosition.start_date <= today,
-                or_(
-                    EmployeePosition.end_date.is_(None),
-                    EmployeePosition.end_date >= today
-                )
-            )
-        )
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
-
     async def create_department(self, data: DepartmentCreate) -> Department:
         new_dept = Department(
             organization_id=data.organization_id,
