@@ -277,13 +277,53 @@ class DocumentRepository:
             stmt = stmt.where(EmployeeDocument.is_completed == is_completed)
         return query.where(stmt.exists())
 
-    def apply_filters(self, query, params: dict):
+    def apply_archive_filter(self, query, user_id: int, is_archived: bool | None):
+        """
+        Фильтрация документов по персональному архиву пользователя:
+        - is_archived = True:  показать ТОЛЬКО архивированные пользователем документы.
+        - is_archived = False: показать ТОЛЬКО НЕархивированные документы.
+        - is_archived = None:  не фильтровать (показывать и те, и другие).
+        """
+        if is_archived is None:
+            return query
+
+        archive_exists = select(1).where(
+            and_(
+                DocumentArchive.document_id == Document.id,
+                DocumentArchive.employee_id == user_id
+            )
+        ).exists()
+
+        if is_archived:
+            return query.where(archive_exists)
+        else:
+            return query.where(~archive_exists)
+
+    def apply_filters(self, query, params: dict, user_id: int):
         """Универсальное применение фильтров из словаря параметров."""
-        if params.get('status_filters'): query = query.where(Document.status.in_(params['status_filters']))
-        if params.get('type_id'): query = query.where(Document.type_id == params['type_id'])
-        if params.get('direction'): query = query.where(Document.direction == params['direction'])
-        if params.get('date_from'): query = query.where(Document.sent_date >= params['date_from'])
-        if params.get('date_to'): query = query.where(Document.sent_date <= params['date_to'])
+        # Фильтр по архиву
+        is_archived = params.get('is_archived')
+        if is_archived is not None:
+            archive_exists = select(1).where(
+                and_(
+                    DocumentArchive.document_id == Document.id,
+                    DocumentArchive.employee_id == user_id
+                )
+            ).exists()
+            query = query.where(archive_exists if is_archived else ~archive_exists)
+
+        # Остальные базовые фильтры
+        if params.get('status_filters'):
+            query = query.where(Document.status.in_(params['status_filters']))
+        if params.get('type_id'):
+            query = query.where(Document.type_id == params['type_id'])
+        if params.get('direction'):
+            query = query.where(Document.direction == params['direction'])
+        if params.get('date_from'):
+            query = query.where(Document.sent_date >= params['date_from'])
+        if params.get('date_to'):
+            query = query.where(Document.sent_date <= params['date_to'])
+
         return query
 
     def apply_search(self, query, pattern: str):
@@ -324,8 +364,6 @@ class DocumentRepository:
         Присоединяет информацию о прочтении.
         Если запись в таблице reads найдена, is_read будет TRUE, иначе NULL (превращаем в False).
         """
-        from sqlalchemy import outerjoin
-
         # Создаем алиас для таблицы reads для конкретного пользователя
         read_alias = select(Read.document_id).where(Read.employee_id == user_id).scalar_subquery()
 

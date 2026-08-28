@@ -49,6 +49,7 @@ async def get_proposed_document_number(
 async def get_documents(
     scope: str = Query("my", description="Область видимости: 'my', 'all', 'archive', 'pinned'"),
     is_completed: Optional[bool] = Query(None, description="Фильтр завершенности"),
+    is_archived: Optional[bool] = Query(None, description="Фильтр по персональному архиву: True - только архив, False - только активные, None - все"),
     status_filters: Optional[list[DocStatus]] = Query(default=None, description="Фильтр по статусам"),
     type_id: Optional[int] = Query(None, description="ID типа документа"),
     direction: Optional[DocDirection] = Query(None, description="Направление (internal/external/etc.)"),
@@ -69,6 +70,7 @@ async def get_documents(
         user_rights=current_user.rights,
         scope=scope,
         is_completed=is_completed,
+        is_archived=is_archived,
         status_filters=status_filters,
         type_id=type_id,
         direction=direction,

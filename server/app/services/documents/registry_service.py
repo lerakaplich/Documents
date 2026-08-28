@@ -99,6 +99,7 @@ class RegistryService:
         user_rights: AppRights,
         scope: str = "my",
         is_completed: bool | None = None,
+        is_archived: bool | None = None,
         status_filters: list | None = None,
         type_id: int | None = None,
         direction: str | None = None,
@@ -116,6 +117,7 @@ class RegistryService:
         filter_params = {
             "scope": scope,
             "is_completed": is_completed,
+            "is_archived": is_archived,
             "status_filters": status_filters,
             "type_id": type_id,
             "direction": direction,
@@ -144,7 +146,7 @@ class RegistryService:
             query = self.repo.apply_user_scope(query, user_id, is_completed)
 
         # 3. Фильтры
-        query = self.repo.apply_filters(query, filter_params)
+        query = self.repo.apply_filters(query, filter_params, user_id)
 
         # 4. Поиск
         if search and search.strip():
