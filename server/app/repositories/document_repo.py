@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, desc, asc, exists, insert, delete, update
+from sqlalchemy import select, func, and_, or_, desc, asc, exists, insert, delete, update, case
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from typing import Optional
 from datetime import datetime, timezone
@@ -338,21 +338,79 @@ class DocumentRepository:
             ).scalar_subquery())
         ))
 
-    def apply_sorting(self, query, sort_by: str, sort_order: str):
-        """Сортировка: Срочные документы всегда выше, далее по полю."""
-        urgent = exists().where(
-            and_(DocumentTag.document_id == Document.id, DocumentTag.tag_id == Tag.id,
-                 Tag.priority == TagPriority.urgent)
+    def apply_sorting(self, query, sort_by: str, sort_order: str, user_id: int):
+        """
+        Сортировка реестра документов:
+        Срочные документы всегда идут первыми (если приоритет не переопределен),
+        затем применяется указанное поле сортировки.
+        """
+        # 1. По умолчанию срочные документы поднимаются вверх
+        urgent_exists = exists().where(
+            and_(
+                DocumentTag.document_id == Document.id,
+                DocumentTag.tag_id == Tag.id,
+                Tag.priority == TagPriority.urgent
+            )
         )
-        query = query.order_by(desc(urgent))
+        query = query.order_by(desc(urgent_exists))
 
+        # 2. Вычисляемые выражения для сложных полей
+
+        # Сортировка по приоритету тегов (urgent=3, important=2, normal=1, без тегов=0)
+        max_tag_priority = (
+            select(
+                case(
+                    (Tag.priority == TagPriority.urgent, 3),
+                    (Tag.priority == TagPriority.important, 2),
+                    (Tag.priority == TagPriority.normal, 1),
+                    else_=0
+                )
+            )
+            .select_from(DocumentTag)
+            .join(Tag, DocumentTag.tag_id == Tag.id)
+            .where(DocumentTag.document_id == Document.id)
+            .order_by(
+                case(
+                    (Tag.priority == TagPriority.urgent, 3),
+                    (Tag.priority == TagPriority.important, 2),
+                    (Tag.priority == TagPriority.normal, 1),
+                    else_=0
+                ).desc()
+            )
+            .limit(1)
+            .scalar_subquery()
+        )
+
+        # Сортировка по прочитанности (Прочитан = 1, Не прочитан = 0)
+        is_read_subquery = exists().where(
+            and_(
+                Read.document_id == Document.id,
+                Read.employee_id == user_id
+            )
+        )
+
+        # 3. Карта соответствия ключей API полям/выражениям базы данных
         fields = {
-            "title": Document.title, "created_at": Document.created_at,
-            "sent_date": Document.sent_date, "deadline": Document.deadline,
-            "reg_number": Document.reg_number
+            "sequence_number": Document.sequence_number,  # порядковый номер
+            "title": Document.title,  # тема
+            "about": Document.about,  # касается
+            "sent_date": Document.sent_date,  # дата отправки
+            "deadline": Document.deadline,  # дедлайн
+            "reg_number": Document.reg_number,  # номер документа
+            "status": Document.status,  # статус
+            "tag_priority": max_tag_priority,  # приоритет тэгов
+            "is_read": is_read_subquery,  # прочитанность
+            "created_at": Document.created_at,  # дата создания (по умолчанию)
         }
+
+        # Получаем целевое поле для сортировки
         target = fields.get(sort_by, Document.created_at)
-        return query.order_by(asc(target) if sort_order.lower() == "asc" else desc(target))
+
+        # Применяем направление (asc/desc)
+        order_func = asc if sort_order.lower() == "asc" else desc
+
+        # Для NULL значений (например, если нет дедлайна или номера) задаем предсказуемый порядок
+        return query.order_by(order_func(target).nulls_last())
 
     async def count_query(self, query):
         """Подсчет общего количества записей (без учета limit/offset)."""

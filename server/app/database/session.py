@@ -2,7 +2,7 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 # Конфигурационные строки подключения (Разработчик 2 уберет их в .env файл)
-DOCUMENTS_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/documents_new"
+DOCUMENTS_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/documents_test"
 EMPLOYEES_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/employees_new"
 
 # Добавьте для asyncpg (слушателя):
@@ -49,25 +49,9 @@ async_session_employees = async_sessionmaker(
 # 3. Функции-зависимости (Depends) для использования в эндпоинтах FastAPI
 
 async def get_docs_db() -> AsyncGenerator[AsyncSession, None]:
-    """Генератор сессии для работы с базой данных Документов"""
     async with async_session_docs() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+        yield session
 
 async def get_employees_db() -> AsyncGenerator[AsyncSession, None]:
-    """Генератор сессии для работы с кадровой базой данных МАЗ"""
     async with async_session_employees() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+        yield session

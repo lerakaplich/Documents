@@ -52,6 +52,7 @@ class DocumentListItem(BaseModel):
     sequence_number: Optional[int] = None
     type_name: str = "Без типа"
     title: Optional[str] = None
+    about: Optional[str] = None
     reg_number: Optional[str] = None
     status: DocStatus = DocStatus.under_review
     direction: DocDirection

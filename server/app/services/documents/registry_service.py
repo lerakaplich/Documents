@@ -157,7 +157,7 @@ class RegistryService:
         total = await self.repo.count_query(query)
 
         # 6. Сортировка и пагинация
-        query = self.repo.apply_sorting(query, sort_by, sort_order)
+        query = self.repo.apply_sorting(query, sort_by, sort_order, user_id)
         query = query.limit(limit).offset(offset)
 
         # 7. Выполнение запроса
@@ -185,10 +185,8 @@ class RegistryService:
                     org_ids.add(rec.target_organization_id)
 
         # Запрашиваем маппинги параллельно из 2-й базы (БД employees) с учётом TTLCache
-        departments_map, organizations_map = await asyncio.gather(
-            self.fetch_departments_map(dept_ids),
-            self.fetch_organizations_map(org_ids)
-        )
+        departments_map = await self.fetch_departments_map(dept_ids)
+        organizations_map = await self.fetch_organizations_map(org_ids)
 
         # =========================================================================
         # 8. МАППИНГ DTO
