@@ -9,7 +9,6 @@ from server.app.database.employee_models import Organization, Department
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
-from server.app.repositories.structure_repo import StructureRepository
 from server.app.schemas.doc.doc_employee_dto import ParticipantItem
 from server.app.schemas.doc.document_dto import DocumentListItem
 from server.app.schemas.doc.tag_dto import TagRead
