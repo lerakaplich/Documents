@@ -7,7 +7,7 @@ from sqlalchemy import select, func, update, distinct, or_
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.sql.expression import delete
 
-from server.app.database.employee_models import Employee, EmployeePosition, Department
+from server.app.database.employee_models import Employee, EmployeePosition, Department, Organization
 from server.app.schemas.org import DepartmentPathItem
 from server.app.schemas.user_schemas.employee_dto import PositionCreate, EmployeeCreate, PositionUpdate
 
@@ -629,5 +629,60 @@ class EmployeesRepository:
                 )
             )
         )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def search_organizations(self, pattern: str, limit: int = 10) -> list[Organization]:
+        stmt = (
+            select(Organization)
+            .where(Organization.name.ilike(pattern))
+            .limit(limit)
+        )
+        res = await self.db.execute(stmt)
+        return list(res.scalars().all())
+
+    async def search_departments(self, pattern: str, limit: int = 10) -> list[Department]:
+        stmt = (
+            select(Department)
+            .where(Department.name.ilike(pattern))
+            .limit(limit)
+        )
+        res = await self.db.execute(stmt)
+        return list(res.scalars().all())
+
+    async def search_employees(
+            self,
+            pattern: str,
+            limit: int = 10,
+            include_positions: bool = True
+    ) -> list[Employee]:
+        """
+        Поиск сотрудников по ФИО с предзагрузкой активных должностей.
+        """
+        today = date.today()
+
+        stmt = select(Employee).where(
+            or_(
+                Employee.last_name.ilike(pattern),
+                Employee.first_name.ilike(pattern),
+                Employee.patronymic.ilike(pattern)
+            ),
+            Employee.is_active.is_(True)
+        )
+
+        if include_positions:
+            stmt = stmt.options(
+                selectinload(
+                    Employee.positions.and_(
+                        EmployeePosition.start_date <= today,
+                        or_(
+                            EmployeePosition.end_date.is_(None),
+                            EmployeePosition.end_date >= today
+                        )
+                    )
+                )
+            )
+
+        stmt = stmt.limit(limit)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())

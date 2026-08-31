@@ -7,9 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from server.app.database.document_models import AppRights, DocumentRole
 from server.app.database.employee_models import Organization, Department
 from server.app.repositories.document_repo import DocumentRepository
+from server.app.repositories.employee_repo import EmployeesRepository
+from server.app.repositories.org_repo import OrgRepository
+from server.app.repositories.structure_repo import StructureRepository
 from server.app.schemas.doc.doc_employee_dto import ParticipantItem
 from server.app.schemas.doc.document_dto import DocumentListItem
 from server.app.schemas.doc.tag_dto import TagRead
+from server.app.schemas.org.structure_search import StructureSearchResult, StructureEntityType, AncestorItem
 
 
 def _format_fio(emp) -> str:
@@ -26,8 +30,16 @@ _org_cache = TTLCache(maxsize=1024, ttl=300)
 
 
 class RegistryService:
-    def __init__(self, repo: DocumentRepository, structure_session: AsyncSession):
+    def __init__(
+        self,
+        repo: DocumentRepository,
+        structure_session: AsyncSession,
+        employees_repo: EmployeesRepository,
+        org_repo: OrgRepository
+    ):
         self.repo = repo
+        self.employees_repo = employees_repo
+        self.org_repo = org_repo
         self.structure_session = structure_session
 
     async def fetch_departments_map(self, dept_ids: set[int]) -> dict[int, str]:
@@ -303,3 +315,98 @@ class RegistryService:
 
         return total, items
 
+    async def search_structure(
+            self, query_text: str, limit_per_type: int = 10
+    ) -> list[StructureSearchResult]:
+        if not query_text or not query_text.strip():
+            return []
+
+        pattern = f"%{query_text.strip()}%"
+        results: list[StructureSearchResult] = []
+
+        # ---------------------------------------------------------------------
+        # 1. Организации
+        # ---------------------------------------------------------------------
+        organizations = await self.employees_repo.search_organizations(pattern, limit=limit_per_type)
+        for org in organizations:
+            results.append(
+                StructureSearchResult(
+                    id=org.id,
+                    type=StructureEntityType.ORGANIZATION,
+                    title=org.name,
+                    subtitle="Организация",
+                    ancestors=[],
+                )
+            )
+
+        # ---------------------------------------------------------------------
+        # 2. Отделы
+        # ---------------------------------------------------------------------
+        departments = await self.employees_repo.search_departments(pattern, limit=limit_per_type)
+
+        org_ids_for_depts = {d.organization_id for d in departments if d.organization_id}
+        orgs_map = await self.fetch_organizations_map(org_ids_for_depts)
+
+        for dept in departments:
+            ancestors = []
+            if dept.organization_id:
+                org_name = orgs_map.get(
+                    dept.organization_id, f"Организация ID: {dept.organization_id}"
+                )
+                ancestors.append(
+                    AncestorItem(
+                        id=dept.organization_id,
+                        name=org_name,
+                        type=StructureEntityType.ORGANIZATION,
+                    )
+                )
+
+            results.append(
+                StructureSearchResult(
+                    id=dept.id,
+                    type=StructureEntityType.DEPARTMENT,
+                    title=dept.name,
+                    subtitle="Подразделение",
+                    ancestors=ancestors,
+                )
+            )
+
+        # ---------------------------------------------------------------------
+        # 3. Сотрудники (поиск + сбор отделов через positions)
+        # ---------------------------------------------------------------------
+        employees = await self.employees_repo.search_employees(pattern, limit=limit_per_type)
+
+        # 1. Собираем все ID отделов, в которых состоят найденные сотрудники
+        emp_dept_ids = {
+            emp.positions[0].department_id
+            for emp in employees
+            if emp.positions
+        }
+
+        # 2. Получаем готовые цепочки предков (Организация -> Головной отдел -> Подраздел)
+        dept_ancestors_map = await self.org_repo.get_departments_with_hierarchy_by_ids(emp_dept_ids)
+
+        # 3. Формируем результаты
+        for emp in employees:
+            fio = f"{emp.last_name} {emp.first_name} {emp.patronymic or ''}".strip()
+            position_title = "Сотрудник"
+            ancestors = []
+
+            if emp.positions:
+                active_pos = emp.positions[0]
+                position_title = active_pos.position_name or "Сотрудник"
+
+                # Подтягиваем всю цепочку предков от организации до конкретного отдела
+                ancestors = dept_ancestors_map.get(active_pos.department_id, [])
+
+            results.append(
+                StructureSearchResult(
+                    id=emp.id,
+                    type=StructureEntityType.EMPLOYEE,
+                    title=fio,
+                    subtitle=position_title,
+                    ancestors=ancestors,  # <-- Здесь теперь лежащая по порядку цепочка: Org -> Dept1 -> Dept2
+                )
+            )
+
+        return results

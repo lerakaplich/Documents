@@ -20,6 +20,7 @@ from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
 from server.app.repositories.overtime_repo import OvertimeRepository
 from server.app.repositories.session_repo import SessionRepository
+from server.app.repositories.structure_repo import StructureRepository
 from server.app.repositories.tag_repo import TagRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.authorization.auth_service import AuthService
@@ -284,7 +285,9 @@ def get_registry_service(
     db_structure: AsyncSession = Depends(get_employees_db) # <-- Теперь здесь функция get_structure_db
 ) -> RegistryService:
     repo = DocumentRepository(db_docs)
-    return RegistryService(repo=repo, structure_session=db_structure)
+    emp_repo = EmployeesRepository(db_structure)
+    org_repo = OrgRepository(db_structure)
+    return RegistryService(repo=repo, employees_repo=emp_repo, org_repo=org_repo, structure_session=db_structure)
 
 def get_comment_service(
     db_docs: AsyncSession = Depends(get_docs_db),

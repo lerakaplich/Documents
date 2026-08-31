@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 
 from server.app.database.employee_models import Department, EmployeePosition, Employee, Organization
 from server.app.schemas.org import DepartmentCreate, OrganizationCreate
+from server.app.schemas.org.structure_search import AncestorItem, StructureEntityType
 
 
 class OrgRepository:
@@ -175,3 +176,83 @@ class OrgRepository:
             select(Department.id).where(Department.organization_id == org_id).limit(1)
         )
         return result.scalar_one_or_none() is not None
+
+    async def get_departments_with_hierarchy_by_ids(self, dept_ids: set[int]) -> dict[int, list[AncestorItem]]:
+        """
+        Принимает set(dept_ids), находит их hierarchy_path,
+        вытаскивает все родительские Департаменты и Организацию,
+        возвращая словарь: {dept_id: [Ancestor(Org), Ancestor(ParentDept), Ancestor(Dept)]}
+        """
+        if not dept_ids:
+            return {}
+
+        # 1. Загружаем целевые департаменты
+        res = await self.db.execute(
+            select(Department).where(Department.id.in_(dept_ids))
+        )
+        target_depts = list(res.scalars().all())
+
+        # 2. Собираем все ID отделов и организаций из hierarchy_path (например "1/4/12")
+        all_needed_dept_ids = set()
+        all_needed_org_ids = set()
+
+        dept_paths_map: dict[int, list[int]] = {}
+
+        for dept in target_depts:
+            # В зависимости от того, как у вас хранится path (строкой "1/4/12" или списками):
+            if dept.hierarchy_path:
+                # Разбиваем path по слэшу
+                ids = [int(x) for x in dept.hierarchy_path.split("/") if x.isdigit()]
+                dept_paths_map[dept.id] = ids
+                all_needed_dept_ids.update(ids)
+            else:
+                dept_paths_map[dept.id] = [dept.id]
+                all_needed_dept_ids.add(dept.id)
+
+            if dept.organization_id:
+                all_needed_org_ids.add(dept.organization_id)
+
+        # 3. Загружаем все участвующие Отделы и Организации за 2 запроса
+        depts_res = await self.db.execute(
+            select(Department).where(Department.id.in_(all_needed_dept_ids))
+        )
+        depts_dict = {d.id: d for d in depts_res.scalars().all()}
+
+        orgs_res = await self.db.execute(
+            select(Organization).where(Organization.id.in_(all_needed_org_ids))
+        )
+        orgs_dict = {o.id: o for o in orgs_res.scalars().all()}
+
+        # 4. Собираем для каждого целевого dept_id полный список предков
+        hierarchy_result: dict[int, list[AncestorItem]] = {}
+
+        for dept in target_depts:
+            ancestors: list[AncestorItem] = []
+
+            # а) Сначала добавляем Организацию
+            if dept.organization_id and dept.organization_id in orgs_dict:
+                org = orgs_dict[dept.organization_id]
+                ancestors.append(
+                    AncestorItem(
+                        id=org.id,
+                        name=org.name,
+                        type=StructureEntityType.ORGANIZATION,
+                    )
+                )
+
+            # б) Затем добавляем цепочку отделов по порядку из hierarchy_path
+            path_ids = dept_paths_map.get(dept.id, [dept.id])
+            for d_id in path_ids:
+                if d_id in depts_dict:
+                    d = depts_dict[d_id]
+                    ancestors.append(
+                        AncestorItem(
+                            id=d.id,
+                            name=d.name,
+                            type=StructureEntityType.DEPARTMENT,
+                        )
+                    )
+
+            hierarchy_result[dept.id] = ancestors
+
+        return hierarchy_result
