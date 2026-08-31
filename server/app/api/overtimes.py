@@ -72,13 +72,24 @@ async def get_my_overtime(
         size=size,
     )
 
-@router.get("/department/{dept_id}", response_model=list[OvertimeRead])
+@router.get("/department/{dept_id}", response_model=PageResponse[OvertimeRead])
 async def get_dept_overtime(
     dept_id: int,
+    start_date: Optional[date] = Query(None, description="Начало периода (ГГГГ-ММ-ДД)"),
+    end_date: Optional[date] = Query(None, description="Конец периода (ГГГГ-ММ-ДД)"),
+    page: int = Query(1, ge=1, description="Номер страницы"),
+    size: int = Query(20, ge=1, le=100, description="Количество элементов на странице"),
     current_user: CurrentUser = Depends(get_current_user),
-    service = Depends(get_overtime_service)
+    service: OvertimeService = Depends(get_overtime_service),
 ):
-    return await service.get_by_dept(current_user, dept_id)
+    return await service.get_by_dept(
+        user=current_user,
+        dept_id=dept_id,
+        start_date=start_date,
+        end_date=end_date,
+        page=page,
+        size=size,
+    )
 
 @router.get("/all", response_model=PageResponse[OvertimeRead])
 async def get_all_overtime(

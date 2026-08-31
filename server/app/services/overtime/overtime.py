@@ -141,7 +141,15 @@ class OvertimeService:
             "pages": pages,
         }
 
-    async def get_by_dept(self, user: CurrentUser, dept_id: int):
+    async def get_by_dept(
+        self,
+        user: CurrentUser,
+        dept_id: int,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        page: int = 1,
+        size: int = 20,
+    ):
         if not await self.security.can_manage_dept(user, dept_id):
             logger.warning(
                 "Access denied for department overtimes",
@@ -151,7 +159,28 @@ class OvertimeService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Нет прав на просмотр переработок данного подразделения",
             )
-        return await self.repo.get_by_dept_id(dept_id)
+
+        def_start, def_end = get_default_pay_period()
+        start = start_date or def_start
+        end = end_date or def_end
+
+        items, total = await self.repo.get_by_dept_id(
+            dept_id=dept_id,
+            start_date=start,
+            end_date=end,
+            page=page,
+            size=size,
+        )
+
+        pages = math.ceil(total / size) if total > 0 else 1
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "size": size,
+            "pages": pages,
+        }
 
     async def get_all(
         self,

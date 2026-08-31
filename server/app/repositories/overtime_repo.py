@@ -95,43 +95,72 @@ class OvertimeRepository:
 
         return items, total
 
-    async def get_by_dept_id(self, dept_id: int):
+    async def get_by_dept_id(
+        self,
+        dept_id: int,
+        start_date: date,
+        end_date: date,
+        page: int = 1,
+        size: int = 20,
+    ):
+        full_name_expr = func.concat(
+            Employee.last_name, ' ',
+            Employee.first_name, ' ',
+            func.coalesce(Employee.patronymic, '')
+        ).label("full_name")
+
         # 1. Получаем hierarchy_path целевого отдела
         target_dept_path = await self.db.scalar(
             select(Department.hierarchy_path).where(Department.id == dept_id)
         )
 
-        # Если отдел не найден или путь не заполнен, делаем фолбэк на точное совпадение
-        if not target_dept_path:
-            stmt = (
-                select(Overtime)
-                .join(
-                    EmployeePosition,
-                    Overtime.employee_id == EmployeePosition.employee_id,
-                )
-                .where(EmployeePosition.department_id == dept_id)
-                .order_by(Overtime.overtime_date.desc())
-                .distinct()
-            )
-            result = await self.db.execute(stmt)
-            return result.scalars().all()
+        # Базовые условия объединений и фильтров
+        date_condition = Overtime.overtime_date.between(start_date, end_date)
 
-        # 2. Выбираем переработки всех сотрудников из целевого и всех вложенных отделов
-        # Сравнение по префиксу: hierarchy_path LIKE '1/4%'
-        stmt = (
-            select(Overtime)
-            .join(
-                EmployeePosition,
-                Overtime.employee_id == EmployeePosition.employee_id,
-            )
+        if target_dept_path:
+            dept_condition = Department.hierarchy_path.like(f"{target_dept_path}%")
+        else:
+            dept_condition = (EmployeePosition.department_id == dept_id)
+
+        # 2. Подсчитываем общее количество уникальных переработок за период в этом отделе
+        count_stmt = (
+            select(func.count(func.distinct(Overtime.id)))
+            .join(Employee, Overtime.employee_id == Employee.id)
+            .join(EmployeePosition, Overtime.employee_id == EmployeePosition.employee_id)
             .join(Department, EmployeePosition.department_id == Department.id)
-            .where(Department.hierarchy_path.like(f"{target_dept_path}%"))
+            .where(dept_condition, date_condition)
+        )
+        total = await self.db.scalar(count_stmt) or 0
+
+        # 3. Достаем страницу записей с присоединенным ФИО
+        offset = (page - 1) * size
+        stmt = (
+            select(Overtime, full_name_expr)
+            .join(Employee, Overtime.employee_id == Employee.id)
+            .join(EmployeePosition, Overtime.employee_id == EmployeePosition.employee_id)
+            .join(Department, EmployeePosition.department_id == Department.id)
+            .where(dept_condition, date_condition)
             .order_by(Overtime.overtime_date.desc())
             .distinct()
+            .offset(offset)
+            .limit(size)
         )
 
         result = await self.db.execute(stmt)
-        return result.scalars().all()
+
+        items = []
+        for ot_obj, full_name in result.all():
+            items.append({
+                "id": ot_obj.id,
+                "employee_id": ot_obj.employee_id,
+                "overtime_date": ot_obj.overtime_date,
+                "overtime_start": ot_obj.overtime_start,
+                "overtime_end": ot_obj.overtime_end,
+                "note_text": ot_obj.note_text,
+                "full_name": full_name.strip(),
+            })
+
+        return items, total
 
     async def get_all(
             self,
