@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from server.app.deps import (
@@ -28,12 +30,19 @@ router = APIRouter(prefix="/employees", tags=["Employees"])
 
 @router.get("/all", response_model=list[EmployeeListRead])
 async def get_all_employees(
-    page: int = 1,
-    limit: int = 20,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
     show_fired: bool = False,
+    search: Optional[str] = Query(None, description="Поиск по ФИО, должности или отделу"),
     service: EmployeeService = Depends(get_employee_service),
 ):
-    return await service.get_employees_list(page, limit, show_fired)
+    items, _ = await service.get_employees_list(
+        page=page,
+        limit=limit,
+        show_fired=show_fired,
+        search=search
+    )
+    return items
 
 
 @router.get(

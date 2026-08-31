@@ -227,32 +227,78 @@ class EmployeesRepository:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_paginated_employees(self, limit: int, offset: int, show_fired: bool = False):
+    async def get_paginated_employees(
+            self,
+            limit: int,
+            offset: int,
+            show_fired: bool = False,
+            search: Optional[str] = None
+    ) -> tuple[list, int]:
+        """Пагинированный список сотрудников с поиском и подсчетом total."""
         today = date.today()
-        query = select(
-            Employee.id,
-            func.concat_ws(' ', Employee.last_name, Employee.first_name, Employee.patronymic).label("full_name"),
-            EmployeePosition.position_name,
-            Department.name.label("department_name"),
-            Employee.phone_number
-        ).select_from(Employee) \
-         .join(EmployeePosition) \
-         .join(Department) \
-         .where(
+
+        # Базовое условие по датам активной позиции
+        where_conditions = [
             EmployeePosition.start_date <= today,
             or_(
                 EmployeePosition.end_date.is_(None),
                 EmployeePosition.end_date >= today
             )
+        ]
+
+        # Фильтр уволенных
+        if not show_fired:
+            where_conditions.append(Employee.is_active.is_(True))
+
+        # Фильтр поиска по названию/ФИО/отделу/должности
+        if search:
+            search_pattern = f"%{search.strip()}%"
+            where_conditions.append(
+                or_(
+                    Employee.last_name.ilike(search_pattern),
+                    Employee.first_name.ilike(search_pattern),
+                    Employee.patronymic.ilike(search_pattern),
+                    EmployeePosition.position_name.ilike(search_pattern),
+                    Department.name.ilike(search_pattern),
+                    # Поиск по полному ФИО (например, при вводе "Иванов Иван")
+                    func.concat_ws(' ', Employee.last_name, Employee.first_name, Employee.patronymic).ilike(
+                        search_pattern)
+                )
+            )
+
+        # 1. Запрос для подсчета общео количества записей (total)
+        count_stmt = (
+            select(func.count(Employee.id))
+            .select_from(Employee)
+            .join(EmployeePosition, EmployeePosition.employee_id == Employee.id)
+            .join(Department, Department.id == EmployeePosition.department_id)
+            .where(*where_conditions)
+        )
+        total = await self.db.scalar(count_stmt) or 0
+
+        # 2. Основной выбор данных
+        query = (
+            select(
+                Employee.id,
+                func.concat_ws(' ', Employee.last_name, Employee.first_name, Employee.patronymic).label("full_name"),
+                EmployeePosition.position_name,
+                Department.name.label("department_name"),
+                Employee.phone_number
+            )
+            .select_from(Employee)
+            .join(EmployeePosition, EmployeePosition.employee_id == Employee.id)
+            .join(Department, Department.id == EmployeePosition.department_id)
+            .where(*where_conditions)
+            .order_by(Employee.last_name, Employee.first_name)
+            .offset(offset)
+            .limit(limit)
         )
 
-        # Фильтр активности
-        if not show_fired:
-            query = query.where(Employee.is_active == True)
-
-        query = query.limit(limit).offset(offset)
         result = await self.db.execute(query)
-        return result.all()
+        total = await self.db.scalar(count_stmt)
+        total_count: int = int(total) if total is not None else 0
+
+        return list(result.all()), total_count
 
     async def get_leader_paths(self, employee_id: int) -> list[str]:
         today = date.today()

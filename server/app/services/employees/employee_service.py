@@ -36,19 +36,26 @@ class EmployeeService:
         return [EmployeeRead.model_validate(e) for e in employees]
 
     async def get_employees_list(
-        self, page: int, limit: int, show_fired: bool
-    ) -> list[EmployeeListRead]:
-        """Пагинированный список сотрудников со статусами прав"""
+            self,
+            page: int,
+            limit: int,
+            show_fired: bool,
+            search: Optional[str] = None
+    ) -> tuple[list[EmployeeListRead], int]:
+        """Пагинированный список сотрудников со статусами прав и поиском."""
         offset = (page - 1) * limit
 
-        employees_rows = await self.emp_repo.get_paginated_employees(
-            limit, offset, show_fired
+        employees_rows, total = await self.emp_repo.get_paginated_employees(
+            limit=limit,
+            offset=offset,
+            show_fired=show_fired,
+            search=search
         )
 
         emp_ids = [r.id for r in employees_rows]
         rights_map = await self.doc_repo.get_rights_map(emp_ids)
 
-        return [
+        items = [
             EmployeeListRead(
                 id=r.id,
                 full_name=r.full_name,
@@ -59,6 +66,8 @@ class EmployeeService:
             )
             for r in employees_rows
         ]
+
+        return items, total
 
     async def _build_employee_detail_dto(self, employee: Employee) -> EmployeeDetailRead:
         """Вспомогательный метод для сборки EmployeeDetailRead с иерархической цепочкой отделов и правами."""
