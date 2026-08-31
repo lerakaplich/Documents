@@ -20,7 +20,6 @@ from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.org_repo import OrgRepository
 from server.app.repositories.overtime_repo import OvertimeRepository
 from server.app.repositories.session_repo import SessionRepository
-from server.app.repositories.structure_repo import StructureRepository
 from server.app.repositories.tag_repo import TagRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.authorization.auth_service import AuthService
