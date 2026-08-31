@@ -35,27 +35,40 @@ class DepartmentType(BaseEmployees):
     # Обратная связь, чтобы знать, какие подразделения имеют этот тип
     departments: Mapped[list["Department"]] = relationship(back_populates="department_type")
 
+
 class Department(BaseEmployees):
-    """Универсальное дерево подразделений (Иерархическая структура)"""
     __tablename__ = "departments"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id", ondelete="RESTRICT"),
-                                                 nullable=False)
-    parent_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("departments.id", ondelete="CASCADE"))
+    organization_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False
+    )
+    parent_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("departments.id", ondelete="CASCADE")
+    )
 
     name: Mapped[str] = mapped_column(Text, nullable=False)
     number: Mapped[Optional[int]] = mapped_column(Integer)
     phone_number: Mapped[Optional[str]] = mapped_column(Text)
-    hierarchy_path: Mapped[Optional[str]] = mapped_column(String(255), index=True)  # Строка вида '1/4/12'
+    hierarchy_path: Mapped[Optional[str]] = mapped_column(String(255), index=True)
 
-    department_type_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("department_types.id"), nullable=True)
-    head_employee_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("employees.id"), nullable=True)
+    department_type_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("department_types.id"), nullable=True
+    )
+    head_employee_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("employees.id"), nullable=True
+    )
+
     organization: Mapped["Organization"] = relationship(back_populates="departments")
     department_type: Mapped[Optional["DepartmentType"]] = relationship(back_populates="departments")
-    positions: Mapped[list["EmployeePosition"]] = relationship(back_populates="department",
-                                                                cascade="all, delete-orphan")
-    head_employee: Mapped[Optional["Employee"]] = relationship()
+    positions: Mapped[list["EmployeePosition"]] = relationship(
+        back_populates="department", cascade="all, delete-orphan"
+    )
+
+    # Поле называется 'head', связывается по head_employee_id
+    head: Mapped[Optional["Employee"]] = relationship(
+        "Employee", foreign_keys=[head_employee_id]
+    )
 
 class Employee(BaseEmployees):
     """Физические лица (И сотрудники МАЗа, и внешние персоны для СМДО)"""

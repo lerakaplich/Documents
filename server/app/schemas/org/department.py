@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, ConfigDict, computed_field, Field
 from .department_type import DepartmentTypeRead
 
 
@@ -15,12 +15,12 @@ class DepartmentHeadRead(BaseModel):
     id: int
     first_name: str
     last_name: str
-    middle_name: Optional[str] = None
+    patronymic: Optional[str] = None
 
     @computed_field
     @property
     def full_name(self) -> str:
-        parts = [self.last_name, self.first_name, self.middle_name]
+        parts = [self.last_name, self.first_name, self.patronymic]
         return " ".join(p for p in parts if p)
 
     model_config = ConfigDict(from_attributes=True)

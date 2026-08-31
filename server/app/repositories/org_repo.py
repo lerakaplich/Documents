@@ -3,7 +3,7 @@ from typing import Optional
 
 from sqlalchemy import select, update, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from server.app.database.employee_models import Department, EmployeePosition, Employee, Organization
 from server.app.schemas.org import DepartmentCreate, OrganizationCreate
@@ -128,14 +128,16 @@ class OrgRepository:
         return list(result.scalars().all())
 
     async def get_department_detail(self, dept_id: int) -> Optional[Department]:
-        result = await self.db.execute(
+        """Получить подразделение с предзагрузкой руководителя и типа подразделения."""
+        stmt = (
             select(Department)
             .options(
-                joinedload(Department.department_type),
-                joinedload(Department.head_employee)
+                joinedload(Department.head),
+                joinedload(Department.department_type)
             )
             .where(Department.id == dept_id)
         )
+        result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
     async def create_organization(self, data: OrganizationCreate) -> Organization:

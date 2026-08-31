@@ -292,13 +292,14 @@ class DepartmentService:
         return {"message": "Подразделение успешно перемещено"}
 
     async def get_department_by_id(self, dept_id: int) -> DepartmentRead:
-        dept = await self.repo.get_department_detail(dept_id)
-        if not dept:
+        full_dept = await self.repo.get_department_detail(dept_id)
+        if not full_dept:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Подразделение с ID {dept_id} не найдено",
             )
-        return DepartmentRead.model_validate(dept)
+
+        return DepartmentRead.model_validate(full_dept)
 
     async def archive_department(
         self, user: CurrentUser, dept_id: int
