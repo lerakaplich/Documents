@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, desc, asc, exists, insert, delete, update, case
+from sqlalchemy import select, func, and_, or_, desc, asc, exists, insert, delete, update, case, cast, String
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from typing import Optional
 from datetime import datetime, timezone
@@ -12,7 +12,7 @@ from server.app.database.document_models import (
     Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority, DocumentRole, RedirectHistory, Read,
     DocumentArchive, DocumentPin, DocumentAttachment, DocumentStatusHistory, DocumentType, DocumentReceiver
 )
-from server.app.database.employee_models import Department, EmployeePosition
+from server.app.database.employee_models import Department, EmployeePosition, Employee
 from server.app.schemas.user_schemas.doc_participants import DocumentParticipantsDTO
 
 
@@ -326,17 +326,123 @@ class DocumentRepository:
 
         return query
 
-    def apply_search(self, query, pattern: str):
-        """Добавляет условие полнотекстового поиска."""
-        return query.where(or_(
-            Document.title.ilike(pattern),
-            Document.about.ilike(pattern),
-            Document.reg_number.ilike(pattern),
-            Document.id.in_(select(DocumentTag.document_id).join(Tag).where(Tag.name.ilike(pattern)).scalar_subquery()),
-            Document.id.in_(select(EmployeeDocument.document_id).join(SystemEmployee).where(
-                or_(SystemEmployee.last_name.ilike(pattern), SystemEmployee.first_name.ilike(pattern))
-            ).scalar_subquery())
-        ))
+    def apply_search(
+            self,
+            query,
+            search_text: str,
+            words_depts_map: dict[str, list[int]] | None = None,
+            words_orgs_map: dict[str, list[int]] | None = None
+    ):
+        """
+        Полнотекстовый гибкий поиск по всем полям документа и связанным сущностям.
+        Поддерживает поиск по нескольким словам одновременно (AND для слов, OR для полей).
+        """
+        if not search_text or not search_text.strip():
+            return query
+
+        words = search_text.strip().split()
+        words_depts_map = words_depts_map or {}
+        words_orgs_map = words_orgs_map or {}
+
+        for word in words:
+            pattern = f"%{word}%"
+            dept_ids = words_depts_map.get(word, [])
+            org_ids = words_orgs_map.get(word, [])
+
+            # 1. Поиск по тегам
+            tag_exists = exists().where(
+                and_(
+                    DocumentTag.document_id == Document.id,
+                    DocumentTag.tag_id == Tag.id,
+                    Tag.name.ilike(pattern)
+                )
+            )
+
+            # 2. Поиск по сотрудникам (Отправители, Получатели, Исполнители, Делегаты)
+            employee_exists = exists().where(
+                and_(
+                    EmployeeDocument.document_id == Document.id,
+                    EmployeeDocument.employee_id == SystemEmployee.id,
+                    or_(
+                        SystemEmployee.last_name.ilike(pattern),
+                        SystemEmployee.first_name.ilike(pattern),
+                        SystemEmployee.patronymic.ilike(pattern)
+                    )
+                )
+            )
+
+            # 3. Поиск по официальным текстам получателей (внешние/организации)
+            receiver_text_exists = exists().where(
+                and_(
+                    DocumentReceiver.document_id == Document.id,
+                    DocumentReceiver.target_official_text.ilike(pattern)
+                )
+            )
+
+            # 4. Поиск по типу документа
+            type_exists = exists().where(
+                and_(
+                    Document.type_id == DocumentType.id,
+                    DocumentType.name.ilike(pattern)
+                )
+            )
+
+            # 5. Условия для Отделов по ID (Отправитель ИЛИ Получатель)
+            dept_conditions = []
+            if dept_ids:
+                dept_conditions.append(Document.source_department_id.in_(dept_ids))
+                dept_conditions.append(
+                    exists().where(
+                        and_(
+                            DocumentReceiver.document_id == Document.id,
+                            DocumentReceiver.target_department_id.in_(dept_ids)
+                        )
+                    )
+                )
+
+            # 6. Условия для Организаций по ID (Отправитель ИЛИ Получатель)
+            org_conditions = []
+            if org_ids:
+                org_conditions.append(Document.source_organization_id.in_(org_ids))
+                org_conditions.append(
+                    exists().where(
+                        and_(
+                            DocumentReceiver.document_id == Document.id,
+                            DocumentReceiver.target_organization_id.in_(org_ids)
+                        )
+                    )
+                )
+
+            # Формируем итоговый OR-блок для текущего слова
+            word_conditions = or_(
+                # Текстовые поля документа
+                Document.title.ilike(pattern),
+                Document.about.ilike(pattern),
+                Document.reg_number.ilike(pattern),
+                Document.source_official_text.ilike(pattern),
+
+                # Приведение к строке для числовых и датовых полей
+                cast(Document.sequence_number, String).ilike(pattern),
+                cast(Document.sent_date, String).ilike(pattern),
+                cast(Document.deadline, String).ilike(pattern),
+                cast(Document.status, String).ilike(pattern),
+                cast(Document.direction, String).ilike(pattern),
+
+                # Подзапросы существующих связей
+                tag_exists,
+                employee_exists,
+                receiver_text_exists,
+                type_exists,
+
+                # Совпадения по отделам и организациям из второй БД
+                *dept_conditions,
+                *org_conditions
+            )
+
+            # Накладываем AND для каждого введенного слова (чтобы искало все слова одновременно)
+            query = query.where(word_conditions)
+
+        return query
 
     def apply_sorting(self, query, sort_by: str, sort_order: str, user_id: int):
         """

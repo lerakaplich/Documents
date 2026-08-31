@@ -93,6 +93,18 @@ class RegistryService:
 
         return result
 
+    async def find_department_ids_by_name(self, pattern: str) -> list[int]:
+        """Возвращает список ID отделов из БД structure_session по текстовому шаблону."""
+        stmt = select(Department.id).where(Department.name.ilike(pattern))
+        db_res = await self.structure_session.execute(stmt)
+        return list(db_res.scalars().all())
+
+    async def find_organization_ids_by_name(self, pattern: str) -> list[int]:
+        """Возвращает список ID организаций из БД structure_session по текстовому шаблону."""
+        stmt = select(Organization.id).where(Organization.name.ilike(pattern))
+        db_res = await self.structure_session.execute(stmt)
+        return list(db_res.scalars().all())
+
     async def get_all_paginated(
         self,
         user_id: int,
@@ -150,8 +162,31 @@ class RegistryService:
 
         # 4. Поиск
         if search and search.strip():
-            for word in search.strip().split():
-                query = self.repo.apply_search(query, f"%{word}%")
+            words = search.strip().split()
+
+            # Для каждого слова собираем список совпавших ID
+            words_depts_map: dict[str, list[int]] = {}
+            words_orgs_map: dict[str, list[int]] = {}
+
+            for word in words:
+                pattern = f"%{word}%"
+
+                # Поиск в structure_session для текущего слова
+                dept_stmt = select(Department.id).where(Department.name.ilike(pattern))
+                dept_res = await self.structure_session.execute(dept_stmt)
+                words_depts_map[word] = list(dept_res.scalars().all())
+
+                org_stmt = select(Organization.id).where(Organization.name.ilike(pattern))
+                org_res = await self.structure_session.execute(org_stmt)
+                words_orgs_map[word] = list(org_res.scalars().all())
+
+            # Передаем маппинги ID в репозиторий
+            query = self.repo.apply_search(
+                query,
+                search,
+                words_depts_map=words_depts_map,
+                words_orgs_map=words_orgs_map
+            )
 
         # 5. Total
         total = await self.repo.count_query(query)
