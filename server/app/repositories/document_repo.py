@@ -1,16 +1,20 @@
+from enum import Enum
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, desc, asc, exists, insert, delete, update, case, cast, String
+from sqlalchemy import select, func, and_, or_, desc, asc, exists, insert, delete, update, case, cast, String, \
+    literal_column, text, Text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from typing import Optional
+from typing import Optional, Any
 from datetime import datetime, timezone
 
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload, joinedload, aliased
+from sqlalchemy.sql.expression import union_all
 
 # ИСПРАВЛЕНО: Импортируем сущности строго из новой схемы db_documents
 from server.app.database.document_models import (
     Document, EmployeeDocument, SystemEmployee,
     Tag, DocumentTag, DocStatus, DocDirection, AppRights, TagPriority, DocumentRole, RedirectHistory, Read,
-    DocumentArchive, DocumentPin, DocumentAttachment, DocumentStatusHistory, DocumentType, DocumentReceiver
+    DocumentArchive, DocumentPin, DocumentAttachment, DocumentStatusHistory, DocumentType, DocumentReceiver, Comment
 )
 from server.app.database.employee_models import Department, EmployeePosition, Employee
 from server.app.schemas.user_schemas.doc_participants import DocumentParticipantsDTO
@@ -39,6 +43,158 @@ class DocumentRepository:
             )
         )
         return result.scalar_one_or_none()
+
+    async def get_document_history(self, document_id: int) -> list[dict[str, Any]]:
+        """
+        Возвращает сквозную хронологическую ленту событий по документу.
+        Сборка выполняется через простые ORM-запросы.
+        """
+        # 1. Запрашиваем сам документ (для события создания)
+        doc_stmt = await self.db.execute(
+            select(Document).where(Document.id == document_id)
+        )
+        doc = doc_stmt.scalar_one_or_none()
+
+        if not doc:
+            return []
+
+        # 2. Запрашиваем историю статусов
+        status_stmt = await self.db.execute(
+            select(DocumentStatusHistory)
+            .where(DocumentStatusHistory.document_id == document_id)
+        )
+        status_history = list(status_stmt.scalars().all())
+
+        # 3. Запрашиваем историю перенаправлений
+        redirect_stmt = await self.db.execute(
+            select(RedirectHistory)
+            .where(RedirectHistory.document_id == document_id)
+        )
+        redirect_history = list(redirect_stmt.scalars().all())
+
+        # 4. Запрашиваем комментарии
+        comments_stmt = await self.db.execute(
+            select(Comment)
+            .where(Comment.document_id == document_id)
+        )
+        comments = list(comments_stmt.scalars().all())
+
+        # 5. Запрашиваем прочтения
+        reads_stmt = await self.db.execute(
+            select(Read)
+            .where(Read.document_id == document_id)
+        )
+        reads = list(reads_stmt.scalars().all())
+
+        # --------------------------------------------------------------------
+        # Вспомогательный шаг: Собираем все уникальные ID сотрудников для ФИО
+        # --------------------------------------------------------------------
+        emp_ids = set()
+        if doc.source_employee_id:
+            emp_ids.add(doc.source_employee_id)
+
+        for sh in status_history:
+            if sh.changed_by_employee_id:
+                emp_ids.add(sh.changed_by_employee_id)
+
+        for rh in redirect_history:
+            emp_ids.add(rh.from_employee_id)
+            emp_ids.add(rh.to_employee_id)
+
+        for c in comments:
+            emp_ids.add(c.employee_id)
+
+        for r in reads:
+            emp_ids.add(r.employee_id)
+
+        # Загружаем сотрудников в один быстрый Map (dict)
+        emp_map: dict[int, str] = {}
+        if emp_ids:
+            emps_stmt = await self.db.execute(
+                select(SystemEmployee).where(SystemEmployee.id.in_(emp_ids))
+            )
+            for emp in emps_stmt.scalars().all():
+                patronymic = f" {emp.patronymic}" if emp.patronymic else ""
+                emp_map[emp.id] = f"{emp.last_name} {emp.first_name}{patronymic}".strip()
+
+        # --------------------------------------------------------------------
+        # Маппинг событий в единый список
+        # --------------------------------------------------------------------
+        events: list[dict[str, Any]] = []
+
+        # 1. Событие создания
+        events.append({
+            "event_type": "created",
+            "created_at": doc.created_at,
+            "employee_id": doc.source_employee_id,
+            "employee_full_name": emp_map.get(doc.source_employee_id) if doc.source_employee_id else None,
+            "old_status": None,
+            "new_status": None,
+            "target_employee_id": None,
+            "target_employee_full_name": None,
+            "comment_text": doc.source_official_text,
+        })
+
+        # 2. Изменения статуса
+        for sh in status_history:
+            events.append({
+                "event_type": "status_changed",
+                "created_at": sh.changed_at,
+                "employee_id": sh.changed_by_employee_id,
+                "employee_full_name": emp_map.get(sh.changed_by_employee_id) if sh.changed_by_employee_id else None,
+                "old_status": sh.old_status.value if sh.old_status else None,
+                "new_status": sh.new_status.value if isinstance(sh.new_status, Enum) else sh.new_status,
+                "target_employee_id": None,
+                "target_employee_full_name": None,
+                "comment_text": sh.comment,
+            })
+
+        # 3. Перенаправления
+        for rh in redirect_history:
+            events.append({
+                "event_type": "redirected",
+                "created_at": rh.redirected_at,
+                "employee_id": rh.from_employee_id,
+                "employee_full_name": emp_map.get(rh.from_employee_id),
+                "old_status": None,
+                "new_status": None,
+                "target_employee_id": rh.to_employee_id,
+                "target_employee_full_name": emp_map.get(rh.to_employee_id),
+                "comment_text": rh.message,
+            })
+
+        # 4. Комментарии
+        for c in comments:
+            events.append({
+                "event_type": "comment",
+                "created_at": c.created_at,
+                "employee_id": c.employee_id,
+                "employee_full_name": emp_map.get(c.employee_id),
+                "old_status": None,
+                "new_status": None,
+                "target_employee_id": None,
+                "target_employee_full_name": None,
+                "comment_text": c.text,
+            })
+
+        # 5. Прочтения
+        for r in reads:
+            events.append({
+                "event_type": "read",
+                "created_at": r.read_at,
+                "employee_id": r.employee_id,
+                "employee_full_name": emp_map.get(r.employee_id),
+                "old_status": None,
+                "new_status": None,
+                "target_employee_id": None,
+                "target_employee_full_name": None,
+                "comment_text": None,
+            })
+
+        # Сортируем все события по дате (от новых к старым)
+        events.sort(key=lambda x: x["created_at"], reverse=True)
+
+        return events
 
     async def has_any_rejections(self, doc_id: int) -> bool:
         """Проверить, отклонен ли документ кем-либо из участников"""

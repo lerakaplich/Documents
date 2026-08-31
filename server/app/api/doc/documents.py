@@ -9,6 +9,7 @@ from server.app.schemas.doc.document_dto import (
     DocumentListItem, DocumentCreateForm, DocumentDetailRead,
     AdminMetadataUpdate, DocumentPaginationResponse, ProposedNumberResponse, UnansweredDocumentStat
 )
+from server.app.schemas.doc.history import DocumentHistoryItemRead
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 
 # Импортируем обновленные сервисы СЭД
@@ -105,6 +106,17 @@ async def delete_document(
     await service.delete(doc_id, admin_user)
     return None
 
+@router.get("/{document_id}/history", response_model=list[DocumentHistoryItemRead])
+async def get_document_history_endpoint(
+    document_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: DocumentService = Depends(get_doc_service),
+):
+    """Возвращает сквозную историю всех действий и решений по документу."""
+    return await service.get_document_history(
+        user=current_user,
+        document_id=document_id
+    )
 
 @router.put("/{document_id}/admin-metadata", response_model=DocumentListItem)
 async def admin_update_metadata(

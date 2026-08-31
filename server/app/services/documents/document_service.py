@@ -13,6 +13,7 @@ from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.schemas.doc.doc_employee_dto import DocumentReceiverCreate
 from server.app.schemas.doc.document_dto import DocumentCreateForm, AdminMetadataUpdate, ProposedNumberResponse, \
     UnansweredDocumentStat, DocumentDetailRead
+from server.app.schemas.doc.history import DocumentHistoryItemRead
 
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.common.notification_service import NotificationService
@@ -46,6 +47,19 @@ class DocumentService:
         if deadline is None:
             return DocStatus.approved
         return DocStatus.under_review
+
+    async def get_document_history(self, user: CurrentUser, document_id: int) -> list[DocumentHistoryItemRead]:
+        # 1. Проверяем существование документа и права доступа пользователя
+        doc = await self.repo.get_by_id(document_id)
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Документ не найден"
+            )
+
+        # 2. Получаем хронологию
+        raw_history = await self.repo.get_document_history(document_id)
+        return [DocumentHistoryItemRead(**item) for item in raw_history]
 
     async def resolve_recipient_employee_ids(
             self,
