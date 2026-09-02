@@ -116,12 +116,16 @@ class OvertimeImportService:
 
     @staticmethod
     def round_to_30_minutes_up(dt: datetime) -> datetime:
-        if dt.minute == 0 and dt.second == 0:
-            return dt
-        if dt.minute == 30 and dt.second == 0:
-            return dt
+        """
+        Правило округления начала смены:
+        - 07:00:00 .. 07:29:59 -> 07:30
+        - 07:30:00 .. 07:59:59 -> 08:00
+        """
+        # Если время от xx:00:00 до xx:29:59 включительно -> округляем до xx:30
         if dt.minute < 30:
             return dt.replace(minute=30, second=0, microsecond=0)
+
+        # Если время от xx:30:00 до xx:59:59 включительно -> округляем до следующего часа (xx+1:00)
         next_hour = dt.hour + 1 if dt.hour + 1 < 24 else 0
         return dt.replace(hour=next_hour, minute=0, second=0, microsecond=0)
 
