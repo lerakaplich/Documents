@@ -3,6 +3,7 @@ from typing import Callable, Any, Awaitable
 from aiogram import BaseMiddleware, Bot
 from aiogram.types import TelegramObject
 
+from server.app.database.session import async_session_docs, async_session_employees
 # Импортируем ваши репозитории и сервисы из FastAPI-приложения
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
@@ -43,8 +44,8 @@ class ServicesMiddleware(BaseMiddleware):
 
             notification_svc = NotificationService(
                 bot=bot,
-                emp_repo=emp_repo,
-                doc_repo=doc_repo
+                session_docs_factory=async_session_docs,
+                session_emp_factory=async_session_employees
             )
 
             doc_svc = DocumentService(

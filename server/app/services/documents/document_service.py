@@ -131,9 +131,6 @@ class DocumentService:
                 initial_status = self._determine_initial_status(payload.deadline)
                 global_msg_id = payload.global_msg_id or str(uuid.uuid4())
 
-                # 3. Официальный подписант/отправитель на бланке (по умолчанию совпадает с оператором)
-                source_emp_id = payload.source_employee_id or operator_emp_id
-
                 # Множество для предотвращения дубликатов прав в EmployeeDocument
                 added_employee_ids: set[tuple[int, DocumentRole]] = set()
 
@@ -175,7 +172,7 @@ class DocumentService:
                     confident_flag=payload.confident_flag,
                     clearance_id=payload.clearance_id,
                     # Официальные реквизиты источника на бланке (source_*)
-                    source_employee_id=source_emp_id,
+                    source_employee_id=payload.source_employee_id,
                     source_organization_id=payload.source_organization_id,
                     source_official_text=payload.source_official_text,
                     # Передаем сформированную коллекцию получателей
@@ -184,16 +181,11 @@ class DocumentService:
                 self.repo.db.add(new_doc)
                 await self.repo.db.flush()
 
-                # 6. Выдаем роль Отправителя (sender) оператору СЭД
-                self.repo.db.add(
-                    EmployeeDocument(
-                        document_id=new_doc.id,
-                        employee_id=operator_emp_id,
-                        role=DocumentRole.sender,
-                        is_approved=True,
-                    )
-                )
-                added_employee_ids.add((operator_emp_id, DocumentRole.sender))
+                # Множество для предотвращения дубликатов с ролями
+                added_employee_ids: set[tuple[int, DocumentRole]] = set()
+
+                # Множество ID сотрудников, явно указанных в качестве исполнителей/получателей
+                explicit_emp_ids: set[int] = set()
 
                 # 7. Добавляем Исполнителей (executors)
                 if payload.executors:
@@ -208,6 +200,7 @@ class DocumentService:
                                 )
                             )
                             added_employee_ids.add((emp_id, DocumentRole.executor))
+                            explicit_emp_ids.add(emp_id)
 
                 # 8. Выдаем роль Получателя (recipient) разрезолвленным сотрудникам СЭД
                 for emp_id in recipient_emp_ids_to_add:
@@ -221,6 +214,21 @@ class DocumentService:
                             )
                         )
                         added_employee_ids.add((emp_id, DocumentRole.recipient))
+                        explicit_emp_ids.add(emp_id)
+
+                # 6. Выдаем роль Отправителя (sender) оператору СЭД
+                # ТЕПЕРЬ ЭТО В КОНЦЕ: проверяем наполненный explicit_emp_ids
+                if operator_emp_id not in explicit_emp_ids:
+                    if (operator_emp_id, DocumentRole.sender) not in added_employee_ids:
+                        self.repo.db.add(
+                            EmployeeDocument(
+                                document_id=new_doc.id,
+                                employee_id=operator_emp_id,
+                                role=DocumentRole.sender,
+                                is_approved=True,
+                            )
+                        )
+                        added_employee_ids.add((operator_emp_id, DocumentRole.sender))
 
                 # 9. Привязка тегов
                 if payload.tag_ids:

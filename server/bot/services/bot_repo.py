@@ -13,7 +13,7 @@ from server.app.database.document_models import (
     DocumentRole
 )
 from server.app.database.document_models import SystemEmployee  # Предположим, модель сотрудника
-from server.app.database.employee_models import Employee, EmployeePosition, Department
+from server.app.database.employee_models import Employee, EmployeePosition, Department, Organization
 
 
 class BotRepository:
@@ -53,9 +53,43 @@ class BotRepository:
 
         return tags, total_count
 
-    async def get_departments_by_parent(self, parent_id: Optional[int] = None) -> list[Department]:
-        """Получает дочерние отделы (если parent_id=None — верхний уровень)"""
-        stmt = select(Department).where(Department.parent_id == parent_id).order_by(Department.name)
+    async def get_all_organizations(self) -> list[Organization]:
+        """Получает список всех организаций из базы кадров (emp_session)"""
+        stmt = select(Organization).order_by(Organization.name)
+        res = await self.emp_session.execute(stmt)
+        return list(res.scalars().all())
+
+    async def get_organizations_by_ids(self, org_ids: list[int]) -> list[Organization]:
+        if not org_ids:
+            return []
+        query = select(Organization).where(Organization.id.in_(org_ids))
+        result = await self.emp_session.execute(query)
+        return list(result.scalars().all())
+
+    async def get_departments_by_ids(self, dept_ids: list[int]) -> list[Department]:
+        if not dept_ids:
+            return []
+        query = select(Department).where(Department.id.in_(dept_ids))
+        result = await self.emp_session.execute(query)
+        return list(result.scalars().all())
+
+    async def get_departments_by_parent(
+            self,
+            parent_id: Optional[int] = None,
+            org_id: Optional[int] = None
+    ) -> list[Department]:
+        """
+        Получает дочерние отделы.
+        - Если parent_id указан — выбирает подотделы.
+        - Если parent_id=None и указан org_id — выбирает верхнеуровневые отделы данной организации.
+        - Если оба None — выбирает корневые отделы всех организаций.
+        """
+        stmt = select(Department).where(Department.parent_id == parent_id)
+
+        if org_id is not None and parent_id is None:
+            stmt = stmt.where(Department.organization_id == org_id)
+
+        stmt = stmt.order_by(Department.name)
         res = await self.emp_session.execute(stmt)
         return list(res.scalars().all())
 

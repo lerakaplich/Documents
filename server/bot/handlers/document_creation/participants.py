@@ -1,80 +1,97 @@
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from server.app.database.employee_models import Department
+from server.app.database.employee_models import Department, Organization
 from server.bot.keyboards.tree_kb import build_org_tree_keyboard
 from server.bot.services.bot_repo import BotRepository
 from server.bot.states.org_tree_cb import OrgTreeCallback
 
 router = Router()
 
-# =========================================================================
-# ВНИМАНИЕ: Стартовые функции инициализации шага выбора (вызываются из go_to_next_step)
-# =========================================================================
 
 async def show_org_tree(
-        event: types.Message | types.CallbackQuery,
+        event: Message | CallbackQuery,
         state: FSMContext,
         bot_repo: BotRepository,
         target_role: str,
-        dept_id: int | None = None
+        org_id: int | None = None,
+        dept_id: int | None = None,
+        page: int = 1
 ):
-    """Универсальная функция отображения узла дерева"""
+    """Универсальная функция отображения дерева с учетом нового DTO бэкенда."""
+    current_org = await bot_repo.emp_session.get(Organization, org_id) if org_id else None
     current_dept = await bot_repo.emp_session.get(Department, dept_id) if dept_id else None
-    sub_departments = await bot_repo.get_departments_by_parent(dept_id)
+
+    if current_dept and not current_org:
+        current_org = await bot_repo.emp_session.get(Organization, current_dept.organization_id)
+
+    organizations = await bot_repo.get_all_organizations() if not current_org and not current_dept else []
+    sub_departments = await bot_repo.get_departments_by_parent(parent_id=dept_id, org_id=org_id)
     employees = await bot_repo.get_employees_by_department(dept_id) if dept_id else []
 
     data = await state.get_data()
 
-    # 1. Получаем список выбранных в текущей роли
-    selected_ids = data.get(target_role, [])
-    if isinstance(selected_ids, int):
-        selected_ids = [selected_ids]
+    # Сбор выбранных ID для отображения галочек в клавиатуре
+    selected_emp_ids = []
+    selected_dept_ids = []
+    selected_org_ids = []
 
-    # 2. Собираем ID сотрудников, занятых в ДРУГИХ ролях
-    disabled_ids = set()
+    if target_role == "source":
+        if data.get("source_employee_id"):
+            selected_emp_ids.append(data.get("source_employee_id"))
+        if data.get("source_organization_id"):
+            selected_org_ids.append(data.get("source_organization_id"))
 
-    # Автор / Отправитель
-    sender = data.get("sender")
-    if sender and target_role != "sender":
-        if isinstance(sender, int):
-            disabled_ids.add(sender)
-        elif isinstance(sender, dict):
-            disabled_ids.add(sender.get("id"))
+    elif target_role == "receivers":
+        receivers = data.get("receivers", [])
+        for r in receivers:
+            if r.get("target_organization_id"):
+                selected_org_ids.append(r["target_organization_id"])
+            if r.get("target_department_id"):
+                selected_dept_ids.append(r["target_department_id"])
 
-    # Исполнители
-    if target_role != "executors":
-        execs = data.get("executors", [])
-        if isinstance(execs, list):
-            disabled_ids.update(execs)
+    elif target_role == "executors":
+        selected_emp_ids = list(data.get("executors", []))
 
-    # Получатели
-    if target_role != "recipients":
-        recips = data.get("recipients", [])
-        if isinstance(recips, list):
-            disabled_ids.update(recips)
+    # Запрещаем задействованным сотрудникам повторный выбор
+    disabled_emp_ids = set()
+    if target_role == "executors":
+        source_emp_id = data.get("source_employee_id")
+        if source_emp_id:
+            disabled_emp_ids.add(source_emp_id)
 
     kb = build_org_tree_keyboard(
+        organizations=organizations,
         departments=sub_departments,
         employees=employees,
+        current_org=current_org,
         current_dept=current_dept,
-        target_role=target_role,
-        selected_ids=selected_ids,
-        disabled_ids=list(disabled_ids)  # Передаём список запрещённых ID
+        role=target_role,
+        selected_emp_ids=selected_emp_ids,
+        selected_dept_ids=selected_dept_ids,
+        selected_org_ids=selected_org_ids,
+        disabled_emp_ids=list(disabled_emp_ids),
+        page=page
     )
 
     role_titles = {
-        "sender": "👤 Выбор отправителя",
-        "recipients": "📥 Выбор получателей",
-        "executors": "👥 Выбор исполнителей"
+        "source": "👤 Выбор источника / отправителя на бланке",
+        "receivers": "📥 Выбор получателей документа (бланки адресатов)",
+        "executors": "👥 Выбор исполнителей (конкретных лиц)"
     }
 
     title = role_titles.get(target_role, "Выберите участника")
-    dept_name = f"\nТекущий отдел: **{current_dept.name}**" if current_dept else "\nКорень структуры"
-    text = f"{title}{dept_name}\n\nВыберите отдел для навигации или сотрудника из списка:"
+    context_str = "Корень структуры"
+    if current_dept:
+        context_str = f"Отдел: **{current_dept.name}**"
+    elif current_org:
+        context_str = f"Организация: **{current_org.name}**"
 
-    if isinstance(event, types.CallbackQuery):
+    text = f"{title}\nКонтекст: {context_str}\n\nВыберите элемент:"
+
+    if isinstance(event, CallbackQuery):
         await event.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
     else:
         await event.answer(text, parse_mode="Markdown", reply_markup=kb)
@@ -86,70 +103,126 @@ async def show_org_tree(
 
 @router.callback_query(OrgTreeCallback.filter())
 async def process_org_tree_navigation(
-    callback: types.CallbackQuery,
-    callback_data: OrgTreeCallback,
-    state: FSMContext,
-    doc_session: AsyncSession,
-    emp_session: AsyncSession
+        callback: CallbackQuery,
+        callback_data: OrgTreeCallback,
+        state: FSMContext,
+        doc_session: AsyncSession,
+        emp_session: AsyncSession
 ):
     from server.bot.handlers.step_navigator import go_to_next_step
-    bot_repo = BotRepository(doc_session, emp_session)
-    role = callback_data.target_role
-    action = callback_data.action
 
-    # 1. Переход по отделу или Вверх
-    if action in ("select_dept", "up"):
-        await show_org_tree(callback, state, bot_repo, target_role=role, dept_id=callback_data.dept_id)
+    bot_repo = BotRepository(doc_session, emp_session)
+    role = callback_data.role
+    action = callback_data.act
+    page = callback_data.page or 1
+
+    # 1. Навигация и переходы по папкам
+    if action in ("page", "open_org", "open_dept", "up"):
+        await show_org_tree(
+            callback, state, bot_repo, target_role=role,
+            org_id=callback_data.org_id, dept_id=callback_data.dept_id, page=page
+        )
         await callback.answer()
         return
 
-    # 2. Выбор конкретного сотрудника
+    # 2. Выбор СОТРУДНИКА (доступен для source и executors)
     if action == "select_emp":
         emp_id = callback_data.emp_id
-        if role == "sender":
-            # Для отправителя — один человек, сразу переходим дальше
-            await state.update_data(sender_id=emp_id)
+
+        if role == "source":
+            await state.update_data(source_employee_id=emp_id, source_organization_id=None)
             await callback.answer("Отправитель выбран!")
             await go_to_next_step(callback.message, state, bot_repo)
             return
-        else:
-            # Для recipients / executors — тогл выборка (добавить / удалить)
+
+        elif role == "executors":
             data = await state.get_data()
-            current_list = list(data.get(role, []))
+            executors = list(data.get("executors", []))
 
-            if emp_id in current_list:
-                current_list.remove(emp_id)
+            if emp_id in executors:
+                executors.remove(emp_id)
+                await callback.answer("Исполнитель убран")
             else:
-                current_list.append(emp_id)
+                executors.append(emp_id)
+                await callback.answer("Исполнитель добавлен")
 
-            await state.update_data({role: current_list})
-            await show_org_tree(callback, state, bot_repo, target_role=role, dept_id=callback_data.dept_id)
-            await callback.answer()
+            await state.update_data(executors=executors)
+            await show_org_tree(
+                callback, state, bot_repo, target_role=role,
+                org_id=callback_data.org_id, dept_id=callback_data.dept_id, page=page
+            )
             return
 
-    # 3. Выбор ВСЕГО отдела (добавляет всех сотрудников отдела и его подразделений)
-    if action == "select_all_dept":
+    # 3. Выбор ОТДЕЛА целиком (доступен только для receivers)
+    if action == "select_dept_target":
         dept_id = callback_data.dept_id
-        all_emp_ids = await bot_repo.get_all_employees_in_department_tree(dept_id)
-
-        if role == "sender":
-            await callback.answer("⚠️ Отправителем может быть только один человек, а не весь отдел!", show_alert=True)
-            return
-
         data = await state.get_data()
-        current_list = set(data.get(role, []))
-        current_list.update(all_emp_ids)  # Объединяем множества
+        receivers = list(data.get("receivers", []))
 
-        await state.update_data({role: list(current_list)})
-        await callback.answer(f"Добавлено сотрудников: {len(all_emp_ids)}")
-        await show_org_tree(callback, state, bot_repo, target_role=role, dept_id=dept_id)
+        existing = next((r for r in receivers if r.get("target_department_id") == dept_id), None)
+        if existing:
+            receivers.remove(existing)
+            await callback.answer("Отдел убран из адресатов")
+        else:
+            receivers.append({
+                "target_department_id": dept_id,
+                "target_organization_id": None,
+                "target_official_text": None
+            })
+            await callback.answer("Отдел добавлен в адресаты!")
+
+        await state.update_data(receivers=receivers)
+        await show_org_tree(
+            callback, state, bot_repo, target_role=role,
+            org_id=callback_data.org_id, dept_id=dept_id, page=page
+        )
         return
 
-    # 4. Завершение выбора (Кнопка "Готово")
+    # 4. Выбор ОРГАНИЗАЦИИ целиком (доступен для source и receivers)
+    if action == "select_org_target":
+        org_id = callback_data.org_id
+
+        if role == "source":
+            await state.update_data(source_organization_id=org_id, source_employee_id=None)
+            await callback.answer("Организация-отправитель выбрана!")
+            await go_to_next_step(callback.message, state, bot_repo)
+            return
+
+        elif role == "receivers":
+            data = await state.get_data()
+            receivers = list(data.get("receivers", []))
+
+            existing = next((r for r in receivers if r.get("target_organization_id") == org_id), None)
+            if existing:
+                receivers.remove(existing)
+                await callback.answer("Организация убрана из адресатов")
+            else:
+                receivers.append({
+                    "target_organization_id": org_id,
+                    "target_department_id": None,
+                    "target_official_text": None
+                })
+                await callback.answer("Организация добавлена в адресаты!")
+
+            await state.update_data(receivers=receivers)
+            await show_org_tree(
+                callback, state, bot_repo, target_role=role,
+                org_id=org_id, dept_id=None, page=page
+            )
+            return
+
+    # 5. Завершение выбора
     if action == "done":
-        await callback.answer("Выбор сохранен!")
+        await callback.answer()
         await go_to_next_step(callback.message, state, bot_repo)
+        return
+
+    if action == "cancel":
+        await callback.answer("Выбор отменен")
+        await callback.message.delete()
+        return
+
 
 @router.callback_query(F.data == "ignore")
 async def ignore_callback(callback: types.CallbackQuery):
-    await callback.answer("Этот сотрудник уже выбран в другой роли!", show_alert=True)
+    await callback.answer("Действие недоступно", show_alert=True)

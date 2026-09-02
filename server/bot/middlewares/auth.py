@@ -20,7 +20,7 @@ class EmployeeAuthMiddleware(BaseMiddleware):
         if not event_user or not emp_session:
             return await handler(event, data)
 
-        imessage: Message | None = None
+        message: Message | None = None
         if isinstance(event, Message):
             message = event
         elif hasattr(event, "message") and isinstance(event.message, Message):

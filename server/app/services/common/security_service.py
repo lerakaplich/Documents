@@ -116,7 +116,7 @@ class SecurityService:
             return True
 
         relation = await self.doc_repo.get_user_relation(doc_id, user.id)
-        allowed_roles = [DocumentRole.sender, DocumentRole.recipient, DocumentRole.delegate]
+        allowed_roles = [DocumentRole.sender, DocumentRole.recipient, DocumentRole.delegate, DocumentRole.executor]
         return bool(relation and relation.role in allowed_roles)
 
     def can_review_document(self, relation: Optional[Any]) -> bool:

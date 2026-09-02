@@ -4,8 +4,11 @@ from aiogram.types import Message
 from server.bot.handlers.document_creation.confirmation import show_confirmation_summary
 from server.bot.handlers.document_creation.participants import show_org_tree
 from server.bot.handlers.document_creation.tags import show_tags_menu
-from server.bot.keyboards.document_create_kb import get_skip_or_cancel_keyboard, get_cancel_keyboard, \
+from server.bot.keyboards.document_create_kb import (
+    get_skip_or_cancel_keyboard,
+    get_cancel_keyboard,
     get_attachments_keyboard
+)
 from server.bot.services.bot_repo import BotRepository
 from server.bot.states.bot_states import CreateDocumentFSM
 
@@ -18,7 +21,6 @@ async def go_to_next_step(message: Message, state: FSMContext, bot_repository: B
     data = await state.get_data()
 
     # Считываем JSONB-словарь флагов для текущего типа документа
-    # Пример: {"title": true, "about": true, "deadline": true, "executors": true, ...}
     fields_config: dict[str, bool] = data.get("type_fields_config", {})
 
     # =========================================================================
@@ -68,25 +70,27 @@ async def go_to_next_step(message: Message, state: FSMContext, bot_repository: B
         )
         return
 
-    # 5. Отправитель (sender_id) — запуск дерева выбора
-    if fields_config.get("sender_id", False) and "sender_id" not in data:
+    # 5. Источник / Отправитель (source) — запуск дерева выбора
+    # Проверяем, что в FSM еще нет ни ID сотрудника, ни ID организации
+    is_source_set = bool(data.get("source_employee_id") or data.get("source_organization_id"))
+    if fields_config.get("sender_id", False) and not is_source_set:
         await state.set_state(CreateDocumentFSM.waiting_for_sender)
         await show_org_tree(
             event=message,
             state=state,
             bot_repo=bot_repository,
-            target_role="sender"
+            target_role="source"  # <- Было "sender"
         )
         return
 
-    # 6. Получатели (recipients) — запуск дерева выбора
-    if fields_config.get("recipients", False) and "recipients" not in data:
+    # 6. Получатели (receivers) — запуск дерева выбора
+    if fields_config.get("recipients", False) and "receivers" not in data:  # <- Было "recipients"
         await state.set_state(CreateDocumentFSM.waiting_for_recipients)
         await show_org_tree(
             event=message,
             state=state,
             bot_repo=bot_repository,
-            target_role="recipients"
+            target_role="receivers"  # <- Было "recipients"
         )
         return
 

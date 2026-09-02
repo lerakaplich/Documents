@@ -1,7 +1,11 @@
+from typing import Optional
+
 from aiogram.filters.callback_data import CallbackData
 
-class OrgTreeCallback(CallbackData, prefix="org_tree"):
-    action: str          # "select_dept", "select_emp", "select_all_dept", "up"
-    dept_id: int | None  # ID текущего или выбираемого отдела
-    emp_id: int | None   # ID сотрудника (если выбран)
-    target_role: str     # "sender", "recipients", "executors"
+class OrgTreeCallback(CallbackData, prefix="ot"):
+    act: str                 # "org", "dept", "emp", "sel_org", "sel_dept", "up", "done"
+    org_id: Optional[int] = None
+    dept_id: Optional[int] = None
+    emp_id: Optional[int] = None
+    role: str                # "source", "receivers", "executors"
+    page: int = 1
