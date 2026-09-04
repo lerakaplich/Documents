@@ -65,8 +65,15 @@ class AuthService:
         # 3. Вычисляем динамические права руководителя
         is_leader = await self._check_leader_status(int(employee.id))
 
+        is_temp = bool(employee.is_temporary_password)
+
         # 4. Генерируем access-токен (кастуем к str из-за Mapped)
-        access_token = create_access_token(int(employee.id), str(employee.service_number), is_leader)
+        access_token = create_access_token(
+            int(employee.id),
+            str(employee.service_number),
+            is_leader,
+            is_temp
+        )
         refresh_token = None
 
         # 5. Если стоит галочка "Запомнить меня" — генерируем refresh-токен
@@ -110,7 +117,8 @@ class AuthService:
         return TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
-            token_type="bearer"
+            token_type="bearer",
+            is_temporary_password=is_temp
         )
 
     async def refresh_access_token(self, payload: TokenRefreshRequest) -> TokenResponse:
@@ -229,6 +237,9 @@ class AuthService:
         # Хэшируем новый и сохраняем
         hashed_new = bcrypt.hashpw(payload.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         employee.password_hash = hashed_new
+
+        # СНИМАЕМ ФЛАГ ВРЕМЕННОГО ПАРОЛЯ
+        employee.is_temporary_password = False
 
         # Закрываем все активные сессии пользователя на других устройствах ради безопасности!
         await self.session_repo.delete_all_for_employee(employee_id)

@@ -38,7 +38,7 @@ class UserLoginRequest(BaseModel):
     phone_number: str = Field(..., description="Номер телефона пользователя", examples=["+375291234567"])
     password: str = Field(..., description="Пароль, полученный через Telegram", examples=["SecretPass123"])
     remember_me: bool = Field(False, description="Флаг 'Запомнить меня'")
-    device_info: str = Field(None, description="Информация об устройстве для истории сессий", examples=["Desktop Windows"])
+    device_info: Optional[str] = Field(None, description="Информация об устройстве", examples=["Desktop Windows"])
 
     @field_validator("phone_number")
     @classmethod
@@ -51,6 +51,10 @@ class TokenResponse(BaseModel):
     access_token: str = Field(..., description="JWT access токен", examples=["eyJhbGciOiJIUzI1NiI..."])
     refresh_token: Optional[str] = Field(None, description="Сессионный refresh токен", examples=["d9b2d63d-a232-4328..."])
     token_type: str = Field("bearer", description="Тип токена", examples=["bearer"])
+    is_temporary_password: bool = Field(
+        False,
+        description="Флаг: является ли пароль временным (требуется обязательная смена при входе)"
+    )
 
 
 class TokenRefreshRequest(BaseModel):

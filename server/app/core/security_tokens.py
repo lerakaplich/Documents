@@ -18,13 +18,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
-def create_access_token(employee_id: int, service_number: str, is_leader: bool) -> str:
+def create_access_token(employee_id: int, service_number: str, is_leader: bool, is_temp: bool = False) -> str:
     """Генерирует единый стандартный подписанный JWT Access Токен."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "sub": str(employee_id),
         "service_number": service_number,
         "is_leader": is_leader,
+        "is_temporary": is_temp,
         "exp": expire
     }
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
