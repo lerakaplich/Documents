@@ -40,6 +40,8 @@ class OvertimePanel:
         self.allOvertimeFiltersLayout = None
         self.department_filter = None
         self.btnAddOvertime = None
+        self.current_employee_id = None
+        self.btnImport = None
 
     def set_overtime_service(self, overtime_service: OvertimeService):
         """Устанавливает сервис переработок"""
@@ -47,9 +49,10 @@ class OvertimePanel:
         self.data_manager.set_overtime_service(overtime_service)
         print("✅ OvertimeService установлен в OvertimePanel")
 
-    def setup_ui_elements(self, tabWidget, btnSelectPeriod, btnSelectPeriodAll, btnResetFilters,
-                          btnResetFiltersAll, btnAddOvertimeAll, btnExport, labelTotalHoursMy,
-                          labelTotalHoursAll, allOvertimeFiltersLayout, btnAddOvertime=None):
+    def setup_ui_elements(self, tabWidget, btnSelectPeriod, btnSelectPeriodAll,
+                      btnResetFilters, btnResetFiltersAll, btnAddOvertimeAll,
+                      btnExport, labelTotalHoursMy, labelTotalHoursAll,
+                      allOvertimeFiltersLayout, btnAddOvertime=None, btnImport=None):
         """Передаёт ссылки на виджеты из главного окна."""
         self.tabWidget = tabWidget
         self.btnSelectPeriod = btnSelectPeriod
@@ -62,12 +65,28 @@ class OvertimePanel:
         self.labelTotalHoursAll = labelTotalHoursAll
         self.allOvertimeFiltersLayout = allOvertimeFiltersLayout
         self.btnAddOvertime = btnAddOvertime
-
+        self.btnImport = btnImport
         # Инициализация
         self.remove_add_button_from_my_overtime()
         self.card_container.setup_card_containers()
         self.hide_reset_buttons()
         self.setup_hierarchical_filter()
+        self._apply_initial_periods()
+
+    def _apply_initial_periods(self):
+        """Показывает текущий расчётный период на кнопках и делает reset видимым."""
+        if self.period_manager.my_period and self.btnSelectPeriod:
+            self.period_manager.update_period_button_text(
+                self.btnSelectPeriod,
+                self.period_manager.period_for_button(self.period_manager.my_period)
+            )
+            self.show_reset_button('my')
+        if self.period_manager.all_period and self.btnSelectPeriodAll:
+            self.period_manager.update_period_button_text(
+                self.btnSelectPeriodAll,
+                self.period_manager.period_for_button(self.period_manager.all_period)
+            )
+            self.show_reset_button('all')
 
     def remove_add_button_from_my_overtime(self):
         """Удаляет кнопку «Добавить переработку» из вкладки «Мои переработки»."""
@@ -127,35 +146,39 @@ class OvertimePanel:
 
     def on_department_filter_changed_id(self, department_id):
         """Обработчик изменения выбора отдела."""
-        print(f"Фильтр по отделу ID: {department_id}")
-        self.data_manager.current_filter_department_id = department_id
-        self.show_reset_button('all')
-        self.load_overtime_data(
-            filter_department_id=department_id,
-            start_date_str=self.period_manager.all_period['start'] if self.period_manager.all_period else None,
-            end_date_str=self.period_manager.all_period['end'] if self.period_manager.all_period else None
-        )
+
+        def on_department_filter_changed_id(self, department_id):
+            print(f"Фильтр по отделу ID: {department_id}")
+            self.data_manager.current_filter_department_id = department_id
+            self.show_reset_button('all')
+            self.load_overtime_data(filter_department_id=department_id, for_my=False)
 
     # ---------- Загрузка данных ----------
-    def load_overtime_data(self, filter_department_id=None, start_date_str=None, end_date_str=None, for_my=False):
-        """Загружает и отображает переработки с учётом фильтров."""
+    def load_overtime_data(self, filter_department_id=None, for_my=False):
+        """Загружает и отображает переработки. Даты берутся из period_manager для каждого таба."""
         try:
             if not self.card_container.myOvertimeContainer:
-                print("myOvertimeContainer не существует, создаем...")
                 self.card_container.setup_card_containers()
             if not self.card_container.allOvertimeContainer:
-                print("allOvertimeContainer не существует, создаем...")
                 self.card_container.setup_card_containers()
 
-            # Загружаем данные через сервис
+            # Периоды независимы для каждого таба
+            my_period = self.period_manager.my_period
+            all_period = self.period_manager.all_period
+
             if self.overtime_service:
-                my_data, all_data = self.data_manager.load_overtime_from_api()
+                my_data, all_data = self.data_manager.load_overtime_from_api(
+                    my_start=my_period['start'] if my_period else None,
+                    my_end=my_period['end'] if my_period else None,
+                    all_start=all_period['start'] if all_period else None,
+                    all_end=all_period['end'] if all_period else None,
+                )
             else:
                 my_data, all_data = self.data_manager.get_test_data()
 
-            # Применяем фильтры
+            # Только фильтр по отделу (клиентский)
             my_data, all_data = self.data_manager.filter_data(
-                my_data, all_data, filter_department_id, start_date_str, end_date_str
+                my_data, all_data, filter_department_id
             )
 
             if for_my:
@@ -185,8 +208,7 @@ class OvertimePanel:
             traceback.print_exc()
             if hasattr(self.parent, 'notification_manager'):
                 self.parent.notification_manager.show_notification(
-                    f"Ошибка загрузки данных: {str(e)}",
-                    duration=4000
+                    f"Ошибка загрузки данных: {str(e)}", duration=4000
                 )
 
     # ---------- Работа с периодами ----------
@@ -204,30 +226,84 @@ class OvertimePanel:
             lambda data: self.period_manager.on_period_selected(data, False, self._load_with_period)
         )
 
+    def on_import_clicked(self):
+        """Импорт переработок из Excel-файла (выгрузка СКУД)"""
+        try:
+            from PyQt6.QtWidgets import QFileDialog
+
+            file_path, _ = QFileDialog.getOpenFileName(
+                self.parent,
+                "Выберите файл выгрузки СКУД",
+                "",
+                "Excel files (*.xlsx *.xls)"
+            )
+            if not file_path:
+                return
+
+            if not self.overtime_service:
+                if hasattr(self.parent, 'notification_manager'):
+                    self.parent.notification_manager.show_notification(
+                        "Сервис переработок недоступен", duration=3000
+                    )
+                return
+
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification(
+                    "Импорт переработок... Пожалуйста, подождите", duration=3000
+                )
+
+            result = self.overtime_service.import_overtime(file_path)
+
+            # Обновляем список
+            self.load_overtime_data(
+                filter_department_id=self.data_manager.current_filter_department_id,
+                start_date_str=self.period_manager.all_period['start'] if self.period_manager.all_period else None,
+                end_date_str=self.period_manager.all_period['end'] if self.period_manager.all_period else None
+            )
+
+            # Сообщение о результате — структура может отличаться, покажем всё, что пришло
+            message = "Импорт завершён"
+            if isinstance(result, dict):
+                data = result.get("data")
+                if isinstance(data, dict):
+                    # пробуем вытащить типичные счётчики
+                    for key in ("imported", "created", "updated", "total", "processed"):
+                        if key in data:
+                            message += f". {key}: {data[key]}"
+                            break
+
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification(message, duration=5000)
+
+        except Exception as e:
+            print(f"❌ Ошибка импорта переработок: {e}")
+            import traceback
+            traceback.print_exc()
+            if hasattr(self.parent, 'notification_manager'):
+                self.parent.notification_manager.show_notification(
+                    f"Ошибка импорта: {str(e)}", duration=5000
+                )
+
     def _load_with_period(self, is_my, start_date, end_date):
-        """Загружает данные с применением периода."""
+        """Обновляет текст кнопки и перезагружает данные. Даты уже сохранены в period_manager."""
         if is_my:
             self.show_reset_button('my')
-            self.period_manager.update_period_button_text(self.btnSelectPeriod,
-                                                          {'start_date_str': start_date,
-                                                           'end_date_str': end_date} if start_date else None)
-            self.load_overtime_data(
-                filter_department_id=None,
-                start_date_str=start_date,
-                end_date_str=end_date,
-                for_my=True
+            self.period_manager.update_period_button_text(
+                self.btnSelectPeriod,
+                {'start_date_str': start_date, 'end_date_str': end_date} if start_date else None
             )
         else:
             self.show_reset_button('all')
-            self.period_manager.update_period_button_text(self.btnSelectPeriodAll,
-                                                          {'start_date_str': start_date,
-                                                           'end_date_str': end_date} if start_date else None)
-            self.load_overtime_data(
-                filter_department_id=self.data_manager.current_filter_department_id,
-                start_date_str=start_date,
-                end_date_str=end_date,
-                for_my=False
+            self.period_manager.update_period_button_text(
+                self.btnSelectPeriodAll,
+                {'start_date_str': start_date, 'end_date_str': end_date} if start_date else None
             )
+
+        # Перезагружаем оба таба — каждый возьмёт свой период из period_manager
+        self.load_overtime_data(
+            filter_department_id=self.data_manager.current_filter_department_id,
+            for_my=False
+        )
 
     def reset_my_period(self):
         """Сбрасывает период для «Моих переработок»."""
@@ -267,7 +343,6 @@ class OvertimePanel:
             )
 
     def on_overtime_delete(self, overtime_id):
-        """Удаляет переработку"""
         if self.overtime_service:
             try:
                 self.overtime_service.delete_overtime(overtime_id)
@@ -275,26 +350,20 @@ class OvertimePanel:
                 print(f"❌ Ошибка удаления переработки: {e}")
                 if hasattr(self.parent, 'notification_manager'):
                     self.parent.notification_manager.show_notification(
-                        f"Ошибка удаления: {str(e)}",
-                        duration=4000
+                        f"Ошибка удаления: {str(e)}", duration=4000
                     )
                 return
 
         if hasattr(self.parent, 'notification_manager'):
             self.parent.notification_manager.show_notification(
-                f"Запись #{overtime_id} удалена",
-                duration=3000
+                f"Запись #{overtime_id} удалена", duration=3000
             )
         self.load_overtime_data(
             filter_department_id=self.data_manager.current_filter_department_id,
-            start_date_str=self.period_manager.all_period['start'] if self.period_manager.all_period else None,
-            end_date_str=self.period_manager.all_period['end'] if self.period_manager.all_period else None
+            for_my=False
         )
 
-
-
     def on_export_clicked(self):
-        """Открывает диалог выбора периода для экспорта."""
         try:
             start_date = None
             end_date = None
@@ -304,6 +373,11 @@ class OvertimePanel:
                     end_date = QDate.fromString(self.period_manager.all_period['end'], "dd.MM.yyyy")
                 except:
                     pass
+
+            if not start_date or not start_date.isValid():
+                default = self.period_manager.get_default_overtime_period()
+                start_date = QDate.fromString(default['start'], "dd.MM.yyyy")
+                end_date = QDate.fromString(default['end'], "dd.MM.yyyy")
 
             dialog = PeriodDialog(self.parent, start_date=start_date, end_date=end_date)
             dialog.period_selected.connect(self.on_export_period_selected)
@@ -381,21 +455,27 @@ class OvertimePanel:
             self.parent,
             readonly=False,
             overtime_service=self.overtime_service,
-            current_employee_id=1  # TODO: получить ID текущего сотрудника
+            current_employee_id=self.current_employee_id or 1
         )
 
         if dialog.exec() == QDialog.DialogCode.Accepted and dialog.result_data is not None:
             data = dialog.result_data
+            employee_id = dialog.get_selected_employee_id()
 
-            # Создаем переработку через сервис
+            if not employee_id:
+                if hasattr(self.parent, 'notification_manager'):
+                    self.parent.notification_manager.show_notification(
+                        "Не удалось определить сотрудника", duration=3000
+                    )
+                return
+
             if self.overtime_service:
                 try:
-                    # Преобразуем дату из формата dd.MM.yyyy в YYYY-MM-DD
                     date_obj = datetime.strptime(data['date'], "%d.%m.%Y")
                     formatted_date = date_obj.strftime("%Y-%m-%d")
 
                     create_data = {
-                        "employee_id": 1,  # TODO: получить ID текущего сотрудника или выбранного
+                        "employee_id": employee_id,
                         "note_text": data['description'],
                         "overtime_date": formatted_date,
                         "overtime_start": data['start_time'],
@@ -403,39 +483,20 @@ class OvertimePanel:
                     }
 
                     self.overtime_service.create_overtime(create_data)
-
-                    # Обновляем данные
                     self.load_overtime_data(
                         filter_department_id=self.data_manager.current_filter_department_id,
-                        start_date_str=self.period_manager.all_period[
-                            'start'] if self.period_manager.all_period else None,
-                        end_date_str=self.period_manager.all_period['end'] if self.period_manager.all_period else None
+                        for_my=False
                     )
-
                     if hasattr(self.parent, 'notification_manager'):
                         self.parent.notification_manager.show_notification(
-                            "Переработка успешно добавлена",
-                            duration=3000
+                            "Переработка успешно добавлена", duration=3000
                         )
                 except Exception as e:
                     print(f"❌ Ошибка создания переработки: {e}")
                     if hasattr(self.parent, 'notification_manager'):
                         self.parent.notification_manager.show_notification(
-                            f"Ошибка создания: {str(e)}",
-                            duration=4000
+                            f"Ошибка создания: {str(e)}", duration=4000
                         )
-            else:
-                # Режим тестирования - просто обновляем UI
-                self.load_overtime_data(
-                    filter_department_id=self.data_manager.current_filter_department_id,
-                    start_date_str=self.period_manager.all_period['start'] if self.period_manager.all_period else None,
-                    end_date_str=self.period_manager.all_period['end'] if self.period_manager.all_period else None
-                )
-                if hasattr(self.parent, 'notification_manager'):
-                    self.parent.notification_manager.show_notification(
-                        "Переработка добавлена (тестовый режим)",
-                        duration=3000
-                    )
 
     def on_overtime_edit_all(self, overtime_id):
         """Редактирование переработки (для вкладки 'Все переработки')"""
@@ -449,7 +510,7 @@ class OvertimePanel:
             self.parent,
             readonly=False,
             overtime_service=self.overtime_service,
-            current_employee_id=1
+            current_employee_id=self.current_employee_id or 1
         )
         dialog.set_data(data)
 
@@ -474,9 +535,7 @@ class OvertimePanel:
 
                     self.load_overtime_data(
                         filter_department_id=self.data_manager.current_filter_department_id,
-                        start_date_str=self.period_manager.all_period[
-                            'start'] if self.period_manager.all_period else None,
-                        end_date_str=self.period_manager.all_period['end'] if self.period_manager.all_period else None
+                        for_my=False
                     )
 
                     if hasattr(self.parent, 'notification_manager'):
@@ -525,14 +584,7 @@ class OvertimePanel:
                     try:
                         self.overtime_service.update_overtime_note(overtime_id, new_note)
 
-                        self.load_overtime_data(
-                            filter_department_id=None,
-                            start_date_str=self.period_manager.my_period[
-                                'start'] if self.period_manager.my_period else None,
-                            end_date_str=self.period_manager.my_period[
-                                'end'] if self.period_manager.my_period else None,
-                            for_my=True
-                        )
+                        self.load_overtime_data(filter_department_id=None, for_my=True)
 
                         if hasattr(self.parent, 'notification_manager'):
                             self.parent.notification_manager.show_notification(

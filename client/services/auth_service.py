@@ -184,3 +184,4 @@ class AuthService:
         except Exception as e:
             logger.error(f"Ошибка сброса пароля: {e}")
             raise
+

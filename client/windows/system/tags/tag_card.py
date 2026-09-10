@@ -49,8 +49,6 @@ class TagCard(QFrame):
             self.editBtn.clicked.connect(self.on_edit_clicked)
         if hasattr(self, 'deleteBtn'):
             self.deleteBtn.clicked.connect(self.on_delete_clicked)
-        if hasattr(self, 'colorButton'):
-            self.colorButton.clicked.connect(self.on_color_button_clicked)
 
     def setup_card(self):
         """Заполняет карточку данными"""
@@ -93,16 +91,6 @@ class TagCard(QFrame):
             """)
             self.tag_data['color'] = color
 
-    def on_color_button_clicked(self):
-        """Обработчик клика по кружочку цвета"""
-        current_color = self.tag_data.get('color', '#CCAB6E')
-        dialog = ColorPickerDialog(current_color=current_color, parent=self)
-
-        if dialog.exec() == ColorPickerDialog.DialogCode.Accepted:
-            new_color = dialog.get_selected_color()
-            self.set_color(new_color)
-            # Испускаем сигнал с ID и новым цветом
-            self.color_changed.emit(self.tag_id, new_color)
 
     def on_edit_clicked(self):
         self.edit_clicked.emit(self.tag_data)

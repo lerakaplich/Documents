@@ -81,6 +81,7 @@ class ProfileForm(QWidget):
         self.employee_id = employee_id
         self.use_current_user = employee_id is None
 
+
         if self.use_current_user:
             print("👤 Загружаем профиль текущего пользователя")
         else:
@@ -152,6 +153,7 @@ class ProfileForm(QWidget):
         labelTotalHoursAll = self.labelTotalHoursAll if hasattr(self, 'labelTotalHoursAll') else None
         allOvertimeFiltersLayout = self.allOvertimeFiltersLayout if hasattr(self, 'allOvertimeFiltersLayout') else None
         btnAddOvertime = self.btnAddOvertime if hasattr(self, 'btnAddOvertime') else None
+        btnImport = self.btnImport if hasattr(self, 'btnImport') else None
 
         # Настраиваем UI элементы панели переработок
         self.overtime_panel.setup_ui_elements(
@@ -165,7 +167,8 @@ class ProfileForm(QWidget):
             labelTotalHoursMy=labelTotalHoursMy,
             labelTotalHoursAll=labelTotalHoursAll,
             allOvertimeFiltersLayout=allOvertimeFiltersLayout,
-            btnAddOvertime=btnAddOvertime
+            btnAddOvertime=btnAddOvertime,
+            btnImport=btnImport,
         )
         # ===== Конец настройки overtime panel =====
 
@@ -297,6 +300,12 @@ class ProfileForm(QWidget):
             self.profile_info.current_phone_raw = phone
             self.profile_info.current_email_raw = email
 
+            self.current_employee_id = data.get('id')
+            if hasattr(self, 'overtime_panel'):
+                self.overtime_panel.current_employee_id = self.current_employee_id
+            print(f"👤 ID текущего сотрудника: {self.current_employee_id}")
+            # ────────────────────────────────────────────────────────────────
+
             print("✅ Профиль успешно обновлен")
 
         except Exception as e:
@@ -358,6 +367,9 @@ class ProfileForm(QWidget):
 
         if hasattr(self, 'btnExport') and self.btnExport:
             self.btnExport.clicked.connect(self.overtime_panel.on_export_clicked)
+
+        if hasattr(self, 'btnImport') and self.btnImport:
+            self.btnImport.clicked.connect(self.overtime_panel.on_import_clicked)
 
     def load_test_data(self):
         """Загружает тестовые данные профиля (для отладки)."""

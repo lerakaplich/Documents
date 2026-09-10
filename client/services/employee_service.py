@@ -27,3 +27,20 @@ class EmployeeService:
     def update_my_profile(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Обновить профиль текущего пользователя"""
         return self.client.patch("/employees/me/profile", data=data)
+
+    def get_all_employees(self) -> list:
+        """Загружает всех сотрудников постранично (по 100 за раз)."""
+        all_items = []
+        page = 1
+        while True:
+            result = self.client.get("/employees/all", params={
+                "page": page,
+                "limit": 100,
+            })
+            if not result:
+                break
+            all_items.extend(result)
+            if len(result) < 100:
+                break
+            page += 1
+        return all_items

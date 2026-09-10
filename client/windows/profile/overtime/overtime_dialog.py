@@ -5,6 +5,9 @@ from PyQt6.QtCore import QDate, QTime, Qt
 
 from client.services.overtime_service import OvertimeService
 
+from PyQt6.QtWidgets import QTimeEdit
+
+
 
 class OvertimeDialog(QDialog):
     def __init__(self, parent=None, readonly=False, overtime_service=None, current_employee_id=None):
@@ -14,19 +17,20 @@ class OvertimeDialog(QDialog):
         self.overtime_service = overtime_service
         self.current_employee_id = current_employee_id
         self.overtime_id = None
+        # в __init__ OvertimeDialog
+        self._employee_id_by_name = {}
+        self._employee_id_to_name = {}
 
         root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
         ui_path = os.path.join(root_dir, 'ui', 'profile', 'overtime', 'overtime_dialog.ui')
 
         # Если UI файл не найден, создаем диалог программно
-        if not os.path.exists(ui_path):
-            self._create_ui_programmatically()
-        else:
-            uic.loadUi(ui_path, self)
+
+        uic.loadUi(ui_path, self)
 
         self.setModal(True)
         self.setWindowTitle("Оформление переработки" if not readonly else "Просмотр переработки")
-
+        self._setup_time_edits()
         # Подключаем сигналы
         self.btnSave.clicked.connect(self.accept)
 
@@ -36,6 +40,32 @@ class OvertimeDialog(QDialog):
         # Загружаем сотрудников для выбора (если есть сервис)
         if self.overtime_service and not readonly:
             self._load_employees()
+
+    def _setup_time_edits(self):
+        """Перенастраивает QTimeEdit: стрелки шагают на 30 минут, дефолты и дата = сегодня."""
+
+        def make_step(edit):
+            """Возвращает функцию stepBy для конкретного QTimeEdit."""
+
+            def stepBy(steps: int):
+                new_time = edit.time().addSecs(steps * 30 * 60)
+                edit.setTime(new_time)
+
+            return stepBy
+
+        # Переопределяем stepBy у существующих виджетов (не подменяем их)
+        if hasattr(self, 'timeStart'):
+            self.timeStart.stepBy = make_step(self.timeStart)
+            self.timeStart.setDisplayFormat("HH:mm")
+            self.timeStart.setTime(QTime(16, 30))
+
+        if hasattr(self, 'timeEnd'):
+            self.timeEnd.stepBy = make_step(self.timeEnd)
+            self.timeEnd.setDisplayFormat("HH:mm")
+            self.timeEnd.setTime(QTime(17, 0))
+
+        if hasattr(self, 'dateEdit'):
+            self.dateEdit.setDate(QDate.currentDate())
 
     def _create_ui_programmatically(self):
         """Создает UI программно если файл не найден"""
@@ -211,23 +241,49 @@ class OvertimeDialog(QDialog):
         """)
 
     def _load_employees(self):
-        """Загружает список сотрудников для выбора"""
         try:
-            # Здесь можно загрузить список сотрудников через EmployeeService
-            # Пока добавляем тестовых сотрудников
-            employees = [
-                "Иванов Иван Иванович",
-                "Петров Петр Петрович",
-                "Сидорова Анна Сергеевна"
-            ]
-            self.comboEmployee.addItems(employees)
+            from client.services.employee_service import EmployeeService
+            service = EmployeeService(self.overtime_service.client)
+            employees = service.get_all_employees()
 
-            # Если есть текущий сотрудник, выбираем его
-            if self.current_employee_id:
-                # В реальном приложении нужно найти сотрудника по ID
-                pass
+            print(f"🔍 Получено {len(employees)} сотрудников")
+            if employees:
+                print(f"🔍 Пример записи: {employees[0]}")  # ← ключевой лог
+
+            self.comboEmployee.clear()
+            self._employee_id_by_name = {}
+            self._employee_id_to_name = {}
+
+            if not employees:
+                me = service.get_my_profile()
+                employees = [me]
+
+            for emp in employees:
+                # Пробуем full_name, потом last_name+first_name+patronymic, потом fallback
+                full_name = (emp.get('full_name') or '').strip()
+                if not full_name:
+                    full_name = f"{emp.get('last_name', '')} {emp.get('first_name', '')} {emp.get('patronymic', '')}".strip()
+                if not full_name:
+                    full_name = f"ID {emp.get('id')}"
+
+                emp_id = emp.get('id')
+                self.comboEmployee.addItem(full_name)
+                if emp_id is not None:
+                    self._employee_id_by_name[full_name] = emp_id
+                    self._employee_id_to_name[emp_id] = full_name
+
+            if self.current_employee_id in self._employee_id_to_name:
+                self.comboEmployee.setCurrentText(self._employee_id_to_name[self.current_employee_id])
+
+            print(f"🔍 Загружено в combo: {self.comboEmployee.count()} элементов")
         except Exception as e:
             print(f"Ошибка загрузки сотрудников: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def get_selected_employee_id(self) -> int:
+        name = self.comboEmployee.currentText()
+        return self._employee_id_by_name.get(name, self.current_employee_id)
 
     def set_edit_mode(self, readonly):
         """Устанавливает режим редактирования"""
@@ -260,17 +316,20 @@ class OvertimeDialog(QDialog):
             self.btnCancel.setVisible(False)
 
     def set_data(self, data):
-        """Заполняет диалог данными для редактирования"""
-        # Сохраняем ID переработки
         self.overtime_id = data.get('id')
 
-        # Сотрудник
-        employee = data.get('employee_name', '')
-        index = self.comboEmployee.findText(employee)
-        if index >= 0:
-            self.comboEmployee.setCurrentIndex(index)
+        # Сотрудник — ищем по employee_id, а не по имени
+        emp_id = data.get('employee_id') or data.get('raw_data', {}).get('employee_id')
+        if emp_id and emp_id in self._employee_id_to_name:
+            self.comboEmployee.setCurrentText(self._employee_id_to_name[emp_id])
         else:
-            self.comboEmployee.setEditText(employee)
+            # fallback по имени
+            employee = data.get('employee_name', '')
+            index = self.comboEmployee.findText(employee)
+            if index >= 0:
+                self.comboEmployee.setCurrentIndex(index)
+            else:
+                self.comboEmployee.setEditText(employee)
 
         # Дата
         date_str = data.get('date', '')
@@ -300,8 +359,7 @@ class OvertimeDialog(QDialog):
             pass
 
         # Описание
-        description = data.get('description', '')
-        self.descriptionEdit.setPlainText(description)
+        self.descriptionEdit.setPlainText(data.get('description', ''))
 
     def get_data_from_ui(self):
         """Собирает данные из формы"""
@@ -314,7 +372,6 @@ class OvertimeDialog(QDialog):
         }
 
     def validate_data(self, data):
-        """Проверяет корректность данных"""
         if not data['employee_name']:
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, выберите сотрудника")
             return False
@@ -327,11 +384,25 @@ class OvertimeDialog(QDialog):
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, укажите время начала и окончания")
             return False
 
-        # Проверяем, что время начала меньше времени окончания
         start = QTime.fromString(data['start_time'], "HH:mm")
         end = QTime.fromString(data['end_time'], "HH:mm")
-        if start.isValid() and end.isValid() and start >= end:
+
+        if not start.isValid() or not end.isValid():
+            QMessageBox.warning(self, "Ошибка", "Некорректное значение времени")
+            return False
+
+        if start >= end:
             QMessageBox.warning(self, "Ошибка", "Время начала должно быть меньше времени окончания")
+            return False
+
+        diff_minutes = start.secsTo(end) // 60
+        if diff_minutes % 30 != 0:
+            QMessageBox.warning(
+                self, "Ошибка",
+                "Продолжительность переработки должна быть кратна 30 минутам "
+                "(0.5 ч, 1 ч, 1.5 ч, 2 ч, 2.5 ч ...).\n"
+                f"Сейчас: {diff_minutes} мин."
+            )
             return False
 
         return True

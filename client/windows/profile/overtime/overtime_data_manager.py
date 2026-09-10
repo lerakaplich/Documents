@@ -24,17 +24,25 @@ class OvertimeDataManager:
         self.overtime_service = overtime_service
         print("✅ OvertimeService установлен в OvertimeDataManager")
 
-    def load_overtime_from_api(self):
-        """Загружает переработки через API"""
+    def load_overtime_from_api(self, my_start: Optional[str] = None, my_end: Optional[str] = None,
+                               all_start: Optional[str] = None, all_end: Optional[str] = None):
+        """Загружает переработки через API. Даты для 'моих' и 'всех' независимы."""
         if not self.overtime_service:
             print("⚠️ OvertimeService не установлен, используем тестовые данные")
             return self.get_test_data()
 
-        try:
-            my_data = self.overtime_service.get_my_overtime()
-            all_data = self.overtime_service.get_all_overtime()
+        api_my_start = self._to_iso(my_start) or "2000-01-01"
+        api_my_end = self._to_iso(my_end) or "2100-01-01"
+        api_all_start = self._to_iso(all_start) or "2000-01-01"
+        api_all_end = self._to_iso(all_end) or "2100-01-01"
 
-            # Преобразуем данные в формат для отображения
+        try:
+            print(f"📅 Период 'мои': {api_my_start} — {api_my_end}")
+            print(f"📅 Период 'все': {api_all_start} — {api_all_end}")
+
+            my_data = self.overtime_service.get_my_overtime(api_my_start, api_my_end)
+            all_data = self.overtime_service.get_all_overtime(api_all_start, api_all_end)
+
             my_formatted = self._format_overtime_data(my_data)
             all_formatted = self._format_overtime_data(all_data)
 
@@ -46,55 +54,67 @@ class OvertimeDataManager:
             print(f"❌ Ошибка загрузки переработок: {e}")
             return self.get_test_data()
 
+    @staticmethod
+    def _to_iso(date_str: Optional[str]) -> Optional[str]:
+        """'10.09.2026' -> '2026-09-10'"""
+        if not date_str:
+            return None
+        try:
+            return datetime.strptime(date_str, "%d.%m.%Y").strftime("%Y-%m-%d")
+        except ValueError:
+            return None
+
     def _format_overtime_data(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Форматирует данные переработок для отображения"""
+        """Форматирует данные переработок для отображения (под схему API)."""
+        if isinstance(data, dict):
+            data = data.get('items', [])
+        if not isinstance(data, list):
+            return []
+
         formatted = []
         for item in data:
-            # Получаем информацию о сотруднике
-            employee = item.get('employee', {})
-            department = item.get('department', {})
-
-            # Форматируем дату
+            # Дата
             overtime_date = item.get('overtime_date')
+            date_str = ''
             if overtime_date:
                 try:
-                    dt = datetime.fromisoformat(overtime_date)
+                    dt = datetime.fromisoformat(str(overtime_date).replace('Z', '+00:00'))
                     date_str = dt.strftime('%d.%m.%Y')
-                except:
+                except Exception:
                     date_str = str(overtime_date)
-            else:
-                date_str = ''
 
-            # Форматируем время
-            start_time = item.get('overtime_start')
-            end_time = item.get('overtime_end')
-            if start_time:
-                start_time = start_time[:5] if len(start_time) > 5 else start_time
-            if end_time:
-                end_time = end_time[:5] if len(end_time) > 5 else end_time
+            # Время: сервер может вернуть '18:00:00' или '18:00:00.000Z'
+            start_time = item.get('overtime_start') or ''
+            end_time = item.get('overtime_end') or ''
+            start_time = start_time[:5] if len(start_time) >= 5 else start_time
+            end_time = end_time[:5] if len(end_time) >= 5 else end_time
 
-            # Вычисляем длительность
-            duration = 0
+            # Длительность
+            duration = 0.0
             if start_time and end_time:
                 try:
-                    start = datetime.strptime(start_time, '%H:%M')
-                    end = datetime.strptime(end_time, '%H:%M')
-                    duration = (end - start).seconds / 3600.0
-                except:
+                    s = datetime.strptime(start_time, '%H:%M')
+                    e = datetime.strptime(end_time, '%H:%M')
+                    duration = (e - s).seconds / 3600.0
+                except Exception:
                     pass
+
+            # ФИО — сервер отдаёт готовое поле full_name
+            full_name = item.get('full_name') or ''
 
             formatted.append({
                 'id': item.get('id'),
-                'employee_name': f"{employee.get('last_name', '')} {employee.get('first_name', '')}".strip(),
-                'department_id': department.get('id'),
-                'department_name': department.get('name', ''),
-                'created_at': date_str,  # или используем другое поле
-                'description': item.get('note_text', ''),
+                'employee_id': item.get('employee_id'),
+                'employee_name': full_name,
+                'department_id': item.get('department_id'),  # в ответе может не быть
+                'department_name': item.get('department_name', ''),
+                'created_at': date_str,
+                'description': item.get('note_text', '') or '',
                 'date': date_str,
                 'start_time': start_time,
                 'end_time': end_time,
                 'duration': duration,
-                'raw_data': item  # сохраняем оригинальные данные для редактирования
+                'raw_data': item,
             })
         return formatted
 
@@ -192,27 +212,13 @@ class OvertimeDataManager:
         return None
 
     def filter_data(self, my_data: List[Dict], all_data: List[Dict],
-                    filter_department_id: Optional[int] = None,
-                    start_date_str: Optional[str] = None,
-                    end_date_str: Optional[str] = None) -> tuple:
-        """Фильтрует данные по отделу и датам."""
-        # Фильтрация по отделам
+                    filter_department_id: Optional[int] = None) -> tuple:
+        """Фильтрует данные только по отделу. Даты — серверная ответственность."""
         if filter_department_id is not None:
             print(f"Применяем фильтр по отделу ID: {filter_department_id}")
             all_ids = self.get_all_child_ids(filter_department_id)
             all_data = [item for item in all_data if item.get('department_id') in all_ids]
             my_data = [item for item in my_data if item.get('department_id') in all_ids]
-
-        # Фильтрация по датам
-        if start_date_str and end_date_str:
-            try:
-                start_date = datetime.strptime(start_date_str, "%d.%m.%Y")
-                end_date = datetime.strptime(end_date_str, "%d.%m.%Y")
-                all_data = self.filter_by_date(all_data, start_date, end_date)
-                my_data = self.filter_by_date(my_data, start_date, end_date)
-                print(f"После фильтрации по датам: all_data={len(all_data)}, my_data={len(my_data)}")
-            except ValueError as e:
-                print(f"Ошибка парсинга дат: {e}")
 
         return my_data, all_data
 

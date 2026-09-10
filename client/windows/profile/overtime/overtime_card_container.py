@@ -108,10 +108,14 @@ class OvertimeCardContainer:
 
             # Добавляем карточки
             for i, data in enumerate(data_list):
-                card = OvertimeCard(i + 1, data)
-                card_id = i + 1
-                card.edit_clicked.connect(lambda checked, oid=card_id: edit_callback(oid))
-                card.delete_clicked.connect(lambda checked, oid=card_id: delete_callback(oid))
+                real_id = data.get('id')
+                if real_id is None:
+                    print(f"⚠️ Пропущена запись без id: {data}")
+                    continue
+
+                card = OvertimeCard(real_id, data)
+                card.edit_clicked.connect(lambda checked, oid=real_id: edit_callback(oid))
+                card.delete_clicked.connect(lambda checked, oid=real_id: delete_callback(oid))
                 card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
                 row = i // 2

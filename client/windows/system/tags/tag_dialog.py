@@ -13,6 +13,8 @@ from PyQt6.QtGui import QColor
 from PyQt6.QtCore import Qt
 from PyQt6.uic import loadUi
 
+from client.windows.system.tags.color_picker_dialog import ColorPickerDialog
+
 
 class TagDialog(QDialog):
     """Диалог создания/редактирования хэштега"""
@@ -81,12 +83,11 @@ class TagDialog(QDialog):
         self.comboBoxColor.currentTextChanged.connect(self._on_color_changed)
 
     def _on_color_indicator_click(self, event):
-        current_color = QColor(self._get_current_color())
-        color = QColorDialog.getColor(current_color, self, "Выберите цвет хэштега")
-
-        if color.isValid():
-            hex_color = color.name()
-            self._set_color(hex_color)
+        current_color = self._get_current_color()
+        dialog = ColorPickerDialog(current_color=current_color, parent=self)
+        if dialog.exec() == ColorPickerDialog.DialogCode.Accepted:
+            new_color = dialog.get_selected_color()
+            self._set_color(new_color)
 
     def _on_color_changed(self, text):
         if text in self.COLOR_MAP:

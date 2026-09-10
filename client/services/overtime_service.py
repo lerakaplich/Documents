@@ -1,4 +1,5 @@
 # client/services/overtime_service.py
+import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 from client.core.http_client import HttpClient
@@ -10,44 +11,58 @@ class OvertimeService:
     def __init__(self, http_client: HttpClient):
         self.client = http_client
 
-    def get_my_overtime(self) -> List[Dict[str, Any]]:
-        """
-        Получить переработки текущего пользователя
-        GET /overtime/my
-        """
+    def get_my_overtime(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
         try:
             print("📤 Запрос на получение моих переработок")
-            result = self.client.get("/overtime/my")
-            print(f"📥 Получено {len(result) if result else 0} моих переработок")
-            return result if result else []
+            params = {}
+            if start_date:
+                params['start_date'] = start_date
+            if end_date:
+                params['end_date'] = end_date
+            params['page'] = 1
+            params['size'] = 100  # чтобы получить все записи
+            result = self.client.get("/overtime/my", params=params)
+            items = result.get('items', []) if isinstance(result, dict) else []
+            print(f"📥 Получено {len(items)} моих переработок")
+            return items
         except Exception as e:
             print(f"❌ Ошибка получения моих переработок: {e}")
             return []
 
-    def get_all_overtime(self) -> List[Dict[str, Any]]:
-        """
-        Получить все переработки
-        GET /overtime/all
-        """
+    def get_all_overtime(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[
+        Dict[str, Any]]:
         try:
             print("📤 Запрос на получение всех переработок")
-            result = self.client.get("/overtime/all")
-            print(f"📥 Получено {len(result) if result else 0} переработок")
-            return result if result else []
+            params = {}
+            if start_date:
+                params['start_date'] = start_date
+            if end_date:
+                params['end_date'] = end_date
+            params['page'] = 1
+            params['size'] = 100
+            result = self.client.get("/overtime/all", params=params)
+            items = result.get('items', []) if isinstance(result, dict) else []
+            print(f"📥 Получено {len(items)} переработок")
+            return items
         except Exception as e:
             print(f"❌ Ошибка получения всех переработок: {e}")
             return []
 
-    def get_department_overtime(self, department_id: int) -> List[Dict[str, Any]]:
-        """
-        Получить переработки по отделу
-        GET /overtime/department/{dept_id}
-        """
+    def get_department_overtime(self, department_id: int, start_date: Optional[str] = None,
+                                end_date: Optional[str] = None) -> List[Dict[str, Any]]:
         try:
             print(f"📤 Запрос на получение переработок для отдела {department_id}")
-            result = self.client.get(f"/overtime/department/{department_id}")
-            print(f"📥 Получено {len(result) if result else 0} переработок для отдела")
-            return result if result else []
+            params = {}
+            if start_date:
+                params['start_date'] = start_date
+            if end_date:
+                params['end_date'] = end_date
+            params['page'] = 1
+            params['size'] = 100
+            result = self.client.get(f"/overtime/department/{department_id}", params=params)
+            items = result.get('items', []) if isinstance(result, dict) else []
+            print(f"📥 Получено {len(items)} переработок для отдела")
+            return items
         except Exception as e:
             print(f"❌ Ошибка получения переработок для отдела: {e}")
             return []
@@ -105,6 +120,50 @@ class OvertimeService:
             print(f"✅ Переработка {overtime_id} удалена")
         except Exception as e:
             print(f"❌ Ошибка удаления переработки: {e}")
+            raise
+
+    def import_overtime(self, file_path: str) -> dict:
+        """
+        Импорт переработок из Excel-файла выгрузки СКУД.
+        POST /overtime/import-excel (multipart/form-data)
+        """
+        try:
+            print(f"📤 Импорт переработок из файла: {file_path}")
+
+            # Content-Type НЕ ставим — requests сам выставит multipart с boundary
+            headers = self.client._get_headers()
+            headers.pop("Content-Type", None)
+
+            url = f"{self.client.base_url}/overtime/import-excel"
+
+            with open(file_path, "rb") as f:
+                files = {
+                    "file": (
+                        os.path.basename(file_path),
+                        f,
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    )
+                }
+                response = self.client.session.post(
+                    url,
+                    headers=headers,
+                    files=files,
+                    timeout=120,
+                )
+
+            print(f"📥 Статус ответа: {response.status_code}")
+
+            if response.status_code == 200:
+                result = response.json()
+                print(f"✅ Импорт выполнен: {result}")
+                return result
+
+            error_body = response.text
+            print(f"❌ Ошибка импорта: {response.status_code}")
+            print(f"❌ Тело ошибки: {error_body[:500]}")
+            raise Exception(f"Ошибка импорта: {response.status_code}\n{error_body}")
+        except Exception as e:
+            print(f"❌ Ошибка импорта: {e}")
             raise
 
     def update_bulk_notes(self, overtime_ids: List[int], note: str) -> Dict[str, Any]:

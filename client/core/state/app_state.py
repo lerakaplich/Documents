@@ -46,23 +46,3 @@ class AppState:
         self.http_client.clear_tokens()
         logger.info("Пользователь деавторизован")
 
-    # В client/services/auth_service.py добавьте:
-
-    def reset_password(self, phone_number: str, code: str, new_password: str) -> None:
-        """
-        Сброс пароля с использованием кода подтверждения
-
-        Args:
-            phone_number: Номер телефона в формате +375XXXXXXXXX
-            code: Код подтверждения из Telegram
-            new_password: Новый пароль
-        """
-        response = self.http_client.post(
-            "/auth/reset-password",
-            json={
-                "phone_number": phone_number,
-                "code": code,
-                "new_password": new_password
-            }
-        )
-        return response.json()

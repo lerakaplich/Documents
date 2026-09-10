@@ -14,7 +14,7 @@
    <string>DocumentsPanel</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">#DocumentsPanel { background-color: white; }</string>
+   <string notr="true">#DocumentsPanel { background-color: transparent; }</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="spacing">
@@ -112,7 +112,7 @@
       </size>
      </property>
      <property name="styleSheet">
-      <string notr="true">#toolBar { background-color: white; }</string>
+      <string notr="true">#toolBar { background-color: #E7EDF2; }</string>
      </property>
      <layout class="QHBoxLayout" name="toolBarLayout">
       <property name="spacing">
@@ -148,8 +148,8 @@
          <string notr="true">QLineEdit {
     border: 1px solid #D0D0D0;
     border-radius: 8px;
+    font-size: 13px;
     padding: 5px 15px;
-    font-size: 14px;
     background-color: white;
 }
 QLineEdit:focus {
@@ -177,10 +177,10 @@ QLineEdit:focus {
         </property>
         <property name="styleSheet">
          <string notr="true">QPushButton {
-    background-color: #eeeeee;
-    border-radius: 4px;
+    background-color: #A1A6AB;
+    border-radius: 8px;
     font-weight: normal;
-    color: black;
+    color: white;
 }
 QPushButton:hover {
     background-color: #dddddd;
@@ -207,10 +207,10 @@ QPushButton:hover {
         </property>
         <property name="styleSheet">
          <string notr="true">QPushButton {
-    background-color: #eeeeee;
-    border-radius: 4px;
+    background-color: #A1A6AB;
+    border-radius: 8px;
     font-weight: normal;
-    color: black;
+    color: white;
 }
 QPushButton:hover {
     background-color: #dddddd;
@@ -237,10 +237,10 @@ QPushButton:hover {
         </property>
         <property name="styleSheet">
          <string notr="true">QPushButton {
-    background-color: #eeeeee;
-    border-radius: 4px;
+    background-color: #A1A6AB;
+    border-radius: 8px;
     font-weight: normal;
-    color: black;
+    color: white;
 }
 QPushButton:hover {
     background-color: #dddddd;
@@ -279,14 +279,11 @@ QPushButton:hover {
          </size>
         </property>
         <property name="styleSheet">
-         <string notr="true">
-QPushButton {
+         <string notr="true">QPushButton {
     background-color: #ccab6e;
-    color: white;
     border-radius: 8px;
-    font-weight: bold;
-    font-size: 13px;
-    border: none;
+    font-weight: normal;
+    color: white;
 }
 QPushButton:hover {
     background-color: #998664;
@@ -294,6 +291,7 @@ QPushButton:hover {
 QPushButton:pressed {
     background-color: #7a6a50;
 }
+
         </string>
         </property>
         <property name="text">
@@ -307,7 +305,7 @@ QPushButton:pressed {
    <item>
     <widget class="QFrame" name="contentFrame">
      <property name="styleSheet">
-      <string notr="true">#contentFrame { background-color: white; }</string>
+      <string notr="true">#contentFrame { background-color: #E7EDF2; }</string>
      </property>
      <property name="frameShape">
       <enum>QFrame::Shape::NoFrame</enum>

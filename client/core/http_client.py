@@ -62,7 +62,7 @@ class HttpClient:
                 )
                 return True
             else:
-                logger.error(f"Ошибка обновления токена: {response.status_code}")
+                logger.error(f"Ошибка обновления токена: {response.status_code} | {response.text[:300]}")
                 return False
 
         except Exception as e:
@@ -118,15 +118,6 @@ class HttpClient:
                 **kwargs
             )
 
-            # Логируем ответ
-            logger.info(f"📥 Статус ответа: {response.status_code}")
-            if response.status_code >= 400:
-                logger.error(f"❌ Текст ошибки: {response.text[:500]}")
-
-            if response.status_code >= 400:
-                logger.error(f"❌ Текст ошибки: {response.text[:500]}")
-                raise Exception(f"Ошибка {response.status_code}: {response.text[:200]}")
-
             if response.status_code == 401:
                 logger.warning("Получена 401 ошибка, пробуем обновить токен...")
                 if self._refresh_access_token():
@@ -139,6 +130,17 @@ class HttpClient:
 
             if response.status_code == 401:
                 raise AuthError("Сессия истекла, требуется повторный вход")
+
+            # Логируем ответ
+            logger.info(f"📥 Статус ответа: {response.status_code}")
+            if response.status_code >= 400:
+                logger.error(f"❌ Текст ошибки: {response.text[:500]}")
+
+            if response.status_code >= 400:
+                logger.error(f"❌ Текст ошибки: {response.text[:500]}")
+                raise Exception(f"Ошибка {response.status_code}: {response.text[:200]}")
+
+
 
             response.raise_for_status()
 

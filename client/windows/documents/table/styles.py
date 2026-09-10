@@ -11,7 +11,7 @@ class TableStyles:
         """Основной стиль виджета"""
         return """
             QWidget {
-                background-color: #FFFFFF;
+                background-color: #E7EDF2;
             }
         """
 
@@ -20,10 +20,10 @@ class TableStyles:
         """Стиль таблицы с чередованием строк"""
         return """
             QTableWidget {
-                background-color: #FFFFFF;
+                background-color: #E7EDF2;
                 alternate-background-color: #F5F7FA;  /* Цвет для нечетных строк */
                 border: 1px solid #E0E0E0;
-                gridline-color: #E0E0E0;
+                gridline-color: #D3D3D3;
                 selection-background-color: #E3F2FD;
                 selection-color: #1B232A;
                 outline: 0;
@@ -31,63 +31,63 @@ class TableStyles:
 
             QTableWidget::item {
                 padding: 4px 8px;
-                border: 1px solid #E8E8E8;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #E8E8E8;
+                border-bottom: 1px solid #D3D3D3;
                 background-color: transparent;  /* Прозрачный фон, чтобы работал alternate-background-color */
             }
 
             QTableWidget::item:selected {
                 background-color: #E3F2FD;
                 color: #1B232A;
-                border: 1px solid #90CAF9;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #90CAF9;
+                border-bottom: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:selected:active {
                 background-color: #BBDEFB;
-                border: 1px solid #64B5F6;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #64B5F6;
+                border-bottom: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:selected:!active {
                 background-color: #E3F2FD;
-                border: 1px solid #BBDEFB;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #BBDEFB;
+                border-bottom: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:hover {
                 background-color: #EDF0F5;
-                border: 1px solid #D0D0D0;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #D0D0D0;
+                border-bottom: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:selected:hover {
                 background-color: #E3F2FD;
-                border: 1px solid #90CAF9;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #90CAF9;
+                border-bottom: 1px solid #D3D3D3;
             }
 
             /* Вертикальные линии между столбцами */
             QTableWidget::item:first {
-                border-left: 1px solid #E8E8E8;
+                border-left: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:last {
-                border-right: 1px solid #E8E8E8;
+                border-right: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:selected:first {
-                border-left: 1px solid #90CAF9;
+                border-left: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:selected:last {
-                border-right: 1px solid #90CAF9;
+                border-right: 1px solid #D3D3D3;
             }
 
             QHeaderView::section {
@@ -200,7 +200,7 @@ class TableStyles:
                 background-color: {odd_color};
                 alternate-background-color: {even_color};
                 border: 1px solid #E0E0E0;
-                gridline-color: #E0E0E0;
+                gridline-color: #D3D3D3;
                 selection-background-color: #E3F2FD;
                 selection-color: #1B232A;
                 outline: 0;
@@ -208,62 +208,62 @@ class TableStyles:
 
             QTableWidget::item {{
                 padding: 4px 8px;
-                border: 1px solid #E8E8E8;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #E8E8E8;
+                border-bottom: 1px solid #D3D3D3;
                 background-color: transparent;
             }}
 
             QTableWidget::item:selected {{
                 background-color: #E3F2FD;
                 color: #1B232A;
-                border: 1px solid #90CAF9;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #90CAF9;
+                border-bottom: 1px solid #D3D3D3;
             }}
 
             QTableWidget::item:selected:active {{
                 background-color: #BBDEFB;
-                border: 1px solid #64B5F6;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #64B5F6;
+                border-bottom: 1px solid #D3D3D3;
             }}
 
             QTableWidget::item:selected:!active {{
                 background-color: #E3F2FD;
-                border: 1px solid #BBDEFB;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #BBDEFB;
+                border-bottom: 1px solid #D3D3D3;
             }}
 
             QTableWidget::item:hover {{
                 background-color: #EDF0F5;
-                border: 1px solid #D0D0D0;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #D0D0D0;
+                border-bottom: 1px solid #D3D3D3;
             }}
 
             QTableWidget::item:selected:hover {{
                 background-color: #E3F2FD;
-                border: 1px solid #90CAF9;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #90CAF9;
+                border-bottom: 1px solid #D3D3D3;
             }}
 
             QTableWidget::item:first {{
-                border-left: 1px solid #E8E8E8;
+                border-left: 1px solid #D3D3D3;
             }}
 
             QTableWidget::item:last {{
-                border-right: 1px solid #E8E8E8;
+                border-right: 1px solid #D3D3D3;
             }}
 
             QTableWidget::item:selected:first {{
-                border-left: 1px solid #90CAF9;
+                border-left: 1px solid #D3D3D3;
             }}
 
             QTableWidget::item:selected:last {{
-                border-right: 1px solid #90CAF9;
+                border-right: 1px solid #D3D3D3;
             }}
 
             QHeaderView::section {{
@@ -355,7 +355,7 @@ class TableStyles:
                 background-color: #FFFFFF;
                 alternate-background-color: #F8F9FA;
                 border: 1px solid #E0E0E0;
-                gridline-color: #E8E8E8;
+                gridline-color: #D3D3D3;
                 selection-background-color: #E3F2FD;
                 selection-color: #1B232A;
                 outline: 0;
@@ -363,40 +363,40 @@ class TableStyles:
 
             QTableWidget::item {
                 padding: 2px 4px;
-                border: 1px solid #E8E8E8;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #E8E8E8;
+                border-bottom: 1px solid #D3D3D3;
                 background-color: transparent;
             }
 
             QTableWidget::item:selected {
                 background-color: #E3F2FD;
-                border: 1px solid #90CAF9;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #90CAF9;
+                border-bottom: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:hover {
                 background-color: #F0F0F0;
-                border: 1px solid #D0D0D0;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #D0D0D0;
+                border-bottom: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:first {
-                border-left: 1px solid #E8E8E8;
+                border-left: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:last {
-                border-right: 1px solid #E8E8E8;
+                border-right: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:selected:first {
-                border-left: 1px solid #90CAF9;
+                border-left: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:selected:last {
-                border-right: 1px solid #90CAF9;
+                border-right: 1px solid #D3D3D3;
             }
 
             QHeaderView::section {
@@ -454,7 +454,7 @@ class TableStyles:
                 background-color: #FFFFFF;
                 alternate-background-color: #FFFBF5;
                 border: 2px solid #ccab6e;
-                gridline-color: #E0E0E0;
+                gridline-color: #D3D3D3;
                 selection-background-color: #E3F2FD;
                 selection-color: #1B232A;
                 outline: 0;
@@ -462,41 +462,41 @@ class TableStyles:
 
             QTableWidget::item {
                 padding: 4px 8px;
-                border: 1px solid #E8E8E8;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #E8E8E8;
+                border-bottom: 1px solid #D3D3D3;
                 background-color: transparent;
             }
 
             QTableWidget::item:selected {
                 background-color: #E3F2FD;
                 color: #1B232A;
-                border: 1px solid #ccab6e;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #ccab6e;
+                border-bottom: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:hover {
                 background-color: #F5F0EA;
-                border: 1px solid #D0D0D0;
+                border: 1px solid #D3D3D3;
                 border-top: none;
-                border-bottom: 1px solid #D0D0D0;
+                border-bottom: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:first {
-                border-left: 1px solid #E8E8E8;
+                border-left: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:last {
-                border-right: 1px solid #E8E8E8;
+                border-right: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:selected:first {
-                border-left: 1px solid #ccab6e;
+                border-left: 1px solid #D3D3D3;
             }
 
             QTableWidget::item:selected:last {
-                border-right: 1px solid #ccab6e;
+                border-right: 1px solid #D3D3D3;
             }
 
             QHeaderView::section {
