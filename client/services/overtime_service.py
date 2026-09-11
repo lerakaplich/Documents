@@ -11,42 +11,39 @@ class OvertimeService:
     def __init__(self, http_client: HttpClient):
         self.client = http_client
 
-    def get_my_overtime(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_my_overtime(self, start_date=None, end_date=None, page=1, size=100):
         try:
-            print("📤 Запрос на получение моих переработок")
-            params = {}
-            if start_date:
-                params['start_date'] = start_date
-            if end_date:
-                params['end_date'] = end_date
-            params['page'] = 1
-            params['size'] = 100  # чтобы получить все записи
+            params = {'page': page, 'size': size}
+            if start_date: params['start_date'] = start_date
+            if end_date:   params['end_date'] = end_date
+
             result = self.client.get("/overtime/my", params=params)
-            items = result.get('items', []) if isinstance(result, dict) else []
-            print(f"📥 Получено {len(items)} моих переработок")
-            return items
+            if isinstance(result, dict):
+                print(f"📥 Мои: страница {result.get('page')} из {result.get('pages')}, "
+                      f"всего {result.get('total')}, на странице {len(result.get('items', []))}")
+                return result
+            return {'items': [], 'total': 0, 'page': 1, 'pages': 1, 'size': size}
         except Exception as e:
             print(f"❌ Ошибка получения моих переработок: {e}")
-            return []
+            return {'items': [], 'total': 0, 'page': 1, 'pages': 1, 'size': size}
 
-    def get_all_overtime(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[
-        Dict[str, Any]]:
+    def get_all_overtime(self, start_date=None, end_date=None, page=1, size=100):
         try:
-            print("📤 Запрос на получение всех переработок")
-            params = {}
-            if start_date:
-                params['start_date'] = start_date
-            if end_date:
-                params['end_date'] = end_date
-            params['page'] = 1
-            params['size'] = 100
+            params = {'page': page, 'size': size}
+            if start_date: params['start_date'] = start_date
+            if end_date:   params['end_date'] = end_date
+
             result = self.client.get("/overtime/all", params=params)
-            items = result.get('items', []) if isinstance(result, dict) else []
-            print(f"📥 Получено {len(items)} переработок")
-            return items
+            if isinstance(result, dict):
+                print(f"📥 Все: страница {result.get('page')} из {result.get('pages')}, "
+                      f"всего {result.get('total')}, на странице {len(result.get('items', []))}")
+                return result
+            return {'items': [], 'total': 0, 'page': 1, 'pages': 1, 'size': size}
         except Exception as e:
             print(f"❌ Ошибка получения всех переработок: {e}")
-            return []
+            return {'items': [], 'total': 0, 'page': 1, 'pages': 1, 'size': size}
+
+
 
     def get_department_overtime(self, department_id: int, start_date: Optional[str] = None,
                                 end_date: Optional[str] = None) -> List[Dict[str, Any]]:

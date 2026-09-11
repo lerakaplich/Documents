@@ -48,7 +48,7 @@ class TagsPage(QWidget):
         self.filtered_tags: List[Dict[str, Any]] = []
 
         # Состояние
-        self.current_sort = "А→Я"
+        self.current_sort = "По приоритету (важные сверху)"
         self.is_loading = False
 
         # Инициализация
@@ -182,6 +182,8 @@ class TagsPage(QWidget):
             "Я→А (по названию)": self.sort_by_name_desc,
             "По количеству документов (↑)": self.sort_by_count_asc,
             "По количеству документов (↓)": self.sort_by_count_desc,
+            "По приоритету (важные сверху)": self.sort_by_priority_desc,
+            "По приоритету (обычные сверху)": self.sort_by_priority_asc,
         }
 
         for name, func in sort_options.items():
@@ -189,6 +191,22 @@ class TagsPage(QWidget):
             action.triggered.connect(lambda checked, f=func, n=name: self.apply_sort(f, n))
 
         menu.exec(self.btnSort.mapToGlobal(self.btnSort.rect().bottomLeft()))
+
+    def sort_by_priority_desc(self, tags):
+        """Срочные → Важные → Обычные, внутри — по названию."""
+        order = {'urgent': 0, 'important': 1, 'normal': 2}
+        return sorted(
+            tags,
+            key=lambda x: (order.get(x.get('priority', 'normal'), 3), x.get('name', '').lower())
+        )
+
+    def sort_by_priority_asc(self, tags):
+        """Обычные → Важные → Срочные, внутри — по названию."""
+        order = {'normal': 0, 'important': 1, 'urgent': 2}
+        return sorted(
+            tags,
+            key=lambda x: (order.get(x.get('priority', 'normal'), 3), x.get('name', '').lower())
+        )
 
     def sort_by_name_asc(self, tags):
         return sorted(tags, key=lambda x: x.get('name', '').lower())
@@ -219,7 +237,7 @@ class TagsPage(QWidget):
     def has_active_filters(self):
         if self.searchEdit.text().strip():
             return True
-        if self.current_sort != "А→Я":
+        if self.current_sort != "По приоритету (важные сверху)":
             return True
         return False
 
@@ -231,7 +249,7 @@ class TagsPage(QWidget):
 
     def reset_all_filters(self):
         self.searchEdit.clear()
-        self.current_sort = "А→Я"
+        self.current_sort = "По приоритету (важные сверху)"
         self.btnSort.setText("Сортировка ▼")
         self.btnResetFilters.hide()
         self.update_display()
@@ -255,6 +273,8 @@ class TagsPage(QWidget):
             "Я→А (по названию)": self.sort_by_name_desc,
             "По количеству документов (↑)": self.sort_by_count_asc,
             "По количеству документов (↓)": self.sort_by_count_desc,
+            "По приоритету (важные сверху)": self.sort_by_priority_desc,
+            "По приоритету (обычные сверху)": self.sort_by_priority_asc,
         }
 
         sort_func = sort_methods.get(self.current_sort, self.sort_by_name_asc)

@@ -18,15 +18,17 @@ class OvertimeDataManager:
         self._cache_my_data = []
         self._cache_all_data = []
         self._departments_cache = None
+        self._my_pagination = {'page': 1, 'pages': 1, 'total': 0, 'size': 100}
+        self._all_pagination = {'page': 1, 'pages': 1, 'total': 0, 'size': 100}
 
     def set_overtime_service(self, overtime_service: OvertimeService):
         """Устанавливает сервис переработок"""
         self.overtime_service = overtime_service
         print("✅ OvertimeService установлен в OvertimeDataManager")
 
-    def load_overtime_from_api(self, my_start: Optional[str] = None, my_end: Optional[str] = None,
-                               all_start: Optional[str] = None, all_end: Optional[str] = None):
-        """Загружает переработки через API. Даты для 'моих' и 'всех' независимы."""
+    def load_overtime_from_api(self, my_start=None, my_end=None,
+                               all_start=None, all_end=None,
+                               my_page=1, all_page=1, page_size=100):
         if not self.overtime_service:
             print("⚠️ OvertimeService не установлен, используем тестовые данные")
             return self.get_test_data()
@@ -37,14 +39,27 @@ class OvertimeDataManager:
         api_all_end = self._to_iso(all_end) or "2100-01-01"
 
         try:
-            print(f"📅 Период 'мои': {api_my_start} — {api_my_end}")
-            print(f"📅 Период 'все': {api_all_start} — {api_all_end}")
+            my_resp = self.overtime_service.get_my_overtime(
+                api_my_start, api_my_end, page=my_page, size=page_size)
+            all_resp = self.overtime_service.get_all_overtime(
+                api_all_start, api_all_end, page=all_page, size=page_size)
 
-            my_data = self.overtime_service.get_my_overtime(api_my_start, api_my_end)
-            all_data = self.overtime_service.get_all_overtime(api_all_start, api_all_end)
+            # ─── Сохраняем метаданные пагинации ───
+            self._my_pagination = {
+                'page': my_resp.get('page', 1),
+                'pages': my_resp.get('pages', 1),
+                'total': my_resp.get('total', 0),
+                'size': my_resp.get('size', page_size),
+            }
+            self._all_pagination = {
+                'page': all_resp.get('page', 1),
+                'pages': all_resp.get('pages', 1),
+                'total': all_resp.get('total', 0),
+                'size': all_resp.get('size', page_size),
+            }
 
-            my_formatted = self._format_overtime_data(my_data)
-            all_formatted = self._format_overtime_data(all_data)
+            my_formatted = self._format_overtime_data(my_resp.get('items', []))
+            all_formatted = self._format_overtime_data(all_resp.get('items', []))
 
             self._cache_my_data = my_formatted
             self._cache_all_data = all_formatted
@@ -53,6 +68,12 @@ class OvertimeDataManager:
         except Exception as e:
             print(f"❌ Ошибка загрузки переработок: {e}")
             return self.get_test_data()
+
+    def get_my_pagination(self):
+        return self._my_pagination.copy()
+
+    def get_all_pagination(self):
+        return self._all_pagination.copy()
 
     @staticmethod
     def _to_iso(date_str: Optional[str]) -> Optional[str]:

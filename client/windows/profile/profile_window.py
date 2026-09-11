@@ -371,6 +371,104 @@ class ProfileForm(QWidget):
         if hasattr(self, 'btnImport') and self.btnImport:
             self.btnImport.clicked.connect(self.overtime_panel.on_import_clicked)
 
+        # ─── НОВОЕ: сброс скролла при смене вкладки ───
+        if hasattr(self, 'tabWidget') and self.tabWidget:
+            self.tabWidget.currentChanged.connect(self._on_tab_changed)
+
+    def _on_tab_changed(self, index: int):
+        """Сброс скролла и пересчёт размеров при переключении вкладки."""
+        if hasattr(self, 'scrollArea') and self.scrollArea:
+            self.scrollArea.verticalScrollBar().setValue(0)
+
+        if not hasattr(self, 'tabWidget') or not self.tabWidget:
+            return
+
+        current = self.tabWidget.currentWidget()
+        if current and current.layout():
+            current.layout().activate()
+
+        self.tabWidget.updateGeometry()
+
+        for container in (self.overtime_panel.card_container.myOvertimeContainer,
+                          self.overtime_panel.card_container.allOvertimeContainer):
+            if container:
+                container.updateGeometry()
+                if hasattr(container, 'main_layout'):
+                    container.main_layout.activate()
+
+        if hasattr(self, 'tabWidget'):
+            current_tab = self.tabWidget.currentWidget()
+            if current_tab and current_tab.layout():
+                current_tab.layout().activate()
+
+        # Подгоняем высоту под новую вкладку
+        self._resize_tab_widget()
+
+    # ==================== АДАПТИВНАЯ ВЫСОТА ВКЛАДОК ====================
+
+    def _setup_adaptive_tabs(self):
+        """Настраивает подгонку высоты QTabWidget под текущую вкладку."""
+        if hasattr(self, 'scrollArea') and self.scrollArea:
+            content = self.scrollArea.widget()
+            if content and content.layout():
+                layout = content.layout()
+                has_stretch = False
+                if layout.count() > 0:
+                    last = layout.itemAt(layout.count() - 1)
+                    if last is not None and last.spacerItem() is not None:
+                        has_stretch = True
+                if not has_stretch:
+                    layout.addStretch(1)
+
+        # 2. Подписываемся на переключение вкладок
+        if hasattr(self, 'tabWidget') and self.tabWidget:
+            self.tabWidget.currentChanged.connect(self._resize_tab_widget)
+            # Первичная подгонка
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(0, self._resize_tab_widget)
+
+        from PyQt6.QtWidgets import QSizePolicy
+
+        if hasattr(self, 'infoFrame') and self.infoFrame:
+            self.infoFrame.setSizePolicy(
+                QSizePolicy.Policy.Preferred,
+                QSizePolicy.Policy.Maximum  # вертикально — не больше sizeHint
+            )
+
+    def _resize_tab_widget(self, _index=None):
+        """Фиксирует высоту QTabWidget по высоте текущей вкладки."""
+        if not hasattr(self, 'tabWidget') or not self.tabWidget:
+            return
+
+        current = self.tabWidget.currentWidget()
+        if current is None:
+            return
+
+        # Сначала снимаем ограничения
+        self.tabWidget.setMinimumHeight(0)
+        self.tabWidget.setMaximumHeight(16777215)
+
+        # Форсируем пересчёт геометрии текущей страницы
+        current.updateGeometry()
+        if current.layout():
+            current.layout().activate()
+            current.layout().update()
+        current.adjustSize()
+
+        # Считаем высоту
+        page_hint = current.sizeHint()
+        tab_bar_h = self.tabWidget.tabBar().sizeHint().height()
+        total_h = page_hint.height() + tab_bar_h + 4
+
+        # Фиксируем высоту — максимум перебивает минимальный размер
+        # внутреннего QStackedWidget (который = максимум по всем вкладкам)
+        self.tabWidget.setMinimumHeight(total_h)
+        self.tabWidget.setMaximumHeight(total_h)
+
+        self.tabWidget.updateGeometry()
+        if self.tabWidget.parentWidget() and self.tabWidget.parentWidget().layout():
+            self.tabWidget.parentWidget().layout().activate()
+
     def load_test_data(self):
         """Загружает тестовые данные профиля (для отладки)."""
         print("load_test_data вызван (тестовые данные)")

@@ -60,6 +60,10 @@ class TagCard(QFrame):
             name = self.tag_data.get('name', '')
             self.nameLabel.setText(name if name else 'Без названия')
 
+        # Заполняем приоритет
+        if hasattr(self, 'priorityLabel'):
+            self._apply_priority(self.tag_data.get('priority', 'normal'))
+
         # Заполняем количество документов
         if hasattr(self, 'countLabel'):
             count = self.tag_data.get('documents_count', 0)
@@ -75,6 +79,29 @@ class TagCard(QFrame):
         if hasattr(self, 'colorButton'):
             color = self.tag_data.get('color', '#CCAB6E')
             self.set_color(color)
+
+    def _apply_priority(self, priority: str):
+        """Настраивает бейдж приоритета: текст и цвет."""
+        if not hasattr(self, 'priorityLabel'):
+            return
+
+        mapping = {
+            'urgent': ('Срочно', '#FFEBEE', '#C62828'),  # красный
+            'important': ('Важно', '#FFF4E5', '#B26A00'),  # оранжевый
+            'normal': ('Обычный', '#F1F3F5', '#6C757D'),  # серый
+        }
+        text, bg, fg = mapping.get(priority or 'normal', mapping['normal'])
+
+        self.priorityLabel.setText(text)
+        self.priorityLabel.setStyleSheet(f"""
+            border: none;
+            font-size: 11px;
+            font-weight: 600;
+            color: {fg};
+            background-color: {bg};
+            border-radius: 10px;
+            padding: 2px 10px;
+        """)
 
     def set_color(self, color):
         """Устанавливает цвет кружочка-индикатора"""

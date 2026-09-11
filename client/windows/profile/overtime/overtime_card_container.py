@@ -16,10 +16,11 @@ class OvertimeCardContainer:
         """Создаёт QWidget с QGridLayout для размещения карточек."""
         container = QWidget()
         container.setStyleSheet("background-color: transparent;")
+        container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)  # ← добавить
+
         main_layout = QVBoxLayout(container)
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         grid_layout = QGridLayout()
         grid_layout.setSpacing(15)
@@ -28,7 +29,6 @@ class OvertimeCardContainer:
         grid_layout.setColumnMinimumWidth(1, 450)
 
         main_layout.addLayout(grid_layout)
-        main_layout.addStretch()
 
         container.grid_layout = grid_layout
         container.main_layout = main_layout
@@ -59,13 +59,21 @@ class OvertimeCardContainer:
         if not layout:
             return
         old_table_name = "myOvertimeTable" if tab_name == "tabMyOvertime" else "allOvertimeTable"
+        replaced = False
         for i in range(layout.count()):
             item = layout.itemAt(i)
             widget = item.widget()
             if widget and widget.objectName() == old_table_name:
                 layout.replaceWidget(widget, new_widget)
                 widget.deleteLater()
+                replaced = True
                 break
+
+        # Если заменили — добавляем растяжку в конец, чтобы контейнер не растягивался
+        if replaced and layout.count() > 0:
+            last_item = layout.itemAt(layout.count() - 1)
+            if last_item is not None and last_item.spacerItem() is None:
+                layout.addStretch()
 
     def populate_card_container(self, container, data_list, edit_callback, delete_callback):
         """Заполняет контейнер карточками."""
@@ -122,17 +130,19 @@ class OvertimeCardContainer:
                 col = i % 2
                 grid_layout.addWidget(card, row, col, alignment=Qt.AlignmentFlag.AlignTop)
                 container.cards.append(card)
-
-            # Растяжка внизу
+            # Пересчитываем размер контейнера после перерисовки
+            container.updateGeometry()
+            container.adjustSize()
             if hasattr(container, 'main_layout'):
-                for i in range(container.main_layout.count()):
-                    item = container.main_layout.itemAt(i)
-                    if item and isinstance(item, QSpacerItem):
-                        container.main_layout.removeItem(item)
-                        break
+                container.main_layout.activate()
+                container.main_layout.update()
 
-                spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-                container.main_layout.addItem(spacer)
+            # После пересчёта контейнера — попросить родителя обновить высоту вкладки
+            p = self.parent
+            if p and hasattr(p, '_resize_tab_widget'):
+                from PyQt6.QtCore import QTimer
+                QTimer.singleShot(0, p._resize_tab_widget)
+
 
         except Exception as e:
             print(f"Ошибка в populate_card_container: {e}")
