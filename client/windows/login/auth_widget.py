@@ -5,6 +5,7 @@ from PyQt6.QtCore import pyqtSignal, QThread, QObject, Qt
 from PyQt6.uic import loadUi
 import logging
 
+from client.core.settings.settings_manager import SettingsManager
 from client.core.state.app_state import AppState
 
 logger = logging.getLogger(__name__)
@@ -149,6 +150,13 @@ class AuthWidget(QWidget):
                 }
             """)
             self.forgotPasswordButton.clicked.connect(self._on_forgot_password_clicked)
+
+        # Предзаполнение из сохранённой сессии
+        session = SettingsManager().get_auth_session()
+        if session.get("phone") and hasattr(self, 'phoneInput'):
+            self.phoneInput.setText(session["phone"])
+            if hasattr(self, 'rememberCheckBox'):
+                self.rememberCheckBox.setChecked(True)
 
     def _get_clean_phone(self) -> str:
         """Возвращает чистые цифры из поля ввода (например: 375291234567)"""

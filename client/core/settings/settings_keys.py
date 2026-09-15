@@ -24,6 +24,11 @@ class SettingsKeys:
     DEFAULT_TYPE = "default"
     EMPTY_TYPE = "{}"
 
+    # ============ СЕССИЯ АВТОРИЗАЦИИ ============
+    AUTH_REFRESH_TOKEN = "auth_refresh_token"
+    AUTH_PHONE = "auth_phone"
+    AUTH_SAVED_AT = "auth_saved_at"
+
     @staticmethod
     def get_type_key(base_key: str, doc_type: str) -> str:
         if not doc_type or doc_type == SettingsKeys.DEFAULT_TYPE:

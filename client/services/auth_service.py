@@ -2,6 +2,8 @@ from typing import Optional, Dict, Any
 from client.core.http_client import HttpClient, AuthError
 import logging
 
+from client.core.settings.settings_manager import SettingsManager
+
 logger = logging.getLogger(__name__)
 
 
@@ -12,21 +14,8 @@ class AuthService:
         self.client = http_client
 
     def login(self, phone: str, password: str, remember_me: bool = False) -> Dict[str, Any]:
-        """
-        Вход в систему
-
-        Args:
-            phone: Номер телефона (с +375 или без)
-            password: Пароль
-            remember_me: Запомнить сессию
-
-        Returns:
-            Dict с токенами и данными пользователя
-        """
         try:
-            # Очищаем номер телефона от лишних символов
             clean_phone = phone.strip()
-            # Убеждаемся, что номер начинается с +
             if not clean_phone.startswith('+'):
                 clean_phone = '+' + clean_phone
 
@@ -41,7 +30,6 @@ class AuthService:
                 }
             )
 
-            # Сохраняем токены в клиенте
             if "access_token" in response and "refresh_token" in response:
                 self.client.set_tokens(
                     access_token=response["access_token"],
@@ -50,34 +38,75 @@ class AuthService:
                 )
                 logger.info("Токены успешно сохранены")
 
-            return response
+                # ─── Постоянная сессия ───
+                if remember_me:
+                    SettingsManager().save_auth_session(
+                        response["refresh_token"], clean_phone
+                    )
+                else:
+                    SettingsManager().clear_auth_session()
 
+            return response
         except Exception as e:
             logger.error(f"Ошибка входа: {e}")
             raise
 
-    def logout(self, refresh_token: str = None) -> bool:
+    def try_restore_session(self) -> Optional[Dict[str, Any]]:
         """
-        Выход из системы
+        Пробует восстановить сессию по сохранённому refresh_token.
+        Возвращает ответ /auth/refresh или None.
+        """
+        session = SettingsManager().get_auth_session()
+        rt = session.get("refresh_token")
+        if not rt:
+            logger.info("Нет сохранённой сессии")
+            return None
 
-        Args:
-            refresh_token: Токен обновления (если не передан, берется из клиента)
-        """
+        try:
+            logger.info("🔄 Попытка автовхода по сохранённому refresh_token...")
+            response = self.client.post(
+                "/auth/refresh",
+                json={"refresh_token": rt}
+            )
+
+            if "access_token" not in response:
+                SettingsManager().clear_auth_session()
+                return None
+
+            new_rt = response.get("refresh_token", rt)
+            self.client.set_tokens(
+                access_token=response["access_token"],
+                refresh_token=new_rt,
+                expires_in=response.get("expires_in", 3600)
+            )
+            # ротация refresh_token — сохраняем актуальный
+            SettingsManager().save_auth_session(new_rt, session.get("phone"))
+            logger.info("✅ Автовход успешен")
+            return response
+
+        except Exception as e:
+            logger.error(f"Не удалось восстановить сессию: {e}")
+            SettingsManager().clear_auth_session()
+            return None
+
+    def logout(self, refresh_token: str = None) -> bool:
         try:
             token = refresh_token or self.client._refresh_token
             if not token:
                 logger.warning("Нет refresh_token для выхода")
                 self.client.clear_tokens()
+                SettingsManager().clear_auth_session()  # ← NEW
                 return True
 
             self.client.post("/auth/logout", json={"refresh_token": token})
             self.client.clear_tokens()
+            SettingsManager().clear_auth_session()  # ← NEW
             logger.info("Выход выполнен успешно")
             return True
-
         except Exception as e:
             logger.error(f"Ошибка выхода: {e}")
             self.client.clear_tokens()
+            SettingsManager().clear_auth_session()  # ← NEW
             return False
 
     def refresh_token(self) -> Optional[Dict[str, Any]]:

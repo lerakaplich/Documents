@@ -2,13 +2,144 @@ from PyQt6.QtWidgets import QMessageBox
 
 
 class EmployeeDataManager:
-    """Управление данными сотрудников"""
-
-    def __init__(self):
+    def __init__(self, http_client=None):
+        self.http_client = http_client
         self.organizations = {}
         self.departments_tree = {}
         self.employees = {}
         self.employee_positions = []
+
+        if http_client is not None:
+            from client.services.employee_service import EmployeeService
+            from client.services.org_service import OrgService
+            self.employee_service = EmployeeService(http_client)
+            self.org_service = OrgService(http_client)
+        else:
+            self.employee_service = None
+            self.org_service = None
+
+    def load_data(self, page) -> bool:
+        if not self.employee_service:
+            return False
+        try:
+            orgs = self.org_service.get_all_organizations(limit=500) or []
+            self.organizations = {o["id"]: o for o in orgs if isinstance(o, dict) and o.get("id")}
+
+            self.departments_tree = {}
+            for org_id in self.organizations:
+                try:
+                    struct = self.org_service.get_org_structure(org_id) or []
+                    self._flatten_departments(struct, default_org_id=org_id)  # ← org_id!
+                except Exception as e:
+                    print(f"[WARN] structure org {org_id}: {e}")
+
+            self.employees = {}
+            for org_id in self.organizations:
+                try:
+                    items = self.org_service.get_org_employees(org_id) or []
+                except Exception as e:
+                    print(f"[WARN] employees org {org_id}: {e}")
+                    continue
+                for e in items:
+                    if isinstance(e, dict) and e.get("id"):
+                        self.employees[e["id"]] = e
+            print(f"[INFO] всего сотрудников: {len(self.employees)}")
+
+            self.employee_positions = []
+
+            page.comboOrganization.clear()
+            page.comboOrganization.addItem("Все организации", None)
+            for oid, org in self.organizations.items():
+                page.comboOrganization.addItem(org.get("name", ""), oid)
+
+            # было setCurrentIndex(1) — ставило первую попавшуюся орг
+            if page.comboOrganization.count() > 0:
+                page.comboOrganization.setCurrentIndex(0)  # "Все организации"
+
+            print(f"[INFO] {len(self.organizations)} орг / "
+                  f"{len(self.departments_tree)} отделов / "
+                  f"{len(self.employees)} сотрудников")
+            return True
+        except Exception as e:
+            print(f"[ERROR] load_data: {e}")
+            import traceback; traceback.print_exc()
+            return False
+
+    def _flatten_departments(self, nodes, parent_id=None, default_org_id=None):
+        """Рекурсивно разворачивает дерево отделов, привязывая к организации."""
+        if not isinstance(nodes, list):
+            return
+        for n in nodes:
+            if not isinstance(n, dict):
+                continue
+            did = n.get("id")
+            if not did:
+                continue
+            org_id = n.get("organization_id", default_org_id)
+            self.departments_tree[did] = {
+                "id": did,
+                "name": n.get("name", ""),
+                "parent_id": n.get("parent_id", parent_id),
+                "organization_id": org_id,
+                "children": [c.get("id") for c in (n.get("children") or []) if isinstance(c, dict)],
+            }
+            children = n.get("children") or n.get("subdepartments") or []
+            self._flatten_departments(children, parent_id=did, default_org_id=org_id)
+
+    def get_employees_with_positions(self):
+        """
+        Собирает сотрудников, обогащая данными из positions[0] и departments_tree.
+        Работает с реальной формой ответа API (см. /employees/me).
+        """
+        result = []
+        for emp in self.employees.values():
+            enriched = dict(emp)
+
+            # 1. Активная позиция (end_date = None) или первая
+            positions = emp.get("positions") or []
+            pos = None
+            for p in positions:
+                if isinstance(p, dict) and p.get("end_date") in (None, ""):
+                    pos = p
+                    break
+            if pos is None and positions:
+                pos = positions[0]
+
+            # 2. Тянем из позиции то, чего нет на верхнем уровне
+            if pos:
+                enriched.setdefault("position_name", pos.get("position_name"))
+                enriched.setdefault("is_leader", pos.get("is_leader"))
+                dept_id = pos.get("department_id")
+
+                # department_chain — от корня к отделу; для группировки берём первый элемент
+                chain = pos.get("department_chain") or []
+                if chain and isinstance(chain, list):
+                    enriched.setdefault("top_department_id", chain[0].get("id"))
+            else:
+                dept_id = emp.get("department_id")
+
+            # 3. Обогащаем названиями отделов и организацией через departments_tree
+            if dept_id and dept_id in self.departments_tree:
+                dept = self.departments_tree[dept_id]
+                enriched["department_id"] = dept_id
+                enriched["department_name"] = dept.get("name", "")
+                enriched["department_path"] = self.get_department_path(dept_id)
+                org_id = dept.get("organization_id")
+                enriched["organization_id"] = org_id
+                if org_id and org_id in self.organizations:
+                    enriched["organization_name"] = self.organizations[org_id].get("name", "")
+
+            # 4. Если organization_id так и не нашли — берём из top_department_id
+            if not enriched.get("organization_id") and enriched.get("top_department_id"):
+                top_id = enriched["top_department_id"]
+                if top_id in self.departments_tree:
+                    org_id = self.departments_tree[top_id].get("organization_id")
+                    enriched["organization_id"] = org_id
+                    if org_id and org_id in self.organizations:
+                        enriched["organization_name"] = self.organizations[org_id].get("name", "")
+
+            result.append(enriched)
+        return result
 
     def load_test_data(self, page):
         """Загрузка тестовых данных согласно структуре БД"""
@@ -162,30 +293,7 @@ class EmployeeDataManager:
                 children.extend(self.get_children_departments_all(dept_id))
         return children
 
-    def get_employees_with_positions(self):
-        """Получить всех сотрудников с их должностями и подразделениями"""
-        result = []
-        employee_depts = {}
-        for pos in self.employee_positions:
-            emp_id = pos["employee_id"]
-            if emp_id not in employee_depts:
-                employee_depts[emp_id] = []
-            employee_depts[emp_id].append(pos)
 
-        for emp_id, emp_data in self.employees.items():
-            if emp_id in employee_depts:
-                for pos in employee_depts[emp_id]:
-                    emp_copy = emp_data.copy()
-                    emp_copy["position_name"] = pos["position_name"]
-                    emp_copy["department_id"] = pos["department_id"]
-                    emp_copy["is_leader"] = pos["is_leader"]
-                    if pos["department_id"] in self.departments_tree:
-                        dept = self.departments_tree[pos["department_id"]]
-                        emp_copy["department_name"] = dept["name"]
-                        emp_copy["organization_id"] = dept["organization_id"]
-                        emp_copy["department_path"] = self.get_department_path(pos["department_id"])
-                    result.append(emp_copy)
-        return result
 
     def filter_employees(self, current_org_id, current_department_id, search_text, current_sort):
         """Фильтрация сотрудников"""
@@ -231,10 +339,25 @@ class EmployeeDataManager:
         return groups
 
     def sort_by_name_asc(self, employees):
-        return sorted(employees, key=lambda x: f"{x['last_name']} {x['first_name']} {x.get('patronymic', '')}")
+        return sorted(employees, key=lambda x: (
+            (x.get('last_name') or '').lower(),
+            (x.get('first_name') or '').lower(),
+            (x.get('patronymic') or '').lower(),
+        ))
 
     def sort_by_name_desc(self, employees):
-        return sorted(employees, key=lambda x: f"{x['last_name']} {x['first_name']} {x.get('patronymic', '')}", reverse=True)
+        return sorted(employees, key=lambda x: (
+            (x.get('last_name') or '').lower(),
+            (x.get('first_name') or '').lower(),
+            (x.get('patronymic') or '').lower(),
+        ), reverse=True)
 
     def sort_by_tab_number(self, employees):
-        return sorted(employees, key=lambda x: x.get('service_number', ''))
+        def key(e):
+            sn = e.get('service_number') or ''
+            try:
+                return (0, int(sn))
+            except (TypeError, ValueError):
+                return (1, str(sn))
+
+        return sorted(employees, key=key)

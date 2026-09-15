@@ -2,8 +2,10 @@ import os
 import sys
 import traceback
 from PyQt6.QtWidgets import QMainWindow, QApplication, QHBoxLayout, QWidget, QStackedWidget, QMessageBox
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
+from client.core import http_client
+from client.core.state.app_state import AppState
 from client.windows.documents.table.documents_panel import DocumentsPanel
 from client.windows.left_panel.left_panel import LeftPanel
 from client.windows.profile.profile_window import ProfileForm
@@ -14,6 +16,7 @@ from client.windows.system.tab_system import SystemTab
 
 class MainWindow(QMainWindow):
     """Главное окно приложения - ТОЛЬКО НАВИГАЦИЯ"""
+    logout_requested = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -21,7 +24,7 @@ class MainWindow(QMainWindow):
         try:
 
             print("Инициализация MainWindow...")
-
+            self.http_client = AppState().http_client
 
             self.setWindowTitle("Система документооборота МАЗ")
             self.setGeometry(100, 100, 1200, 800)
@@ -143,6 +146,10 @@ class MainWindow(QMainWindow):
                 )
                 print("✓ data_loaded подключен")
 
+            if hasattr(self.left_panel, 'logout_clicked'):
+                self.left_panel.logout_clicked.connect(self.on_logout_clicked)
+                print("✓ logout_clicked подключен")
+
             print("✓ Все сигналы настроены успешно")
 
         except Exception as e:
@@ -150,6 +157,35 @@ class MainWindow(QMainWindow):
             traceback.print_exc()
 
     # ========== НАВИГАЦИЯ ==========
+    def on_logout_clicked(self):
+        """Обработка выхода из аккаунта."""
+        from PyQt6.QtWidgets import QMessageBox
+
+        reply = QMessageBox.question(
+            self,
+            "Выход из аккаунта",
+            "Вы уверены, что хотите выйти из аккаунта?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        # ─── Серверный logout + очистка токенов и сохранённой сессии ───
+        try:
+            from client.services.auth_service import AuthService
+            from client.core.state.app_state import AppState
+
+            auth = AuthService(AppState().http_client)
+            auth.logout()
+        except Exception as e:
+            print(f"⚠️ Ошибка при выходе из аккаунта: {e}")
+
+        # ─── Оповещаем LoginWindow ───
+        self.logout_requested.emit()
+
+        # ─── Прячем окно (НЕ close(), иначе closeEvent завершит всё приложение) ───
+        self.hide()
 
     def on_profile_clicked(self):
         """Переключение на профиль"""
@@ -179,19 +215,9 @@ class MainWindow(QMainWindow):
         self.documents_panel.load_documents_by_direction(direction_key, direction_name)
 
     def closeEvent(self, event):
-        """Обработка закрытия"""
-        reply = QMessageBox.question(
-            self,
-            "Подтверждение выхода",
-            "Вы уверены, что хотите выйти?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            event.accept()
-        else:
-            event.ignore()
+        """Закрытие приложения без подтверждения."""
+        event.accept()
+        QApplication.instance().quit()
 
 
 if __name__ == "__main__":

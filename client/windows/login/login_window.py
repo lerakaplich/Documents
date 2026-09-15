@@ -1,7 +1,8 @@
 import sys
 import os
 from PyQt6.QtWidgets import QMainWindow, QWidget, QGraphicsDropShadowEffect, QApplication
-from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QUrl, QPoint, QParallelAnimationGroup
+from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QUrl, QPoint, QParallelAnimationGroup, pyqtSignal, \
+    QObject, QThread, QTimer
 from PyQt6.QtGui import QColor, QPixmap
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.uic import loadUi
@@ -16,6 +17,34 @@ from client.windows.animations.animated_notification import NotificationManager
 
 logger = logging.getLogger(__name__)
 
+from client.services.auth_service import AuthService
+
+
+class AutoLoginWorker(QObject):
+    finished = pyqtSignal(dict)
+    failed = pyqtSignal(str)
+
+    def run(self):
+        try:
+            app_state = AppState()
+            auth = AuthService(app_state.http_client)
+            result = auth.try_restore_session()
+
+            if not result:
+                self.failed.emit("Нет сохранённой сессии")
+                return
+
+            try:
+                user_data = app_state.employee_service.get_my_profile()
+            except Exception as e:
+                logger.warning(f"Не удалось получить профиль: {e}")
+                user_data = {}
+
+            app_state.set_user(user_data)
+            self.finished.emit(user_data)
+        except Exception as e:
+            logger.error(f"Ошибка автовхода: {e}")
+            self.failed.emit(str(e))
 
 class LoginWindow(QMainWindow):
     def __init__(self):
@@ -41,18 +70,13 @@ class LoginWindow(QMainWindow):
         # Состояние приложения
         self.app_state = AppState()
 
-        # 2. Анимация звезд
-        self.web_view = QWebEngineView(self.backgroundWidget)
-        self.web_view.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        # 2. Анимация звёзд — создаётся через отдельный метод, чтобы можно было
+        #    полностью уничтожать и пересоздавать её при входе/выходе из аккаунта.
+        self.web_view = None
+        self._create_star_animation()
+
         self.setMouseTracking(True)
         self.backgroundWidget.setMouseTracking(True)
-
-        html_path = os.path.join(self.root_dir, "html", "star_animation.html")
-        if os.path.exists(html_path):
-            self.web_view.setUrl(QUrl.fromLocalFile(html_path))
-        else:
-            print(f"Warning: HTML файл не найден: {html_path}")
-        self.web_view.lower()
 
         # 3. Инициализация виджетов-карточек
         self.auth_card = AuthWidget()
@@ -126,16 +150,85 @@ class LoginWindow(QMainWindow):
         # Проверяем сохраненную сессию
         self._check_saved_session()
 
+    # ==================== WEB VIEW LIFECYCLE ====================
+
+    def _create_star_animation(self):
+        """Создаёт QWebEngineView с анимацией звёзд."""
+        if self.web_view is not None:
+            return
+
+        self.web_view = QWebEngineView(self.backgroundWidget)
+        self.web_view.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, False
+        )
+
+        # Геометрия — по текущему размеру окна.
+        # resizeEvent подправит при следующем изменении размера.
+        self.web_view.setGeometry(0, 0, self.width(), self.height())
+
+        html_path = os.path.join(self.root_dir, "html", "star_animation.html")
+        if os.path.exists(html_path):
+            self.web_view.setUrl(QUrl.fromLocalFile(html_path))
+        else:
+            print(f"Warning: HTML файл не найден: {html_path}")
+
+        self.web_view.lower()
+        # Показываем сразу — иначе виджет может остаться скрытым после
+        # повторного создания (deleteLater мог его спрятать).
+        self.web_view.show()
+
+        print("✨ WebEngine (звёзды) создан")
+
+    def _destroy_star_animation(self):
+        """Полностью уничтожает QWebEngineView и его страницу, чтобы
+        освободить память и завершить QtWebEngineProcess."""
+        if self.web_view is None:
+            return
+
+        print("🗑️ Уничтожаем WebEngine (звёзды)...")
+
+        # 1. Явно удаляем страницу — иначе Qt ругается
+        #    "Release of profile requested but WebEnginePage still not deleted"
+        try:
+            page = self.web_view.page()
+            if page is not None:
+                page.deleteLater()
+        except RuntimeError:
+            # Объект уже удалён C++-стороной — игнорируем
+            pass
+
+        # 2. Планируем удаление самого виджета
+        try:
+            self.web_view.deleteLater()
+        except RuntimeError:
+            pass
+
+        # 3. Обнуляем Python-ссылку — это важно, иначе WebEngine
+        #    не отпустит профиль до следующего gc
+        self.web_view = None
+
+        # 4. Даём Qt обработать отложенные deleteLater прямо сейчас.
+        #    Без этого объект уничтожится только после возврата в event loop,
+        #    а нам нужно освободить память как можно раньше.
+        QApplication.processEvents()
+
     def switch_to_main_window(self, user_data=None):
         """Переключение на главное окно с данными пользователя"""
         print("Переход в главное окно...")
 
+        # ─── Освобождаем память QtWebEngine ───
+        #     Делаем это ДО скрытия/создания MainWindow, чтобы пик
+        #     потребления памяти пришёлся на момент, когда старый экран
+        #     уже не нужен.
+        self._destroy_star_animation()
+
         if self.main_window is None:
             self.main_window = MainWindow()
+            self.main_window.logout_requested.connect(self.on_logout_from_main)
             self.main_window.showMaximized()
 
         if user_data and hasattr(self.main_window, 'set_user_data'):
-            logger.info(f"📥 Устанавливаем данные пользователя в MainWindow")
+            logger.info("📥 Устанавливаем данные пользователя в MainWindow")
             self.main_window.set_user_data(user_data)
 
         self.main_window.show()
@@ -144,12 +237,118 @@ class LoginWindow(QMainWindow):
 
         self.hide()
 
-        self.main_window.closeEvent = lambda event: self.on_main_window_closed()
+        # ─── Форсируем сборщик мусора через мгновение.
+        #     К этому моменту deleteLater() уже обработан, и gc
+        #     заберёт оставшиеся Python-ссылки на обёртки QWebEngine. ───
+        QTimer.singleShot(0, self._collect_garbage)
+
+    def _collect_garbage(self):
+        """Принудительный сборщик мусора после уничтожения WebEngine."""
+        import gc
+        collected = gc.collect()
+        logger.info(f"🧹 gc.collect() освободил {collected} объектов")
+
+    def on_logout_from_main(self):
+        """Пользователь вышел из аккаунта из MainWindow — возвращаемся на логин."""
+        print("🚪 Выход из аккаунта — возврат на окно логина")
+
+        # ─── Уничтожаем MainWindow ───
+        if self.main_window is not None:
+            self.main_window.deleteLater()
+            self.main_window = None
+
+        # ─── Показываем себя заново ───
+        self.showMaximized()
+        self.raise_()
+        self.activateWindow()
+
+        # ─── Возвращаем на карточку авторизации ───
+        self._reset_to_login_view()
+
+        # ─── Чистим поля ───
+        self._clear_auth_fields()
+
+        # ─── Пересоздаём анимацию звёзд ───
+        #     Делаем это ПОСЛЕ showMaximized(), чтобы у окна был актуальный
+        #     размер и web_view получил корректную геометрию.
+        self._create_star_animation()
+
+        # ─── Пересчитываем позиции карточек и звёзд ───
+        QTimer.singleShot(0, self._after_logout_layout)
+
+    def _after_logout_layout(self):
+        """Отложенный пересчёт после возврата на логин."""
+        # Позиции карточек
+        self._update_cards_position()
+
+        # Растягиваем web_view на весь backgroundWidget
+        if self.web_view is not None:
+            self.web_view.setGeometry(0, 0, self.width(), self.height())
+
+    def _reset_to_login_view(self):
+        """Мгновенно возвращает на карточку авторизации, отодвигая остальные за экран."""
+        self._is_reset_mode = False
+        self._is_new_password_mode = False
+
+        bg_w = self.backgroundWidget.width()
+        bg_h = self.backgroundWidget.height()
+
+        auth_x = (bg_w - self.auth_card.width()) // 2
+        auth_y = (bg_h - self.auth_card.height()) // 2
+        self.auth_card.move(auth_x, auth_y)
+        self.auth_card.show()
+
+        self.reset_card.move(
+            bg_w + 100,
+            (bg_h - self.reset_card.height()) // 2
+        )
+        self.new_password_card.move(
+            bg_w + 100,
+            (bg_h - self.new_password_card.height()) // 2
+        )
+
+    def _clear_auth_fields(self):
+        """Очищает поля авторизации и снимает галочку 'Запомнить меня'."""
+        if hasattr(self.auth_card, 'phoneInput'):
+            self.auth_card.phoneInput.clear()
+        if hasattr(self.auth_card, 'passwordInput'):
+            self.auth_card.passwordInput.clear()
+        if hasattr(self.auth_card, 'rememberCheckBox'):
+            self.auth_card.rememberCheckBox.setChecked(False)
 
     def _check_saved_session(self):
-        """Проверяем наличие сохраненной сессии"""
-        # TODO: Реализовать проверку сохраненных токенов из QSettings или файла
-        pass
+        """Проверяет сохранённую сессию ДО показа окна."""
+        from client.core.settings.settings_manager import SettingsManager
+
+        session = SettingsManager().get_auth_session()
+        if not session.get("refresh_token"):
+            # Сессии нет — сразу показываем логин
+            self.showMaximized()
+            return
+
+        print("🔑 Найдена сохранённая сессия, пробуем автовход без показа окна...")
+        # Окно НЕ показываем — ждём результат автовхода в фоне.
+        self._auto_login_thread = QThread()
+        self._auto_login_worker = AutoLoginWorker()
+        self._auto_login_worker.moveToThread(self._auto_login_thread)
+
+        self._auto_login_thread.started.connect(self._auto_login_worker.run)
+        self._auto_login_worker.finished.connect(self._on_auto_login_success)
+        self._auto_login_worker.failed.connect(self._on_auto_login_failed)
+        self._auto_login_worker.finished.connect(self._auto_login_thread.quit)
+        self._auto_login_worker.failed.connect(self._auto_login_thread.quit)
+        self._auto_login_thread.finished.connect(self._auto_login_thread.deleteLater)
+
+        self._auto_login_thread.start()
+
+    def _on_auto_login_success(self, user_data):
+        print("✅ Автовход выполнен")
+        self.switch_to_main_window(user_data)
+
+    def _on_auto_login_failed(self, error_msg):
+        print(f"ℹ️ Автовход не выполнен: {error_msg}")
+        # Показываем окно логина (автовход провалился)
+        self.showMaximized()
 
     def _apply_shadow(self, widget: QWidget):
         shadow = QGraphicsDropShadowEffect(self)
@@ -335,7 +534,7 @@ class LoginWindow(QMainWindow):
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
-        if hasattr(self, 'web_view') and self.web_view:
+        if self.web_view is not None:
             pos = self.web_view.mapFromGlobal(event.globalPosition().toPoint())
             js_code = f"if (typeof updateMousePos === 'function') {{ updateMousePos({pos.x()}, {pos.y()}); }}"
             self.web_view.page().runJavaScript(js_code)

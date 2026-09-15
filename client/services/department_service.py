@@ -27,59 +27,11 @@ class DepartmentService:
             logger.error(f"Ошибка получения подразделения {dept_id}: {e}")
             return None
 
-    def create_department(self, dept_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Создать новое подразделение"""
-        try:
-            # Формируем данные для сервера
-            server_data = {
-                'name': dept_data.get('name', ''),
-                'organization_id': dept_data.get('organization_id'),
-                'parent_id': dept_data.get('parent_department_id'),
-                'type_id': dept_data.get('type_id'),
-                'department_number': dept_data.get('department_number', ''),
-                'phone': dept_data.get('phone', ''),
-                'head_id': dept_data.get('head_id')
-            }
+    def create_department(self, dept_data):
+        return self.http.post(f"{self.base_path}", json=dept_data)
 
-            # Убираем None значения
-            server_data = {k: v for k, v in server_data.items() if v is not None}
-
-            response = self.http.post(
-                f"{self.base_path}",
-                json=server_data
-            )
-            logger.info(f"✅ Подразделение создано: {response}")
-            return response
-        except Exception as e:
-            logger.error(f"❌ Ошибка создания подразделения: {e}")
-            return None
-
-    def update_department(self, dept_id: int, dept_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Обновить подразделение"""
-        try:
-            # Формируем данные для сервера
-            server_data = {
-                'name': dept_data.get('name'),
-                'organization_id': dept_data.get('organization_id'),
-                'parent_id': dept_data.get('parent_department_id'),
-                'type_id': dept_data.get('type_id'),
-                'department_number': dept_data.get('department_number'),
-                'phone': dept_data.get('phone'),
-                'head_id': dept_data.get('head_id')
-            }
-
-            # Убираем None значения
-            server_data = {k: v for k, v in server_data.items() if v is not None}
-
-            response = self.http.patch(
-                f"{self.base_path}/{dept_id}",
-                json=server_data
-            )
-            logger.info(f"✅ Подразделение обновлено: {response}")
-            return response
-        except Exception as e:
-            logger.error(f"❌ Ошибка обновления подразделения {dept_id}: {e}")
-            return None
+    def update_department(self, dept_id, dept_data):
+        return self.http.patch(f"{self.base_path}/{dept_id}", json=dept_data)
 
     def delete_department(self, dept_id: int) -> bool:
         """Удалить подразделение"""
@@ -110,7 +62,7 @@ class DepartmentService:
         try:
             self.http.patch(
                 f"{self.base_path}/{dept_id}/head",
-                params={'new_head_id': head_id}
+                json={'new_head_id': head_id}  # ← теперь правильно
             )
             logger.info(f"✅ Назначен руководитель для подразделения {dept_id}")
             return True

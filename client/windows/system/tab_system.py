@@ -8,6 +8,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6 import uic
 
+from client.core import http_client
+from client.core.state.app_state import AppState
 from client.windows.animations.collapsible_group import CollapsibleGroup
 from client.windows.system.departments.department_card import DepartmentCard
 from client.windows.system.departments.department_page import DepartmentPage
@@ -20,8 +22,11 @@ from client.windows.system.tags.tag_page import TagsPage
 class SystemTab(QWidget):
     """Основной виджет вкладки Система"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None):   # ← добавили параметр
         super().__init__(parent)
+
+        self.http_client = AppState().http_client              # ← сохранили
+
         self.tabWidget = None
         self.structure_data = []
         self.employees_page = None
@@ -31,11 +36,17 @@ class SystemTab(QWidget):
         self.structure_pages = {}
         self.structure_tab_names = {}
 
-        # Словарь типов отделов (в реальном приложении загружается из БД)
         self.department_types = {}
 
         self.init_ui_from_file()
         self.load_all_data()
+
+    # ---------- остальное без изменений ----------
+
+    def create_employees_tab(self):
+        """Создание вкладки сотрудников"""
+        self.employees_page = EmployeesPage(http_client=self.http_client)
+        self.tabWidget.addTab(self.employees_page, "Сотрудники")
 
     def init_ui_from_file(self):
         """Загрузка UI из файла tab_system.ui"""
@@ -339,10 +350,6 @@ class SystemTab(QWidget):
         }
         return names.get(type_key, type_key.capitalize())
 
-    def create_employees_tab(self):
-        """Создание вкладки сотрудников"""
-        self.employees_page = EmployeesPage()
-        self.tabWidget.addTab(self.employees_page, "Сотрудники")
 
     def create_tags_tab(self):
         """Создание вкладки тегов"""

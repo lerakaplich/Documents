@@ -112,13 +112,13 @@ QScrollBar::sub-page:horizontal {
 QComboBox {
     border: 1px solid #dee2e6;
     border-radius: 6px;
-    padding: 8px;
+    padding: 6px;
     padding-right: 30px;
     background-color: white;
     color: #1B232A;
     font-size: 13px;
     outline: none;
-    min-height: 20px;
+    min-height: 22px;
 }
 
 QComboBox:hover {
@@ -173,12 +173,13 @@ QComboBox QAbstractItemView::item:selected {
 QDateEdit {
     border: 1px solid #dee2e6;
     border-radius: 6px;
-    padding: 8px;
+    padding: 6px;
     padding-right: 30px;
     background-color: white;
     color: #1B232A;
     font-size: 13px;
     outline: none;
+    min-height: 22px;
 }
 
 QDateEdit:hover {
@@ -207,10 +208,11 @@ QDateEdit::down-arrow {
 QLineEdit {
     border: 1px solid #dee2e6;
     border-radius: 6px;
-    padding: 8px;
+    padding: 6px;
     background-color: white;
     color: #1B232A;
     font-size: 13px;
+    min-height: 22px;
 }
 
 QLineEdit:hover {
@@ -628,13 +630,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -657,13 +659,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -686,13 +688,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -715,13 +717,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -744,13 +746,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>0</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="displayFormat">
@@ -820,13 +822,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -839,13 +841,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -858,13 +860,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -969,13 +971,13 @@ QScrollBar::sub-page:horizontal {
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>32</height>
+                <height>36</height>
                </size>
               </property>
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
-                <height>32</height>
+                <height>36</height>
                </size>
               </property>
               <property name="placeholderText">
@@ -1011,6 +1013,18 @@ QScrollBar::sub-page:horizontal {
             </item>
             <item>
              <widget class="QComboBox" name="rightsCombo">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>36</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>36</height>
+               </size>
+              </property>
               <property name="styleSheet">
                <string>border: 1px solid #dee2e6; border-radius: 6px; padding: 5px; background-color: white;</string>
               </property>

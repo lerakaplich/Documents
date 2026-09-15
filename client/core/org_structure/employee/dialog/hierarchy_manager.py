@@ -317,13 +317,12 @@ class HierarchyManager:
 
         self.current_hierarchy_path = self.current_hierarchy_path[:level]
         if selected_id:
-            self.current_hierarchy_path.append(selected_id)
-
-        self.update_label_text(level, selected_id)
-        self.remove_levels_after(level)
-
-        if selected_id:
-            children = self.get_children_for_parent(selected_id)
+            if level == 0:
+                # Уровень организации → берём КОРНЕВЫЕ отделы этой организации
+                children = self.get_children_for_parent(None, organization_id=selected_id)
+            else:
+                # Уровень отдела → берём его дочерние
+                children = self.get_children_for_parent(selected_id)
             if children:
                 self.add_hierarchy_level(level + 1, children)
 

@@ -49,7 +49,6 @@ class DepartmentDialog(QDialog):
 
         # Подключаем сигналы
         self._connect_signals()
-
     def _load_ui(self):
         """Загружает UI из файла"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -60,12 +59,38 @@ class DepartmentDialog(QDialog):
             try:
                 uic.loadUi(ui_path, self)
                 print(f"[DEBUG] UI файл успешно загружен: {ui_path}")
+                self._create_widget_aliases()
             except Exception as e:
                 print(f"[ERROR] Ошибка загрузки UI: {e}")
                 self._setup_fallback_ui()
         else:
             print(f"[ERROR] UI файл не найден: {ui_path}")
             self._setup_fallback_ui()
+
+    def _create_widget_aliases(self):
+        """
+        Создаёт snake_case алиасы для camelCase виджетов из .ui файла.
+        Нужно, потому что вся логика в этом файле написана под snake_case,
+        а .ui файл генерирует camelCase имена.
+        """
+        aliases = {
+            'name_edit': 'nameEdit',
+            'organization_combo': 'organizationCombo',
+            'parent_department_combo': 'parentDepartmentCombo',
+            'type_combo': 'typeCombo',
+            'department_number_edit': 'departmentNumberEdit',
+            'phone_edit': 'phoneEdit',
+            'head_combo': 'headCombo',
+            'save_button': 'saveButton',
+            'title_label': 'titleLabel',
+            'scroll_area': 'scrollArea',
+            'scroll_content': 'scrollContent',
+            'scroll_layout': 'scrollLayout',
+            'group_box': 'departmentInfoGroup',
+        }
+        for snake, camel in aliases.items():
+            if hasattr(self, camel) and not hasattr(self, snake):
+                setattr(self, snake, getattr(self, camel))
 
     def _setup_fallback_ui(self):
         """Создает UI программно, если файл .ui не найден"""
@@ -285,53 +310,64 @@ class DepartmentDialog(QDialog):
                 self.head_combo.addItem(name, emp.get('id'))
 
     def _populate_fields(self):
-        """Заполняет поля данными отдела (для режима редактирования)"""
+        """Заполняет поля данными отдела (поддерживает оба формата ключей)."""
         if not self.department_data:
             return
+        d = self.department_data
 
         # Название
         if hasattr(self, 'name_edit'):
-            self.name_edit.setText(self.department_data.get('name', ''))
+            self.name_edit.setText(d.get('name', ''))
 
         # Организация
         if hasattr(self, 'organization_combo'):
-            org_id = self.department_data.get('organization_id')
+            org_id = d.get('organization_id')
             if org_id is not None:
-                index = self.organization_combo.findData(org_id)
-                if index >= 0:
-                    self.organization_combo.setCurrentIndex(index)
+                idx = self.organization_combo.findData(org_id)
+                if idx >= 0:
+                    self.organization_combo.setCurrentIndex(idx)
 
-        # Родительский отдел
+        # Родительский отдел — серверный 'parent_id' + внутренний 'parent_department_id'
         if hasattr(self, 'parent_department_combo'):
-            parent_id = self.department_data.get('parent_department_id')
+            parent_id = d.get('parent_id')
+            if parent_id is None:
+                parent_id = d.get('parent_department_id')
             if parent_id is not None:
-                index = self.parent_department_combo.findData(parent_id)
-                if index >= 0:
-                    self.parent_department_combo.setCurrentIndex(index)
+                idx = self.parent_department_combo.findData(parent_id)
+                if idx >= 0:
+                    self.parent_department_combo.setCurrentIndex(idx)
 
-        # Тип отдела
+        # Тип — 'department_type_id' + 'type_id'
         if hasattr(self, 'type_combo'):
-            type_id = self.department_data.get('type_id')
+            type_id = d.get('department_type_id')
+            if type_id is None:
+                type_id = d.get('type_id')
             if type_id is not None:
-                index = self.type_combo.findData(type_id)
-                if index >= 0:
-                    self.type_combo.setCurrentIndex(index)
+                idx = self.type_combo.findData(type_id)
+                if idx >= 0:
+                    self.type_combo.setCurrentIndex(idx)
 
-        # Номер отдела
+        # Номер — 'number' + 'department_number'
         if hasattr(self, 'department_number_edit'):
-            self.department_number_edit.setText(self.department_data.get('department_number', ''))
+            number = d.get('number')
+            if number is None:
+                number = d.get('department_number', '')
+            self.department_number_edit.setText(str(number) if number not in (None, '') else '')
 
-        # Телефон
+        # Телефон — 'phone_number' + 'phone'
         if hasattr(self, 'phone_edit'):
-            self.phone_edit.setText(self.department_data.get('phone', ''))
+            phone = d.get('phone_number') or d.get('phone') or ''
+            self.phone_edit.setText(phone)
 
-        # Руководитель
+        # Руководитель — 'head_employee_id' + 'head_id'
         if hasattr(self, 'head_combo'):
-            head_id = self.department_data.get('head_id')
+            head_id = d.get('head_employee_id')
+            if head_id is None:
+                head_id = d.get('head_id')
             if head_id is not None:
-                index = self.head_combo.findData(head_id)
-                if index >= 0:
-                    self.head_combo.setCurrentIndex(index)
+                idx = self.head_combo.findData(head_id)
+                if idx >= 0:
+                    self.head_combo.setCurrentIndex(idx)
 
     def _connect_signals(self):
         """Подключает сигналы"""
@@ -350,38 +386,25 @@ class DepartmentDialog(QDialog):
         self.accept()
 
     def get_data(self):
-        """
-        Возвращает данные из формы
-
-        Returns:
-            dict: Данные отдела
-        """
         data = {}
-
         if hasattr(self, 'name_edit'):
             data['name'] = self.name_edit.text().strip()
-
         if hasattr(self, 'organization_combo'):
             data['organization_id'] = self.organization_combo.currentData()
-
         if hasattr(self, 'parent_department_combo'):
-            data['parent_department_id'] = self.parent_department_combo.currentData()
-
+            # ВАЖНО: серверный ключ — parent_id
+            data['parent_id'] = self.parent_department_combo.currentData()
         if hasattr(self, 'type_combo'):
-            data['type_id'] = self.type_combo.currentData()
-
+            # ВАЖНО: серверный ключ — department_type_id
+            data['department_type_id'] = self.type_combo.currentData()
         if hasattr(self, 'department_number_edit'):
-            data['department_number'] = self.department_number_edit.text().strip()
-
+            data['number'] = self.department_number_edit.text().strip() or None
         if hasattr(self, 'phone_edit'):
-            data['phone'] = self.phone_edit.text().strip()
-
+            data['phone_number'] = self.phone_edit.text().strip() or None
         if hasattr(self, 'head_combo'):
-            data['head_id'] = self.head_combo.currentData()
-
+            data['head_employee_id'] = self.head_combo.currentData()
         if self.is_edit_mode and 'id' in self.department_data:
             data['id'] = self.department_data['id']
-
         return data
 
     def validate(self):

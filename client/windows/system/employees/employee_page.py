@@ -11,17 +11,13 @@ from client.windows.system.employees.employee_page_ui import EmployeeUIInitializ
 
 
 class EmployeesPage(QWidget):
-    """Страница сотрудников с универсальной иерархией подразделений"""
-
     employees_updated = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, http_client=None, parent=None):  # ← было profile_manager
         super().__init__(parent)
+        self.http_client = http_client
+        self.data_manager = EmployeeDataManager(http_client)   # ← было без args
 
-        # Менеджеры данных
-        self.data_manager = EmployeeDataManager()
-
-        # Инициализация UI
         self.ui_initializer = EmployeeUIInitializer(self)
         self.handlers = EmployeeHandlers(self)
 
@@ -30,12 +26,26 @@ class EmployeesPage(QWidget):
         self.current_department_id = None
 
         self.init_ui()
-        self.load_test_data()
+        self.load_data()                    # ← было load_test_data()
         self.setup_connections()
 
         self.department_filter.set_children_func(self.get_children_departments_data)
         self.on_organization_changed(0)
         self.update_display()
+
+    def load_data(self):
+        if self.http_client:
+            ok = self.data_manager.load_data(self)
+            if not ok:
+                print("[WARN] API не ответил — тестовые данные")
+                self.data_manager.load_test_data(self)
+        else:
+            print("[WARN] http_client не передан — тестовые данные")
+            self.data_manager.load_test_data(self)
+
+    # на случай, если кто-то ещё зовёт старое имя
+    def load_test_data(self):
+        self.load_data()
 
     def init_ui(self):
         """Инициализация UI"""

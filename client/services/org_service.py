@@ -125,6 +125,14 @@ class OrgService:
             logger.error(f"❌ Ошибка удаления организации {org_id}: {e}")
             return False
 
+    def get_org_employees(self, org_id: int):
+        """Список сотрудников организации (с positions)."""
+        try:
+            response = self.http.get(f"{self.base_path}/{org_id}/employees")
+            return response if isinstance(response, list) else []
+        except Exception as e:
+            logger.error(f"Ошибка получения сотрудников орг {org_id}: {e}")
+            return []
 
 # Синглтон
 _org_service_instance: Optional[OrgService] = None

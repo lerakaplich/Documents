@@ -75,11 +75,10 @@ class EmployeeDataManager:
                     break
 
         if hasattr(self.parent, 'rightsCombo'):
-            rights = self.employee.get('rights', 'user')
-            for i in range(self.parent.rightsCombo.count()):
-                if self.parent.rightsCombo.itemData(i) == rights:
-                    self.parent.rightsCombo.setCurrentIndex(i)
-                    break
+            rights = self.employee.get('rights') or 'user'
+            idx = self.parent.rightsCombo.findData(rights)
+            if idx >= 0:
+                self.parent.rightsCombo.setCurrentIndex(idx)
 
         is_leader = self.employee.get('is_leader', False)
         hierarchy_path = self.employee.get('hierarchy_path', [])

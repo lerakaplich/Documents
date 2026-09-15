@@ -33,14 +33,15 @@ class EmployeeService:
         all_items = []
         page = 1
         while True:
-            result = self.client.get("/employees/all", params={
-                "page": page,
-                "limit": 100,
-            })
+            print(f"[DEBUG] Запрос /employees/all page={page} limit=100")
+            result = self.client.get("/employees/all", params={"page": page, "limit": 100})
+            print(f"[DEBUG] Получено {len(result) if result else 0} записей")
             if not result:
                 break
             all_items.extend(result)
             if len(result) < 100:
                 break
             page += 1
+            if all_items:
+                print(f"[DEBUG] sample employee from /all: {all_items[0]}")
         return all_items

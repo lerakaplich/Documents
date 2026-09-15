@@ -5,26 +5,36 @@
 
 from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtCore import QTimer
+
+from client.services.employee_service import EmployeeService
 from client.windows.system.employees.employee_dialog import EmployeeDialog
 
 
 class EmployeeEditDialog(EmployeeDialog):
-    """Диалог редактирования сотрудника"""
 
-    def __init__(self, parent_editor=None, employee=None, is_maz=False, profile_manager=None,
+    def __init__(self, parent_editor=None, employee=None, is_maz=False, http_client=None,
                  current_user_rights='user', current_user_org_id=None, current_user_div_id=None,
                  current_user_dept_id=None, is_organization_head=False, is_division_head=False,
                  is_department_head=False, filter_external_only=False, organization_head_ids=None):
 
-        # Сохраняем данные сотрудника
+        # Догружаем полную карточку, если у нас есть http
+        if employee and employee.get('id') and http_client:
+            try:
+                service = EmployeeService(http_client)
+                full = service.get_employee(employee['id'])
+                if full:
+                    print(f"[DEBUG] Полная карточка: {sorted(full.keys())}")
+                    employee = full
+            except Exception as e:
+                print(f"[WARN] Догрузка не удалась: {e}")
+
         self._original_employee = employee
 
-        # Вызываем конструктор родителя
         super().__init__(
             parent_editor=parent_editor,
             employee=employee,
             is_maz=is_maz,
-            profile_manager=profile_manager,
+            http_client=http_client,
             current_user_rights=current_user_rights,
             current_user_org_id=current_user_org_id,
             current_user_div_id=current_user_div_id,
@@ -33,11 +43,11 @@ class EmployeeEditDialog(EmployeeDialog):
             is_division_head=is_division_head,
             is_department_head=is_department_head,
             filter_external_only=filter_external_only,
-            organization_head_ids=organization_head_ids
+            organization_head_ids=organization_head_ids,
         )
-
-        # Переопределяем заголовок окна после загрузки UI
         QTimer.singleShot(0, self._setup_edit_title)
+
+    # _setup_edit_title и save — оставить как есть
 
     def _setup_edit_title(self):
         """Настраивает заголовок для режима редактирования"""

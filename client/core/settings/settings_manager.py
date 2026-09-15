@@ -5,6 +5,7 @@ import os
 from typing import Any
 
 from .settings_keys import SettingsKeys
+from datetime import datetime  # в начале файла
 
 
 class SettingsManager:
@@ -366,23 +367,30 @@ class SettingsManager:
             del self._settings[key]
             self._save_settings()
 
-    # ============ СОВМЕСТИМОСТЬ СО СТАРЫМ КОДОМ ============
 
-    def get_row_heights_by_doc_type(self, doc_type: str = None) -> dict:
-        """
-        Получить высоты строк (совместимость).
-        Сначала пытается получить новый формат (по ID),
-        если нет - старый (по индексу).
-        """
-        doc_type = doc_type or self.get_current_document_type()
 
-        # Сначала пробуем новый формат
-        new_key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_BY_ID_TYPE, doc_type)
-        heights = self.get(new_key, None)
+    def save_auth_session(self, refresh_token: str, phone: str = None):
+        """Сохраняет refresh_token и телефон для авто-входа."""
+        self.set(SettingsKeys.AUTH_REFRESH_TOKEN, refresh_token)
+        if phone:
+            self.set(SettingsKeys.AUTH_PHONE, phone)
+        self.set(SettingsKeys.AUTH_SAVED_AT, datetime.now().isoformat())
+        print("[SettingsManager] Auth session saved")
 
-        if heights is not None:
-            return heights
+    def get_auth_session(self) -> dict:
+        """Возвращает сохранённую сессию или пустой dict."""
+        token = self.get(SettingsKeys.AUTH_REFRESH_TOKEN)
+        if not token:
+            return {}
+        return {
+            "refresh_token": token,
+            "phone": self.get(SettingsKeys.AUTH_PHONE),
+            "saved_at": self.get(SettingsKeys.AUTH_SAVED_AT),
+        }
 
-        # Если нет - пробуем старый
-        old_key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, doc_type)
-        return self.get(old_key, {})
+    def clear_auth_session(self):
+        """Удаляет сохранённую сессию."""
+        self.remove(SettingsKeys.AUTH_REFRESH_TOKEN)
+        self.remove(SettingsKeys.AUTH_PHONE)
+        self.remove(SettingsKeys.AUTH_SAVED_AT)
+        print("[SettingsManager] Auth session cleared")

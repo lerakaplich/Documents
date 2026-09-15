@@ -5,57 +5,43 @@ from client.windows.system.employees.employee_edit_dialog import EmployeeEditDia
 
 
 class EmployeeHandlers:
-    """Обработчики диалогов и событий для страницы сотрудников"""
-
     def __init__(self, page):
         self.page = page
 
+    def _http(self):
+        return getattr(self.page, "http_client", None)
+
     def show_add_employee_dialog(self):
-        """Открывает диалог создания нового сотрудника"""
         try:
             if not self.page.current_org_id:
-                QMessageBox.warning(
-                    self.page,
-                    "Организация не выбрана",
-                    "Пожалуйста, выберите организацию, в которую хотите добавить сотрудника."
-                )
+                QMessageBox.warning(self.page, "Организация не выбрана",
+                    "Пожалуйста, выберите организацию, в которую хотите добавить сотрудника.")
                 return
-
-            current_org = self.page.data_manager.organizations.get(self.page.current_org_id)
-            if not current_org:
-                QMessageBox.warning(self.page, "Ошибка", "Выбранная организация не найдена.")
-                return
-
-            current_user_rights = 'admin'
-            current_department_id = self.page.current_department_id if self.page.current_department_id else None
 
             dialog = EmployeeDialog(
                 parent_editor=self.page,
                 employee=None,
                 is_maz=False,
-                profile_manager=None,
-                current_user_rights=current_user_rights,
+                http_client=self._http(),            # ← было profile_manager=None
+                current_user_rights='admin',
                 current_user_org_id=self.page.current_org_id,
                 current_user_div_id=None,
-                current_user_dept_id=current_department_id,
+                current_user_dept_id=self.page.current_department_id,
                 is_organization_head=False,
                 is_division_head=False,
                 is_department_head=False,
                 filter_external_only=False,
-                organization_head_ids=None
+                organization_head_ids=None,
             )
-
             dialog.employee_created.connect(self.page.on_employee_created)
             dialog.employee_updated.connect(self.page.on_employee_updated)
             dialog.exec()
-
         except Exception as e:
-            QMessageBox.critical(self.page, "Ошибка", f"Не удалось открыть диалог создания сотрудника:\n{str(e)}")
-            import traceback
-            traceback.print_exc()
+            QMessageBox.critical(self.page, "Ошибка",
+                f"Не удалось открыть диалог создания сотрудника:\n{e}")
+            import traceback; traceback.print_exc()
 
     def show_edit_employee_dialog(self, employee_data):
-        """Открывает диалог редактирования сотрудника"""
         try:
             employee_id = employee_data.get('id')
             if not employee_id:
@@ -71,7 +57,7 @@ class EmployeeHandlers:
                 parent_editor=self.page,
                 employee=employee,
                 is_maz=False,
-                profile_manager=None,
+                http_client=self._http(),            # ← было profile_manager=None
                 current_user_rights='admin',
                 current_user_org_id=self.page.current_org_id,
                 current_user_div_id=None,
@@ -80,16 +66,16 @@ class EmployeeHandlers:
                 is_division_head=False,
                 is_department_head=False,
                 filter_external_only=False,
-                organization_head_ids=None
+                organization_head_ids=None,
             )
-
             dialog.employee_updated.connect(self.page.on_employee_updated)
             dialog.exec()
-
         except Exception as e:
-            QMessageBox.critical(self.page, "Ошибка", f"Не удалось открыть диалог редактирования сотрудника:\n{str(e)}")
-            import traceback
-            traceback.print_exc()
+            QMessageBox.critical(self.page, "Ошибка",
+                f"Не удалось открыть диалог редактирования сотрудника:\n{e}")
+            import traceback; traceback.print_exc()
+
+    # остальное без изменений
 
     def show_delete_employee_dialog(self, employee_id):
         """Открывает диалог подтверждения удаления"""

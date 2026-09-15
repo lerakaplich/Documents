@@ -45,13 +45,13 @@ class EmployeeUI:
         self.recreate_hierarchy_layout()
 
     def setup_static_comboboxes(self, current_user_rights):
-        """Настраивает статические комбобоксы"""
-        print("[DEBUG] setup_static_comboboxes() вызван")
         self.parent.rightsCombo.clear()
         self.parent.rightsCombo.addItem("Пользователь", "user")
-
         if current_user_rights in ['admin', 'superadmin']:
             self.parent.rightsCombo.addItem("Администратор", "admin")
+        if current_user_rights == 'superadmin':
+            self.parent.rightsCombo.addItem("Суперадминистратор", "superadmin")
+        self.parent.isLeaderCheckbox.hide()
 
         self.parent.isLeaderCheckbox.hide()
 
