@@ -27,6 +27,48 @@ class DepartmentLazyLoader:
         else:
             self._load_department(node)
 
+    def _on_org_loaded(self, node, org_id, org_name, bundle):
+        structure, employees = bundle
+        self.loader.apply_org_bundle(structure, employees)
+
+        # ─── Карточка организации ───
+        if node.is_root and not getattr(node, '_org_card_added', False):
+            org_raw = node.department_data.get('_raw', {})
+            if org_raw:
+                from PyQt6.QtWidgets import QSizePolicy
+                from client.windows.system.organizations.organization_card import OrganizationCard
+
+                phone = org_raw.get('phone_number') or org_raw.get('phone') or ''
+
+                org_card = OrganizationCard({
+                    'id': org_raw.get('id'),
+                    'name': org_raw.get('name', ''),
+                    'unp': org_raw.get('unp', ''),
+                    'address': org_raw.get('address', ''),
+                    'phone': str(phone) if phone else '',
+                    'email': org_raw.get('email', ''),
+                    'director': org_raw.get('director', ''),
+                })
+                org_card.setSizePolicy(QSizePolicy.Policy.Expanding,
+                                       QSizePolicy.Policy.Fixed)
+
+                # редактирование / удаление организации (см. патч 3)
+                org_card.edit_clicked.connect(self.page._on_org_card_edit)
+                org_card.delete_clicked.connect(self.page._on_org_card_delete)
+
+                node.add_content_widget(org_card)  # вставит в самое начало content
+                node._org_card_added = True
+
+        # ─── Дочерние отделы (как было) ───
+        children = [
+            build_child_node(d, org_name=org_name, page=self.page)
+            for d in structure
+        ]
+        self.loader.cache.children_nodes[org_id] = children
+        node.set_children_nodes(children)
+
+
+
     # ─── Организация: фоновый запрос ───
 
     def _load_organization(self, node):
@@ -40,16 +82,6 @@ class DepartmentLazyLoader:
         task.signals.error.connect(node.set_load_error)
         self.tasks.submit(task)
 
-    def _on_org_loaded(self, node, org_id, org_name, bundle):
-        structure, employees = bundle
-        self.loader.apply_org_bundle(structure, employees)
-
-        children = [
-            build_child_node(d, org_name=org_name, page=self.page)
-            for d in structure
-        ]
-        self.loader.cache.children_nodes[org_id] = children
-        node.set_children_nodes(children)
 
     # ─── Отдел: только из кэша, мгновенно ───
 

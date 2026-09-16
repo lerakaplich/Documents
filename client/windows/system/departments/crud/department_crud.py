@@ -12,14 +12,17 @@ class DepartmentCrud:
         self.service = service
         self.get_orgs = organizations_provider
         self.get_items = items_provider
-        self.get_employees = employees_provider
+        self.get_employees = employees_provider    # оставлен для совместимости
+
+    # ─── публичные ───
 
     def add(self):
         dialog = DepartmentDialog(
             self.page,
             organizations=self.get_orgs(),
             departments=self.get_items(),
-            employees=self.get_employees(),
+            employees=[],                                    # у нового отдела ещё нет сотрудников
+            department_types=self._load_types(),
         )
         if dialog.exec():
             data = dialog.get_data()
@@ -33,12 +36,17 @@ class DepartmentCrud:
             return
         try:
             server_dept = self.service.get_department(dept_id) or data
+
+            # ⚠️ Грузим сотрудников ИМЕННО ЭТОГО отдела
+            staff = self.service.get_department_staff(dept_id)
+
             dialog = DepartmentDialog(
                 self.page,
                 department_data=server_dept,
                 organizations=self.get_orgs(),
                 departments=self.get_items(),
-                employees=self.get_employees(),
+                employees=staff,                             # ← реальные сотрудники отдела
+                department_types=self._load_types(),
             )
             if dialog.exec():
                 self._update(dept_id, dialog.get_data())
@@ -63,14 +71,27 @@ class DepartmentCrud:
 
     # ─── приватные ───
 
+    def _load_types(self):
+        """Пытаемся взять реальные типы с сервера, иначе — fallback."""
+        try:
+            if hasattr(self.service, 'get_department_types'):
+                types = self.service.get_department_types()
+                if types:
+                    return types
+        except Exception as e:
+            print(f"[WARN] _load_types: {e}")
+        return DepartmentDialog.FALLBACK_TYPES
+
     def _create(self, data):
         try:
             res = self.service.create_department(data)
+            new_id = res.get('id') if res else 0
             if res:
                 self.page.show_success_notification(f"Отдел «{res.get('name')}» создан")
                 self.page.load_data()
             else:
                 self.page.show_error_notification("Не удалось создать отдел")
+            self.page.data_events.departments_changed.emit(new_id)
         except Exception as e:
             print(f"Ошибка создания: {e}")
             self.page.show_error_notification("Не удалось создать отдел")
@@ -83,6 +104,7 @@ class DepartmentCrud:
                 self.page.load_data()
             else:
                 self.page.show_error_notification("Не удалось обновить отдел")
+            self.page.data_events.departments_changed.emit(dept_id)
         except Exception as e:
             print(f"Ошибка обновления: {e}")
             self.page.show_error_notification("Не удалось обновить отдел")
@@ -95,6 +117,7 @@ class DepartmentCrud:
                 self.page.load_data()
             else:
                 self.page.show_error_notification("Не удалось удалить отдел")
+            self.page.data_events.departments_changed.emit(dept_id)
         except Exception as e:
             print(f"Ошибка удаления: {e}")
             self.page.show_error_notification("Не удалось удалить отдел")

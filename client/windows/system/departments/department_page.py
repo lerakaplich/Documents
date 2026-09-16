@@ -12,6 +12,7 @@ from PyQt6.uic import loadUi
 from client.core.config import config
 from client.core.http_client import HttpClient
 from client.core.state.app_state import AppState
+from client.core.state.data_events import get_data_events
 from client.services.department_service import get_department_service
 from client.windows.animations.floating_action_button import FloatingActionButton
 from client.windows.animations.animated_notification import NotificationManager
@@ -25,29 +26,25 @@ from client.windows.system.employees.employee_card import EmployeeCard
 
 
 class DepartmentPage(QWidget):
-    """
-    Тонкий View. Всю работу делегирует:
-      • DepartmentDataLoader   — сеть + кэш
-      • DepartmentLazyLoader   — раскрытие узлов
-      • DepartmentCrud         — create/update/delete
-      • DepartmentFilter       — поиск/сортировка
-    """
+    """Тонкий View. Делегирует работу сервисным слоям."""
 
     data_loaded = pyqtSignal()
 
     def __init__(self, parent=None, http_client: Optional[HttpClient] = None, structure_data=None):
         super().__init__(parent)
 
-        # ─── HTTP ───
         if http_client is None:
             app_state = AppState()
             self.http_client = app_state.http_client or HttpClient(config.base_url)
         else:
             self.http_client = http_client
 
+        self.data_events = get_data_events()
+        self.data_events.organizations_changed.connect(self._on_external_change)
+        self.data_events.employees_changed.connect(self._on_external_change)
+
         self.department_service = get_department_service(self.http_client)
 
-        # ─── Сервисные слои ───
         self.loader = DepartmentDataLoader(self.http_client)
         self.lazy_loader = DepartmentLazyLoader(self, self.loader)
         self.filter = DepartmentFilter(self)
@@ -56,12 +53,12 @@ class DepartmentPage(QWidget):
             self.department_service,
             organizations_provider=lambda: self.loader.cache.organizations,
             items_provider=lambda: list(self.loader.cache.nodes_data.values()),
-            employees_provider=lambda: [],
+            employees_provider=self._get_cached_employees,  # ← было lambda: []
         )
-
-        # ─── Состояние UI ───
         self.is_loading = False
         self._updating = False
+        self._search_mode = False
+        self._search_results = []
         self._tasks = TaskKeeper()
 
         self.init_ui()
@@ -77,16 +74,8 @@ class DepartmentPage(QWidget):
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
 
-        if hasattr(self, 'scrollArea'):
-            self.scrollArea.setWidgetResizable(True)
-            self.scrollArea.setSizePolicy(
-                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-            if hasattr(self, 'scrollAreaWidgetContents'):
-                self.scrollAreaWidgetContents.setSizePolicy(
-                    QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.floating_btn = FloatingActionButton(self)
-        self.floating_btn.clicked.connect(self.on_add_department)
+        if hasattr(self, 'scrollAreaLayout'):
+            self.scrollAreaLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         if hasattr(self, 'scrollArea'):
             self.scrollArea.verticalScrollBar().valueChanged.connect(self.on_scroll)
@@ -103,11 +92,66 @@ class DepartmentPage(QWidget):
         if hasattr(self, 'btnSort'):
             self.btnSort.clicked.connect(self.show_sort_menu)
         if hasattr(self, 'searchEdit'):
-            self.searchEdit.textChanged.connect(self.on_search_changed)
+            self.searchEdit.returnPressed.connect(self.on_search_clicked)
         if hasattr(self, 'btnResetFilters'):
             self.btnResetFilters.clicked.connect(self.reset_all_filters)
+        if hasattr(self, 'btnSearch'):
+            self.btnSearch.clicked.connect(self.on_search_clicked)
 
-    # ==================== Уведомления ====================
+    def _get_cached_employees(self) -> list:
+        """Все уникальные сотрудники, разложенные по отделам в кэше ленивой загрузки."""
+        seen = set()
+        result = []
+        for emps in self.loader.cache.employees_by_dept.values():
+            for emp in emps:
+                eid = emp.get('id')
+                if eid and eid not in seen:
+                    seen.add(eid)
+                    result.append(emp)
+        return result
+
+    def _on_external_change(self, org_id: int = 0):
+        """Другая вкладка изменила организации/сотрудников — перезагружаем дерево."""
+        if self.is_loading:
+            return
+        QTimer.singleShot(0, self.load_data)
+
+    # ==================== ПОИСК ====================
+
+    def on_search_clicked(self):
+        if not hasattr(self, 'searchEdit'):
+            return
+        q = self.searchEdit.text().strip()
+        if len(q) < 2:
+            self.show_info_notification("Введите минимум 2 символа")
+            return
+        if self.is_loading:
+            return
+
+        self.is_loading = True
+        task = ApiTask(self.loader.search_structure, q)
+        task.signals.done.connect(self._on_search_results)
+        task.signals.error.connect(self._on_search_error)
+        self._tasks.submit(task)
+
+    def _on_search_results(self, results):
+        self.is_loading = False
+        self._search_mode = True
+        self._search_results = results or []
+        self.update_reset_button_visibility()
+        self.update_display()
+
+        if self._search_results:
+            self.show_success_notification(f"Найдено: {len(self._search_results)}")
+        else:
+            self.show_info_notification("Ничего не найдено")
+
+    def _on_search_error(self, err):
+        self.is_loading = False
+        print(f"[ERROR] search: {err}")
+        self.show_error_notification("Ошибка поиска")
+
+    # ==================== УВЕДОМЛЕНИЯ ====================
 
     def show_success_notification(self, msg): self.notification_manager.show_notification(f"✅ {msg}", 2500)
     def show_error_notification(self, msg):   self.notification_manager.show_notification(f"❌ {msg}", 3000)
@@ -116,7 +160,6 @@ class DepartmentPage(QWidget):
     # ==================== ЗАГРУЗКА ====================
 
     def load_data(self):
-        """Асинхронная загрузка списка организаций."""
         if self.is_loading:
             return
         self.is_loading = True
@@ -128,8 +171,7 @@ class DepartmentPage(QWidget):
 
     def _on_orgs_loaded(self, orgs):
         self.loader.cache.organizations = orgs or []
-        self.loader.cache.clear()  # структура будет строиться лениво
-        # но organizations уже стёрли — восстановим:
+        self.loader.cache.clear()
         self.loader.cache.organizations = orgs or []
         self.is_loading = False
 
@@ -147,35 +189,18 @@ class DepartmentPage(QWidget):
     # ==================== ОТОБРАЖЕНИЕ ====================
 
     def update_display(self):
-        """Строит только корневые узлы (организации)."""
         if self._updating:
             return
         self._updating = True
         try:
             if hasattr(self, 'scrollAreaLayout'):
                 self.clear_layout(self.scrollAreaLayout)
+                self.loader.cache.children_nodes.clear()
 
-            orgs = self.loader.cache.organizations
-            if not orgs:
-                self._add_empty("Нет организаций")
-                return
-
-            query = ""
-            if hasattr(self, 'searchEdit'):
-                query = self.searchEdit.text().strip().lower()
-
-            shown = 0
-            for org in orgs:
-                if not self.filter.matches_org(org, query):
-                    continue
-                node = self._build_org_node(org)
-                node.expand_requested.connect(self.lazy_loader.on_expand_requested)
-                self.scrollAreaLayout.addWidget(node)
-                shown += 1
-
-            if shown == 0:
-                self._add_empty("Ничего не найдено")
-            self.scrollAreaLayout.addStretch()
+            if self._search_mode:
+                self._render_search_results()
+            else:
+                self._render_tree()
         finally:
             self._updating = False
             if hasattr(self, 'scrollAreaWidgetContents'):
@@ -183,6 +208,120 @@ class DepartmentPage(QWidget):
             if hasattr(self, 'scrollArea'):
                 self.scrollArea.updateGeometry()
             self.updateGeometry()
+
+    def _render_tree(self):
+        orgs = self.loader.cache.organizations
+        if not orgs:
+            self._add_empty("Нет организаций")
+            return
+
+        for org in orgs:
+            node = self._build_org_node(org)
+            node.expand_requested.connect(self.lazy_loader.on_expand_requested)
+            self.scrollAreaLayout.addWidget(node)
+
+        self.scrollAreaLayout.addStretch()
+
+    def _render_search_results(self):
+        if not self._search_results:
+            self._add_empty("Ничего не найдено")
+            return
+
+        header = QLabel(f"Результаты поиска: {len(self._search_results)}")
+        header.setStyleSheet(
+            "font-size: 14px; font-weight: bold; color: #1B232A; padding: 6px 2px;"
+        )
+        self.scrollAreaLayout.addWidget(header)
+
+        for item in self._search_results:
+            card = self._build_search_result_card(item)
+            if card:
+                self.scrollAreaLayout.addWidget(card)
+
+    def _build_search_result_card(self, item):
+        print(f"[DEBUG] search item: {item}")
+        if not isinstance(item, dict):
+            return None
+
+        entity_type = (
+                item.get('type') or item.get('entity_type') or item.get('kind') or ''
+        ).lower()
+        entity_id = item.get('id') or item.get('entity_id')
+        name = (
+                item.get('name') or item.get('full_name') or item.get('title') or ''
+        ).strip()
+
+        path = item.get('path') or item.get('department_path') or ''
+        if isinstance(path, list):
+            path = ' / '.join(str(p) for p in path)
+
+        is_org = entity_type in ('organization', 'org', 'company')
+        is_dept = entity_type in ('department', 'dept', 'division', 'unit')
+        is_emp = entity_type in ('employee', 'emp', 'user', 'person')
+
+        if not any((is_org, is_dept, is_emp)):
+            if item.get('unp'):
+                is_org = True
+            elif item.get('position_name') or item.get('position'):
+                is_emp = True
+            else:
+                is_dept = True
+
+        if is_emp:
+            full_name = name or ' '.join(filter(None, [
+                item.get('last_name', ''),
+                item.get('first_name', ''),
+                item.get('patronymic', ''),
+            ])) or f"Сотрудник #{entity_id}"
+
+            card = EmployeeCard({
+                'id': entity_id,
+                'display_number': '',
+                'full_name': full_name,
+                'position': item.get('position_name') or item.get('position') or '',
+                'company': item.get('organization_name', ''),
+                'department': item.get('department_name', ''),
+                'subdivision': path,
+                'work_phone': item.get('work_number', ''),
+                'email': item.get('email', ''),
+                'rights': '',
+                '_raw': item,
+            })
+            card.edit_clicked.connect(self._on_employee_edit_clicked)
+            card.delete_clicked.connect(self._on_employee_delete_clicked)
+
+        elif is_org:
+            from client.windows.system.organizations.organization_card import OrganizationCard
+            phone = item.get('phone_number') or item.get('phone') or ''
+            card = OrganizationCard({
+                'id': entity_id,
+                'name': name,
+                'unp': item.get('unp', ''),
+                'address': item.get('address', ''),
+                'phone': str(phone) if phone else '',
+                'email': item.get('email', ''),
+                'director': item.get('director', ''),
+            })
+            card.edit_clicked.connect(self._on_org_card_edit)
+            card.delete_clicked.connect(self._on_org_card_delete)
+
+        else:
+            from client.windows.system.departments.department_card import DepartmentCard
+            card = DepartmentCard({
+                'id': entity_id,
+                'name': name,
+                'code': str(entity_id or ''),
+                'leader': item.get('leader', ''),
+                'phone': item.get('phone', ''),
+                'description': path or item.get('description', ''),
+                'type': item.get('department_type_name') or 'Отдел',
+                'organization': item.get('organization_name', ''),
+            })
+            card.edit_clicked.connect(self.on_edit_department)
+            card.delete_clicked.connect(self.on_delete_department)
+
+        card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        return card
 
     def _build_org_node(self, org):
         from client.windows.system.departments.department_node import DepartmentNode
@@ -193,7 +332,52 @@ class DepartmentPage(QWidget):
             'code': org.get('code', ''),
             'has_children': True,
             'lazy': True,
+            '_raw': org,
         }, is_root=True)
+
+    # ==================== РЕДАКТИРОВАНИЕ ОРГАНИЗАЦИИ ИЗ СТРУКТУРЫ ====================
+
+    def _on_org_card_edit(self, org_data):
+        """Редактирование организации из вкладки «Структура»."""
+        from client.windows.system.organizations.organization_dialog import OrganizationDialog
+
+        org_id = org_data.get('id')
+        if not org_id:
+            return
+        try:
+            server_org = self.loader.org_service.get_organization(org_id) or org_data
+            dialog = OrganizationDialog(self, item=server_org)
+            if dialog.exec():
+                updated = dialog.get_data()
+                phone = updated.get('phone_number') or updated.get('phone') or None
+                payload = {
+                    'name':          updated.get('full_name') or updated.get('name', ''),
+                    'full_name':     updated.get('full_name', ''),
+                    'short_name':    updated.get('short_name', ''),
+                    'unp':           updated.get('unp', ''),
+                    'address':       updated.get('address', ''),
+                    'phone_number':  str(phone) if phone else None,
+                    'email':         updated.get('email', ''),
+                    'director':      updated.get('director', ''),
+                    'smdo_code':     updated.get('smdo_code', ''),
+                    'is_subscriber': updated.get('is_subscriber', False),
+                }
+                self.loader.org_service.update_organization(org_id, payload)
+                # передаём id — подписчики сделают точечное обновление
+                self.data_events.organizations_changed.emit(org_id)
+                self.show_success_notification(
+                    f"Организация «{updated.get('full_name') or updated.get('name')}» обновлена"
+                )
+                # обновляем себя — полный refetch, т.к. изменились данные узла
+                self.load_data()
+        except Exception as e:
+            print(f"[ERROR] _on_org_card_edit: {e}")
+            self.show_error_notification("Не удалось обновить организацию")
+
+    def _on_org_card_delete(self, org_id):
+        self.show_info_notification(
+            "Удаление организации доступно во вкладке «Организации»"
+        )
 
     def _add_empty(self, text):
         empty = QLabel(text)
@@ -206,14 +390,21 @@ class DepartmentPage(QWidget):
             return
         while layout.count():
             item = layout.takeAt(0)
+            if item is None:
+                continue
             w = item.widget()
-            if w:
+            if w is not None:
                 w.setParent(None)
                 w.deleteLater()
-            elif item.layout():
-                self.clear_layout(item.layout())
+                continue
+            sub = item.layout()
+            if sub is not None:
+                self.clear_layout(sub)
+                sub.deleteLater()
+                continue
+            del item
 
-    # ==================== ДЕЛЕГИРОВАНИЕ В CRUD ====================
+    # ==================== CRUD ДЕЛЕГИРОВАНИЕ ====================
 
     def on_add_department(self):
         self.crud.add()
@@ -224,7 +415,7 @@ class DepartmentPage(QWidget):
     def on_delete_department(self, dept_id):
         self.crud.delete(dept_id)
 
-    # ==================== ФИЛЬТР / ПОИСК / СОРТ ====================
+    # ==================== ФИЛЬТР / СОРТ ====================
 
     def show_sort_menu(self):
         menu = QMenu(self)
@@ -249,21 +440,23 @@ class DepartmentPage(QWidget):
         self.update_display()
 
     def on_search_changed(self):
+        text = self.searchEdit.text().strip() if hasattr(self, 'searchEdit') else ''
+        if not text and self._search_mode:
+            self._search_mode = False
+            self._search_results = []
         self.update_reset_button_visibility()
         self.update_display()
 
     def has_active_filters(self):
-        if hasattr(self, 'searchEdit') and self.searchEdit.text().strip():
+        if self._search_mode:
             return True
         return self.filter.current_sort != "А→Я"
-
-    def update_reset_button_visibility(self):
-        if hasattr(self, 'btnResetFilters'):
-            self.btnResetFilters.setVisible(self.has_active_filters())
 
     def reset_all_filters(self):
         if hasattr(self, 'searchEdit'):
             self.searchEdit.clear()
+        self._search_mode = False
+        self._search_results = []
         self.filter.current_sort = "А→Я"
         if hasattr(self, 'btnSort'):
             self.btnSort.setText("Сортировка ▼")
@@ -271,16 +464,17 @@ class DepartmentPage(QWidget):
             self.btnResetFilters.hide()
         self.update_display()
 
-    # ==================== ОБРАБОТЧИКИ ЛЕНИВОЙ ЗАГРУЗКИ ====================
+    def update_reset_button_visibility(self):
+        if hasattr(self, 'btnResetFilters'):
+            self.btnResetFilters.setVisible(self.has_active_filters())
+
+    # ==================== ЛЕНИВАЯ ЗАГРУЗКА ====================
 
     def _on_node_expand_requested(self, node):
-        """Вызывается из DepartmentLazyLoader; оставлено для совместимости с сигналом."""
         self.lazy_loader.on_expand_requested(node)
-        # Просим scrollArea пересчитать содержимое после вставки
         QTimer.singleShot(0, self._refresh_scroll_area)
 
     def _refresh_scroll_area(self):
-        """Пересчитывает layout внутри scrollArea, чтобы всё влезло."""
         if hasattr(self, 'scrollAreaWidgetContents'):
             self.scrollAreaWidgetContents.updateGeometry()
             if self.scrollAreaWidgetContents.layout():
@@ -290,7 +484,7 @@ class DepartmentPage(QWidget):
             self.scrollArea.updateGeometry()
         self.updateGeometry()
 
-    # ==================== СОЗДАНИЕ КАРТОЧКИ СОТРУДНИКА ====================
+    # ==================== КАРТОЧКА СОТРУДНИКА ====================
 
     def _create_employee_card(self, emp_data):
         full_name = " ".join(filter(None, [
@@ -310,17 +504,14 @@ class DepartmentPage(QWidget):
             "work_phone": emp_data.get('work_number', ''),
             "email": emp_data.get('email', ''),
             "rights": "Сотрудник",
-            # сохраняем сырые данные — пригодятся для диалога
             "_raw": emp_data,
         })
-        # Подключаем сигналы — по ним откроем диалог/профиль
         card.edit_clicked.connect(self._on_employee_edit_clicked)
         card.delete_clicked.connect(self._on_employee_delete_clicked)
         card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         return card
 
     def _on_employee_edit_clicked(self, emp_data: dict):
-        """Открывает EmployeeDialog для сотрудника (совместимо с разными сигнатурами)."""
         import inspect
         from client.windows.system.employees.employee_dialog import EmployeeDialog
 
@@ -333,7 +524,6 @@ class DepartmentPage(QWidget):
             params = list(sig.parameters.keys())
             print(f"[DEBUG] EmployeeDialog.__init__ параметры: {params}")
 
-            # Пробуем разные варианты — какой сработает, тот и используем
             attempts = [
                 lambda: EmployeeDialog(self, employee_id=emp_id),
                 lambda: EmployeeDialog(self, emp_id=emp_id),
@@ -341,8 +531,8 @@ class DepartmentPage(QWidget):
                 lambda: EmployeeDialog(self, data=raw),
                 lambda: EmployeeDialog(self, employee_data=raw),
                 lambda: EmployeeDialog(self, profile_manager=None),
-                lambda: EmployeeDialog(self, parent=self),  # если parent keyword-only
-                lambda: EmployeeDialog(self),  # без данных, отдельно
+                lambda: EmployeeDialog(self, parent=self),
+                lambda: EmployeeDialog(self),
             ]
 
             dialog = None
@@ -359,7 +549,6 @@ class DepartmentPage(QWidget):
             if dialog is None:
                 raise last_err or RuntimeError("Не удалось создать EmployeeDialog")
 
-            # Если данные надо залить отдельно — попробуем несколько методов
             for setter_name in ('set_employee_data', 'set_data',
                                 'load_employee', 'set_employee', 'fill_data'):
                 if hasattr(dialog, setter_name):
@@ -377,7 +566,6 @@ class DepartmentPage(QWidget):
             self.show_error_notification(f"Не удалось открыть сотрудника: {e}")
 
     def _on_employee_delete_clicked(self, emp_id: int):
-        """Заглушка — удаление сотрудника из отдела (пока ничего не делаем)."""
         print(f"🗑️ Клик «удалить» у сотрудника id={emp_id}")
         self.show_info_notification("Удаление сотрудника из этой вкладки не поддерживается")
 

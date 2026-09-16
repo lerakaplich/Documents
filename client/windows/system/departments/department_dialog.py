@@ -15,42 +15,45 @@ class DepartmentDialog(QDialog):
     Диалог для создания/редактирования отдела
     """
 
-    def __init__(self, parent=None, department_data=None, organizations=None, departments=None, employees=None):
-        """
-        Инициализация диалога
+    # Серверный маппинг id → название. Используется, если родитель
+    # не передал department_types (например, при вызове из теста).
+    FALLBACK_TYPES = [
+        {"id": 1, "name": "Управление"},
+        {"id": 2, "name": "Отдел"},
+        {"id": 3, "name": "Бюро"},
+        {"id": 4, "name": "Сектор"},
+        {"id": 5, "name": "Цех"},
+    ]
 
+    def __init__(self, parent=None, department_data=None, organizations=None,
+                 departments=None, employees=None, department_types=None):
+        """
         Args:
             parent: Родительский виджет
             department_data: Данные отдела для редактирования (dict)
             organizations: Список организаций для комбобокса
             departments: Список отделов для родительского отдела
             employees: Список сотрудников для руководителя
+            department_types: Список типов отделов ({id, name}) — с сервера
         """
         super().__init__(parent)
 
-        # Сохраняем данные
         self.department_data = department_data or {}
         self.is_edit_mode = bool(self.department_data.get('id'))
         self.organizations = organizations or []
         self.departments = departments or []
         self.employees = employees or []
+        self.department_types = department_types or self.FALLBACK_TYPES
 
-        # Загружаем UI
         self._load_ui()
-
-        # Настраиваем окно
         self._setup_window()
-
-        # Заполняем комбобоксы
         self._populate_combos()
-
-        # Заполняем поля данными отдела
         self._populate_fields()
-
-        # Подключаем сигналы
         self._connect_signals()
+
+    # ==================== UI ====================
+
     def _load_ui(self):
-        """Загружает UI из файла"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
         ui_path = os.path.join(current_dir, '../../../ui/system/departments/department_dialog.ui')
         ui_path = os.path.normpath(ui_path)
@@ -68,11 +71,6 @@ class DepartmentDialog(QDialog):
             self._setup_fallback_ui()
 
     def _create_widget_aliases(self):
-        """
-        Создаёт snake_case алиасы для camelCase виджетов из .ui файла.
-        Нужно, потому что вся логика в этом файле написана под snake_case,
-        а .ui файл генерирует camelCase имена.
-        """
         aliases = {
             'name_edit': 'nameEdit',
             'organization_combo': 'organizationCombo',
@@ -93,7 +91,6 @@ class DepartmentDialog(QDialog):
                 setattr(self, snake, getattr(self, camel))
 
     def _setup_fallback_ui(self):
-        """Создает UI программно, если файл .ui не найден"""
         from PyQt6.QtWidgets import (
             QVBoxLayout, QHBoxLayout, QGridLayout,
             QGroupBox, QLabel, QLineEdit, QComboBox,
@@ -140,7 +137,6 @@ class DepartmentDialog(QDialog):
         grid_layout.setContentsMargins(15, 15, 15, 15)
         grid_layout.setSpacing(10)
 
-        # Название
         name_label = QLabel("Название *:")
         name_label.setStyleSheet("color: #1B232A; font-weight: 500;")
         grid_layout.addWidget(name_label, 0, 0)
@@ -151,7 +147,6 @@ class DepartmentDialog(QDialog):
         self.name_edit.setMaximumHeight(32)
         grid_layout.addWidget(self.name_edit, 0, 1)
 
-        # Организация
         org_label = QLabel("Организация *:")
         org_label.setStyleSheet("color: #1B232A; font-weight: 500;")
         grid_layout.addWidget(org_label, 1, 0)
@@ -162,7 +157,6 @@ class DepartmentDialog(QDialog):
         self.organization_combo.setMaximumHeight(32)
         grid_layout.addWidget(self.organization_combo, 1, 1)
 
-        # Родительский отдел
         parent_label = QLabel("Родительский отдел:")
         parent_label.setStyleSheet("color: #1B232A; font-weight: 500;")
         grid_layout.addWidget(parent_label, 2, 0)
@@ -173,7 +167,6 @@ class DepartmentDialog(QDialog):
         self.parent_department_combo.setMaximumHeight(32)
         grid_layout.addWidget(self.parent_department_combo, 2, 1)
 
-        # Тип отдела
         type_label = QLabel("Тип отдела *:")
         type_label.setStyleSheet("color: #1B232A; font-weight: 500;")
         grid_layout.addWidget(type_label, 3, 0)
@@ -184,7 +177,6 @@ class DepartmentDialog(QDialog):
         self.type_combo.setMaximumHeight(32)
         grid_layout.addWidget(self.type_combo, 3, 1)
 
-        # Номер отдела
         number_label = QLabel("Номер отдела:")
         number_label.setStyleSheet("color: #1B232A; font-weight: 500;")
         grid_layout.addWidget(number_label, 4, 0)
@@ -195,7 +187,6 @@ class DepartmentDialog(QDialog):
         self.department_number_edit.setMaximumHeight(32)
         grid_layout.addWidget(self.department_number_edit, 4, 1)
 
-        # Телефон
         phone_label = QLabel("Телефон:")
         phone_label.setStyleSheet("color: #1B232A; font-weight: 500;")
         grid_layout.addWidget(phone_label, 5, 0)
@@ -206,7 +197,6 @@ class DepartmentDialog(QDialog):
         self.phone_edit.setMaximumHeight(32)
         grid_layout.addWidget(self.phone_edit, 5, 1)
 
-        # Руководитель
         head_label = QLabel("Руководитель:")
         head_label.setStyleSheet("color: #1B232A; font-weight: 500;")
         grid_layout.addWidget(head_label, 6, 0)
@@ -237,12 +227,8 @@ class DepartmentDialog(QDialog):
                 font-size: 14px;
                 border: none;
             }
-            QPushButton:hover {
-                background-color: #b8945a;
-            }
-            QPushButton:pressed {
-                background-color: #a07d4a;
-            }
+            QPushButton:hover { background-color: #b8945a; }
+            QPushButton:pressed { background-color: #a07d4a; }
         """)
         main_layout.addWidget(self.save_button)
 
@@ -252,7 +238,6 @@ class DepartmentDialog(QDialog):
         self.group_box = group_box
 
     def _setup_window(self):
-        """Настраивает окно диалога"""
         if self.is_edit_mode:
             self.setWindowTitle("Редактировать отдел")
             if hasattr(self, 'title_label'):
@@ -264,8 +249,11 @@ class DepartmentDialog(QDialog):
 
         self.resize(580, 499)
 
+    # ==================== ЗАПОЛНЕНИЕ ====================
+
     def _populate_combos(self):
-        """Заполняет комбобоксы данными"""
+        """Заполняет комбобоксы данными."""
+
         # Организации
         if hasattr(self, 'organization_combo'):
             self.organization_combo.clear()
@@ -278,36 +266,46 @@ class DepartmentDialog(QDialog):
             self.parent_department_combo.clear()
             self.parent_department_combo.addItem("Нет (корневой отдел)", None)
             for dept in self.departments:
-                # Не добавляем сам себя в родители (для редактирования)
                 if self.is_edit_mode and dept.get('id') == self.department_data.get('id'):
                     continue
                 self.parent_department_combo.addItem(dept.get('name', ''), dept.get('id'))
 
-        # Типы отделов (заглушка - можно заменить на реальные данные)
-        department_types = [
-            {"id": 1, "name": "Административный"},
-            {"id": 2, "name": "Производственный"},
-            {"id": 3, "name": "Финансовый"},
-            {"id": 4, "name": "Кадровый"},
-            {"id": 5, "name": "Технический"},
-            {"id": 6, "name": "Юридический"}
-        ]
-
+        # ⚠️ ИЗМЕНЕНО: типы отделов — из реального списка (с сервера или fallback)
         if hasattr(self, 'type_combo'):
             self.type_combo.clear()
             self.type_combo.addItem("Выберите тип", None)
-            for dept_type in department_types:
-                self.type_combo.addItem(dept_type['name'], dept_type['id'])
+            for dept_type in self.department_types:
+                self.type_combo.addItem(dept_type.get('name', ''), dept_type.get('id'))
 
         # Руководители
-        if hasattr(self, 'head_combo'):
-            self.head_combo.clear()
-            self.head_combo.addItem("Не выбран", None)
-            for emp in self.employees:
-                name = f"{emp.get('last_name', '')} {emp.get('first_name', '')} {emp.get('patronymic', '')}".strip()
-                if not name:
-                    name = emp.get('name', f"Сотрудник {emp.get('id')}")
-                self.head_combo.addItem(name, emp.get('id'))
+        self._fill_head_combo(self.employees)
+
+    def _fill_head_combo(self, employees):
+        """Заполнить комбобокс руководителя переданным списком сотрудников."""
+        if not hasattr(self, 'head_combo'):
+            return
+        self.head_combo.clear()
+        self.head_combo.addItem("Не выбран", None)
+        for emp in employees or []:
+            name = f"{emp.get('last_name', '')} {emp.get('first_name', '')} {emp.get('patronymic', '')}".strip()
+            if not name:
+                name = emp.get('name') or emp.get('full_name') or f"Сотрудник {emp.get('id')}"
+            self.head_combo.addItem(name, emp.get('id'))
+
+    def set_head_employees(self, employees):
+        """
+        Публичный метод: перезаполнить список руководителей.
+        Нужен, когда сотрудников отдела подгружают ПОСЛЕ создания диалога
+        (например, при смене организации в режиме add).
+        """
+        self.employees = employees or []
+        current_head = self.head_combo.currentData() if hasattr(self, 'head_combo') else None
+        self._fill_head_combo(self.employees)
+        # восстановить выбор, если такой сотрудник есть в новом списке
+        if current_head is not None and hasattr(self, 'head_combo'):
+            idx = self.head_combo.findData(current_head)
+            if idx >= 0:
+                self.head_combo.setCurrentIndex(idx)
 
     def _populate_fields(self):
         """Заполняет поля данными отдела (поддерживает оба формата ключей)."""
@@ -324,66 +322,84 @@ class DepartmentDialog(QDialog):
             org_id = d.get('organization_id')
             if org_id is not None:
                 idx = self.organization_combo.findData(org_id)
+                if idx < 0:
+                    idx = self.organization_combo.findData(str(org_id))
                 if idx >= 0:
                     self.organization_combo.setCurrentIndex(idx)
 
-        # Родительский отдел — серверный 'parent_id' + внутренний 'parent_department_id'
+        # Родительский отдел
         if hasattr(self, 'parent_department_combo'):
             parent_id = d.get('parent_id')
             if parent_id is None:
                 parent_id = d.get('parent_department_id')
             if parent_id is not None:
                 idx = self.parent_department_combo.findData(parent_id)
+                if idx < 0:
+                    idx = self.parent_department_combo.findData(str(parent_id))
                 if idx >= 0:
                     self.parent_department_combo.setCurrentIndex(idx)
 
-        # Тип — 'department_type_id' + 'type_id'
+        # Тип отдела
         if hasattr(self, 'type_combo'):
             type_id = d.get('department_type_id')
             if type_id is None:
                 type_id = d.get('type_id')
+            print(f"[DEBUG] department_dialog: department_type_id из server = {type_id!r}")
             if type_id is not None:
                 idx = self.type_combo.findData(type_id)
+                if idx < 0:
+                    idx = self.type_combo.findData(str(type_id))
+                if idx < 0:
+                    # сервер мог вернуть строковое имя типа вместо id
+                    type_name = d.get('department_type_name') or d.get('type_name')
+                    if type_name:
+                        idx = self.type_combo.findText(type_name)
                 if idx >= 0:
                     self.type_combo.setCurrentIndex(idx)
+                else:
+                    print(f"[WARN] department_type_id={type_id!r} не найден в combo")
 
-        # Номер — 'number' + 'department_number'
+        # Номер
         if hasattr(self, 'department_number_edit'):
             number = d.get('number')
             if number is None:
                 number = d.get('department_number', '')
             self.department_number_edit.setText(str(number) if number not in (None, '') else '')
 
-        # Телефон — 'phone_number' + 'phone'
+        # Телефон
         if hasattr(self, 'phone_edit'):
             phone = d.get('phone_number') or d.get('phone') or ''
             self.phone_edit.setText(phone)
 
-        # Руководитель — 'head_employee_id' + 'head_id'
+        # Руководитель
         if hasattr(self, 'head_combo'):
             head_id = d.get('head_employee_id')
             if head_id is None:
                 head_id = d.get('head_id')
+            print(f"[DEBUG] department_dialog: head_employee_id из server = {head_id!r}")
             if head_id is not None:
                 idx = self.head_combo.findData(head_id)
+                if idx < 0:
+                    idx = self.head_combo.findData(str(head_id))
                 if idx >= 0:
                     self.head_combo.setCurrentIndex(idx)
+                else:
+                    print(f"[WARN] head_employee_id={head_id!r} не найден в combo")
 
     def _connect_signals(self):
-        """Подключает сигналы"""
         if hasattr(self, 'save_button'):
             self.save_button.clicked.connect(self._on_save_clicked)
 
     def _on_save_clicked(self):
-        """Обработчик нажатия кнопки Сохранить"""
         errors = self.validate()
-
         if errors:
             error_text = "\n".join(errors)
-            QMessageBox.warning(self, "Ошибка валидации", f"Пожалуйста, исправьте следующие ошибки:\n\n{error_text}")
+            QMessageBox.warning(self, "Ошибка валидации",
+                                f"Пожалуйста, исправьте следующие ошибки:\n\n{error_text}")
             return
-
         self.accept()
+
+    # ==================== ДАННЫЕ ====================
 
     def get_data(self):
         data = {}
@@ -392,10 +408,8 @@ class DepartmentDialog(QDialog):
         if hasattr(self, 'organization_combo'):
             data['organization_id'] = self.organization_combo.currentData()
         if hasattr(self, 'parent_department_combo'):
-            # ВАЖНО: серверный ключ — parent_id
             data['parent_id'] = self.parent_department_combo.currentData()
         if hasattr(self, 'type_combo'):
-            # ВАЖНО: серверный ключ — department_type_id
             data['department_type_id'] = self.type_combo.currentData()
         if hasattr(self, 'department_number_edit'):
             data['number'] = self.department_number_edit.text().strip() or None
@@ -408,84 +422,72 @@ class DepartmentDialog(QDialog):
         return data
 
     def validate(self):
-        """
-        Валидация данных
-
-        Returns:
-            list: Список ошибок
-        """
         errors = []
-
         if hasattr(self, 'name_edit'):
-            name = self.name_edit.text().strip()
-            if not name:
+            if not self.name_edit.text().strip():
                 errors.append("Название отдела обязательно для заполнения")
-
         if hasattr(self, 'organization_combo'):
-            org_id = self.organization_combo.currentData()
-            if org_id is None:
+            if self.organization_combo.currentData() is None:
                 errors.append("Выберите организацию")
-
         if hasattr(self, 'type_combo'):
-            type_id = self.type_combo.currentData()
-            if type_id is None:
+            if self.type_combo.currentData() is None:
                 errors.append("Выберите тип отдела")
-
         return errors
 
 
 def main():
-    """Точка входа для тестирования диалога"""
     app = QApplication(sys.argv)
 
     test_organizations = [
         {"id": 1, "name": "ОАО МАЗ"},
         {"id": 2, "name": "ООО ТехноСервис"}
     ]
-
     test_departments = [
         {"id": 2, "name": "Отдел разработки"},
         {"id": 3, "name": "Бухгалтерия"}
     ]
-
     test_employees = [
-        {"id": 1, "name": "Иванов Иван"},
-        {"id": 2, "name": "Петрова Мария"}
+        {"id": 1, "last_name": "Иванов", "first_name": "Иван"},
+        {"id": 2, "last_name": "Петрова", "first_name": "Мария"},
+    ]
+    test_types = [
+        {"id": 1, "name": "Управление"},
+        {"id": 2, "name": "Отдел"},
+        {"id": 3, "name": "Бюро"},
+        {"id": 4, "name": "Сектор"},
+        {"id": 5, "name": "Цех"},
     ]
 
     print("=== Тест: Создание нового отдела ===")
     dialog = DepartmentDialog(
         organizations=test_organizations,
         departments=test_departments,
-        employees=test_employees
+        employees=test_employees,
+        department_types=test_types,
     )
     if dialog.exec():
         print("Получены данные:", dialog.get_data())
-    else:
-        print("Отмена")
 
     print("\n=== Тест: Редактирование отдела ===")
     test_data = {
         'id': 1,
         'name': 'Отдел разработки',
         'organization_id': 1,
-        'parent_department_id': None,
-        'type_id': 2,
-        'department_number': 'DEV-001',
-        'phone': '+375 29 123-45-67',
-        'head_id': 3
+        'parent_id': None,
+        'department_type_id': 2,
+        'number': 'DEV-001',
+        'phone_number': '+375 29 123-45-67',
+        'head_employee_id': 2,
     }
-
     dialog_edit = DepartmentDialog(
         department_data=test_data,
         organizations=test_organizations,
         departments=test_departments,
-        employees=test_employees
+        employees=test_employees,
+        department_types=test_types,
     )
     if dialog_edit.exec():
         print("Получены данные:", dialog_edit.get_data())
-    else:
-        print("Отмена")
 
     sys.exit(0)
 

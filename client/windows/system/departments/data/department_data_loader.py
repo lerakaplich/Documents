@@ -18,33 +18,10 @@ class DepartmentDataLoader:
         return self.org_service.get_all_organizations(limit=limit) or []
 
     def fetch_org_bundle(self, org_id: int):
-        """Возвращает (structure, employees) для организации."""
         structure = self.org_service.get_org_structure(org_id) or []
         if isinstance(structure, dict):
             structure = structure.get('children', [])
-
-        employees = []
-        try:
-            # Пробуем разные методы сервиса
-            for m in ('get_org_employees', 'get_organization_employees'):
-                if hasattr(self.org_service, m):
-                    employees = getattr(self.org_service, m)(org_id) or []
-                    if employees:
-                        break
-            # Fallback — прямой запрос к эндпоинту
-            if not employees:
-                employees = self.http_client.get(f"/org/{org_id}/employees") or []
-        except Exception as e:
-            print(f"[WARN] employees for org {org_id}: {e}")
-
-        # ─── Диагностика — что реально пришло ───
-        print(f"[DEBUG] fetch_org_bundle(org_id={org_id}): "
-              f"structure={len(structure)}, employees={len(employees)}")
-        if employees:
-            sample = employees[0]
-            print(f"[DEBUG]   пример сотрудника: keys={sorted(sample.keys())}")
-            print(f"[DEBUG]   positions={sample.get('positions')}")
-
+        employees = self.org_service.get_org_employees(org_id) or []
         return structure, employees
 
     # ─── Применение загруженного к кэшу ───
@@ -63,3 +40,14 @@ class DepartmentDataLoader:
         if node and node.get('children'):
             return node['children']
         return []
+
+    def search_structure(self, q: str):
+        """Поиск по оргструктуре: организации / отделы / сотрудники."""
+        try:
+            return self.http_client.get(
+                "/employees/structure/search",
+                params={"q": q},
+            ) or []
+        except Exception as e:
+            print(f"[ERROR] search_structure('{q}'): {e}")
+            return []

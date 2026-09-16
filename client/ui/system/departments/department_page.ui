@@ -32,9 +32,6 @@
    <property name="bottomMargin">
     <number>10</number>
    </property>
-   <property name="alignment">
-    <set>Qt::AlignTop</set>
-   </property>
    <item>
     <layout class="QHBoxLayout" name="toolbarLayout">
      <property name="spacing">
@@ -45,21 +42,21 @@
        <property name="minimumSize">
         <size>
          <width>300</width>
-         <height>30</height>
+         <height>32</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
          <width>300</width>
-         <height>30</height>
+         <height>32</height>
         </size>
        </property>
        <property name="styleSheet">
         <string notr="true">QLineEdit {
     border: 1px solid #D0D0D0;
     border-radius: 8px;
+    font-size: 13px;
     padding: 5px 15px;
-    font-size: 14px;
     background-color: white;
 }
 QLineEdit:focus {
@@ -67,15 +64,62 @@ QLineEdit:focus {
 }</string>
        </property>
        <property name="placeholderText">
-        <string>Поиск по названию или коду...</string>
+        <string>Поиск...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnSearch">
+       <property name="minimumSize">
+        <size>
+         <width>70</width>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>70</width>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Сбросить все фильтры и поиск</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+QPushButton {
+    background-color: #D22730;
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+}
+QPushButton:hover {
+    background-color: #862633;
+}
+QPushButton:pressed {
+    background-color: #6a1e29;
+}
+        
+</string>
+       </property>
+       <property name="text">
+        <string>Поиск</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="btnSort">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
-         <width>140</width>
+         <width>100</width>
          <height>32</height>
         </size>
        </property>
@@ -88,8 +132,7 @@ QLineEdit:focus {
 }
 QPushButton:hover {
     background-color: #dddddd;
-}
-</string>
+}</string>
        </property>
        <property name="text">
         <string>Сортировка ▼</string>

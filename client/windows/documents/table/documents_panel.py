@@ -80,17 +80,32 @@ class DocumentsPanel(QWidget):
         self.position_floating_button()
 
     def _setup_buttons(self):
+        no_indicator_style = """
+                QPushButton::menu-indicator { image: none; width: 0px; }
+                QPushButton {
+                    background-color: #eeeeee;
+                    border-radius: 4px;
+                    font-weight: normal;
+                    color: black;
+                }
+                QPushButton:hover {
+                    background-color: #dddddd;
+                }
+            """
         if hasattr(self, 'columnsBtn'):
             self.columns_menu = ColumnsMenu(parent=self)
-            self.columnsBtn.setMenu(self.columns_menu)
+            self.columnsBtn.setMenu(self.columns_menu)  # ← обязательно
+            self.columnsBtn.setStyleSheet(no_indicator_style)  # ← скрывает стрелку
 
         if hasattr(self, 'filterBtn'):
             self.filter_menu = FilterMenu(self)
-            self.filterBtn.setMenu(self.filter_menu)
+            self.filterBtn.setMenu(self.filter_menu)  # ← обязательно
+            self.filterBtn.setStyleSheet(no_indicator_style)
 
         if hasattr(self, 'statusesBtn'):
             self.statuses_menu = StatusesMenu(self)
-            self.statusesBtn.setMenu(self.statuses_menu)
+            self.statusesBtn.setMenu(self.statuses_menu)  # ← обязательно
+            self.statusesBtn.setStyleSheet(no_indicator_style)
             self.statuses_menu.connect_clear_signal(self.statuses_menu.clear_selection)
 
         if hasattr(self, 'searchEdit'):

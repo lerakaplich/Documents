@@ -58,6 +58,7 @@ class OrgRepository:
         )
         await self.db.execute(stmt)
         await self.db.flush()
+        await self.db.commit()
 
     async def get_dept_path_by_id(self, dept_id: int) -> Optional[str]:
         """Быстрое получение пути департамента для проверки прав."""
@@ -153,6 +154,7 @@ class OrgRepository:
         )
         self.db.add(new_org)
         await self.db.flush()
+        await self.db.commit()
         await self.db.refresh(new_org)
         return new_org
 
@@ -171,6 +173,7 @@ class OrgRepository:
         stmt = delete(Organization).where(Organization.id == org_id)
         await self.db.execute(stmt)
         await self.db.flush()
+        await self.db.commit()
 
     async def has_linked_entities(self, org_id: int) -> bool:
         """Проверка, привязаны ли к организации подразделения (для безопасного удаления)"""

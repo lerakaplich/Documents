@@ -22,7 +22,7 @@ class EmployeeHandlers:
                 parent_editor=self.page,
                 employee=None,
                 is_maz=False,
-                http_client=self._http(),            # ← было profile_manager=None
+                http_client=self._http(),
                 current_user_rights='admin',
                 current_user_org_id=self.page.current_org_id,
                 current_user_div_id=None,
@@ -57,7 +57,7 @@ class EmployeeHandlers:
                 parent_editor=self.page,
                 employee=employee,
                 is_maz=False,
-                http_client=self._http(),            # ← было profile_manager=None
+                http_client=self._http(),
                 current_user_rights='admin',
                 current_user_org_id=self.page.current_org_id,
                 current_user_div_id=None,
@@ -75,10 +75,7 @@ class EmployeeHandlers:
                 f"Не удалось открыть диалог редактирования сотрудника:\n{e}")
             import traceback; traceback.print_exc()
 
-    # остальное без изменений
-
     def show_delete_employee_dialog(self, employee_id):
-        """Открывает диалог подтверждения удаления"""
         try:
             employee = self.page.data_manager.employees.get(employee_id)
             if not employee:
@@ -104,7 +101,6 @@ class EmployeeHandlers:
             traceback.print_exc()
 
     def confirm_delete_employee(self, employee_id):
-        """Подтверждение удаления сотрудника"""
         try:
             if employee_id not in self.page.data_manager.employees:
                 QMessageBox.warning(self.page, "Ошибка", "Сотрудник не найден")
@@ -119,26 +115,28 @@ class EmployeeHandlers:
             QMessageBox.information(self.page, "Успешно", "Сотрудник успешно удален!")
             self.page.update_display()
             self.page.employees_updated.emit()
+            self.page._self_change_in_progress = True
+            try:
+                self.page.data_events.employees_changed.emit(employee_id)
+            finally:
+                self.page._self_change_in_progress = False
 
         except Exception as e:
             QMessageBox.critical(self.page, "Ошибка", f"Не удалось удалить сотрудника:\n{str(e)}")
 
     def on_employee_created(self, employee_id):
-        """Обработчик создания нового сотрудника"""
         QMessageBox.information(self.page, "Успешно", f"Сотрудник с ID {employee_id} успешно создан!")
         self.page.data_manager.load_test_data(self.page)
         self.page.update_display()
         self.page.employees_updated.emit()
 
     def on_employee_updated(self, employee_id):
-        """Обработчик обновления сотрудника"""
         QMessageBox.information(self.page, "Успешно", f"Сотрудник с ID {employee_id} успешно обновлен!")
         self.page.data_manager.load_test_data(self.page)
         self.page.update_display()
         self.page.employees_updated.emit()
 
     def on_organization_changed(self, index):
-        """Обработчик изменения организации"""
         self.page.current_org_id = self.page.comboOrganization.currentData()
         self.page.current_department_id = None
 
@@ -152,7 +150,6 @@ class EmployeeHandlers:
         self.page.update_display()
 
     def reset_all_filters(self):
-        """Сброс всех фильтров, сортировки и поиска"""
         self.page.searchEdit.clear()
         self.page.current_sort = "А→Я"
         self.page.btnSort.setText("Сортировка ▼")

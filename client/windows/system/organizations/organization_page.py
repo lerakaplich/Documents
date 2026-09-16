@@ -12,12 +12,14 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
 
+from client.core.state.data_events import get_data_events
+from client.windows.system.departments.api_task import ApiTask, TaskKeeper
 from client.windows.system.organizations.organization_card import OrganizationCard
 from client.windows.system.organizations.organization_dialog import OrganizationDialog
 from client.windows.animations.floating_action_button import FloatingActionButton
 from client.windows.animations.animated_notification import NotificationManager
 from client.services.org_service import get_org_service
-from client.core.http_client import HttpClient
+from client.core.http_client import HttpClient, logger
 from client.core.config import config
 from client.core.state.app_state import AppState
 
@@ -30,7 +32,6 @@ class OrganizationsPage(QWidget):
     def __init__(self, parent=None, http_client: Optional[HttpClient] = None):
         super().__init__(parent)
 
-        # Используем переданный HttpClient или создаем новый
         if http_client is None:
             app_state = AppState()
             if app_state.http_client:
@@ -40,11 +41,19 @@ class OrganizationsPage(QWidget):
         else:
             self.http_client = http_client
 
+        self.data_events = get_data_events()
+        self.data_events.departments_changed.connect(self._on_external_change)
+        self.data_events.employees_changed.connect(self._on_external_change)
+        self.data_events.organizations_changed.connect(self._on_external_change)
+        # защита от собственных эмиссий
+        self._self_change_in_progress = False
+
         self.org_service = get_org_service(self.http_client)
 
         # Данные
         self.organizations: List[Dict[str, Any]] = []
         self.filtered_orgs: List[Dict[str, Any]] = []
+        self._tasks = TaskKeeper()
 
         # Состояние
         self.current_sort = "А→Я"
@@ -54,90 +63,100 @@ class OrganizationsPage(QWidget):
         self.init_ui()
         self.setup_connections()
 
-        # Создаем менеджер уведомлений
         self.notification_manager = NotificationManager(self, max_visible=3)
 
-        # Загружаем данные
         QTimer.singleShot(100, self.load_organizations)
 
+    # ==================== UI ====================
+
     def init_ui(self):
-        """Инициализация UI из файла"""
         ui_path = self.get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
 
-        # Создаем плавающую кнопку
         self.floating_btn = FloatingActionButton(self)
         self.floating_btn.clicked.connect(self.on_add_org)
 
-        # Подключаемся к скроллу
         self.scrollArea.verticalScrollBar().valueChanged.connect(self.on_scroll)
 
-        # Скрываем кнопку сброса при старте
         self.btnResetFilters.hide()
 
     def get_ui_path(self):
-        """Возвращает путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
         ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'organizations', 'organization_page.ui')
         return os.path.normpath(ui_path)
 
     def setup_connections(self):
-        """Настройка сигналов"""
         self.btnSort.clicked.connect(self.show_sort_menu)
         self.searchEdit.textChanged.connect(self.on_search_changed)
         self.btnResetFilters.clicked.connect(self.reset_all_filters)
 
+    # ==================== Уведомления ====================
+
     def show_success_notification(self, message: str):
-        """Показать уведомление об успехе"""
         self.notification_manager.show_notification(f"✅ {message}", duration=2500)
 
     def show_error_notification(self, message: str):
-        """Показать уведомление об ошибке"""
         self.notification_manager.show_notification(f"❌ {message}", duration=3000)
 
     def show_info_notification(self, message: str):
-        """Показать информационное уведомление"""
         self.notification_manager.show_notification(f"ℹ️ {message}", duration=2500)
+
+    # ==================== ШИНА СОБЫТИЙ ====================
+
+    def _on_external_change(self, org_id: int = 0):
+        """Что-то поменялось в другой вкладке — обновляем список организаций.
+
+        Если известен id — точечно перезапрашиваем только его.
+        Иначе — полный refetch.
+        """
+        if self._self_change_in_progress:
+            return
+        if self.is_loading:
+            return
+
+        if org_id:
+            if self._refresh_one(org_id):
+                return
+        # fallback — если id=0 или не нашли в локальном списке
+        self.load_organizations()
+
+    def _refresh_one(self, org_id: int) -> bool:
+        """Перезапрашивает ОДНУ организацию и обновляет её карточку. Без полного GET /org."""
+        try:
+            server_org = self.org_service.get_organization(org_id)
+        except Exception as e:
+            print(f"[WARN] GET /org/{org_id}: {e}")
+            return False
+        if not server_org:
+            return False
+        for i, o in enumerate(self.organizations):
+            if o.get('id') == org_id:
+                self.organizations[i] = self._normalize_org(server_org)
+                self.update_display()
+                return True
+        return False
+
+    def get_department_staff(self, dept_id: int) -> list:
+        """Сотрудники подразделения — для комбобокса «Руководитель»."""
+        try:
+            response = self.http.get(f"{self.base_path}/{dept_id}/staff")
+            return response if isinstance(response, list) else []
+        except Exception as e:
+            logger.error(f"Ошибка получения сотрудников отдела {dept_id}: {e}")
+            return []
 
     # ==================== ЗАГРУЗКА ДАННЫХ ====================
 
-    # client/windows/system/organizations/organization_page.py
-
     def load_organizations(self):
-        """Загрузить организации из API"""
+        """Полный refetch списка организаций."""
         if self.is_loading:
             return
 
         self.is_loading = True
-
         try:
             orgs = self.org_service.get_all_organizations(limit=200)
-
-            # Преобразуем данные в нужный формат
-            self.organizations = []
-            for org in orgs:
-                # Правильно обрабатываем телефон
-                phone = org.get('phone_number')
-                if phone is None:
-                    phone = org.get('phone', '')
-                if phone is None:
-                    phone = ''
-
-                self.organizations.append({
-                    'id': org.get('id'),
-                    'name': org.get('name', org.get('full_name', '')),
-                    'full_name': org.get('full_name', ''),
-                    'short_name': org.get('short_name', ''),
-                    'unp': org.get('unp', ''),
-                    'address': org.get('address', ''),
-                    'phone': str(phone) if phone else '',
-                    'phone_number': str(phone) if phone else '',
-                    'email': org.get('email', ''),
-                    'director': org.get('director', ''),
-                    'smdo_code': org.get('smdo_code', ''),
-                    'is_subscriber': org.get('is_subscriber', False)
-                })
+            self.organizations = [self._normalize_org(org) for org in (orgs or [])]
 
             self.is_loading = False
             self.update_display()
@@ -156,10 +175,32 @@ class OrganizationsPage(QWidget):
             else:
                 self.show_error_notification("Не удалось загрузить организации")
 
-    def show_sort_menu(self):
-        """Показать меню сортировки"""
-        menu = QMenu(self)
+    def _normalize_org(self, raw: dict) -> dict:
+        """Приводит сырой ответ сервера к формату, который ждут карточки."""
+        phone = raw.get('phone_number')
+        if phone is None:
+            phone = raw.get('phone', '')
+        if phone is None:
+            phone = ''
+        return {
+            'id': raw.get('id'),
+            'name': raw.get('name', raw.get('full_name', '')),
+            'full_name': raw.get('full_name', ''),
+            'short_name': raw.get('short_name', ''),
+            'unp': raw.get('unp', ''),
+            'address': raw.get('address', ''),
+            'phone': str(phone) if phone else '',
+            'phone_number': str(phone) if phone else '',
+            'email': raw.get('email', ''),
+            'director': raw.get('director', ''),
+            'smdo_code': raw.get('smdo_code', ''),
+            'is_subscriber': raw.get('is_subscriber', False),
+        }
 
+    # ==================== СОРТИРОВКА ====================
+
+    def show_sort_menu(self):
+        menu = QMenu(self)
         menu.setStyleSheet("""
             QMenu { 
                 background-color: white; 
@@ -168,19 +209,8 @@ class OrganizationsPage(QWidget):
                 padding: 5px; 
                 color: black;
             }
-            QMenu::item { 
-                padding: 8px 25px 8px 15px; 
-                border-radius: 3px; 
-                font-size: 14px; 
-            }
-            QMenu::item:selected { 
-                background-color: #e3f2fd; 
-            }
-            QMenu::separator { 
-                height: 1px; 
-                background: #e0e0e0; 
-                margin: 5px 10px; 
-            }
+            QMenu::item { padding: 8px 25px 8px 15px; border-radius: 3px; font-size: 14px; }
+            QMenu::item:selected { background-color: #e3f2fd; }
         """)
 
         sort_options = {
@@ -244,10 +274,8 @@ class OrganizationsPage(QWidget):
         self.show_info_notification("Фильтры сброшены")
 
     def filter_and_sort_orgs(self):
-        """Фильтрация и сортировка организаций"""
         filtered = self.organizations.copy()
 
-        # Поиск
         search_text = self.searchEdit.text().strip().lower()
         if search_text:
             filtered = [
@@ -260,7 +288,6 @@ class OrganizationsPage(QWidget):
                    search_text in org.get('smdo_code', '').lower()
             ]
 
-        # Сортировка
         sort_methods = {
             "А→Я": self.sort_by_name_asc,
             "А→Я (по названию)": self.sort_by_name_asc,
@@ -275,33 +302,27 @@ class OrganizationsPage(QWidget):
     # ==================== ОТОБРАЖЕНИЕ ====================
 
     def _clear_layout_completely(self, layout):
-        """Полностью очищает layout от всех виджетов и вложенных layout'ов"""
         if layout is None:
             return
-
         while layout.count() > 0:
             item = layout.takeAt(0)
-
             if item is None:
                 continue
-
-            if item.widget():
-                widget = item.widget()
-                widget.setParent(None)
-                widget.deleteLater()
-            elif item.layout():
-                self._clear_layout_completely(item.layout())
-                item.layout().setParent(None)
+            w = item.widget()
+            if w is not None:
+                w.hide()
+                w.setParent(None)
+                w.deleteLater()
+                continue
+            sub = item.layout()
+            if sub is not None:
+                self._clear_layout_completely(sub)
+                sub.deleteLater()
 
     def update_display(self):
-        """Обновление отображения организаций в 2 колонки"""
-        # Полностью очищаем layout
         self._clear_layout_completely(self.orgsLayout)
-
-        # Получаем отфильтрованные и отсортированные организации
         self.filtered_orgs = self.filter_and_sort_orgs()
 
-        # Если нет организаций, показываем сообщение
         if not self.filtered_orgs:
             empty_label = QLabel("Нет организаций")
             empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -310,13 +331,11 @@ class OrganizationsPage(QWidget):
             self.position_floating_button()
             return
 
-        # Создаем контейнер для двух колонок
         container = QWidget()
         container_layout = QHBoxLayout(container)
         container_layout.setSpacing(10)
         container_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Создаем две колонки
         left_column = QVBoxLayout()
         left_column.setSpacing(10)
         left_column.setContentsMargins(0, 0, 0, 0)
@@ -327,58 +346,47 @@ class OrganizationsPage(QWidget):
         right_column.setContentsMargins(0, 0, 0, 0)
         right_column.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # Распределяем карточки по колонкам
+        # всегда создаём новые карточки — старые уже уничтожены
         for i, org in enumerate(self.filtered_orgs):
-            org_card = OrganizationCard(org)
-            org_card.edit_clicked.connect(self.on_edit_org)
-            org_card.delete_clicked.connect(self.on_delete_org)
-            org_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
+            card = OrganizationCard(org)
+            card.edit_clicked.connect(self.on_edit_org)
+            card.delete_clicked.connect(self.on_delete_org)
+            card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             if i % 2 == 0:
-                left_column.addWidget(org_card)
+                left_column.addWidget(card)
             else:
-                right_column.addWidget(org_card)
+                right_column.addWidget(card)
 
-        # Добавляем колонки в контейнер
         container_layout.addLayout(left_column)
         container_layout.addLayout(right_column)
-
-        # Добавляем контейнер в основной layout
         self.orgsLayout.addWidget(container)
-
-        # Добавляем растяжку
         self.orgsLayout.addStretch()
 
         self.position_floating_button()
 
-    # ==================== РАБОТА С ОРГАНИЗАЦИЯМИ (CRUD) ====================
+    # ==================== CRUD ====================
 
     def on_add_org(self):
-        """Обработчик нажатия на плавающую кнопку добавления организации"""
         dialog = OrganizationDialog(self, item={})
-
         if dialog.exec():
             new_org_data = dialog.get_data()
             self._create_organization(new_org_data)
 
     def _create_organization(self, org_data: Dict[str, Any]):
-        """Создание организации"""
         try:
-            # Получаем телефон
             phone = org_data.get('phone')
             if phone is None:
                 phone = org_data.get('phone_number')
             if phone is None:
                 phone = ''
 
-            # Формируем данные для сервера
             server_data = {
                 'name': org_data.get('full_name', org_data.get('name', '')),
                 'full_name': org_data.get('full_name', ''),
                 'short_name': org_data.get('short_name', ''),
                 'unp': org_data.get('unp', ''),
                 'address': org_data.get('address', ''),
-                'phone_number': str(phone) if phone else None,  # Отправляем как phone_number
+                'phone_number': str(phone) if phone else None,
                 'email': org_data.get('email', ''),
                 'director': org_data.get('director', ''),
                 'smdo_code': org_data.get('smdo_code', ''),
@@ -390,31 +398,11 @@ class OrganizationsPage(QWidget):
             result = self.org_service.create_organization(server_data)
 
             if result:
-                print(f"[DEBUG] Результат создания: {result}")
-
-                result_phone = result.get('phone_number')
-                if result_phone is None:
-                    result_phone = result.get('phone')
-                if result_phone is None:
-                    result_phone = ''
-
-                self.organizations.append({
-                    'id': result.get('id'),
-                    'name': result.get('name', result.get('full_name', '')),
-                    'full_name': result.get('full_name', ''),
-                    'short_name': result.get('short_name', ''),
-                    'unp': result.get('unp', ''),
-                    'address': result.get('address', ''),
-                    'phone': str(result_phone),
-                    'phone_number': str(result_phone),
-                    'email': result.get('email', ''),
-                    'director': result.get('director', ''),
-                    'smdo_code': result.get('smdo_code', ''),
-                    'is_subscriber': result.get('is_subscriber', False)
-                })
-
-                self.update_display()
+                new_id = result.get('id')
+                self.organizations.append(self._normalize_org(result))
+                self.update_display()  # без refetch
                 self.show_success_notification(f"Организация «{result.get('name')}» создана")
+                self._emit_self_change(new_id)
             else:
                 self.show_error_notification("Не удалось создать организацию")
 
@@ -426,84 +414,54 @@ class OrganizationsPage(QWidget):
             else:
                 self.show_error_notification("Не удалось создать организацию")
 
-    def on_edit_org(self, org_data: Dict[str, Any]):
-        """Обработка редактирования организации"""
+    def on_edit_org(self, org_data):
         org_id = org_data.get('id')
         if not org_id:
             self.show_error_notification("ID организации не найден")
             return
 
-        try:
-            # Получаем актуальные данные с сервера
-            server_org = self.org_service.get_organization(org_id)
-            if not server_org:
-                self.show_error_notification("Организация не найдена на сервере")
-                return
+        local = next((o for o in self.organizations if o.get('id') == org_id), {}) or {}
+        self._open_edit_dialog(org_id, dict(local))
 
-            print(f"[DEBUG] Загружена организация с сервера: {server_org}")
+    def _open_edit_dialog(self, org_id, data):
+        phone = data.get('phone_number') or data.get('phone') or ''
+        full_name = data.get('full_name') or data.get('name', '')
 
-            # Получаем телефон - обрабатываем None
-            phone_value = server_org.get('phone_number')
-            if phone_value is None:
-                phone_value = server_org.get('phone')
-            if phone_value is None:
-                phone_value = ''
+        payload = {
+            'id': data.get('id'),
+            'name': data.get('name', ''),
+            'full_name': full_name,
+            'short_name': data.get('short_name') or '',
+            'unp': data.get('unp') or '',
+            'address': data.get('address') or '',
+            'phone': str(phone),
+            'phone_number': str(phone),
+            'email': data.get('email') or '',
+            'director': data.get('director') or '',
+            'smdo_code': data.get('smdo_code') or '',
+            'is_subscriber': data.get('is_subscriber', False),
+        }
 
-            # Получаем полное имя
-            full_name = server_org.get('full_name')
-            if full_name is None or not full_name:
-                full_name = server_org.get('name', '')
-
-            # Подготовка данных для диалога
-            full_org_data = {
-                'id': server_org.get('id'),
-                'name': server_org.get('name', ''),
-                'full_name': full_name,
-                'short_name': server_org.get('short_name') or '',
-                'unp': server_org.get('unp') or '',
-                'address': server_org.get('address') or '',
-                'phone': str(phone_value),  # Телефон в поле phone
-                'phone_number': str(phone_value),  # И в phone_number
-                'email': server_org.get('email') or '',
-                'director': server_org.get('director') or '',
-                'smdo_code': server_org.get('smdo_code') or '',
-                'is_subscriber': server_org.get('is_subscriber', False)
-            }
-
-            print(f"[DEBUG] Подготовлены данные для диалога: {full_org_data}")
-
-            dialog = OrganizationDialog(self, item=full_org_data)
-
-            if dialog.exec():
-                updated_data = dialog.get_data()
-                print(f"[DEBUG] Данные из диалога: {updated_data}")
-                self._update_organization(org_id, updated_data)
-
-        except Exception as e:
-            import logging
-            import traceback
-            logging.error(f"Ошибка загрузки организации для редактирования: {e}")
-            traceback.print_exc()
-            self.show_error_notification("Не удалось загрузить данные организации")
+        dialog = OrganizationDialog(self, item=payload)
+        if dialog.exec():
+            updated = dialog.get_data()
+            self._update_organization(org_id, updated)
 
     def _update_organization(self, org_id: int, updated_data: Dict[str, Any]):
-        """Обновление организации"""
         try:
-            # Получаем телефон из данных
             phone = updated_data.get('phone')
             if phone is None:
                 phone = updated_data.get('phone_number')
             if phone is None:
                 phone = ''
 
-            # Формируем данные для сервера - ВАЖНО: используем phone_number
             server_data = {
                 'name': updated_data.get('full_name', updated_data.get('name', '')),
                 'full_name': updated_data.get('full_name', ''),
                 'short_name': updated_data.get('short_name', ''),
                 'unp': updated_data.get('unp', ''),
                 'address': updated_data.get('address', ''),
-                'phone_number': str(phone) if phone else None,  # Отправляем как phone_number
+                'phone_number': str(phone) if phone else None,
                 'email': updated_data.get('email', ''),
                 'director': updated_data.get('director', ''),
                 'smdo_code': updated_data.get('smdo_code', ''),
@@ -515,35 +473,15 @@ class OrganizationsPage(QWidget):
             result = self.org_service.update_organization(org_id, server_data)
 
             if result:
-                print(f"[DEBUG] Результат обновления: {result}")
-
-                # Получаем телефон из результата
-                result_phone = result.get('phone_number')
-                if result_phone is None:
-                    result_phone = result.get('phone')
-                if result_phone is None:
-                    result_phone = ''
-
-                # Обновляем данные в памяти
+                # точечно обновляем локальный список из ответа PATCH
                 for i, org in enumerate(self.organizations):
                     if org.get('id') == org_id:
-                        self.organizations[i].update({
-                            'name': result.get('name', result.get('full_name', '')),
-                            'full_name': result.get('full_name', ''),
-                            'short_name': result.get('short_name', ''),
-                            'unp': result.get('unp', ''),
-                            'address': result.get('address', ''),
-                            'phone': str(result_phone),
-                            'phone_number': str(result_phone),
-                            'email': result.get('email', ''),
-                            'director': result.get('director', ''),
-                            'smdo_code': result.get('smdo_code', ''),
-                            'is_subscriber': result.get('is_subscriber', False)
-                        })
+                        self.organizations[i] = self._normalize_org(result)
                         break
 
-                self.update_display()
+                self.update_display()   # без GET /org
                 self.show_success_notification(f"Организация «{result.get('name')}» обновлена")
+                self._emit_self_change(org_id)
             else:
                 self.show_error_notification("Не удалось обновить организацию")
 
@@ -556,39 +494,34 @@ class OrganizationsPage(QWidget):
                 self.show_error_notification("Не удалось обновить организацию")
 
     def on_delete_org(self, org_id: int):
-        """Обработка удаления организации"""
         org_name = "Неизвестная организация"
         for org in self.organizations:
             if org.get('id') == org_id:
                 org_name = org.get('name', 'Неизвестная организация')
                 break
 
-        # Используем DeleteDialog
         from client.windows.system.delete_dialog import DeleteDialog
         if DeleteDialog.show_confirmation(self):
             self._delete_organization(org_id, org_name)
 
     def _delete_organization(self, org_id: int, org_name: str):
-        """Удаление организации"""
         try:
-            success = self.org_service.delete_organization(org_id)
-
-            if success:
-                self.organizations = [org for org in self.organizations if org.get('id') != org_id]
-                self.update_display()
-                self.show_success_notification(f"Организация «{org_name}» удалена")
-            else:
-                self.show_error_notification("Не удалось удалить организацию")
-
+            self.org_service.delete_organization(org_id)
         except Exception as e:
-            import logging
-            logging.error(f"Ошибка удаления организации: {e}")
-            if "401" in str(e) or "AuthError" in str(e):
-                self.show_error_notification("Сессия истекла. Войдите заново.")
+            msg = str(e).lower()
+            if "404" in msg or "не найдена" in msg:
+                print(f"[INFO] DELETE org {org_id}: уже не существует на сервере")
             else:
-                self.show_error_notification("Не удалось удалить организацию")
+                print(f"[ERROR] DELETE org {org_id}: {e}")
+                self.show_error_notification(f"Не удалось удалить: {e}")
+                return
 
-    # ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+        self.organizations = [o for o in self.organizations if o.get('id') != org_id]
+        self.update_display()
+        self.show_success_notification(f"Организация «{org_name}» удалена")
+        self._emit_self_change(org_id)
+
+    # ==================== ВСПОМОГАТЕЛЬНЫЕ ====================
 
     def position_floating_button(self):
         if hasattr(self, 'floating_btn'):
@@ -606,7 +539,6 @@ class OrganizationsPage(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.position_floating_button()
-
         if hasattr(self, 'notification_manager'):
             self.notification_manager.container.setGeometry(
                 0, 0, self.width(), self.height()
@@ -619,7 +551,6 @@ class OrganizationsPage(QWidget):
         return self.filtered_orgs.copy()
 
 
-# Для тестирования
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
@@ -629,7 +560,6 @@ if __name__ == "__main__":
     window.setGeometry(100, 100, 1000, 700)
 
     orgs_page = OrganizationsPage()
-
     layout = QVBoxLayout(window)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.addWidget(orgs_page)

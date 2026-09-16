@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>934</width>
-    <height>150</height>
+    <height>130</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -19,7 +19,7 @@
   <property name="maximumSize">
    <size>
     <width>16777215</width>
-    <height>150</height>
+    <height>16777215</height>
    </size>
   </property>
   <property name="styleSheet">
@@ -69,6 +69,18 @@
        </property>
        <item>
         <widget class="QLabel" name="nameLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>18</height>
+          </size>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 16px; font-weight: bold; color: #212529; background-color: transparent;</string>
          </property>
@@ -79,6 +91,18 @@
        </item>
        <item>
         <widget class="QLabel" name="unpLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>15</height>
+          </size>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; font-weight: 500; color: #CCAB6E; background-color: transparent;</string>
          </property>
@@ -89,6 +113,18 @@
        </item>
        <item>
         <widget class="QLabel" name="addressLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>15</height>
+          </size>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; color: #495057; background-color: transparent;</string>
          </property>
@@ -99,6 +135,12 @@
        </item>
        <item>
         <widget class="QLabel" name="phoneLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; color: #495057; background-color: transparent;</string>
          </property>
@@ -109,6 +151,18 @@
        </item>
        <item>
         <widget class="QLabel" name="emailLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>15</height>
+          </size>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 14px; color: #495057; background-color: transparent;</string>
          </property>
@@ -119,6 +173,18 @@
        </item>
        <item>
         <widget class="QLabel" name="directorLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>15</height>
+          </size>
+         </property>
          <property name="styleSheet">
           <string notr="true">border: none; font-size: 12px; font-weight: bold; color: #7A6A50; background-color: transparent;</string>
          </property>

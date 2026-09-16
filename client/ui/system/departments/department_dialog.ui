@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>580</width>
-    <height>499</height>
+    <width>571</width>
+    <height>525</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>0</width>
+    <height>525</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Отдел</string>
@@ -112,12 +118,13 @@ QScrollBar::sub-page:horizontal {
 QComboBox {
     border: 1px solid #dee2e6;
     border-radius: 6px;
-    padding: 8px;
+    padding: 6px;
     padding-right: 30px;
     background-color: white;
     color: #1B232A;
     font-size: 13px;
     outline: none;
+    min-height: 22px;
 }
 
 QComboBox:hover {
@@ -168,14 +175,50 @@ QComboBox QAbstractItemView::item:selected {
     color: #1B232A;
 }
 
+/* ===== СТИЛИ ДЛЯ QDateEdit ===== */
+QDateEdit {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 6px;
+    padding-right: 30px;
+    background-color: white;
+    color: #1B232A;
+    font-size: 13px;
+    outline: none;
+    min-height: 22px;
+}
+
+QDateEdit:hover {
+    border-color: #ccab6e;
+}
+
+QDateEdit:focus {
+    border: 2px solid #ccab6e;
+}
+
+QDateEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+}
+
+QDateEdit::down-arrow {
+    image: url(D:/Documents/client/icons/calendar_date.svg);
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+}
+
 /* ===== СТИЛИ ДЛЯ QLineEdit ===== */
 QLineEdit {
     border: 1px solid #dee2e6;
     border-radius: 6px;
-    padding: 8px;
+    padding: 6px;
     background-color: white;
     color: #1B232A;
     font-size: 13px;
+    min-height: 22px;
 }
 
 QLineEdit:hover {
@@ -184,6 +227,214 @@ QLineEdit:hover {
 
 QLineEdit:focus {
     border: 2px solid #ccab6e;
+}
+
+/* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ QCalendarWidget ===== */
+QCalendarWidget {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #CCAB6E;
+}
+
+QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background-color: white;
+    color: #1B232A;
+    border-radius: 8px 8px 0 0;
+}
+
+QCalendarWidget QWidget {
+    background-color: white;
+    color: #1B232A;
+}
+
+QCalendarWidget QToolButton#qt_calendar_prevmonth,
+QCalendarWidget QToolButton#qt_calendar_nextmonth {
+    background-color: transparent;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
+QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
+    background-color: #e3f2fd;
+}
+
+QCalendarWidget QToolButton#qt_calendar_monthbutton,
+QCalendarWidget QToolButton#qt_calendar_yearbutton {
+    background-color: white;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QCalendarWidget QToolButton#qt_calendar_monthbutton:hover,
+QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
+    background-color: #e3f2fd;
+}
+
+QCalendarWidget QMenu {
+    background-color: white;
+    border: 1px solid #CCAB6E;
+    border-radius: 6px;
+    color: #1B232A;
+}
+
+QCalendarWidget QMenu::item {
+    padding: 6px 20px;
+    border-radius: 4px;
+}
+
+QCalendarWidget QMenu::item:selected {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+QCalendarWidget QWidget#qt_calendar_weekday {
+    color: white;
+    font-weight: bold;
+    background-color: #CCAB6E;
+    padding: 4px;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day {
+    border: none;
+    border-radius: 4px;
+    padding: 4px;
+    color: #1B232A;
+    background-color: transparent;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:hover {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:checked {
+    background-color: #CCAB6E;
+    color: white;
+    border-radius: 4px;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
+    background-color: #998664;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:disabled {
+    color: #B0B0B0;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;] {
+    background-color: #D22730;
+    color: white;
+    border-radius: 4px;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:hover {
+    background-color: #862633;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked {
+    background-color: #CCAB6E;
+    color: white;
+}
+
+/* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ В ПОПАПЕ QDateEdit ===== */
+QDateEdit QCalendarWidget {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #CCAB6E;
+}
+
+QDateEdit QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background-color: white;
+    color: #1B232A;
+    border-radius: 8px 8px 0 0;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth {
+    background-color: transparent;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
+    background-color: #e3f2fd;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton {
+    background-color: white;
+    color: #1B232A;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton:hover,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
+    background-color: #e3f2fd;
+}
+
+QDateEdit QCalendarWidget QWidget#qt_calendar_weekday {
+    color: white;
+    font-weight: bold;
+    background-color: #CCAB6E;
+    padding: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day {
+    border: none;
+    border-radius: 4px;
+    padding: 4px;
+    color: #1B232A;
+    background-color: transparent;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:hover {
+    background-color: #e3f2fd;
+    color: #1B232A;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked {
+    background-color: #CCAB6E;
+    color: white;
+    border-radius: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
+    background-color: #998664;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:disabled {
+    color: #B0B0B0;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;] {
+    background-color: #D22730;
+    color: white;
+    border-radius: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:hover {
+    background-color: #862633;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked {
+    background-color: #CCAB6E;
+    color: white;
 }
 
 /* ===== СТИЛИ ДЛЯ QGroupBox ===== */
@@ -237,6 +488,18 @@ QPushButton#saveButton:pressed {
    </property>
    <item>
     <widget class="QLabel" name="titleLabel">
+     <property name="minimumSize">
+      <size>
+       <width>530</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>530</width>
+       <height>16777215</height>
+      </size>
+     </property>
      <property name="styleSheet">
       <string>font-size: 22px; font-weight: bold; color: #1B232A; margin-bottom: 10px;</string>
      </property>
@@ -329,8 +592,8 @@ QScrollBar::sub-page:horizontal {
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>540</width>
-        <height>349</height>
+        <width>531</width>
+        <height>375</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="scrollLayout">
@@ -385,7 +648,7 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -414,7 +677,7 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -422,9 +685,6 @@ QScrollBar::sub-page:horizontal {
               <width>16777215</width>
               <height>32</height>
              </size>
-            </property>
-            <property name="styleSheet">
-             <string notr="true">background-color: transparent;</string>
             </property>
             <property name="placeholderText">
              <string>Выберите организацию</string>
@@ -446,7 +706,7 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -475,7 +735,7 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -504,7 +764,7 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -533,7 +793,7 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -562,7 +822,7 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>32</height>
+              <height>36</height>
              </size>
             </property>
             <property name="maximumSize">

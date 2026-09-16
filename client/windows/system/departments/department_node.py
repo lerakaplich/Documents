@@ -204,7 +204,7 @@ class DepartmentNode(QWidget):
         self.contentWidget.setMaximumHeight(16777215)
 
         if self._loading_widget is None:
-            self._loading_widget = QLabel("⏳ Загрузка...")
+            self._loading_widget = QLabel("Загрузка...")
             self._loading_widget.setStyleSheet(
                 "QLabel { color: #6C757D; font-style: italic; padding: 8px 12px; "
                 "background: transparent; border: none; }"

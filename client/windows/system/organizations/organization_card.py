@@ -20,6 +20,15 @@ class OrganizationCard(QFrame):
         ui_path = self.get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            from PyQt6.QtWidgets import QSizePolicy
+            from PyQt6.QtCore import Qt
+
+            labels = [self.nameLabel, self.unpLabel, self.addressLabel,
+                      self.phoneLabel, self.emailLabel, self.directorLabel]
+
+            for lbl in labels:
+                lbl.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+                lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         else:
             raise FileNotFoundError(f"UI файл не найден: {ui_path}")
 
