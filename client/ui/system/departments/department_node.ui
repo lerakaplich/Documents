@@ -57,15 +57,15 @@
      </property>
      <property name="styleSheet">
       <string notr="true">
-       QFrame#headerFrame {
-           background-color: white;
-           border: 1px solid #DEE2E6;
-           border-radius: 8px;
-       }
-       QFrame#headerFrame:hover {
-           background-color: #FDFBF7;
-           border: 1px solid #CCAB6E;
-       }
+QFrame#headerFrame {
+    background-color: {BG_CARD};
+    border: 1px solid {BORDER_DEFAULT};
+    border-radius: 8px;
+}
+QFrame#headerFrame:hover {
+    background-color: {BG_HOVER_ACCENT_SOFT};
+    border: 1px solid {ACCENT_PRIMARY};
+}
       </string>
      </property>
      <layout class="QHBoxLayout" name="headerLayout">
@@ -103,15 +103,15 @@
         </property>
         <property name="styleSheet">
          <string notr="true">
-          QToolButton {
-              border: none;
-              background: transparent;
-              color: #6c757d;
-              font-size: 16px;
-          }
-          QToolButton:hover {
-              color: #D22730;
-          }
+QToolButton {
+    border: none;
+    background: transparent;
+    color: {TEXT_MUTED_ALT};
+    font-size: 16px;
+}
+QToolButton:hover {
+    color: {ACCENT_DANGER};
+}
          </string>
         </property>
         <property name="text">
@@ -125,7 +125,7 @@
       <item>
        <widget class="QLabel" name="nameLabel">
         <property name="styleSheet">
-         <string notr="true">border: none; font-size: 15px; font-weight: bold; color: #212529; background: transparent;</string>
+         <string notr="true">border: none; font-size: 15px; font-weight: bold; color: {TEXT_DARK_STRONG}; background: transparent;</string>
         </property>
         <property name="text">
          <string>Название отдела</string>
@@ -135,7 +135,7 @@
       <item>
        <widget class="QLabel" name="typeLabel">
         <property name="styleSheet">
-         <string notr="true">border: none; font-size: 13px; color: #6c757d; background: transparent;</string>
+         <string notr="true">border: none; font-size: 13px; color: {TEXT_MUTED_ALT}; background: transparent;</string>
         </property>
         <property name="text">
          <string>Тип</string>
@@ -158,7 +158,7 @@
       <item>
        <widget class="QLabel" name="codeLabel">
         <property name="styleSheet">
-         <string notr="true">border: none; font-size: 12px; color: #7A6A50; background: transparent; font-weight: bold;</string>
+         <string notr="true">border: none; font-size: 12px; color: {TEXT_ACCENT_DARK}; background: transparent; font-weight: bold;</string>
         </property>
         <property name="text">
          <string>Код: RND-001</string>

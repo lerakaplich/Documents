@@ -13,6 +13,7 @@ from client.core.config import config
 from client.core.http_client import HttpClient
 from client.core.state.app_state import AppState
 from client.core.state.data_events import get_data_events
+from client.core.themes import get_menu_style, T, apply_theme_to_widget
 from client.services.department_service import get_department_service
 from client.windows.animations.floating_action_button import FloatingActionButton
 from client.windows.animations.animated_notification import NotificationManager
@@ -73,6 +74,7 @@ class DepartmentPage(QWidget):
         ui_path = self.get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
 
         if hasattr(self, 'scrollAreaLayout'):
             self.scrollAreaLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -229,7 +231,7 @@ class DepartmentPage(QWidget):
 
         header = QLabel(f"Результаты поиска: {len(self._search_results)}")
         header.setStyleSheet(
-            "font-size: 14px; font-weight: bold; color: #1B232A; padding: 6px 2px;"
+            f"font-size: 14px; font-weight: bold; color: {T.TEXT_PRIMARY}; padding: 6px 2px;"
         )
         self.scrollAreaLayout.addWidget(header)
 
@@ -382,7 +384,7 @@ class DepartmentPage(QWidget):
     def _add_empty(self, text):
         empty = QLabel(text)
         empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        empty.setStyleSheet("color: #999; font-size: 16px; padding: 40px;")
+        empty.setStyleSheet(f"color: {T.TEXT_TERTIARY}; font-size: 16px; padding: 40px;")
         self.scrollAreaLayout.addWidget(empty)
 
     def clear_layout(self, layout):
@@ -419,12 +421,7 @@ class DepartmentPage(QWidget):
 
     def show_sort_menu(self):
         menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu { background-color: white; border: 1px solid #c0c0c0;
-                    border-radius: 5px; padding: 5px; color: black; }
-            QMenu::item { padding: 8px 25px 8px 15px; border-radius: 3px; font-size: 14px; }
-            QMenu::item:selected { background-color: #e3f2fd; }
-        """)
+        menu.setStyleSheet(get_menu_style())
         for name in ["А→Я (по названию)", "Я→А (по названию)"]:
             action = menu.addAction(name)
             action.triggered.connect(lambda _c, n=name: self._apply_sort(n))

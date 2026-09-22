@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QObject
 from PyQt6.QtGui import QAction, QFont
 import os
 
+from client.core.themes import T
 from client.windows.documents.table.widgets.hashtag_widget import HashtagWidget
 import logging
 logger = logging.getLogger("AppDebug")
@@ -75,14 +76,14 @@ class ElidedLabel(QLabel):
             QSizePolicy.Policy.Preferred
         )
         self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.setStyleSheet("""
-            QLabel {
+        self.setStyleSheet(f"""
+            QLabel {{
                 background-color: transparent;
                 border: none;
-                color: #1B232A;
+                color: {T.TEXT_BLACK};
                 font-size: 12px;
                 padding: 4px 6px;
-            }
+            }}
         """)
 
     def set_full_text(self, text):

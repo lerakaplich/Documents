@@ -6,6 +6,8 @@ from PyQt6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget, QHBoxLay
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.uic import loadUi
 
+from client.core.themes import T, apply_theme_to_widget
+
 
 class DocumentTypeCard(QFrame):
     """Карточка типа документа на основе загруженного UI файла"""
@@ -21,6 +23,7 @@ class DocumentTypeCard(QFrame):
         ui_path = self.get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
         else:
             print(f"UI файл не найден: {ui_path}")
             # Создаем заглушку, если файл не найден
@@ -45,6 +48,7 @@ class DocumentTypeCard(QFrame):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         # Поднимаемся на уровень выше до client/windows/system/document_types/
         ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'document_types', 'document_type_card.ui')
+
         return os.path.normpath(ui_path)
 
     def setup_card(self):
@@ -67,10 +71,14 @@ class DocumentTypeCard(QFrame):
             auto_num = self.doc_type_data.get('auto_numbering', False)
             if auto_num:
                 self.autoNumLabel.setText("✓ Автонумерация включена")
-                self.autoNumLabel.setStyleSheet("border: none; font-size: 11px; color: #28A745;")
+                self.autoNumLabel.setStyleSheet(
+                    f"border: none; font-size: 11px; color: {T.TEXT_SUCCESS};"
+                )
             else:
                 self.autoNumLabel.setText("✗ Автонумерация отключена")
-                self.autoNumLabel.setStyleSheet("border: none; font-size: 11px; color: #DC3545;")
+                self.autoNumLabel.setStyleSheet(
+                    f"border: none; font-size: 11px; color: {T.TEXT_DANGER};"
+                )
 
         # Заполняем количество документов
         if hasattr(self, 'docsCountLabel'):

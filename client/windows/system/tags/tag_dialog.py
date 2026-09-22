@@ -13,6 +13,7 @@ from PyQt6.QtGui import QColor
 from PyQt6.QtCore import Qt
 from PyQt6.uic import loadUi
 
+from client.core.themes import apply_theme_to_widget
 from client.windows.system.tags.color_picker_dialog import ColorPickerDialog
 
 
@@ -75,6 +76,8 @@ class TagDialog(QDialog):
             raise FileNotFoundError(f"UI file not found: {ui_path}")
 
         loadUi(ui_path, self)
+
+        apply_theme_to_widget(self)
 
     def _setup_connections(self):
         """Настраивает сигналы и слоты"""

@@ -10,6 +10,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.uic import loadUi
 
 from client.core.data.document_data import DocumentDataConfig
+from client.core.themes import apply_theme_to_widget, T, get_manager
 from client.windows.left_panel.direction_group import DirectionGroup
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -40,9 +41,15 @@ class LeftPanel(QWidget):
         # Загружаем UI
         ui_path = os.path.join(ROOT_DIR, "ui", "left_panel.ui")
         if os.path.exists(ui_path):
+            self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # ← ДО loadUi
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
+            from client.core.themes import get_manager
+            _t = get_manager().current
+            self.setStyleSheet(
+                f"QWidget#LeftPanel {{ background-color: {_t.SIDEBAR_BG}; }}"
+            )
 
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         # Настройка иконок для всех кнопок (унифицированный размер 20x20)
         self.setup_icons()
@@ -169,90 +176,90 @@ class LeftPanel(QWidget):
             button.setIconSize(icon_size)
 
     def _get_button_style(self):
-        return """
-                QPushButton {
-                    background-color: transparent;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    padding: 8px 12px;
-                    font-size: 14px;
-                    font-weight: bold;
-                    text-align: left;
-                }
-                QPushButton:hover {
-                    background-color: #3A4A54;
-                    color: #DDB87A;
-                }
-                QPushButton::icon {
-                    width: 20px;
-                    height: 20px;
-                }
-            """
+        return f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {T.SIDEBAR_TEXT};
+                border: none;
+                border-radius: 5px;
+                padding: 8px 12px;
+                font-size: 14px;
+                font-weight: bold;
+                text-align: left;
+            }}
+            QPushButton:hover {{
+                background-color: {T.SIDEBAR_HOVER_BG};
+                color: {T.SIDEBAR_HOVER_TEXT};
+            }}
+            QPushButton::icon {{
+                width: 20px;
+                height: 20px;
+            }}
+        """
 
     def _get_collapse_button_style(self):
-        return """
-                QPushButton {
-                    background-color: #2A3A44;
-                    color: #DDB87A;
-                    border: none;
-                    border-radius: 5px;
-                    padding: 8px 12px;
-                    font-size: 12px;
-                    text-align: center;
-                }
-                QPushButton:hover {
-                    background-color: #3A4A54;
-                }
-                QPushButton::icon {
-                    width: 20px;
-                    height: 20px;
-                }
-            """
+        return f"""
+            QPushButton {{
+                background-color: {T.SIDEBAR_DIVIDER};
+                color: {T.SIDEBAR_HOVER_TEXT};
+                border: none;
+                border-radius: 5px;
+                padding: 8px 12px;
+                font-size: 12px;
+                text-align: center;
+            }}
+            QPushButton:hover {{
+                background-color: {T.SIDEBAR_HOVER_BG};
+            }}
+            QPushButton::icon {{
+                width: 20px;
+                height: 20px;
+            }}
+        """
 
     def _get_compact_button_style(self):
-        return """
-                QPushButton {
-                    background-color: transparent;
-                    color: #DDB87A;
-                    border: none;
-                    border-radius: 5px;
-                    padding: 10px;
-                    font-size: 20px;
-                    text-align: center;
-                    min-height: 42px;
-                }
-                QPushButton:hover {
-                    background-color: #3A4A54;
-                }
-                QPushButton::icon {
-                    width: 24px;
-                    height: 24px;
-                }
-            """
+        return f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {T.SIDEBAR_HOVER_TEXT};
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 20px;
+                text-align: center;
+                min-height: 42px;
+            }}
+            QPushButton:hover {{
+                background-color: {T.SIDEBAR_HOVER_BG};
+            }}
+            QPushButton::icon {{
+                width: 24px;
+                height: 24px;
+            }}
+        """
 
     def _get_compact_logout_style(self):
-        return """
-                QPushButton {
-                    background-color: transparent;
-                    color: #DDB87A;
-                    border: none;
-                    border-radius: 5px;
-                    padding: 10px;
-                    text-align: center;
-                    min-height: 42px;
-                }
-                QPushButton:hover {
-                    background-color: #3A4A54;
-                }
-                QPushButton QIcon {
-                    padding: 8px;
-                }
-                QPushButton::icon {
-                    width: 24px;
-                    height: 24px;
-                }
-            """
+        return f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {T.SIDEBAR_HOVER_TEXT};
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                text-align: center;
+                min-height: 42px;
+            }}
+            QPushButton:hover {{
+                background-color: {T.SIDEBAR_HOVER_BG};
+            }}
+            QPushButton QIcon {{
+                padding: 8px;
+            }}
+            QPushButton::icon {{
+                width: 24px;
+                height: 24px;
+            }}
+        """
 
     def setup_buttons(self):
         if hasattr(self, 'profileBtn'):
@@ -291,7 +298,11 @@ class LeftPanel(QWidget):
             self.groups_layout = QVBoxLayout(self.groups_container)
             self.groups_layout.setSpacing(10)
             self.groups_layout.setContentsMargins(0, 0, 0, 0)
-
+            _t = get_manager().current
+            for w in (self.scrollArea, self.scrollArea.widget(), self.groups_container):
+                if w:
+                    w.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+                    w.setStyleSheet(f"background-color: {_t.SIDEBAR_BG};")
             # Добавляем в начало scroll_layout
             scroll_layout.insertWidget(0, self.groups_container)
 
@@ -345,24 +356,24 @@ class LeftPanel(QWidget):
                 self.hidePanelBtn.setIconSize(QSize(20, 20))
             else:
                 self.hidePanelBtn.setText("")
-                self.hidePanelBtn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                color: #DDB87A;
-                border: none;
-                border-radius: 5px;
-                padding: 10px;
-                text-align: center;
-                min-height: 42px;
-            }
-            QPushButton:hover {
-                background-color: #3A4A54;
-            }
-            QPushButton::icon {
-                width: 24px;
-                height: 24px;
-            }
-        """)
+                self.hidePanelBtn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: transparent;
+                        color: {T.SIDEBAR_HOVER_TEXT};
+                        border: none;
+                        border-radius: 5px;
+                        padding: 10px;
+                        text-align: center;
+                        min-height: 42px;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {T.SIDEBAR_HOVER_BG};
+                    }}
+                    QPushButton::icon {{
+                        width: 24px;
+                        height: 24px;
+                    }}
+                """)
                 self.hidePanelBtn.setIconSize(QSize(24, 24))
 
         # Главное — скрываем только содержимое групп

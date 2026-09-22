@@ -13,6 +13,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
 
 from client.core.state.data_events import get_data_events
+from client.core.themes import T, get_menu_style, apply_theme_to_widget
 from client.windows.system.departments.api_task import ApiTask, TaskKeeper
 from client.windows.system.organizations.organization_card import OrganizationCard
 from client.windows.system.organizations.organization_dialog import OrganizationDialog
@@ -73,6 +74,7 @@ class OrganizationsPage(QWidget):
         ui_path = self.get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
 
         self.floating_btn = FloatingActionButton(self)
         self.floating_btn.clicked.connect(self.on_add_org)
@@ -201,17 +203,7 @@ class OrganizationsPage(QWidget):
 
     def show_sort_menu(self):
         menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu { 
-                background-color: white; 
-                border: 1px solid #c0c0c0; 
-                border-radius: 5px; 
-                padding: 5px; 
-                color: black;
-            }
-            QMenu::item { padding: 8px 25px 8px 15px; border-radius: 3px; font-size: 14px; }
-            QMenu::item:selected { background-color: #e3f2fd; }
-        """)
+        menu.setStyleSheet(get_menu_style())
 
         sort_options = {
             "А→Я (по названию)": self.sort_by_name_asc,
@@ -326,7 +318,9 @@ class OrganizationsPage(QWidget):
         if not self.filtered_orgs:
             empty_label = QLabel("Нет организаций")
             empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_label.setStyleSheet("color: #6c757d; font-size: 16px; padding: 40px;")
+            empty_label.setStyleSheet(
+                f"color: {T.TEXT_MUTED_ALT}; font-size: 16px; padding: 40px;"
+            )
             self.orgsLayout.addWidget(empty_label)
             self.position_floating_button()
             return
@@ -522,6 +516,13 @@ class OrganizationsPage(QWidget):
         self._emit_self_change(org_id)
 
     # ==================== ВСПОМОГАТЕЛЬНЫЕ ====================
+
+    def _emit_self_change(self, org_id: int = 0):
+        self._self_change_in_progress = True
+        try:
+            self.data_events.organizations_changed.emit(org_id)
+        finally:
+            self._self_change_in_progress = False
 
     def position_floating_button(self):
         if hasattr(self, 'floating_btn'):

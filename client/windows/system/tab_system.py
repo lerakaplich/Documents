@@ -10,6 +10,7 @@ from PyQt6 import uic
 
 from client.core import http_client
 from client.core.state.app_state import AppState
+from client.core.themes import apply_theme_to_widget
 from client.windows.animations.collapsible_group import CollapsibleGroup
 from client.windows.system.departments.department_card import DepartmentCard
 from client.windows.system.departments.department_page import DepartmentPage
@@ -56,6 +57,7 @@ class SystemTab(QWidget):
         )
 
         uic.loadUi(ui_file_path, self)
+        apply_theme_to_widget(self)
 
         self.tabWidget = self.findChild(QTabWidget, "tabWidget")
 

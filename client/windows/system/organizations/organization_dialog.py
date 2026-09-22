@@ -5,6 +5,8 @@ import sys
 from PyQt6 import uic
 from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox
 
+from client.core.themes import apply_theme_to_widget
+
 
 def load_ui(ui_filename):
     """Загружает UI файл из стандартной структуры папок"""
@@ -32,7 +34,9 @@ class OrganizationDialog(QDialog):
         try:
             # Загружаем UI
             ui_path = load_ui('organization_dialog.ui')
+
             uic.loadUi(ui_path, self)
+            apply_theme_to_widget(self)
         except Exception as e:
             print(f"Ошибка загрузки UI: {e}")
             raise

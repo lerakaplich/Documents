@@ -2,6 +2,8 @@ from PyQt6 import QtWidgets, QtCore, uic
 import os
 import sys
 
+from client.core.themes import apply_theme_to_widget, T, get_message_box_style
+
 
 class EmailEditWindow(QtWidgets.QDialog):
     """Стильное окно редактирования email в стиле профиля"""
@@ -14,6 +16,7 @@ class EmailEditWindow(QtWidgets.QDialog):
         # Загружаем UI из файла
         ui_path = os.path.join(os.path.dirname(__file__), "../../../ui/profile/user_data/email_edit_window.ui")
         uic.loadUi(ui_path, self)
+        apply_theme_to_widget(self)          # ← добавить
 
         # Устанавливаем текущий email
         self.emailInput.setText(current_email)
@@ -32,19 +35,7 @@ class EmailEditWindow(QtWidgets.QDialog):
             msg_box = QtWidgets.QMessageBox(self)
             msg_box.setWindowTitle("Ошибка")
             msg_box.setText("Введите корректный email адрес (с @)")
-            msg_box.setStyleSheet("""
-                QMessageBox {
-                    background-color: white;
-                    color: black;
-                }
-                QMessageBox QLabel {
-                    color: black;
-                    background-color: transparent;
-                }
-                QMessageBox QPushButton {
-                    color: black;
-                }
-            """)
+            msg_box.setStyleSheet(get_message_box_style())
             msg_box.exec()
             return
 

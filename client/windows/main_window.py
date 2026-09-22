@@ -22,7 +22,6 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         try:
-
             print("Инициализация MainWindow...")
             self.http_client = AppState().http_client
 
@@ -31,20 +30,29 @@ class MainWindow(QMainWindow):
 
             self.setup_app_style()
 
+            # ── Тема (нужна и ниже) ──
+            from client.core.themes import get_manager
+            _t = get_manager().current
+
             # Центральный виджет
             central_widget = QWidget()
             self.setCentralWidget(central_widget)
+
 
             layout = QHBoxLayout(central_widget)
             layout.setContentsMargins(0, 0, 0, 0)
             layout.setSpacing(0)
 
-            # Создаем панели
             print("Создание LeftPanel...")
             self.left_panel = LeftPanel()
             print("✓ LeftPanel создан успешно")
 
             self.content_stack = QStackedWidget()
+            # ← убираем повторный импорт и присваивание _t — уже есть выше
+            self.content_stack.setStyleSheet(
+                f"QStackedWidget {{ background-color: {_t.BG_DIALOG_ALT}; }}"
+            )
+
 
             print("Создание DocumentsPanel...")
             self.documents_panel = DocumentsPanel()
@@ -88,30 +96,22 @@ class MainWindow(QMainWindow):
             raise
 
     def setup_app_style(self):
-        """Устанавливает общий стиль приложения"""
-        self.setStyleSheet("""
-            QMainWindow { background-color: #F8F9FA; }
-            QStatusBar { background-color: #2c3e50; color: white; }
-            QScrollArea { border: none; background-color: transparent; }
-            QScrollBar:vertical {
-                border: none;
-                background: #2c3e50;
-                width: 10px;
-                margin: 0px;
-            }
-            QScrollBar::handle:vertical {
-                background: #5a6e7a;
-                border-radius: 5px;
-                min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #6b8595;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                border: none;
-                background: none;
-            }
+        from client.core.themes import get_manager
+        t = get_manager().current
+        self.setStyleSheet(f"""
+            QMainWindow {{
+                background-color: {t.BG_DIALOG_ALT};
+            }}
+            QStatusBar {{
+                background-color: {t.SIDEBAR_BG};
+                color: {t.SIDEBAR_TEXT};
+            }}
+            
         """)
+
+    def reapply_theme(self):
+        """Переприменить стили MainWindow к актуальной теме."""
+        self.setup_app_style()
 
     def setup_connections(self):
         """Настройка связей между панелями"""

@@ -17,38 +17,34 @@ class EmployeeSelection:
             return True
         return False
 
-
     @staticmethod
     def apply_checkbox_styles(dialog: QDialog, root_dir: str):
-        """Применяет стили для чекбоксов с иконками"""
-        images_dir = os.path.join(root_dir, "icons").replace("\\", "/")
+        """Применяет стили для чекбоксов с иконками темы."""
+        from client.core.themes import get_manager
+        from client.core.themes.icon_utils import icon_path
+
+        _t = get_manager().current
+        checked = icon_path("cb_checked", _t.ICON_COLOR)
+        unchecked = icon_path("cb_unchecked", _t.ICON_COLOR)
+        partial = icon_path("cb_partial", _t.ICON_COLOR)
 
         if hasattr(dialog, 'treeWidget'):
-
-
-            # Добавляем стили для чекбоксов
             checkbox_style = f"""
                 QTreeWidget::indicator {{
-                    width: 18px;
-                    height: 18px;
+                    width: 18px; height: 18px;
                 }}
                 QTreeWidget::indicator:unchecked {{
-                    image: url('{images_dir}/cb_unchecked.svg');
+                    image: url({unchecked});
                 }}
                 QTreeWidget::indicator:checked {{
-                    image: url('{images_dir}/cb_checked.svg');
+                    image: url({checked});
                 }}
                 QTreeWidget::indicator:indeterminate {{
-                    image: url('{images_dir}/cb_partial.svg');
+                    image: url({partial});
                 }}
             """
-
-            # Если есть существующий стиль, добавляем к нему
             current_style = dialog.treeWidget.styleSheet() or ""
-            if current_style:
-                dialog.treeWidget.setStyleSheet(current_style + checkbox_style)
-            else:
-                dialog.treeWidget.setStyleSheet(checkbox_style)
+            dialog.treeWidget.setStyleSheet(current_style + checkbox_style)
 
     @staticmethod
     def get_ui_path() -> str:

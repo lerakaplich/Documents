@@ -2,6 +2,7 @@ from datetime import date
 from PyQt6.QtCore import QDate
 from PyQt6.QtWidgets import QMessageBox
 
+from client.core.themes import T
 from client.windows.animations.animated_notification import NotificationManager
 from client.windows.period_dialog import PeriodDialog
 
@@ -65,42 +66,36 @@ class OvertimePeriodManager:
             start_short = start[:-2] + start[-2:]
             end_short = end[:-2] + end[-2:]
             button.setText(f"{start_short} - {end_short}")
-            button.setStyleSheet("""
-                QPushButton {
+            button.setStyleSheet(f"""
+                QPushButton {{
                     border: none;
                     border-radius: 8px;
                     font-weight: bold;
                     padding: 0px 16px;
-                    color: #ccab6e;
+                    color: {T.ACCENT_PRIMARY};
                     font-size: 13px;
                     background-color: transparent;
-                }
-                QPushButton:hover {
-                    background-color: #f0f0f0;
-                }
-                QPushButton:pressed {
-                    background-color: #e0e0e0;
-                }
+                }}
+                QPushButton:hover {{ background-color: {T.BG_HOVER_LIGHT}; }}
+                QPushButton:pressed {{ background-color: {T.BG_PRESSED_LIGHT}; }}
             """)
         else:
             button.setText("Выбрать период")
-            button.setStyleSheet("""
-                QPushButton {
+            button.setStyleSheet(f"""
+                QPushButton {{
                     border: none;
                     border-radius: 8px;
                     font-weight: bold;
                     padding: 0px 16px;
-                    color: white;
-                    background-color: #1B232A;
+                    color: {T.TEXT_ON_ACCENT};
+                    background-color: {T.BTN_DARK_BG};
                     font-size: 13px;
-                }
-                QPushButton:hover {
-                    background-color: #D9D9D6;
-                    color: black;
-                }
-                QPushButton:pressed {
-                    background-color: #B8B8B5;
-                }
+                }}
+                QPushButton:hover {{
+                    background-color: {T.BTN_DARK_HOVER_BG};
+                    color: {T.TEXT_BLACK};
+                }}
+                QPushButton:pressed {{ background-color: {T.BTN_DARK_PRESSED_BG}; }}
             """)
 
     def show_period_dialog(self, current_period, callback):

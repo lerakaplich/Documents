@@ -5,6 +5,8 @@ from PyQt6.uic import loadUi
 from PyQt6.QtCore import pyqtSignal, Qt
 import os
 
+from client.core.themes import apply_theme_to_widget
+
 
 class DepartmentCard(QFrame):
     """Карточка отдела на основе загруженного UI файла"""
@@ -28,6 +30,7 @@ class DepartmentCard(QFrame):
         ui_path = self.get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
         else:
             print(f"UI файл не найден: {ui_path}")
             # Создаем заглушку, если файл не найден
@@ -50,6 +53,7 @@ class DepartmentCard(QFrame):
         """Возвращает путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
         ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'departments', 'department_card.ui')
+
         return os.path.normpath(ui_path)
 
     def setup_card(self):

@@ -20,31 +20,29 @@
 }
 
 QDialog {
-    background-color: #F5F5F7;
-    color: black;
+    background-color: {BG_DIALOG_ALT};
+    color: {TEXT_BLACK};
 }
 
-/* Белая карточка */
 QFrame#contentFrame {
-    background-color: white;
-    border: 1px solid #E0E0E0;
+    background-color: {BG_CARD};
+    border: 1px solid {ACCENT_PRIMARY};
     border-radius: 12px;
     margin: 6px 8px 6px 8px;
     padding: 16px;
 }
 
-/* Заголовок */
 QLabel#titleLabel {
     font-size: 20px;
     font-weight: bold;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     padding: 10px 0px 10px 0px;
     background-color: transparent;
 }
 
 QLabel#docInfoLabel {
     font-size: 14px;
-    color: #666;
+    color: {TEXT_MUTED};
     background-color: transparent;
     padding-bottom: 8px;
 }
@@ -52,84 +50,71 @@ QLabel#docInfoLabel {
 QLabel#sectionLabel {
     font-size: 14px;
     font-weight: bold;
-    color: #333;
+    color: {TEXT_HEADING};
     background-color: transparent;
     padding-bottom: 4px;
 }
 
-/* Список истории */
 QListWidget#historyListWidget {
-    border: 1px solid #E0E0E0;
+    border: 1px solid {ACCENT_PRIMARY};
     border-radius: 8px;
-    background-color: #FAFAFA;
-    color: black;
+    background-color: {BG_SURFACE_SUBTLE};
+    color: {TEXT_BLACK};
     font-size: 14px;
     padding: 6px 0px;
     outline: 0;
 }
-
 QListWidget#historyListWidget::item {
     padding: 0px;
     margin: 0px;
     background-color: transparent;
 }
-
-QListWidget#historyListWidget::item:selected, 
-QListWidget#historyListWidget::item:hover, 
+QListWidget#historyListWidget::item:selected,
+QListWidget#historyListWidget::item:hover,
 QListWidget#historyListWidget::item:active {
     background-color: transparent;
     border: none;
     outline: none;
 }
 
-/* Кнопка Закрыть */
 QPushButton#closeButton {
-    background-color: #1B232A;
-    color: white;
-    border: none;
+    background-color: {BTN_DARK_BG};
+    color: {TEXT_ON_ACCENT};
+    border: 1px solid {TEXT_ON_ACCENT};
     border-radius: 10px;
     padding: 10px 20px;
     font-size: 16px;
     font-weight: bold;
 }
 QPushButton#closeButton:hover {
-    background-color: #D9D9D6;
-    color: black;
+    background-color: {BTN_DARK_HOVER_BG};
+    color: {TEXT_BLACK};
+    border-color: {TEXT_BLACK};
 }
 QPushButton#closeButton:pressed {
-    background-color: #B8B8B5;
+    background-color: {BTN_DARK_PRESSED_BG};
 }
 
-/* Вертикальная полоса прокрутки */
 QScrollBar:vertical {
-    background: #F5F5F5;
+    background: {SCROLLBAR_BG};
     width: 8px;
     border-radius: 4px;
     margin: 0px;
     border: none;
 }
 QScrollBar::handle:vertical {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-height: 20px;
 }
-QScrollBar::handle:vertical:hover {
-    background: #A0A0A0;
-}
-QScrollBar::handle:vertical:pressed {
-    background: #888888;
-}
+QScrollBar::handle:vertical:hover { background: {SCROLLBAR_HANDLE_HOVER}; }
+QScrollBar::handle:vertical:pressed { background: {SCROLLBAR_HANDLE_PRESSED}; }
 QScrollBar::add-line:vertical,
 QScrollBar::sub-line:vertical {
-    border: none;
-    background: none;
-    width: 0px;
-    height: 0px;
+    border: none; background: none; width: 0px; height: 0px;
 }
 QScrollBar::add-page:vertical,
-QScrollBar::sub-page:vertical {
-    background: none;
-}
+QScrollBar::sub-page:vertical { background: none; }
    </string>
   </property>
   <property name="modal">
@@ -221,7 +206,7 @@ QScrollBar::sub-page:vertical {
            <string notr="true">QLabel {
     font-size: 14px;
     font-weight: bold;
-    color: #333;
+    color: {TEXT_HEADING};
     background-color: transparent;
     padding-bottom: 4px;
 }</string>

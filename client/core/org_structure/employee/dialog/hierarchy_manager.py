@@ -3,7 +3,7 @@
 """
 
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QComboBox, QCheckBox
-
+from client.core.themes import get_manager
 
 class HierarchyManager:
     """Управляет динамической иерархией организаций и подразделений"""
@@ -152,7 +152,7 @@ class HierarchyManager:
 
     def add_leader_checkbox(self):
         """Добавляет чекбокс руководителя после организации"""
-        print("[DEBUG] add_leader_checkbox() вызван")
+        _t = get_manager().current
 
         row_layout = QHBoxLayout()
         row_layout.setSpacing(10)
@@ -160,13 +160,14 @@ class HierarchyManager:
         label = QLabel("")
         label.setMinimumSize(120, 0)
         label.setMaximumSize(120, 16777215)
+        self.leader_checkbox_label = label  # ← сохраняем ссылку
 
         self.leader_checkbox = QCheckBox("Является руководителем организации")
         self.leader_checkbox.setMinimumSize(350, 0)
         self.leader_checkbox.setMaximumSize(350, 16777215)
-        self.leader_checkbox.setStyleSheet("spacing: 8px; color: #1B232A;")
         self.leader_checkbox.setEnabled(False)
         self.leader_checkbox.toggled.connect(self.on_leader_toggled)
+        self._apply_leader_checkbox_style()
 
         row_layout.addWidget(label)
         row_layout.addWidget(self.leader_checkbox)
@@ -174,7 +175,29 @@ class HierarchyManager:
 
         self.leader_checkbox_layout = row_layout
         self.parent.hierarchyLayout.addLayout(row_layout)
-        print("[DEBUG] Чекбокс руководителя добавлен")
+
+    def _apply_leader_checkbox_style(self):
+        """Стиль чекбокса руководителя с иконками темы."""
+        from client.core.themes.icon_utils import icon_path
+        _t = get_manager().current
+
+        checked   = icon_path("cb_checked",   _t.ICON_COLOR)
+        unchecked = icon_path("cb_unchecked", _t.ICON_COLOR)
+
+        self.leader_checkbox.setStyleSheet(f"""
+            QCheckBox {{
+                spacing: 8px;
+                color: {_t.TEXT_PRIMARY};
+                background: transparent;
+            }}
+            QCheckBox::indicator {{
+                width: 18px; height: 18px;
+                image: url({unchecked});
+            }}
+            QCheckBox::indicator:checked {{
+                image: url({checked});
+            }}
+        """)
 
     def add_hierarchy_level(self, level, items, selected_id=None):
         """Добавляет уровень иерархии (вставляет ПЕРЕД чекбоксом)"""
@@ -184,10 +207,13 @@ class HierarchyManager:
         row_layout.setSpacing(10)
 
         level_name = self.get_level_name(level)
+        _t = get_manager().current
         label = QLabel(f"{level_name}:")
         label.setMinimumSize(120, 0)
         label.setMaximumSize(120, 16777215)
-        label.setStyleSheet("color: #1B232A; font-weight: 500;")
+        label.setStyleSheet(
+            f"color: {_t.TEXT_PRIMARY}; font-weight: 500; background: transparent;"
+        )
         label.setProperty("base_text", f"{level_name}:")
 
         combo = QComboBox()
@@ -213,7 +239,7 @@ class HierarchyManager:
                 border: none;
             }
             QComboBox::down-arrow {
-                image: url(D:/Documents/client/icons/down_arrow.svg);
+                image: url({ICON_ARROW_DOWN_PATH});
                 width: 16px;
                 height: 16px;
                 margin-right: 6px;
@@ -505,3 +531,68 @@ class HierarchyManager:
             1: [1],
             2: [5]
         }
+
+    def apply_theme(self):
+        """Перекрасить динамически созданные виджеты (combos, labels, checkbox)."""
+        _t = get_manager().current
+        from client.core.themes.icon_utils import icon_path
+
+        arrow = icon_path("down_arrow", _t.ICON_COLOR)
+
+        for combo, label, level in self.hierarchy_combos:
+            label.setStyleSheet(
+                f"color: {_t.TEXT_PRIMARY}; font-weight: 500; background: transparent;"
+            )
+            combo.setStyleSheet(f"""
+                QComboBox {{
+                    border: 1px solid {_t.BORDER_DEFAULT};
+                    border-radius: 6px;
+                    padding: 6px;
+                    padding-right: 30px;
+                    background-color: {_t.BG_INPUT};
+                    color: {_t.TEXT_PRIMARY};
+                    font-size: 13px;
+                    outline: none;
+                    min-height: 22px;
+                }}
+                QComboBox:hover {{
+                    border-color: {_t.ACCENT_PRIMARY};
+                }}
+                QComboBox:focus {{
+                    border: 2px solid {_t.ACCENT_PRIMARY};
+                }}
+                QComboBox::drop-down {{
+                    subcontrol-origin: padding;
+                    subcontrol-position: top right;
+                    width: 30px;
+                    border: none;
+                }}
+                QComboBox::down-arrow {{
+                    image: url({arrow});
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 6px;
+                }}
+                QComboBox QAbstractItemView {{
+                    border-radius: 6px;
+                    background-color: {_t.BG_CARD};
+                    color: {_t.TEXT_PRIMARY};
+                    padding: 4px;
+                    outline: none;
+                    border: 1px solid {_t.ACCENT_PRIMARY};
+                }}
+                QComboBox QAbstractItemView::item {{
+                    padding: 8px;
+                    color: {_t.TEXT_PRIMARY};
+                    border: none;
+                    outline: none;
+                }}
+                QComboBox QAbstractItemView::item:hover,
+                QComboBox QAbstractItemView::item:selected {{
+                    background-color: {_t.ACCENT_SELECTION_BG};
+                    color: {_t.TEXT_PRIMARY};
+                }}
+            """)
+
+        if self.leader_checkbox is not None:
+            self._apply_leader_checkbox_style()

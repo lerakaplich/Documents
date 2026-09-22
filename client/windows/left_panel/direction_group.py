@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QApplication, QSp
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
 
+from client.core.themes import T
+
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -13,6 +15,11 @@ class DirectionGroup(QWidget):
 
     def __init__(self, group_name: str, parent=None):
         super().__init__(parent)
+        from client.core.themes import get_manager
+        _t = get_manager().current
+
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet(f"background-color: {_t.SIDEBAR_BG};")
         self.group_name = group_name
         self.is_expanded = True
         self.content_height = 0
@@ -24,32 +31,30 @@ class DirectionGroup(QWidget):
 
         # Кнопка-переключатель группы
         self.toggle_btn = QPushButton(f"▼ {group_name}")
-        self.toggle_btn.setStyleSheet("""
-            QPushButton {
+        self.toggle_btn.setStyleSheet(f"""
+            QPushButton {{
                 background-color: transparent;
-                color: white;
+                color: {_t.SIDEBAR_TEXT};
                 border: none;
                 border-radius: 5px;
                 padding: 8px 12px;
                 font-size: 14px;
                 font-weight: bold;
                 text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #3A4A54;
-                color: #DDB87A;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {_t.SIDEBAR_HOVER_BG};
+                color: {_t.SIDEBAR_HOVER_TEXT};
+            }}
         """)
         self.toggle_btn.clicked.connect(self.toggle_content)
         self.main_layout.addWidget(self.toggle_btn)
 
         # Контейнер для кнопок направлений (с анимацией)
         self.content_widget = QWidget()
-        self.content_widget.setStyleSheet("""
-            QWidget {
-                background-color: transparent;
-            }
-        """)
+        self.content_widget.setStyleSheet(
+            f"QWidget {{ background-color: {_t.SIDEBAR_BG}; }}"
+        )
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_layout.setSpacing(5)
         self.content_layout.setContentsMargins(10, 5, 0, 5)
@@ -115,17 +120,21 @@ class DirectionGroup(QWidget):
         original_style = self.toggle_btn.styleSheet()
 
         # Эффект нажатия
-        self.toggle_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3A4A54;
-                color: #DDB87A;
+        self.toggle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {T.SIDEBAR_TEXT};
                 border: none;
                 border-radius: 5px;
                 padding: 8px 12px;
                 font-size: 14px;
                 font-weight: bold;
                 text-align: left;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {T.SIDEBAR_HOVER_BG};
+                color: {T.SIDEBAR_HOVER_TEXT};
+            }}
         """)
 
         # Возвращаем исходный стиль через 100мс
@@ -151,23 +160,23 @@ class DirectionGroup(QWidget):
     def add_direction(self, direction_name: str, callback):
         """Добавляет направление в группу"""
         btn = QPushButton(direction_name)
-        btn.setStyleSheet("""
-            QPushButton {
+        btn.setStyleSheet(f"""
+            QPushButton {{
                 background-color: transparent;
-                color: #B8C5D1;
+                color: {T.SIDEBAR_TEXT};
                 border: none;
                 border-radius: 5px;
                 padding: 8px 12px;
                 font-size: 13px;
                 text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #2A3A44;
-                color: #DDB87A;
-            }
-            QPushButton:pressed {
-                background-color: #1B232A;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {T.SIDEBAR_HOVER_BG};
+                color: {T.SIDEBAR_HOVER_TEXT};
+            }}
+            QPushButton:pressed {{
+                background-color: {T.SIDEBAR_BG};
+            }}
         """)
 
         # Добавляем мини-анимацию при клике на направление
@@ -182,23 +191,25 @@ class DirectionGroup(QWidget):
 
     def animate_direction_button(self, button):
         """Анимация при клике на кнопку направления"""
-        # Визуальный эффект нажатия
+        from client.core.themes import get_manager
+        t = get_manager().current
+
         original_style = button.styleSheet()
-        button.setStyleSheet("""
-            QPushButton {
-                background-color: #DDB87A;
-                color: #1B232A;
+        button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {t.SIDEBAR_HOVER_TEXT};
+                color: {t.SIDEBAR_BG};
                 border: none;
                 border-radius: 5px;
                 padding: 8px 12px;
                 font-size: 13px;
                 text-align: left;
-            }
+            }}
         """)
 
         QTimer.singleShot(150, lambda: button.setStyleSheet(original_style))
 
-        # Анимация смещения
+        # смещение — без изменений
         shift_animation = QPropertyAnimation(button, b"geometry")
         shift_animation.setDuration(100)
         shift_animation.setEasingCurve(QEasingCurve.Type.OutQuad)
@@ -210,7 +221,6 @@ class DirectionGroup(QWidget):
         shift_animation.setEndValue(shifted_geometry)
         shift_animation.start()
 
-        # Возвращаем обратно
         QTimer.singleShot(100, lambda: shift_animation.setEndValue(original_geometry))
 
     def clear_directions(self):

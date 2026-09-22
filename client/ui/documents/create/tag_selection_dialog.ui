@@ -19,12 +19,12 @@
 }
 
 QDialog {
-    background-color: #F5F5F7;
-    color: black;
+    background-color: {BG_DIALOG_ALT};
+    color: {TEXT_BLACK};
 }
 
 QLabel#titleLabel {
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     font-size: 20px;
     font-weight: bold;
     background-color: transparent;
@@ -32,8 +32,8 @@ QLabel#titleLabel {
 }
 
 QFrame#contentFrame {
-    background-color: white;
-    border: 1px solid #E0E0E0;
+    background-color: {BG_CARD};
+    border: 1px solid {BORDER_LIGHT};
     border-radius: 12px;
     padding: 16px;
 }
@@ -41,50 +41,50 @@ QFrame#contentFrame {
 QLabel#instructionLabel {
     font-size: 14px;
     font-weight: bold;
-    color: #333;
+    color: {TEXT_HEADING};
     background-color: transparent;
     padding-bottom: 4px;
 }
 
 QLabel#selectionInfoLabel {
     font-size: 13px;
-    color: #555;
+    color: {TEXT_SECONDARY};
     background-color: transparent;
     padding: 4px 0px;
     border: none;
 }
 
 QLineEdit#searchEdit {
-    border: 1px solid #D0D0D0;
+    border: 1px solid {BORDER_INPUT};
     border-radius: 8px;
     padding: 6px 10px;
     font-size: 14px;
-    background-color: white;
+    background-color: {BG_INPUT};
 }
 QLineEdit#searchEdit:focus {
-    border: 2px solid #D22730;
+    border: 2px solid {ACCENT_DANGER};
 }
 
 QTreeWidget#treeWidget {
-    border: 1px solid #E0E0E0;
+    border: 1px solid {BORDER_LIGHT};
     border-radius: 8px;
     background-color: transparent;
-    color: black;
+    color: {TEXT_BLACK};
     font-size: 14px;
     padding: 4px;
     outline: none;
 }
 QTreeWidget#treeWidget::item {
     padding: 8px 6px;
-    color: black;
+    color: {TEXT_BLACK};
 }
 QTreeWidget#treeWidget::item:selected {
-    background-color: #ccab6e;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
 }
 QTreeWidget#treeWidget::item:hover {
-    background-color: #f0f0f0;
-    color: black;
+    background-color: {BG_HOVER_LIGHT};
+    color: {TEXT_BLACK};
 }
 
 /* Стили для чекбоксов */
@@ -93,9 +93,18 @@ QTreeWidget#treeWidget::indicator {
     height: 18px;
 }
 
+QTreeWidget#treeWidget QHeaderView::section {
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+    border: none;
+    border-bottom: 1px solid {BORDER_LIGHT};
+    padding: 6px 8px;
+    font-weight: bold;
+}
+
 QPushButton#selectButton {
-    background-color: #ccab6e;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border: none;
     border-radius: 10px;
     padding: 10px 20px;
@@ -104,16 +113,16 @@ QPushButton#selectButton {
     margin-top: 12px;
 }
 QPushButton#selectButton:hover {
-    background-color: #998664;
+    background-color: {ACCENT_HOVER_SOFT};
 }
 QPushButton#selectButton:pressed {
-    background-color: #7a6a50;
+    background-color: {ACCENT_PRESSED_DEEP};
 }
 
 QPushButton#cancelButton {
     background-color: transparent;
-    color: #666;
-    border: 1px solid #D0D0D0;
+    color: {TEXT_MUTED};
+    border: 1px solid {BORDER_INPUT};
     border-radius: 10px;
     padding: 10px 20px;
     font-size: 18px;
@@ -121,30 +130,30 @@ QPushButton#cancelButton {
     margin-top: 12px;
 }
 QPushButton#cancelButton:hover {
-    background-color: #f0f0f0;
-    border-color: #999;
+    background-color: {BG_HOVER_LIGHT};
+    border-color: {BORDER_HOVER};
 }
 QPushButton#cancelButton:pressed {
-    background-color: #e0e0e0;
+    background-color: {BG_PRESSED_LIGHT};
 }
 
 QScrollBar:vertical {
-    background: #F5F5F5;
+    background: {SCROLLBAR_BG};
     width: 8px;
     border-radius: 4px;
     margin: 0px;
     border: none;
 }
 QScrollBar::handle:vertical {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-height: 20px;
 }
 QScrollBar::handle:vertical:hover {
-    background: #A0A0A0;
+    background: {SCROLLBAR_HANDLE_HOVER};
 }
 QScrollBar::handle:vertical:pressed {
-    background: #888888;
+    background: {SCROLLBAR_HANDLE_PRESSED};
 }
 QScrollBar::add-line:vertical,
 QScrollBar::sub-line:vertical {

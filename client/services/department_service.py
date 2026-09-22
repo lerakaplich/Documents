@@ -80,6 +80,14 @@ class DepartmentService:
             logger.error(f"❌ Ошибка удаления руководителя {dept_id}: {e}")
             return False
 
+    def get_department_staff(self, dept_id: int) -> List[Dict[str, Any]]:
+        """Сотрудники подразделения (GET /departments/{id}/staff)."""
+        try:
+            response = self.http.get(f"{self.base_path}/{dept_id}/staff")
+            return response if isinstance(response, list) else []
+        except Exception as e:
+            logger.error(f"Ошибка получения сотрудников подразделения {dept_id}: {e}")
+            return []
 
 # Синглтон
 _department_service_instance: Optional[DepartmentService] = None

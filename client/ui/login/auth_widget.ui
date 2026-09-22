@@ -301,27 +301,27 @@ QCheckBox::indicator {
 }
 
 QCheckBox::indicator:unchecked {
-    image: url(D:/Documents/client/icons/cb_unchecked.svg);
+    image: url({ICON_CHECKBOX_UNCHECKED_PATH});
 }
 
 QCheckBox::indicator:checked {
-    image: url(D:/Documents/client/icons/cb_checked.svg);
+    image: url({ICON_CHECKBOX_CHECKED_PATH});
 }
 
 QCheckBox::indicator:hover:unchecked {
-    image: url(D:/Documents/client/icons/cb_unchecked.svg);
+    image: url({ICON_CHECKBOX_UNCHECKED_PATH});
 }
 
 QCheckBox::indicator:hover:checked {
-    image: url(D:/Documents/client/icons/cb_checked.svg);
+    image: url({ICON_CHECKBOX_CHECKED_PATH});
 }
 
 QCheckBox::indicator:pressed:unchecked {
-    image: url(D:/Documents/client/icons/cb_unchecked.svg);
+    image: url({ICON_CHECKBOX_UNCHECKED_PATH});
 }
 
 QCheckBox::indicator:pressed:checked {
-    image: url(D:/Documents/client/icons/cb_checked.svg);
+    image: url({ICON_CHECKBOX_CHECKED_PATH});
 }</string>
          </property>
          <property name="text">

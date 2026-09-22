@@ -15,247 +15,179 @@
   </property>
   <property name="styleSheet">
    <string notr="true">QScrollArea {
- border: none;
- background-color: transparent;
+    border: none;
+    background-color: transparent;
 }
 QDialog {
-    background-color: #f8f9fa;
+    background-color: {BG_DIALOG};
 }
 QCheckBox {
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     spacing: 0px;
     font-size: 13px;
     background: transparent;
 }
-
 QCheckBox::indicator {
     width: 18px;
     height: 18px;
-    image: url(&quot;D:/Documents/client/icons/cb_unchecked.svg&quot;);
+    image: url({ICON_CHECKBOX_UNCHECKED_PATH});
 }
-
 QCheckBox::indicator:checked {
-    image: url(&quot;D:/Documents/client/icons/cb_checked.svg&quot;);
+    image: url("D:/Documents/client/icons/cb_checked.svg");
 }
 
+/* --- скроллбары --- */
 QScrollBar::vertical {
-    background: #F5F5F5;
+    background: {SCROLLBAR_BG};
     width: 8px;
     border-radius: 4px;
     margin: 0px;
     border: none;
 }
-
 QScrollBar::handle:vertical {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-height: 20px;
 }
-
-QScrollBar::handle:vertical:hover {
-    background: #A0A0A0;
-}
-
-QScrollBar::handle:vertical:pressed {
-    background: #888888;
-}
-
+QScrollBar::handle:vertical:hover { background: {SCROLLBAR_HANDLE_HOVER}; }
+QScrollBar::handle:vertical:pressed { background: {SCROLLBAR_HANDLE_PRESSED}; }
 QScrollBar::add-line:vertical,
 QScrollBar::sub-line:vertical {
-    border: none;
-    background: none;
-    width: 0px;
-    height: 0px;
+    border: none; background: none; width: 0px; height: 0px;
 }
-
 QScrollBar::add-page:vertical,
-QScrollBar::sub-page:vertical {
-    background: none;
-}
+QScrollBar::sub-page:vertical { background: none; }
 
 QScrollBar:horizontal {
     border: none;
-    background: #F5F5F5;
+    background: {SCROLLBAR_BG};
     height: 8px;
     margin: 0px;
     border-radius: 4px;
 }
-
 QScrollBar::handle:horizontal {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-width: 20px;
 }
-
-QScrollBar::handle:horizontal:hover {
-    background: #A0A0A0;
-}
-
-QScrollBar::handle:horizontal:pressed {
-    background: #888888;
-}
-
+QScrollBar::handle:horizontal:hover { background: {SCROLLBAR_HANDLE_HOVER}; }
+QScrollBar::handle:horizontal:pressed { background: {SCROLLBAR_HANDLE_PRESSED}; }
 QScrollBar::add-line:horizontal,
 QScrollBar::sub-line:horizontal {
-    border: none;
-    background: none;
-    width: 0px;
-    height: 0px;
+    border: none; background: none; width: 0px; height: 0px;
 }
-
 QScrollBar::add-page:horizontal,
-QScrollBar::sub-page:horizontal {
-    background: none;
-}
+QScrollBar::sub-page:horizontal { background: none; }
 
-/* ===== СТИЛИ ДЛЯ QLineEdit ===== */
 QLineEdit {
-    border: 1px solid #dee2e6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 6px;
     padding: 8px;
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
     font-size: 13px;
 }
-
-QLineEdit:hover {
-    border-color: #ccab6e;
-}
-
-QLineEdit:focus {
-    border: 2px solid #ccab6e;
-}
-
+QLineEdit:hover { border-color: {ACCENT_PRIMARY}; }
+QLineEdit:focus { border: 2px solid {ACCENT_PRIMARY}; }
 QLineEdit:read-only {
-    background-color: #f5f5f5;
-    color: #6c757d;
+    background-color: {BG_INPUT_READONLY};
+    color: {TEXT_MUTED_ALT};
 }
 
-/* ===== СТИЛИ ДЛЯ QGroupBox ===== */
 QGroupBox {
     font-weight: bold;
     font-size: 14px;
-    border: 1px solid #dee2e6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
-    background-color: white;
+    background-color: {BG_CARD};
 }
 QGroupBox::title {
     subcontrol-origin: margin;
     left: 10px;
     padding: 0 5px 0 5px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
 }
 
-/* ===== СТИЛИ ДЛЯ QPushButton ===== */
 QPushButton {
     border: none;
     border-radius: 6px;
     font-weight: bold;
     font-size: 13px;
     padding: 8px 16px;
-
 }
 
-/* Кнопка Обзор и Очистить */
 QPushButton#browseBtn,
 QPushButton#clearBtn {
-    background-color: #f8f9fa;
-    color: #1B232A;
-    border: 1px solid #dee2e6;
+    background-color: {BG_DIALOG};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER_DEFAULT};
 }
-
 QPushButton#browseBtn:hover,
 QPushButton#clearBtn:hover {
-    background-color: #e9ecef;
-    border-color: #ccab6e;
+    background-color: {BG_HOVER_ALT};
+    border-color: {ACCENT_PRIMARY};
 }
-
 QPushButton#browseBtn:pressed,
 QPushButton#clearBtn:pressed {
-    background-color: #dee2e6;
+    background-color: {BORDER_DEFAULT};
 }
 
-/* Кнопка Сохранить */
 QPushButton#saveButton {
-    background-color: #ccab6e;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border-radius: 8px;
     font-weight: bold;
     font-size: 14px;
     border: none;
-
 }
+QPushButton#saveButton:hover { background-color: {ACCENT_HOVER}; }
+QPushButton#saveButton:pressed { background-color: {ACCENT_PRESSED}; }
 
-QPushButton#saveButton:hover {
-    background-color: #b8945a;
-}
-
-QPushButton#saveButton:pressed {
-    background-color: #a07d4a;
-}
-
-/* Toggle Switch для параметров */
 QPushButton#toggleBtn {
-
     border-radius: 13px;
     font-size: 11px;
     font-weight: bold;
     margin: 0px;
     padding: 0px;
 }
+QPushButton#toggleBtn:disabled { opacity: 0.7; }
 
-QPushButton#toggleBtn:disabled {
-    opacity: 0.7;
-}
-
-/* ===== СТИЛИ ДЛЯ QFrame ===== */
 QFrame#paramFrame {
-    border: 1px solid #e9ecef;
+    border: 1px solid {BORDER_FRAME_SOFT};
     border-radius: 6px;
-    background-color: white;
+    background-color: {BG_CARD};
     margin: 2px 0px;
 }
-
 QFrame#paramFrame:hover {
-    border-color: #ccab6e;
-    background-color: #fdfcf7;
+    border-color: {ACCENT_PRIMARY};
+    background-color: {BG_HOVER_ACCENT_SOFT};
 }
 
-/* ===== СТИЛИ ДЛЯ QLabel ===== */
-QLabel {
-    color: #1B232A;
-}
-
+QLabel { color: {TEXT_PRIMARY}; }
 QLabel#titleLabel {
     font-size: 22px;
     font-weight: bold;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     margin-bottom: 10px;
 }
-
 QLabel#sectionLabel {
     font-weight: bold;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     margin-top: 8px;
     font-size: 13px;
 }
-
 QLabel#paramNameLabel {
     font-weight: 500;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     font-size: 13px;
 }
 
-/* Акцент на обязательных полях */
-QLabel[required=&quot;true&quot;] {
-    color: #ccab6e;
-}
-
-QLabel[required=&quot;true&quot;]::after {
-    content: &quot; *&quot;;
-    color: #dc3545;
+QLabel[required="true"] { color: {ACCENT_PRIMARY}; }
+QLabel[required="true"]::after {
+    content: " *";
+    color: {ACCENT_REQUIRED};
     font-weight: bold;
 }</string>
   </property>
@@ -278,7 +210,7 @@ QLabel[required=&quot;true&quot;]::after {
    <item>
     <widget class="QLabel" name="titleLabel">
      <property name="styleSheet">
-      <string>font-size: 22px; font-weight: bold; color: #1B232A; margin-bottom: 10px;</string>
+      <string>font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px;</string>
      </property>
      <property name="text">
       <string>Новый тип документа</string>
@@ -413,7 +345,7 @@ QScrollBar::sub-page:horizontal {
           <item row="0" column="0">
            <widget class="QLabel" name="nameLabel">
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
             </property>
             <property name="text">
              <string>Название типа *:</string>
@@ -442,7 +374,7 @@ QScrollBar::sub-page:horizontal {
           <item row="1" column="0" colspan="2">
            <widget class="QLabel" name="numberSettingsLabel">
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 600; margin-top: 5px;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 600; margin-top: 5px;</string>
             </property>
             <property name="text">
              <string>Настройки номера:</string>
@@ -471,7 +403,7 @@ QScrollBar::sub-page:horizontal {
           <item row="3" column="0" colspan="2">
            <widget class="QLabel" name="templateLabel">
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 600; margin-top: 5px;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 600; margin-top: 5px;</string>
             </property>
             <property name="text">
              <string>Шаблон документа:</string>
@@ -581,7 +513,7 @@ QScrollBar::sub-page:horizontal {
           <item>
            <widget class="QLabel" name="paramsHintLabel">
             <property name="styleSheet">
-             <string>color: #6c757d; font-weight: normal; font-size: 12px; margin-bottom: 5px;</string>
+             <string>color: {TEXT_MUTED_ALT}; font-weight: normal; font-size: 12px; margin-bottom: 5px;</string>
             </property>
             <property name="text">
              <string>Выберите параметры, которые будут доступны в документах этого типа:</string>

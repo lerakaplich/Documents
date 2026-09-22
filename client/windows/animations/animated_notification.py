@@ -8,6 +8,8 @@ from PyQt6.QtCore import (
 )
 from PyQt6.QtGui import QIcon, QColor, QPalette
 
+from client.core.themes import get_manager
+
 
 class AnimatedNotification(QFrame):
     """Универсальное всплывающее уведомление с анимацией"""
@@ -35,19 +37,20 @@ class AnimatedNotification(QFrame):
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         # Золотой фон со скругленными углами
-        self.setStyleSheet("""
-            AnimatedNotification {
-                background-color: #ccab6e;
+        _t = get_manager().current
+        self.setStyleSheet(f"""
+            AnimatedNotification {{
+                background-color: {_t.ACCENT_PRIMARY};
                 border-radius: 16px;
                 border: none;
-            }
-            QLabel {
-                background-color: #ccab6e;
+            }}
+            QLabel {{
+                background-color: {_t.ACCENT_PRIMARY};
                 border-radius: 16px;
-                color: white;
+                color: {_t.TEXT_ON_ACCENT};
                 font-size: 18px;
                 font-weight: 600;
-            }
+            }}
         """)
 
         # Создаем layout
@@ -59,14 +62,14 @@ class AnimatedNotification(QFrame):
         self.message_label = QLabel(message)
         self.message_label.setWordWrap(True)
         self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.message_label.setStyleSheet("""
-            QLabel {
-                background-color: #ccab6e;
+        self.message_label.setStyleSheet(f"""
+            QLabel {{
+                background-color: {_t.ACCENT_PRIMARY};
                 border-radius: 16px;
-                color: white;
+                color: {_t.TEXT_ON_ACCENT};
                 font-size: 18px;
                 font-weight: 600;
-            }
+            }}
         """)
         self.layout.addWidget(self.message_label, 1)
 

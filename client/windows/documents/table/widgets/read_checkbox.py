@@ -33,31 +33,28 @@ class ReadCheckBox(QWidget):
 
         # ИСПРАВЛЕННЫЕ СТИЛИ: Используем ваши локальные картинки
         # Обратите внимание на прямые слеши (/) вместо обратных (\)
-        self.readCheckBox.setStyleSheet("""
-            QCheckBox {
-                color: #1B232A;
+        from client.core.themes import get_manager
+        from client.core.themes.icon_utils import icon_path
+
+        _t = get_manager().current
+        checked   = icon_path("cb_checked",   _t.ICON_COLOR)
+        unchecked = icon_path("cb_unchecked", _t.ICON_COLOR)
+
+        self.readCheckBox.setStyleSheet(f"""
+            QCheckBox {{
+                color: {_t.TEXT_PRIMARY};
                 spacing: 0px;
                 font-size: 12px;
                 background: transparent;
-            }
-
-            QCheckBox::indicator {
+            }}
+            QCheckBox::indicator {{
                 width: 18px;
                 height: 18px;
-                /* Картинка для НЕнажатого состояния */
-                image: url("D:/Documents/client/icons/cb_unchecked.svg");
-            }
-
-            QCheckBox::indicator:checked {
-                /* Картинка для НАЖАТОГО состояния */
-                image: url("D:/Documents/client/icons/cb_checked.svg");
-            }
-
-            /* Если хотите добавить эффект при наведении, можно использовать другой файл,
-               либо убрать этот блок, чтобы при наведении ничего не менялось */
-            QCheckBox::indicator:hover {
-                /* image: url("D:/Documents/client/icons/cb_hover.png"); */
-            }
+                image: url({unchecked});
+            }}
+            QCheckBox::indicator:checked {{
+                image: url({checked});
+            }}
         """)
 
     def on_state_changed(self, state):
@@ -71,3 +68,27 @@ class ReadCheckBox(QWidget):
         self.readCheckBox.blockSignals(True)
         self.readCheckBox.setChecked(is_read)
         self.readCheckBox.blockSignals(False)
+
+    def reapply_theme(self):
+        from client.core.themes import get_manager
+        from client.core.themes.icon_utils import icon_path
+
+        _t = get_manager().current
+        checked   = icon_path("cb_checked",   _t.ICON_COLOR)
+        unchecked = icon_path("cb_unchecked", _t.ICON_COLOR)
+
+        self.readCheckBox.setStyleSheet(f"""
+            QCheckBox {{
+                color: {_t.TEXT_PRIMARY};
+                spacing: 0px;
+                font-size: 12px;
+                background: transparent;
+            }}
+            QCheckBox::indicator {{
+                width: 18px; height: 18px;
+                image: url({unchecked});
+            }}
+            QCheckBox::indicator:checked {{
+                image: url({checked});
+            }}
+        """)

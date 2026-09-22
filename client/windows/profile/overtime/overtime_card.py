@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import QFrame, QPushButton, QLabel, QMessageBox
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.uic import loadUi
 
+from client.core.themes import apply_theme_to_widget, T
 from client.windows.delete_dialog import DeleteDialog
 
 
@@ -63,6 +64,7 @@ class OvertimeCard(QFrame):
             self._create_ui_programmatically()
         else:
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
 
     def _create_ui_programmatically(self):
         """Создание UI программно (если файл .ui не найден)"""
@@ -84,7 +86,8 @@ class OvertimeCard(QFrame):
 
         self.labelEmployee = QLabel()
         self.labelEmployee.setStyleSheet(
-            "border: none; font-size: 16px; font-weight: bold; color: #4A3B28; background-color: transparent;"
+            f"border: none; font-size: 16px; font-weight: bold; "
+            f"color: {T.TEXT_ACCENT_DARK_STRONG}; background-color: transparent;"
         )
         self.labelEmployee.setSizePolicy(
             self.sizePolicy().Policy.Expanding,
@@ -97,7 +100,7 @@ class OvertimeCard(QFrame):
 
         self.labelCreatedAt = QLabel()
         self.labelCreatedAt.setStyleSheet(
-            "border: none; font-size: 11px; color: #998664; background-color: transparent;"
+            f"border: none; font-size: 11px; color: {T.TEXT_ACCENT_SOFT}; background-color: transparent;"
         )
         header_layout.addWidget(self.labelCreatedAt)
 
@@ -109,7 +112,7 @@ class OvertimeCard(QFrame):
 
         self.labelDescription = QLabel()
         self.labelDescription.setStyleSheet(
-            "border: none; font-size: 13px; color: #7A6A50; background-color: transparent;"
+            f"border: none; font-size: 13px; color: {T.TEXT_ACCENT_DARK}; background-color: transparent;"
         )
         self.labelDescription.setWordWrap(True)
         self.labelDescription.setSizePolicy(
@@ -122,22 +125,22 @@ class OvertimeCard(QFrame):
         self.btnEdit.setMinimumSize(90, 28)
         self.btnEdit.setMaximumSize(90, 28)
         self.btnEdit.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btnEdit.setStyleSheet("""
-            QPushButton {
-                background-color: #FFF8ED;
-                color: #CCAB6E;
-                border: 1px solid #CCAB6E;
+        self.btnEdit.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {T.BTN_EDIT_BG};
+                color: {T.ACCENT_PRIMARY};
+                border: 1px solid {T.ACCENT_PRIMARY};
                 border-radius: 6px;
                 font-size: 12px;
                 font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #CCAB6E;
-                color: white;
-            }
-            QPushButton:pressed {
-                background-color: #998664;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {T.ACCENT_PRIMARY};
+                color: {T.TEXT_ON_ACCENT};
+            }}
+            QPushButton:pressed {{
+                background-color: {T.ACCENT_HOVER_SOFT};
+            }}
         """)
         description_layout.addWidget(self.btnEdit)
 
@@ -153,7 +156,7 @@ class OvertimeCard(QFrame):
 
         self.labelDate = QLabel()
         self.labelDate.setStyleSheet(
-            "border: none; font-size: 13px; color: #28a745; font-weight: bold; background-color: transparent;"
+            f"border: none; font-size: 13px; color: {T.TEXT_SUCCESS}; font-weight: bold; background-color: transparent;"
         )
         info_layout.addWidget(self.labelDate)
 
@@ -163,7 +166,7 @@ class OvertimeCard(QFrame):
 
         self.labelTime = QLabel()
         self.labelTime.setStyleSheet(
-            "border: none; font-size: 13px; color: #7A6A50; background-color: transparent;"
+            f"border: none; font-size: 13px; color: {T.TEXT_ACCENT_DARK}; background-color: transparent;"
         )
         info_layout.addWidget(self.labelTime)
 
@@ -173,7 +176,7 @@ class OvertimeCard(QFrame):
 
         self.labelDuration = QLabel()
         self.labelDuration.setStyleSheet(
-            "border: none; font-size: 13px; color: #CCAB6E; font-weight: bold; background-color: transparent;"
+            f"border: none; font-size: 13px; color: {T.ACCENT_PRIMARY}; font-weight: bold; background-color: transparent;"
         )
         info_layout.addWidget(self.labelDuration)
 
@@ -181,22 +184,22 @@ class OvertimeCard(QFrame):
         self.btnDelete.setMinimumSize(80, 28)
         self.btnDelete.setMaximumSize(80, 28)
         self.btnDelete.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btnDelete.setStyleSheet("""
-            QPushButton {
-                background-color: #FFF5F5;
-                color: #E53E3E;
-                border: 1px solid #FEB2B2;
+        self.btnDelete.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {T.BTN_DELETE_BG};
+                color: {T.BTN_DELETE_TEXT};
+                border: 1px solid {T.BTN_DELETE_BORDER};
                 border-radius: 6px;
                 font-size: 12px;
                 font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #E53E3E;
-                color: white;
-            }
-            QPushButton:pressed {
-                background-color: #C53030;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {T.BTN_DELETE_TEXT};
+                color: {T.TEXT_ON_ACCENT};
+            }}
+            QPushButton:pressed {{
+                background-color: {T.BTN_DELETE_PRESSED_BG};
+            }}
         """)
         info_layout.addWidget(self.btnDelete)
 
@@ -207,16 +210,16 @@ class OvertimeCard(QFrame):
         main_layout.addLayout(left_layout)
 
         # Стили для карточки
-        self.setStyleSheet("""
-            QFrame#OvertimeCard {
-                background-color: white;
-                border: 1px solid #DEE2E6;
+        self.setStyleSheet(f"""
+            QFrame#OvertimeCard {{
+                background-color: {T.BG_CARD};
+                border: 1px solid {T.BORDER_DEFAULT};
                 border-radius: 10px;
-            }
-            QFrame#OvertimeCard:hover {
-                border: 2px solid #CCAB6E;
-                background-color: #FDFBF7;
-            }
+            }}
+            QFrame#OvertimeCard:hover {{
+                border: 2px solid {T.ACCENT_PRIMARY};
+                background-color: {T.BG_HOVER_ACCENT_SOFT};
+            }}
         """)
         self.setObjectName("OvertimeCard")
         self.setMinimumSize(400, 120)
@@ -246,7 +249,8 @@ class OvertimeCard(QFrame):
         else:
             self.labelDescription.setText("(Нет описания)")
             self.labelDescription.setStyleSheet(
-                "border: none; font-size: 13px; color: #B0A090; font-style: italic; background-color: transparent;"
+                f"border: none; font-size: 13px; color: {T.TEXT_MUTED_WARM}; "
+                f"font-style: italic; background-color: transparent;"
             )
 
         # Дата выполнения

@@ -32,7 +32,7 @@ class TableIconUpdater(QObject):
                     doc_data["is_pinned"] = is_pinned
                     item.setData(Qt.ItemDataRole.UserRole, doc_data)
                     if is_pinned:
-                        pin_icon = icon_manager.get_icon('pin', QSize(16, 16))
+                        pin_icon = icon_manager.get_icon('pin', QSize(22, 22))
                         item.setIcon(pin_icon)
                     else:
                         item.setIcon(QIcon())
@@ -56,7 +56,7 @@ class TableIconUpdater(QObject):
                     item.setData(Qt.ItemDataRole.UserRole, doc_data)
 
                     if is_pinned:
-                        pin_icon = icon_manager.get_icon('pin', QSize(16, 16))
+                        pin_icon = icon_manager.get_icon('pin', QSize(22, 22))
                         item.setIcon(pin_icon)
                     else:
                         item.setIcon(QIcon())

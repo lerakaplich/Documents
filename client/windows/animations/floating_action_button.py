@@ -6,6 +6,8 @@ from PyQt6.QtCore import QByteArray, QXmlStreamReader
 import os
 import sys
 
+from client.core.themes import get_manager
+
 
 # Убираем PLUS_SVG, теперь иконка загружается из файла
 
@@ -19,19 +21,20 @@ class FloatingActionButton(QPushButton):
         self.icon_width, self.icon_height = icon_size
 
         self.setFixedSize(56, 56)
-        self.setStyleSheet("""
-            QPushButton {
-                background-color: #ccab6e;
-                color: white;
+        _t = get_manager().current
+        self.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {_t.ACCENT_PRIMARY};
+                color: {_t.TEXT_ON_ACCENT};
                 border-radius: 28px;
                 border: none;
-            }
-            QPushButton:hover {
-                background-color: #b8944f;
-            }
-            QPushButton:pressed {
-                background-color: #a07d3f;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {_t.ACCENT_HOVER};
+            }}
+            QPushButton:pressed {{
+                background-color: {_t.ACCENT_PRESSED};
+            }}
         """)
 
         # Передаем размеры в метод

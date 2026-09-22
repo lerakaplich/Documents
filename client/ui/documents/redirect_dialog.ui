@@ -20,105 +20,94 @@
 }
 
 QDialog {
-    background-color: #F5F5F7;
-    color: black;
+    background-color: {BG_DIALOG_ALT};
+    color: {TEXT_BLACK};
 }
 
-/* Красная шапка */
 QFrame#headerFrame {
-    background-color: #D22730;
+    background-color: {HEADER_BG};
     margin: 0px;
     padding: 0px;
     border: none;
 }
 
-
-
 QLabel#titleLabel {
-    color: white;
+    color: {TEXT_ON_ACCENT};
     font-size: 20px;
     font-weight: bold;
     background-color: transparent;
     padding: 10px;
-	color: black;
+    color: {TEXT_BLACK};
 }
 
-/* Белая карточка */
 QFrame#contentFrame {
-    background-color: white;
-    border: 1px solid #E0E0E0;
+    background-color: {BG_CARD};
+    border: 1px solid {BORDER_LIGHT};
     border-radius: 12px;
     margin: 6px 8px 6px 8px;
     padding: 16px;
 }
 
-/* Поясняющие надписи */
 QLabel#instructionLabel {
     font-size: 14px;
     font-weight: bold;
-    color: #333;
+    color: {TEXT_HEADING};
     background-color: transparent;
     padding-bottom: 4px;
 }
 QLabel#commentLabel {
     font-size: 14px;
     font-weight: bold;
-    color: #333;
+    color: {TEXT_HEADING};
     background-color: transparent;
     padding-bottom: 4px;
 }
 
-/* Поле поиска */
-
-
 QLineEdit {
-    border: 1px solid #D0D0D0;
+    border: 1px solid {BORDER_INPUT};
     border-radius: 8px;
     padding: 6px 10px;
     font-size: 14px;
-    background-color: white;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
 }
 QLineEdit:focus {
-    border: 2px solid #D22730;
+    border: 2px solid {ACCENT_DANGER};
 }
 
-
-/* Список сотрудников */
 QListWidget {
-    border: 1px solid #E0E0E0;
+    border: 1px solid {BORDER_LIGHT};
     border-radius: 8px;
     background-color: transparent;
-    color: black;
+    color: {TEXT_BLACK};
     font-size: 15px;
     padding: 4px;
 }
 QListWidget::item {
     padding: 8px 6px;
+    color: {TEXT_BLACK};
 }
 QListWidget::item:selected {
-    background-color: #ccab6e;
-    color: white;
-border: none;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border: none;
 }
 
-/* Поле комментария */
 QTextEdit {
-    border: 1px solid #E0E0E0;
+    border: 1px solid {BORDER_LIGHT};
     border-radius: 8px;
     padding: 6px 10px;
     font-size: 14px;
-    color: black;
-    background-color: white;
+    color: {TEXT_BLACK};
+    background-color: {BG_INPUT};
 }
 QTextEdit:focus {
-border: 2px solid #D22730;
+    border: 2px solid {ACCENT_DANGER};
 }
 
-
-/* Кнопка Отправить (золотая) */
 QPushButton#sendButton {
-    background-color: #ccab6e;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border: none;
     border-radius: 10px;
     padding: 10px 20px;
@@ -126,46 +115,32 @@ QPushButton#sendButton {
     font-weight: bold;
 }
 QPushButton#sendButton:hover {
-    background-color: #998664;
+    background-color: {ACCENT_HOVER_SOFT};
 }
 QPushButton#sendButton:pressed {
-    background-color: #7a6a50;
+    background-color: {ACCENT_PRESSED_DEEP};
 }
-/* Вертикальная полоса прокрутки */
-            QScrollBar:vertical {
-                background: #F5F5F5;
-                width: 8px;
-                border-radius: 4px;
-                margin: 0px;
-                border: none;
-            }
 
-            QScrollBar::handle:vertical {
-                background: #C1C1C1;
-                border-radius: 4px;
-                min-height: 20px;
-            }
-
-            QScrollBar::handle:vertical:hover {
-                background: #A0A0A0;
-            }
-
-            QScrollBar::handle:vertical:pressed {
-                background: #888888;
-            }
-
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {
-                border: none;
-                background: none;
-                width: 0px;
-                height: 0px;
-            }
-
-            QScrollBar::add-page:vertical,
-            QScrollBar::sub-page:vertical {
-                background: none;
-            }
+QScrollBar:vertical {
+    background: {SCROLLBAR_BG};
+    width: 8px;
+    border-radius: 4px;
+    margin: 0px;
+    border: none;
+}
+QScrollBar::handle:vertical {
+    background: {SCROLLBAR_HANDLE};
+    border-radius: 4px;
+    min-height: 20px;
+}
+QScrollBar::handle:vertical:hover { background: {SCROLLBAR_HANDLE_HOVER}; }
+QScrollBar::handle:vertical:pressed { background: {SCROLLBAR_HANDLE_PRESSED}; }
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    border: none; background: none; width: 0px; height: 0px;
+}
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical { background: none; }
    </string>
   </property>
   <property name="modal">

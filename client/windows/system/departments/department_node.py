@@ -6,6 +6,8 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QIcon
 from PyQt6.uic import loadUi
 
+from client.core.themes import apply_theme_to_widget, T, get_manager
+from client.core.themes.icon_utils import icon
 from client.windows.system.departments.department_card import DepartmentCard
 
 
@@ -56,8 +58,8 @@ class DepartmentNode(QWidget):
         ui_path = self._get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
             self._setup_expand_button()
-            self._apply_header_style()
         else:
             self._setup_placeholder()
 
@@ -81,10 +83,12 @@ class DepartmentNode(QWidget):
         self._loading = False
         self._children_loaded = True
 
+        _t = get_manager().current
         err = QLabel(f"❌ Ошибка загрузки: {error_message}")
         err.setStyleSheet(
-            "QLabel { color: #B00020; padding: 8px 12px; "
-            "background: #FFF5F5; border: 1px solid #FEB2B2; border-radius: 4px; }"
+            f"QLabel {{ color: {_t.TEXT_ERROR_DEEP}; padding: 8px 12px; "
+            f"background: {_t.BG_ERROR_SOFT}; border: 1px solid {_t.BORDER_ERROR_SOFT}; "
+            f"border-radius: 4px; }}"
         )
         if hasattr(self, 'contentLayout'):
             self.contentLayout.addWidget(err)
@@ -110,48 +114,44 @@ class DepartmentNode(QWidget):
         if not hasattr(self, 'expandBtn'):
             return
 
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        icons_dir = os.path.join(base_dir, 'icons')
-        down_path = os.path.join(icons_dir, 'down_arrow.svg')
-        up_path = os.path.join(icons_dir, 'up_arrow.svg')
+        _t = get_manager().current
+        self.down_icon = icon("down_arrow", _t.ICON_COLOR)
+        self.up_icon = icon("up_arrow", _t.ICON_COLOR)
 
-        self.down_icon = QIcon(down_path) if os.path.exists(down_path) else QIcon()
-        self.up_icon = QIcon(up_path) if os.path.exists(up_path) else QIcon()
-
-        self.expandBtn.setIcon(self.down_icon)
+        self.expandBtn.setIcon(self.up_icon if self._expanded else self.down_icon)
         self.expandBtn.setIconSize(QSize(16, 16))
         self.expandBtn.setText("")
         self.expandBtn.setArrowType(Qt.ArrowType.NoArrow)
 
-    def _apply_header_style(self):
-        if hasattr(self, 'headerFrame'):
-            self.headerFrame.setStyleSheet("""
-                QFrame#headerFrame {
-                    background-color: #F8F9FA;
-                    border: 1px solid #DEE2E6;
-                    border-radius: 6px;
-                    padding: 4px 8px;
-                }
-                QFrame#headerFrame:hover {
-                    background-color: #FDFBF7;
-                    border: 1px solid #CCAB6E;
-                }
-            """)
-        if hasattr(self, 'nameLabel'):
-            self.nameLabel.setStyleSheet(
-                "QLabel { font-weight: bold; font-size: 15px; color: #212529; "
-                "background: transparent; border: none; }"
+    def reapply_theme(self):
+        """Перекрасить иконки и перечитать тему после set_theme()."""
+        # Иконки
+        if hasattr(self, 'expandBtn'):
+            _t = get_manager().current
+            self.down_icon = icon("down_arrow", _t.ICON_COLOR)
+            self.up_icon = icon("up_arrow", _t.ICON_COLOR)
+            self.expandBtn.setIcon(self.up_icon if self._expanded else self.down_icon)
+
+        # Плейсхолдеры {TOKEN} в .ui
+        apply_theme_to_widget(self)
+
+        # Хардкод в стилях, которые уже проставлены в коде
+        if self._loading_widget is not None:
+            _t = get_manager().current
+            self._loading_widget.setStyleSheet(
+                f"QLabel {{ color: {_t.TEXT_MUTED_ALT}; font-style: italic; padding: 8px 12px; "
+                f"background: transparent; border: none; }}"
             )
-        if hasattr(self, 'typeLabel'):
-            self.typeLabel.setStyleSheet(
-                "QLabel { font-size: 13px; color: #6C757D; "
-                "background: transparent; border: none; }"
-            )
-        if hasattr(self, 'codeLabel'):
-            self.codeLabel.setStyleSheet(
-                "QLabel { font-size: 12px; color: #7A6A50; font-weight: bold; "
-                "background: transparent; border: none; }"
-            )
+
+        # Рекурсивно по детям, если у них тоже есть тема в коде
+        for child in self.findChildren(QWidget):
+            r = getattr(child, "reapply_theme", None)
+            if callable(r) and child is not self:
+                try:
+                    r()
+                except Exception:
+                    pass
+
 
     def _setup_animation(self):
         self.animation = QPropertyAnimation(self.contentWidget, b"maximumHeight")
@@ -204,10 +204,11 @@ class DepartmentNode(QWidget):
         self.contentWidget.setMaximumHeight(16777215)
 
         if self._loading_widget is None:
+            _t = get_manager().current
             self._loading_widget = QLabel("Загрузка...")
             self._loading_widget.setStyleSheet(
-                "QLabel { color: #6C757D; font-style: italic; padding: 8px 12px; "
-                "background: transparent; border: none; }"
+                f"QLabel {{ color: {_t.TEXT_MUTED_ALT}; font-style: italic; padding: 8px 12px; "
+                f"background: transparent; border: none; }}"
             )
             if hasattr(self, 'contentLayout'):
                 self.contentLayout.addWidget(self._loading_widget)
@@ -302,18 +303,6 @@ class DepartmentNode(QWidget):
 
         self.animation.start()
 
-    def _on_animation_finished(self):
-        if not self._expanded:
-            self.contentWidget.setVisible(False)
-            self.contentWidget.setMaximumHeight(0)
-        else:
-            # ⚠️ Ключевое: снимаем ограничение, иначе следующий layout-пересчёт
-            # (например, при вставке новой группы сотрудников) обрежет виджет
-            self.contentWidget.setMaximumHeight(16777215)
-            self.contentWidget.setVisible(True)
-        self.updateGeometry()
-        if self.parent():
-            self.parent().updateGeometry()
 
     # ==================== ОБЩИЕ ====================
 

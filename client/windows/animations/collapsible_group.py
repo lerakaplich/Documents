@@ -3,6 +3,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QEasingCurve, QPropertyAnimation, QTimer
 
+from client.core.themes import get_manager
+
 
 class CollapsibleGroup(QWidget):
     """Виджет с возможностью сворачивания/разворачивания с анимацией"""
@@ -23,20 +25,21 @@ class CollapsibleGroup(QWidget):
 
         # Заголовок
         self.header = QPushButton()
-        self.header.setStyleSheet("""
-            QPushButton {
+        _t = get_manager().current
+        self.header.setStyleSheet(f"""
+            QPushButton {{
                 text-align: left;
-                background-color: #F8F9FA;
-                border: 1px solid #DEE2E6;
+                background-color: {_t.BG_SURFACE_HEADER};
+                border: 1px solid {_t.BORDER_DEFAULT};
                 border-radius: 8px;
                 padding: 12px 15px;
                 font-size: 14px;
                 font-weight: bold;
-                color: #333;
-            }
-            QPushButton:hover {
-                background-color: #E9ECEF;
-            }
+                color: {_t.TEXT_HEADING};
+            }}
+            QPushButton:hover {{
+                background-color: {_t.BG_HOVER_ALT};
+            }}
         """)
         self.header.setCursor(Qt.CursorShape.PointingHandCursor)
         self.header.clicked.connect(self.toggle)

@@ -25,27 +25,27 @@
   <property name="styleSheet">
    <string notr="true">
 QWidget {
-    background-color: #FFFFFF;
+    background-color: {BG_CARD};
 }
 QLabel {
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
 }
 QLabel[bold="true"] {
     font-weight: bold;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
 }
 QComboBox, QTextEdit, QDateEdit, QTextBrowser {
     border-radius: 10px;
-    border: 1px solid #CCAB6E;
+    border: 1px solid {ACCENT_PRIMARY};
     padding: 5px;
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
 }
 QComboBox:hover, QTextEdit:hover, QDateEdit:hover, QTextBrowser:hover {
-    border: 1px solid #998664;
+    border: 1px solid {ACCENT_HOVER_SOFT};
 }
 QComboBox:focus, QTextEdit:focus, QDateEdit:focus, QTextBrowser:focus {
-    border: 2px solid #CCAB6E;
+    border: 2px solid {ACCENT_PRIMARY};
 }
 
 /* Стили для выпадающего контейнера QComboBox */
@@ -66,24 +66,24 @@ QDateEdit::drop-down {
 
 /* Иконка календаря вместо стрелочки */
 QDateEdit::down-arrow {
-    image: url(D:/Documents/client/icons/calendar_date.svg);
+    image: url({ICON_CALENDAR_PATH});
     width: 18px;
     height: 18px;
     margin-right: 8px;
 }
-
 QComboBox::down-arrow {
-    image: url(D:/Documents/client/icons/down_arrow.svg);
+    image: url({ICON_ARROW_DOWN_PATH});
     width: 16px;
     height: 16px;
     margin-right: 6px;
 }
 
-/* ===== СТИЛИ ДЛЯ КНОПОК С ПЛЮСОМ ===== */
+
+/* ===== КНОПКИ С ПЛЮСОМ ===== */
 QPushButton#btnAddSender, QPushButton#btnAddExecutor,
 QPushButton#btnAddReceiver, QPushButton#btnAddTag {
     border-radius: 18px;
-    background-color: #CCAB6E;
+    background-color: {ACCENT_PRIMARY};
     border: none;
     min-width: 36px;
     min-height: 36px;
@@ -91,338 +91,317 @@ QPushButton#btnAddReceiver, QPushButton#btnAddTag {
     max-height: 36px;
     padding: 0px;
 }
-
 QPushButton#btnAddSender:hover, QPushButton#btnAddExecutor:hover,
 QPushButton#btnAddReceiver:hover, QPushButton#btnAddTag:hover {
-    background-color: #998664;
+    background-color: {ACCENT_HOVER_SOFT};
 }
-
 QPushButton#btnAddSender:pressed, QPushButton#btnAddExecutor:pressed,
 QPushButton#btnAddReceiver:pressed, QPushButton#btnAddTag:pressed {
-    background-color: #7A6A50;
+    background-color: {ACCENT_PRESSED_DEEP};
 }
-
-/* Иконка плюса - белая, с прозрачным фоном */
 QPushButton#btnAddSender::icon, QPushButton#btnAddExecutor::icon,
 QPushButton#btnAddReceiver::icon, QPushButton#btnAddTag::icon {
     width: 24px;
     height: 24px;
 }
-
-/* Отключаем затемнение иконки при наведении */
 QPushButton#btnAddSender::icon:hover, QPushButton#btnAddExecutor::icon:hover,
 QPushButton#btnAddReceiver::icon:hover, QPushButton#btnAddTag::icon:hover {
     background-color: transparent;
 }
 
-/* ===== СТИЛИ ДЛЯ ВЫПАДАЮЩИХ СПИСКОВ QComboBox ===== */
-QComboBox QAbstractItemView {
-    border-radius: 6px;
-    background-color: white;
-    color: #1B232A;
-    padding: 4px;
-    outline: none;
-    border: 1px solid #CCAB6E;
+/* ===== КНОПКИ-ВЫБОРЫ (отправитель / получатель / исполнитель / теги) ===== */
+QPushButton#btn_sender, QPushButton#btn_receiver,
+QPushButton#btnExecutor, QPushButton#btn_tag {
+    border-radius: 10px;
+    border: 1px solid {ACCENT_PRIMARY};
+    padding: 5px;
+    text-align: left;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
+}
+QPushButton#btn_sender:hover, QPushButton#btn_receiver:hover,
+QPushButton#btnExecutor:hover, QPushButton#btn_tag:hover {
+    border: 1px solid {ACCENT_HOVER_SOFT};
+    background-color: {BG_HOVER_ACCENT_SOFT};
+}
+QPushButton#btn_sender:focus, QPushButton#btn_receiver:focus,
+QPushButton#btnExecutor:focus, QPushButton#btn_tag:focus {
+    border: 2px solid {ACCENT_PRIMARY};
 }
 
+/* ===== КНОПКА СОХРАНЕНИЯ ===== */
+QPushButton#btn_attach {
+    border-radius: 10px;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border: none;
+    font-weight: bold;
+    font-size: 13px;
+}
+QPushButton#btn_attach:hover {
+    background-color: {ACCENT_HOVER_SOFT};
+}
+QPushButton#btn_attach:pressed {
+    background-color: {ACCENT_PRESSED_DEEP};
+}
+
+/* ===== ВЫПАДАЮЩИЕ СПИСКИ QComboBox ===== */
+QComboBox QAbstractItemView {
+    border-radius: 6px;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+    padding: 4px;
+    outline: none;
+    border: 1px solid {ACCENT_PRIMARY};
+}
 QComboBox QAbstractItemView::item {
     padding: 8px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     border: none;
     outline: none;
 }
-
 QComboBox QAbstractItemView::item:hover {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
-
 QComboBox QAbstractItemView::item:selected {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
-
 QComboBox QAbstractItemView::item:focus {
     outline: none;
     border: none;
 }
 
-/* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ QCalendarWidget ===== */
+/* ===== КАЛЕНДАРЬ QCalendarWidget ===== */
 QCalendarWidget {
-    background-color: white;
+    background-color: {BG_CARD};
     border-radius: 8px;
-    border: 1px solid #CCAB6E;
+    border: 1px solid {ACCENT_PRIMARY};
 }
-
-/* Месяц/год - белый фон, черный текст */
 QCalendarWidget QWidget#qt_calendar_navigationbar {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     border-radius: 8px 8px 0 0;
 }
-
-/* Контейнер навигации */
 QCalendarWidget QWidget {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
 }
-
-/* Кнопки навигации (стрелки) - черные, без фона */
 QCalendarWidget QToolButton#qt_calendar_prevmonth,
 QCalendarWidget QToolButton#qt_calendar_nextmonth {
     background-color: transparent;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     border: none;
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 16px;
     font-weight: bold;
 }
-
 QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
 QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
-    background-color: #e3f2fd;
+    background-color: {ACCENT_SELECTION_BG};
 }
-
 QCalendarWidget QToolButton#qt_calendar_prevmonth:pressed,
 QCalendarWidget QToolButton#qt_calendar_nextmonth:pressed {
-    background-color: #d0d0d0;
+    background-color: {BG_PRESSED_CALENDAR};
 }
-
-/* Кнопка с месяцем (для выбора месяца) */
 QCalendarWidget QToolButton#qt_calendar_monthbutton {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     border: none;
     border-radius: 4px;
     padding: 4px 12px;
     font-weight: bold;
 }
-
 QCalendarWidget QToolButton#qt_calendar_monthbutton:hover {
-    background-color: #e3f2fd;
+    background-color: {ACCENT_SELECTION_BG};
 }
-
-/* Кнопка с годом (для выбора года) */
 QCalendarWidget QToolButton#qt_calendar_yearbutton {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     border: none;
     border-radius: 4px;
     padding: 4px 12px;
     font-weight: bold;
 }
-
 QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
-    background-color: #e3f2fd;
+    background-color: {ACCENT_SELECTION_BG};
 }
-
-/* Меню выбора месяца/года */
 QCalendarWidget QMenu {
-    background-color: white;
-    border: 1px solid #CCAB6E;
+    background-color: {BG_CARD};
+    border: 1px solid {ACCENT_PRIMARY};
     border-radius: 6px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
 }
-
 QCalendarWidget QMenu::item {
     padding: 6px 20px;
     border-radius: 4px;
 }
-
 QCalendarWidget QMenu::item:selected {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
-
-/* Дни недели (шапка) - золотой фон, белый текст */
 QCalendarWidget QWidget#qt_calendar_weekday {
-    color: white;
+    color: {TEXT_ON_ACCENT};
     font-weight: bold;
-    background-color: #CCAB6E;
+    background-color: {ACCENT_PRIMARY};
     padding: 4px;
 }
-
-/* Ячейки дней */
 QCalendarWidget QToolButton#qt_calendar_day {
     border: none;
     border-radius: 4px;
     padding: 4px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     background-color: transparent;
 }
-
 QCalendarWidget QToolButton#qt_calendar_day:hover {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
-
-/* Выбранная дата - золотой фон, белый текст */
 QCalendarWidget QToolButton#qt_calendar_day:checked {
-    background-color: #CCAB6E;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border-radius: 4px;
 }
-
 QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
-    background-color: #998664;
+    background-color: {ACCENT_HOVER_SOFT};
 }
-
-/* Дни других месяцев - серый текст */
 QCalendarWidget QToolButton#qt_calendar_day:disabled {
-    color: #B0B0B0;
+    color: {TEXT_DISABLED};
 }
-
-/* Сегодняшняя дата - красный фон, белый текст */
 QCalendarWidget QToolButton#qt_calendar_day[property="isToday"] {
-    background-color: #D22730;
-    color: white;
+    background-color: {ACCENT_DANGER};
+    color: {TEXT_ON_ACCENT};
     border-radius: 4px;
 }
-
 QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:hover {
-    background-color: #862633;
+    background-color: {ACCENT_DANGER_HOVER};
 }
-
 QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:pressed {
-    background-color: #6a1e29;
+    background-color: {ACCENT_DANGER_PRESSED};
 }
-
-/* Если сегодняшняя дата выбрана - приоритет у выбранной */
 QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checked {
-    background-color: #CCAB6E;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
 }
-
 QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checked:hover {
-    background-color: #998664;
+    background-color: {ACCENT_HOVER_SOFT};
 }
 
-/* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ В QDateEdit (попап) ===== */
+/* ===== КАЛЕНДАРЬ В QDateEdit (попап) ===== */
 QDateEdit QCalendarWidget {
-    background-color: white;
+    background-color: {BG_CARD};
     border-radius: 8px;
-    border: 1px solid #CCAB6E;
+    border: 1px solid {ACCENT_PRIMARY};
 }
-
-/* Навигационная панель в попапе */
 QDateEdit QCalendarWidget QWidget#qt_calendar_navigationbar {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     border-radius: 8px 8px 0 0;
 }
-
 QDateEdit QCalendarWidget QWidget {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
 }
-
-/* Стрелки навигации в попапе */
 QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth,
 QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth {
     background-color: transparent;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     border: none;
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 16px;
     font-weight: bold;
 }
-
 QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
 QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
-    background-color: #e3f2fd;
+    background-color: {ACCENT_SELECTION_BG};
 }
-
-/* Кнопка месяца в попапе */
+QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth:pressed,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth:pressed {
+    background-color: {BG_PRESSED_CALENDAR};
+}
 QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     border: none;
     border-radius: 4px;
     padding: 4px 12px;
     font-weight: bold;
 }
-
 QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton:hover {
-    background-color: #e3f2fd;
+    background-color: {ACCENT_SELECTION_BG};
 }
-
-/* Кнопка года в попапе */
 QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     border: none;
     border-radius: 4px;
     padding: 4px 12px;
     font-weight: bold;
 }
-
 QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
-    background-color: #e3f2fd;
+    background-color: {ACCENT_SELECTION_BG};
 }
-
-/* Дни недели в попапе - золотой фон, белый текст */
 QDateEdit QCalendarWidget QWidget#qt_calendar_weekday {
-    color: white;
+    color: {TEXT_ON_ACCENT};
     font-weight: bold;
-    background-color: #CCAB6E;
+    background-color: {ACCENT_PRIMARY};
     padding: 4px;
 }
-
-/* Ячейки дней в попапе */
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day {
     border: none;
     border-radius: 4px;
     padding: 4px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     background-color: transparent;
 }
-
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day:hover {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
-
-/* Выбранная дата в попапе */
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked {
-    background-color: #CCAB6E;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border-radius: 4px;
 }
-
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
-    background-color: #998664;
+    background-color: {ACCENT_HOVER_SOFT};
 }
-
-/* Дни других месяцев в попапе */
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day:disabled {
-    color: #B0B0B0;
+    color: {TEXT_DISABLED};
 }
-
-/* Сегодняшняя дата в попапе - красный фон, белый текст */
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"] {
-    background-color: #D22730;
-    color: white;
+    background-color: {ACCENT_DANGER};
+    color: {TEXT_ON_ACCENT};
     border-radius: 4px;
 }
-
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:hover {
-    background-color: #862633;
+    background-color: {ACCENT_DANGER_HOVER};
 }
-
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:pressed {
-    background-color: #6a1e29;
+    background-color: {ACCENT_DANGER_PRESSED};
 }
-
-/* Если сегодняшняя дата выбрана в попапе - приоритет у выбранной */
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checked {
-    background-color: #CCAB6E;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+}
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checked:hover {
+    background-color: {ACCENT_HOVER_SOFT};
+}
+/* Гарантируем, что viewport внутри QTextEdit тоже тёмный */
+QTextEdit > QWidget,
+QTextBrowser > QWidget {
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
 }
 
-QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checked:hover {
-    background-color: #998664;
+/* Placeholder в тёмной теме */
+QLineEdit,
+QTextEdit,
+QTextBrowser {
+    placeholder-text-color: {TEXT_MUTED_ALT};
 }
    </string>
   </property>
@@ -450,13 +429,40 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checke
       </font>
      </property>
      <property name="styleSheet">
-      <string notr="true">color: #1B232A; font-weight: bold;</string>
+      <string notr="true">color: {TEXT_PRIMARY}; font-weight: bold;</string>
      </property>
      <property name="text">
       <string>Основные реквизиты</string>
      </property>
     </widget>
    </item>
+
+      <item>
+    <widget class="QComboBox" name="type_box">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>335</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>36</height>
+      </size>
+     </property>
+     <property name="placeholderText">
+      <string>Выберите тип документа</string>
+     </property>
+    </widget>
+   </item>
+
    <item>
     <widget class="QComboBox" name="direction_box">
      <property name="sizePolicy">
@@ -489,7 +495,7 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checke
        <item>
         <widget class="QLabel" name="labelIndexNumber">
          <property name="styleSheet">
-          <string notr="true">color: #1B232A;</string>
+          <string notr="true">color: {TEXT_PRIMARY};</string>
          </property>
          <property name="text">
           <string>Порядковый номер</string>
@@ -528,7 +534,7 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checke
        <item>
         <widget class="QLabel" name="labelNumber">
          <property name="styleSheet">
-          <string notr="true">color: #1B232A;</string>
+          <string notr="true">color: {TEXT_PRIMARY};</string>
          </property>
          <property name="text">
           <string>Номер документа</string>
@@ -571,7 +577,7 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checke
        <item>
         <widget class="QLabel" name="labelDate">
          <property name="styleSheet">
-          <string notr="true">color: #1B232A;</string>
+          <string notr="true">color: {TEXT_PRIMARY};</string>
          </property>
          <property name="text">
           <string>Дата отправки</string>
@@ -610,7 +616,7 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checke
        <item>
         <widget class="QLabel" name="labelDeadline">
          <property name="styleSheet">
-          <string notr="true">color: #1B232A;</string>
+          <string notr="true">color: {TEXT_PRIMARY};</string>
          </property>
          <property name="text">
           <string>Срок ответа</string>
@@ -654,7 +660,7 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checke
       </font>
      </property>
      <property name="styleSheet">
-      <string notr="true">color: #1B232A; font-weight: bold;</string>
+      <string notr="true">color: {TEXT_PRIMARY}; font-weight: bold;</string>
      </property>
      <property name="text">
       <string>Содержание</string>
@@ -707,7 +713,7 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checke
       </font>
      </property>
      <property name="styleSheet">
-      <string notr="true">color: #1B232A; font-weight: bold;</string>
+      <string notr="true">color: {TEXT_PRIMARY}; font-weight: bold;</string>
      </property>
      <property name="text">
       <string>Участники</string>
@@ -717,7 +723,7 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checke
    <item>
     <layout class="QHBoxLayout" name="horizontalLayoutSender">
      <item>
-      <widget class="QComboBox" name="sender_box">
+      <widget class="QPushButton" name="btn_sender">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -730,7 +736,7 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checke
          <height>36</height>
         </size>
        </property>
-       <property name="placeholderText">
+       <property name="text">
         <string>Выберите отправителя</string>
        </property>
       </widget>
@@ -751,21 +757,6 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checke
        </property>
        <property name="cursor">
         <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">
-QPushButton {
-    border-radius: 18px;
-    background-color: #CCAB6E;
-    border: none;
-}
-QPushButton:hover {
-    background-color: #998664;
-}
-QPushButton:pressed {
-    background-color: #7A6A50;
-}
-        </string>
        </property>
        <property name="text">
         <string/>
@@ -800,25 +791,6 @@ QPushButton:pressed {
          <height>36</height>
         </size>
        </property>
-       <property name="styleSheet">
-        <string notr="true">
-QPushButton {
-    border-radius: 10px;
-    border: 1px solid #CCAB6E;
-    padding: 5px;
-    text-align: left;
-    background-color: white;
-    color: #1B232A;
-}
-QPushButton:hover {
-    border: 1px solid #998664;
-    background-color: #FDFBF7;
-}
-QPushButton:focus {
-    border: 2px solid #CCAB6E;
-}
-        </string>
-       </property>
        <property name="text">
         <string>Выберите получателя</string>
        </property>
@@ -840,21 +812,6 @@ QPushButton:focus {
        </property>
        <property name="cursor">
         <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">
-QPushButton {
-    border-radius: 18px;
-    background-color: #CCAB6E;
-    border: none;
-}
-QPushButton:hover {
-    background-color: #998664;
-}
-QPushButton:pressed {
-    background-color: #7A6A50;
-}
-        </string>
        </property>
        <property name="text">
         <string/>
@@ -889,25 +846,6 @@ QPushButton:pressed {
          <height>36</height>
         </size>
        </property>
-       <property name="styleSheet">
-        <string notr="true">
-QPushButton {
-    border-radius: 10px;
-    border: 1px solid #CCAB6E;
-    padding: 5px;
-    text-align: left;
-    background-color: white;
-    color: #1B232A;
-}
-QPushButton:hover {
-    border: 1px solid #998664;
-    background-color: #FDFBF7;
-}
-QPushButton:focus {
-    border: 2px solid #CCAB6E;
-}
-        </string>
-       </property>
        <property name="text">
         <string>Выберите исполнителя</string>
        </property>
@@ -929,21 +867,6 @@ QPushButton:focus {
        </property>
        <property name="cursor">
         <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">
-QPushButton {
-    border-radius: 18px;
-    background-color: #CCAB6E;
-    border: none;
-}
-QPushButton:hover {
-    background-color: #998664;
-}
-QPushButton:pressed {
-    background-color: #7A6A50;
-}
-        </string>
        </property>
        <property name="text">
         <string/>
@@ -970,7 +893,7 @@ QPushButton:pressed {
       </font>
      </property>
      <property name="styleSheet">
-      <string notr="true">color: #1B232A; font-weight: bold;</string>
+      <string notr="true">color: {TEXT_PRIMARY}; font-weight: bold;</string>
      </property>
      <property name="text">
       <string>Классификация</string>
@@ -993,25 +916,6 @@ QPushButton:pressed {
          <height>36</height>
         </size>
        </property>
-       <property name="styleSheet">
-        <string notr="true">
-QPushButton {
-    border-radius: 10px;
-    border: 1px solid #CCAB6E;
-    padding: 5px;
-    text-align: left;
-    background-color: white;
-    color: #1B232A;
-}
-QPushButton:hover {
-    border: 1px solid #998664;
-    background-color: #FDFBF7;
-}
-QPushButton:focus {
-    border: 2px solid #CCAB6E;
-}
-        </string>
-       </property>
        <property name="text">
         <string>Выберите теги</string>
        </property>
@@ -1033,21 +937,6 @@ QPushButton:focus {
        </property>
        <property name="cursor">
         <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">
-QPushButton {
-    border-radius: 18px;
-    background-color: #CCAB6E;
-    border: none;
-}
-QPushButton:hover {
-    background-color: #998664;
-}
-QPushButton:pressed {
-    background-color: #7A6A50;
-}
-        </string>
        </property>
        <property name="text">
         <string/>
@@ -1153,24 +1042,6 @@ QPushButton:pressed {
       <font>
        <bold>true</bold>
       </font>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">
-QPushButton {
-    border-radius: 10px;
-    background-color: #CCAB6E;
-    color: white;
-    border: none;
-    font-weight: bold;
-    font-size: 13px;
-}
-QPushButton:hover {
-    background-color: #998664;
-}
-QPushButton:pressed {
-    background-color: #7A6A50;
-}
-      </string>
      </property>
      <property name="text">
       <string>Сохранить документ</string>

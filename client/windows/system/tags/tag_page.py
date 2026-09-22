@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
 
+from client.core.themes import get_menu_style, T, apply_theme_to_widget
 from client.windows.system.tags.tag_card import TagCard
 from client.windows.animations.floating_action_button import FloatingActionButton
 from client.windows.system.tags.tag_dialog import TagDialog
@@ -66,6 +67,7 @@ class TagsPage(QWidget):
         ui_path = self.get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
 
         # Создаем плавающую кнопку
         self.floating_btn = FloatingActionButton(self)
@@ -128,7 +130,7 @@ class TagsPage(QWidget):
                 self.tags.append({
                     'id': tag.get('id'),
                     'name': tag.get('name', ''),
-                    'color': tag.get('color', '#CCAB6E'),
+                    'color': tag.get('color', T.ACCENT_PRIMARY),
                     'documents_count': tag.get('documents_count', 0),
                     'priority': tag.get('priority', 'normal')
                 })
@@ -153,29 +155,7 @@ class TagsPage(QWidget):
     def show_sort_menu(self):
         """Показать меню сортировки"""
         menu = QMenu(self)
-
-        menu.setStyleSheet("""
-            QMenu { 
-                background-color: white; 
-                border: 1px solid #c0c0c0; 
-                border-radius: 5px; 
-                padding: 5px; 
-                color: black;
-            }
-            QMenu::item { 
-                padding: 8px 25px 8px 15px; 
-                border-radius: 3px; 
-                font-size: 14px; 
-            }
-            QMenu::item:selected { 
-                background-color: #e3f2fd; 
-            }
-            QMenu::separator { 
-                height: 1px; 
-                background: #e0e0e0; 
-                margin: 5px 10px; 
-            }
-        """)
+        menu.setStyleSheet(get_menu_style())
 
         sort_options = {
             "А→Я (по названию)": self.sort_by_name_asc,
@@ -388,7 +368,7 @@ class TagsPage(QWidget):
                     if tag.get('id') == tag_id:
                         self.tags[i].update({
                             'name': result.get('name', ''),
-                            'color': result.get('color', '#CCAB6E'),
+                            'color': result.get('color', T.ACCENT_PRIMARY),
                             'priority': result.get('priority', 'normal'),
                             'documents_count': result.get('documents_count', 0)
                         })

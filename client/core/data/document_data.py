@@ -93,10 +93,34 @@ class DocumentDataConfig:
     }
 
     # ============ ЦВЕТА ============
-    EVEN_ROW_COLOR = QColor("#FFFFFF")
-    ODD_ROW_COLOR = QColor("#F5F5F5")
-    TEXT_COLOR = QColor("#1B232A")
-    SELECTED_COLOR = QColor("#E3F2FD")
+    # ============ ЦВЕТА (динамические, из текущей темы) ============
+
+    @classmethod
+    def get_row_color(cls, is_even: bool) -> QColor:
+        """Фон чётной/нечётной строки таблицы."""
+        from client.core.themes import get_manager
+        t = get_manager().current
+        return QColor(t.TABLE_BG if is_even else t.TABLE_ROW_ALT)
+
+    @classmethod
+    def get_even_row_color(cls) -> QColor:
+        return cls.get_row_color(is_even=True)
+
+    @classmethod
+    def get_odd_row_color(cls) -> QColor:
+        return cls.get_row_color(is_even=False)
+
+    @classmethod
+    def get_text_color(cls) -> QColor:
+        """Основной цвет текста в таблице."""
+        from client.core.themes import get_manager
+        return QColor(get_manager().current.TEXT_PRIMARY)
+
+    @classmethod
+    def get_selected_color(cls) -> QColor:
+        """Фон выделенной строки."""
+        from client.core.themes import get_manager
+        return QColor(get_manager().current.TABLE_SELECTION_BG)
 
     # ============ ФОРМАТЫ ФАЙЛОВ ============
     SUPPORTED_FORMATS = (

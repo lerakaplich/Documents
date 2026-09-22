@@ -26,7 +26,7 @@
    <string>LeftPanel</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">background-color: #1B232A;</string>
+   <string notr="true">background-color: {SIDEBAR_BG};</string>
   </property>
 
   <layout class="QVBoxLayout" name="mainLayout">
@@ -82,7 +82,7 @@
         <property name="styleSheet">
          <string notr="true">QPushButton {
     background-color: transparent;
-    color: white;
+    color: {SIDEBAR_TEXT};
     border: none;
     border-radius: 5px;
     padding: 8px 12px;
@@ -91,8 +91,8 @@
     text-align: left;
 }
 QPushButton:hover {
-    background-color: #3A4A54;
-    color: #DDB87A;
+    background-color: {SIDEBAR_HOVER_BG};
+    color: {SIDEBAR_HOVER_TEXT};
 }
 QPushButton::icon {
     width: 20px;
@@ -122,7 +122,7 @@ QPushButton::icon {
       <item>
        <widget class="Line" name="line1">
         <property name="styleSheet">
-         <string notr="true">background-color: #2A3A44;
+         <string notr="true">background-color: {SIDEBAR_DIVIDER};
 max-height: 1px;
 min-height: 1px;</string>
         </property>
@@ -138,7 +138,7 @@ min-height: 1px;</string>
         <property name="styleSheet">
          <string notr="true">QPushButton {
     background-color: transparent;
-    color: white;
+    color: {SIDEBAR_TEXT};
     border: none;
     border-radius: 5px;
     padding: 8px 12px;
@@ -147,8 +147,8 @@ min-height: 1px;</string>
     text-align: left;
 }
 QPushButton:hover {
-    background-color: #3A4A54;
-    color: #DDB87A;
+    background-color: {SIDEBAR_HOVER_BG};
+    color: {SIDEBAR_HOVER_TEXT};
 }
 QPushButton::icon {
     width: 20px;
@@ -385,7 +385,7 @@ QScrollBar::sub-page:horizontal {
       <item>
        <widget class="Line" name="line2">
         <property name="styleSheet">
-         <string notr="true">background-color: #2A3A44;
+         <string notr="true">background-color: {SIDEBAR_DIVIDER};
 max-height: 1px;
 min-height: 1px;</string>
         </property>
@@ -401,7 +401,7 @@ min-height: 1px;</string>
         <property name="styleSheet">
          <string notr="true">QPushButton {
     background-color: transparent;
-    color: white;
+    color: {SIDEBAR_TEXT};
     border: none;
     border-radius: 5px;
     padding: 8px 12px;
@@ -410,8 +410,8 @@ min-height: 1px;</string>
     text-align: left;
 }
 QPushButton:hover {
-    background-color: #3A4A54;
-    color: #DDB87A;
+    background-color: {SIDEBAR_HOVER_BG};
+    color: {SIDEBAR_HOVER_TEXT};
 }
 QPushButton::icon {
     width: 20px;
@@ -443,7 +443,7 @@ QPushButton::icon {
         <property name="styleSheet">
          <string notr="true">QPushButton {
     background-color: transparent;
-    color: white;
+    color: {SIDEBAR_TEXT};
     border: none;
     border-radius: 5px;
     padding: 8px 12px;
@@ -452,8 +452,8 @@ QPushButton::icon {
     text-align: left;
 }
 QPushButton:hover {
-    background-color: #3A4A54;
-    color: #DDB87A;
+    background-color: {SIDEBAR_HOVER_BG};
+    color: {SIDEBAR_HOVER_TEXT};
 }
 QPushButton::icon {
     width: 20px;
@@ -485,7 +485,7 @@ QPushButton::icon {
         <property name="styleSheet">
          <string notr="true">QPushButton {
     background-color: transparent;
-    color: white;
+    color: {SIDEBAR_TEXT};
     border: none;
     border-radius: 5px;
     padding: 8px 12px;
@@ -494,8 +494,8 @@ QPushButton::icon {
     text-align: left;
 }
 QPushButton:hover {
-    background-color: #3A4A54;
-    color: #DDB87A;
+    background-color: {SIDEBAR_HOVER_BG};
+    color: {SIDEBAR_HOVER_TEXT};
 }
 QPushButton::icon {
     width: 20px;

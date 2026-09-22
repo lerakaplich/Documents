@@ -5,6 +5,8 @@ from PyQt6 import QtWidgets, uic
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMessageBox, QFileDialog
 
+from client.core.themes import apply_theme_to_widget
+
 
 class DocumentTypeDialog(QtWidgets.QDialog):
     def __init__(self, parent_editor, item=None):
@@ -16,6 +18,7 @@ class DocumentTypeDialog(QtWidgets.QDialog):
 
         if os.path.exists(ui_path):
             uic.loadUi(ui_path, self)
+            apply_theme_to_widget(self)
             print(f"[DEBUG] UI файл успешно загружен: {ui_path}")
         else:
             print(f"[ERROR] UI файл не найден: {ui_path}")

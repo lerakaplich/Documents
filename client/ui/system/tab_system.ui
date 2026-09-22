@@ -15,16 +15,16 @@
   </property>
   <property name="styleSheet">
    <string notr="true">QWidget {
-    background-color: #F8F9FA;
+    background-color: {BG_DIALOG_ALT};
 }
 QTabWidget::pane {
-    border: 1px solid #DEE2E6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 8px;
-    background-color: white;
+    background-color: {BG_CARD};
 }
 QTabBar::tab {
-    background-color: #F8F9FA;
-    border: 1px solid #DEE2E6;
+    background-color: {BG_SURFACE_HEADER};
+    border: 1px solid {BORDER_DEFAULT};
     border-bottom: none;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
@@ -32,16 +32,16 @@ QTabBar::tab {
     margin-right: 5px;
     font-size: 14px;
     font-weight: bold;
-    color: black;
+    color: {TEXT_BLACK};
 }
 QTabBar::tab:selected {
-    background-color: white;
-    border-bottom: 2px solid #ccab6e;
-    color: black;
+    background-color: {BG_CARD};
+    border-bottom: 2px solid {ACCENT_PRIMARY};
+    color: {TEXT_BLACK};
 }
 QTabBar::tab:hover {
-    background-color: #E9ECEF;
-    color: black;
+    background-color: {BG_HOVER_ALT};
+    color: {TEXT_BLACK};
 }
 QScrollArea {
     border: none;
@@ -49,17 +49,17 @@ QScrollArea {
 }
 QScrollBar:vertical {
     border: none;
-    background: #F1F1F1;
+    background: {SCROLLBAR_BG};
     width: 10px;
     border-radius: 5px;
 }
 QScrollBar::handle:vertical {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 5px;
     min-height: 20px;
 }
 QScrollBar::handle:vertical:hover {
-    background: #A8A8A8;
+    background: {SCROLLBAR_HANDLE_HOVER};
 }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     border: none;
@@ -95,7 +95,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
      </property>
      <property name="styleSheet">
       <string notr="true">QFrame {
-    background-color: #D22730;
+    background-color: {HEADER_BG};
     border: none;
 }</string>
      </property>
@@ -118,7 +118,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
       <item>
        <widget class="QLabel" name="titleLabel">
         <property name="styleSheet">
-         <string notr="true">color: white; font-size: 32px; font-weight: bold; background-color: transparent;</string>
+         <string notr="true">color: {TEXT_ON_ACCENT}; font-size: 32px; font-weight: bold; background-color: transparent;</string>
         </property>
         <property name="text">
          <string>Система</string>

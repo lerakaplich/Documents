@@ -9,6 +9,8 @@ from PyQt6.QtCore import Qt, QEvent, QTimer, pyqtSignal, QRect, QSize, QPoint, Q
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QFont, QPainter, QPen, QBrush, QPalette, QMouseEvent
 from PyQt6.uic import loadUi
 
+from client.core.themes import apply_theme_to_widget
+
 
 class TagItemDelegate(QStyledItemDelegate):
     """
@@ -28,95 +30,80 @@ class TagItemDelegate(QStyledItemDelegate):
                                                              Qt.TransformationMode.SmoothTransformation)
 
     def paint(self, painter, option, index):
-        """Отрисовка элемента - ТОЛЬКО hover эффект"""
+        from client.core.themes import get_manager
+
         tag_data = index.data(Qt.ItemDataRole.UserRole)
         if not tag_data:
             super().paint(painter, option, index)
             return
 
+        t = get_manager().current
         painter.save()
 
-        # Проверяем наведение (hover)
-        is_hovered = False
-        if self.hovered_index is not None and self.hovered_index.isValid():
-            hover_row = self.hovered_index.row()
-            hover_parent = self.hovered_index.parent()
-            current_row = index.row()
-            current_parent = index.parent()
-            if hover_row == current_row and hover_parent == current_parent:
-                is_hovered = True
+        is_hovered = (
+                self.hovered_index is not None
+                and self.hovered_index.isValid()
+                and self.hovered_index.row() == index.row()
+                and self.hovered_index.parent() == index.parent()
+        )
 
-        # Фон - белый по умолчанию, серый при наведении
-        if is_hovered:
-            bg_color = QColor(240, 240, 240)
-        else:
-            bg_color = QColor(255, 255, 255)
-
+        bg_color = QColor(t.BG_HOVER_LIGHT) if is_hovered else QColor(t.BG_CARD)
         painter.fillRect(option.rect, bg_color)
 
-        # Определяем цвет приоритета
+        # Priority-цвета — данные, не тема
         priority = tag_data.get('priority', 'normal')
         priority_colors = {
             'urgent': QColor(255, 0, 0),
             'important': QColor(255, 165, 0),
-            'normal': QColor(128, 128, 128)
+            'normal': QColor(128, 128, 128),
         }
         priority_color = priority_colors.get(priority, QColor(128, 128, 128))
 
-        # Параметры отступов
         left_margin = 8
         item_height = option.rect.height()
 
-        # 1. Рисуем чекбокс
+        # 1. Чекбокс
         check_x = option.rect.x() + left_margin
         check_y = option.rect.y() + (item_height - 18) // 2
         check_rect = QRect(check_x, check_y, 18, 18)
-
-        is_checked = tag_data.get('checked', False)
-        if is_checked:
+        if tag_data.get('checked', False):
             painter.drawPixmap(check_rect, self.checked_pixmap)
         else:
             painter.drawPixmap(check_rect, self.unchecked_pixmap)
 
-        # 2. Рисуем цветовой кружок
+        # 2. Цветовой кружок
         circle_x = check_x + 18 + 12
         circle_size = 20
         circle_y = option.rect.y() + (item_height - circle_size) // 2
         circle_rect = QRect(circle_x, circle_y, circle_size, circle_size)
 
-        color_hex = tag_data.get('color', '#808080')
-        color = QColor(color_hex)
-
+        color = QColor(tag_data.get('color', '#808080'))
         painter.setBrush(QBrush(color))
-        painter.setPen(QPen(QColor(232, 220, 200), 1))
+        painter.setPen(QPen(QColor(t.BORDER_ACCENT_SOFT), 1))
         painter.drawEllipse(circle_rect)
 
-        # 3. Рисуем название тега
+        # 3. Название тега — ЦВЕТ ИЗ ТЕМЫ
         name_x = circle_x + circle_size + 12
         name_rect = QRect(name_x, option.rect.y(),
                           option.rect.width() - name_x - 130,
                           item_height)
-
         font = painter.font()
         font.setPointSize(10)
         painter.setFont(font)
-        painter.setPen(QColor(0, 0, 0))  # Черный текст всегда
+        painter.setPen(QColor(t.TEXT_PRIMARY))  # ← было чёрное
+        painter.drawText(name_rect,
+                         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                         tag_data.get('name', ''))
 
-        name = tag_data.get('name', '')
-        painter.drawText(name_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, name)
-
-        # 4. Рисуем приоритет (справа)
+        # 4. Приоритет
         priority_x = option.rect.width() - 120
         priority_rect = QRect(priority_x, option.rect.y(), 110, item_height)
-
-        priority_text = self.get_priority_text(priority)
         painter.setPen(priority_color)
-
-        font = painter.font()
         font.setPointSize(9)
         painter.setFont(font)
-        painter.drawText(priority_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-                         priority_text)
+        painter.drawText(priority_rect,
+                         Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                         self.get_priority_text(priority))
 
         painter.restore()
 
@@ -145,21 +132,20 @@ class TagTreeWidget(QTreeWidget):
         self.setSelectionMode(QTreeWidget.SelectionMode.SingleSelection)
         self.viewport().setMouseTracking(True)
 
-        # Отключаем выделение цветом
         self.setStyleSheet("""
-            QTreeWidget::item:selected {
-                background-color: transparent;
-                color: inherit;
-            }
-            QTreeWidget::item:selected:hover {
-                background-color: #f0f0f0;
-                color: inherit;
-            }
-            QTreeWidget {
-                selection-background-color: transparent;
-                selection-color: #000000;
+            QTreeWidget::item:selected { background-color: transparent; color: inherit; }
+            QTreeWidget::item:selected:hover { background-color: transparent; color: inherit; }
+            QTreeWidget { selection-background-color: transparent; }
+                        QTreeWidget#treeWidget QHeaderView::section {
+                background-color: {BG_CARD};
+                color: {TEXT_PRIMARY};
+                border: none;
+                border-bottom: 1px solid {BORDER_LIGHT};
+                padding: 6px 8px;
+                font-weight: bold;
             }
         """)
+
 
     def setItemDelegate(self, delegate):
         super().setItemDelegate(delegate)
@@ -210,14 +196,18 @@ class TagSelectionDialog(QDialog):
         self.filtered_tags = self.tags.copy()
         self.selected_tags = []
 
-        # Пути к иконкам чекбоксов
-        self.checked_icon_path = self.get_icon_path("cb_checked.svg")
-        self.unchecked_icon_path = self.get_icon_path("cb_unchecked.svg")
+        from client.core.themes import get_manager
+        from client.core.themes.icon_utils import _recolored_svg_path
+
+        _t = get_manager().current
+        self.checked_icon_path   = _recolored_svg_path("cb_checked",   _t.ICON_COLOR)
+        self.unchecked_icon_path = _recolored_svg_path("cb_unchecked", _t.ICON_COLOR)
 
         # Загружаем UI
         ui_path = self.get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
         else:
             print(f"UI файл не найден: {ui_path}")
             self._create_ui()
@@ -313,6 +303,24 @@ class TagSelectionDialog(QDialog):
         if not os.path.exists(ui_path):
             print(f"UI файл не найден: {ui_path}")
         return ui_path
+
+    def reapply_theme(self):
+        from client.core.themes import get_manager, apply_theme_to_widget
+        from client.core.themes.icon_utils import _recolored_svg_path
+
+        _t = get_manager().current
+        self.checked_icon_path   = _recolored_svg_path("cb_checked",   _t.ICON_COLOR)
+        self.unchecked_icon_path = _recolored_svg_path("cb_unchecked", _t.ICON_COLOR)
+
+        # Пересобрать делегат — он держит QPixmap-ы
+        if hasattr(self, 'delegate') and self.delegate:
+            self.delegate.checked_pixmap   = QPixmap(self.checked_icon_path).scaled(
+                18, 18, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            self.delegate.unchecked_pixmap = QPixmap(self.unchecked_icon_path).scaled(
+                18, 18, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            self.treeWidget.viewport().update()
+
+        apply_theme_to_widget(self)
 
     def _get_root_dir(self) -> str:
         """Определяет корневую директорию проекта"""

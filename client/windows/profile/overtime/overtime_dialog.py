@@ -3,6 +3,7 @@ from PyQt6 import uic
 from PyQt6.QtWidgets import QDialog, QMessageBox
 from PyQt6.QtCore import QDate, QTime, Qt
 
+from client.core.themes import apply_theme_to_widget, T
 from client.services.overtime_service import OvertimeService
 
 from PyQt6.QtWidgets import QTimeEdit
@@ -27,7 +28,7 @@ class OvertimeDialog(QDialog):
         # Если UI файл не найден, создаем диалог программно
 
         uic.loadUi(ui_path, self)
-
+        apply_theme_to_widget(self)
         self.setModal(True)
         self.setWindowTitle("Оформление переработки" if not readonly else "Просмотр переработки")
         self._setup_time_edits()
@@ -83,12 +84,12 @@ class OvertimeDialog(QDialog):
 
         # Форма
         form_widget = QFrame()
-        form_widget.setStyleSheet("""
-            QFrame {
-                background-color: #F8F9FA;
+        form_widget.setStyleSheet(f"""
+            QFrame {{
+                background-color: {T.BG_SURFACE_HEADER};
                 border-radius: 8px;
                 padding: 10px;
-            }
+            }}
         """)
         form_layout = QFormLayout(form_widget)
         form_layout.setSpacing(12)
@@ -97,16 +98,14 @@ class OvertimeDialog(QDialog):
         # Сотрудник
         self.comboEmployee = QComboBox()
         self.comboEmployee.setEditable(True)
-        self.comboEmployee.setStyleSheet("""
-            QComboBox {
+        self.comboEmployee.setStyleSheet(f"""
+            QComboBox {{
                 padding: 6px;
-                border: 1px solid #CED4DA;
+                border: 1px solid {T.BORDER_INPUT_SOFT};
                 border-radius: 4px;
                 min-height: 25px;
-            }
-            QComboBox:hover {
-                border-color: #CCAB6E;
-            }
+            }}
+            QComboBox:hover {{ border-color: {T.ACCENT_PRIMARY}; }}
         """)
         form_layout.addRow("Сотрудник:", self.comboEmployee)
 
@@ -114,48 +113,48 @@ class OvertimeDialog(QDialog):
         self.dateEdit = QDateEdit()
         self.dateEdit.setCalendarPopup(True)
         self.dateEdit.setDate(QDate.currentDate())
-        self.dateEdit.setStyleSheet("""
-            QDateEdit {
+        self.dateEdit.setStyleSheet(f"""
+            QDateEdit {{
                 padding: 6px;
-                border: 1px solid #CED4DA;
+                border: 1px solid {T.BORDER_INPUT_SOFT};
                 border-radius: 4px;
                 min-height: 25px;
-            }
-            QDateEdit:hover {
-                border-color: #CCAB6E;
-            }
+            }}
+            QDateEdit:hover {{
+                border-color: {T.ACCENT_PRIMARY};
+            }}
         """)
         form_layout.addRow("Дата:", self.dateEdit)
 
         # Время начала
         self.timeStart = QTimeEdit()
         self.timeStart.setTime(QTime(18, 0))
-        self.timeStart.setStyleSheet("""
-            QTimeEdit {
+        self.timeStart.setStyleSheet(f"""
+            QTimeEdit {{
                 padding: 6px;
-                border: 1px solid #CED4DA;
+                border: 1px solid {T.BORDER_INPUT_SOFT};
                 border-radius: 4px;
                 min-height: 25px;
-            }
-            QTimeEdit:hover {
-                border-color: #CCAB6E;
-            }
+            }}
+            QTimeEdit:hover {{
+                border-color: {T.ACCENT_PRIMARY};
+            }}
         """)
         form_layout.addRow("Время начала:", self.timeStart)
 
         # Время окончания
         self.timeEnd = QTimeEdit()
         self.timeEnd.setTime(QTime(20, 0))
-        self.timeEnd.setStyleSheet("""
-            QTimeEdit {
+        self.timeEnd.setStyleSheet(f"""
+            QTimeEdit {{
                 padding: 6px;
-                border: 1px solid #CED4DA;
+                border: 1px solid {T.BORDER_INPUT_SOFT};
                 border-radius: 4px;
                 min-height: 25px;
-            }
-            QTimeEdit:hover {
-                border-color: #CCAB6E;
-            }
+            }}
+            QTimeEdit:hover {{
+                border-color: {T.ACCENT_PRIMARY};
+            }}
         """)
         form_layout.addRow("Время окончания:", self.timeEnd)
 
@@ -163,15 +162,13 @@ class OvertimeDialog(QDialog):
         self.descriptionEdit = QTextEdit()
         self.descriptionEdit.setPlaceholderText("Введите описание переработки...")
         self.descriptionEdit.setMinimumHeight(100)
-        self.descriptionEdit.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #CED4DA;
+        self.descriptionEdit.setStyleSheet(f"""
+            QTextEdit {{
+                border: 1px solid {T.BORDER_INPUT_SOFT};
                 border-radius: 4px;
                 padding: 6px;
-            }
-            QTextEdit:focus {
-                border-color: #CCAB6E;
-            }
+            }}
+            QTextEdit:focus {{ border-color: {T.ACCENT_PRIMARY}; }}
         """)
         form_layout.addRow("Описание:", self.descriptionEdit)
 
@@ -182,46 +179,36 @@ class OvertimeDialog(QDialog):
         button_layout.addStretch()
 
         self.btnCancel = QPushButton("Отмена")
-        self.btnCancel.setStyleSheet("""
-            QPushButton {
-                background-color: #6C757D;
-                color: white;
+        self.btnCancel.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {T.BTN_GRAY_BG};
+                color: {T.TEXT_ON_ACCENT};
                 border: none;
                 border-radius: 4px;
                 padding: 8px 20px;
                 font-size: 13px;
                 min-width: 80px;
-            }
-            QPushButton:hover {
-                background-color: #5A6268;
-            }
-            QPushButton:pressed {
-                background-color: #4E555B;
-            }
+            }}
+            QPushButton:hover {{ background-color: {T.BTN_GRAY_HOVER_BG}; }}
+            QPushButton:pressed {{ background-color: {T.BTN_GRAY_PRESSED_BG}; }}
         """)
         self.btnCancel.clicked.connect(self.reject)
         button_layout.addWidget(self.btnCancel)
 
         self.btnSave = QPushButton("Сохранить")
-        self.btnSave.setStyleSheet("""
-            QPushButton {
-                background-color: #CCAB6E;
-                color: white;
+        self.btnSave.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {T.ACCENT_PRIMARY};
+                color: {T.TEXT_ON_ACCENT};
                 border: none;
                 border-radius: 4px;
                 padding: 8px 20px;
                 font-size: 13px;
                 min-width: 80px;
-            }
-            QPushButton:hover {
-                background-color: #B89A5A;
-            }
-            QPushButton:pressed {
-                background-color: #A88A4A;
-            }
-            QPushButton:disabled {
-                background-color: #D4C4A8;
-            }
+            }}
+            QPushButton:hover {{ background-color: {T.ACCENT_HOVER}; }}
+            QPushButton:pressed {{ background-color: {T.ACCENT_PRESSED}; }}
+            QPushButton:disabled {{ background-color: {T.BTN_ACCENT_DISABLED_BG}; }}
         """)
         self.btnSave.clicked.connect(self.accept)
         button_layout.addWidget(self.btnSave)
@@ -229,15 +216,13 @@ class OvertimeDialog(QDialog):
         main_layout.addLayout(button_layout)
 
         # Применяем стили для диалога
-        self.setStyleSheet("""
-            QDialog {
-                background-color: white;
-            }
-            QLabel {
+        self.setStyleSheet(f"""
+            QDialog {{ background-color: {T.BG_CARD}; }}
+            QLabel {{
                 font-size: 13px;
                 font-weight: 500;
-                color: #333;
-            }
+                color: {T.TEXT_HEADING};
+            }}
         """)
 
     def _load_employees(self):
@@ -296,22 +281,18 @@ class OvertimeDialog(QDialog):
 
         if readonly:
             self.btnSave.setText("Закрыть")
-            self.btnSave.setStyleSheet("""
-                QPushButton {
-                    background-color: #6C757D;
-                    color: white;
+            self.btnSave.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {T.BTN_GRAY_BG};
+                    color: {T.TEXT_ON_ACCENT};
                     border: none;
                     border-radius: 4px;
                     padding: 8px 20px;
                     font-size: 13px;
                     min-width: 80px;
-                }
-                QPushButton:hover {
-                    background-color: #5A6268;
-                }
-                QPushButton:pressed {
-                    background-color: #4E555B;
-                }
+                }}
+                QPushButton:hover {{ background-color: {T.BTN_GRAY_HOVER_BG}; }}
+                QPushButton:pressed {{ background-color: {T.BTN_GRAY_PRESSED_BG}; }}
             """)
             self.btnCancel.setVisible(False)
 

@@ -9,26 +9,22 @@ from typing import Optional, List, Dict, Any
 
 from PyQt6 import uic
 from PyQt6.QtCore import pyqtSignal, Qt, QDate
-from PyQt6.QtWidgets import QWidget, QMessageBox, QComboBox, QCompleter
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
+from PyQt6.QtWidgets import QWidget, QMessageBox
 
 from client.core.data.sender_service import SenderService
+from client.core.themes import apply_theme_to_widget, get_manager
 from client.windows.documents.table.create.employee_selection_dialog import EmployeeSelectionDialog
 from client.windows.documents.table.create.tag_selection_dialog import TagSelectionDialog
 
 
 class DocumentDialog(QWidget):
     """
-    Универсальный диалог для создания и редактирования документа
-    Поддерживает два режима: 'create' и 'edit'
+    Универсальный диалог для создания и редактирования документа.
+    Поддерживает два режима: 'create' и 'edit'.
     """
 
-    # Сигнал для создания документа
     document_created = pyqtSignal(dict)
-
-    # Сигнал для обновления документа
     document_updated = pyqtSignal(dict)
-
     cancelled = pyqtSignal()
 
     def __init__(self, parent=None, mode: str = 'create',
@@ -37,17 +33,7 @@ class DocumentDialog(QWidget):
                  organizations: List[Dict] = None,
                  departments: List[Dict] = None,
                  employees: List[Dict] = None,
-                 tags: List[Dict] = None):  # Добавлен параметр tags
-        """
-        Args:
-            mode: 'create' или 'edit'
-            document_data: данные документа для режима 'edit'
-            current_user: текущий пользователь
-            organizations: список организаций
-            departments: список отделов
-            employees: список сотрудников
-            tags: список доступных тегов
-        """
+                 tags: List[Dict] = None):
         super().__init__(parent)
 
         self.mode = mode
@@ -56,21 +42,28 @@ class DocumentDialog(QWidget):
         self.organizations = organizations or []
         self.departments = departments or []
         self.employees = employees or []
-        self.available_tags = tags or []  # Добавлен список тегов
+        self.available_tags = tags or []
 
         # Состояние формы
         self.selected_sender: Optional[Dict[str, Any]] = None
-        self.selected_receivers = []
-        self.selected_executors = []
-        self.selected_tags = []  # Уже есть, но оставляем
-
-
-        # Сервисы
-        self.sender_service = SenderService()
+        self.selected_receivers: List = []
+        self.selected_executors: List = []
+        self.selected_tags: List = []
 
         # Списки для комбобоксов
         self.directions = ["Входящий", "Исходящий", "Внутренний"]
         self.create_methods = ["Создать новый", "Из шаблона", "Загрузить файл"]
+        self.document_types = [
+            "Приказ",
+            "Распоряжение",
+            "Письмо",
+            "Служебная записка",
+            "Заявление",
+            "Договор",
+            "Акт",
+            "Протокол",
+            "Уведомление",
+        ]
 
         # Настройка UI
         self._load_ui()
@@ -86,16 +79,18 @@ class DocumentDialog(QWidget):
         self._connect_signals()
         self._set_default_dates()
 
+    # ─────────────────── UI ───────────────────
+
     def _load_ui(self):
         """Загрузка UI из .ui файла"""
         try:
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            # Поднимаемся на 4 уровня вверх до client
             client_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
             ui_path = os.path.normpath(os.path.join(client_dir, 'ui', 'documents', 'create', 'document_create_dialog.ui'))
 
             if os.path.exists(ui_path):
                 uic.loadUi(ui_path, self)
+                apply_theme_to_widget(self)
                 print(f"[DocumentDialog] UI загружен: {ui_path}")
             else:
                 print(f"[Warning] UI файл не найден: {ui_path}")
@@ -108,36 +103,30 @@ class DocumentDialog(QWidget):
 
     def _setup_fallback_ui(self):
         """Создает простой UI если файл не найден"""
-        from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit, QDateEdit, QComboBox, QLineEdit
+        from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit
 
         self.setWindowTitle("Документ")
         self.setMinimumSize(800, 600)
 
         layout = QVBoxLayout(self)
 
-        # Заголовок
         title_label = QLabel("Документ")
         title_label.setStyleSheet("font-size: 20px; font-weight: bold;")
         layout.addWidget(title_label)
 
-        # Тема
         layout.addWidget(QLabel("Тема:"))
         self.topic_edit = QTextEdit()
         self.topic_edit.setPlaceholderText("Введите тему документа...")
         layout.addWidget(self.topic_edit)
 
-        # Содержание
         layout.addWidget(QLabel("Содержание:"))
         self.regarding_edit = QTextEdit()
         self.regarding_edit.setPlaceholderText("Введите содержание...")
         layout.addWidget(self.regarding_edit)
 
-        # Кнопки
         btn_layout = QHBoxLayout()
         self.save_btn = QPushButton("Сохранить")
-        self.save_btn.setStyleSheet("background-color: #CCAB6E; color: white; padding: 10px; border-radius: 8px;")
         self.save_btn.clicked.connect(self.save_document)
-
         self.cancel_btn = QPushButton("Отмена")
         self.cancel_btn.clicked.connect(self.close)
 
@@ -148,7 +137,11 @@ class DocumentDialog(QWidget):
 
     def _setup_widgets(self):
         """Настройка виджетов"""
-        # Настройка комбобоксов
+        if hasattr(self, 'type_box'):
+            self.type_box.addItems(self.document_types)
+            self.type_box.setCurrentIndex(-1)
+            self.type_box.setPlaceholderText("Выберите тип документа")
+
         if hasattr(self, 'direction_box'):
             self.direction_box.addItems(self.directions)
             self.direction_box.setCurrentIndex(-1)
@@ -159,7 +152,6 @@ class DocumentDialog(QWidget):
             self.select_box.setCurrentIndex(-1)
             self.select_box.setPlaceholderText("Выберите способ создания документа")
 
-        # Настройка дат
         if hasattr(self, 'date_edit'):
             self.date_edit.setCalendarPopup(True)
             self.date_edit.setDisplayFormat("dd.MM.yyyy")
@@ -168,9 +160,7 @@ class DocumentDialog(QWidget):
             self.date_deadline.setCalendarPopup(True)
             self.date_deadline.setDisplayFormat("dd.MM.yyyy")
 
-        # Настройка кнопок выбора
         self._setup_selection_buttons()
-        self._setup_sender_autocomplete()
 
     def _setup_mode_ui(self):
         """Настройка UI в зависимости от режима"""
@@ -180,174 +170,28 @@ class DocumentDialog(QWidget):
                 self.btn_attach.setText("Создать документ")
             if hasattr(self, 'titleLabel'):
                 self.titleLabel.setText("Создание нового документа")
-        else:  # edit
+        else:
             self.setWindowTitle("Редактирование документа")
             if hasattr(self, 'btn_attach'):
                 self.btn_attach.setText("Сохранить изменения")
             if hasattr(self, 'titleLabel'):
                 self.titleLabel.setText("Редактирование документа")
-
-            # Отключаем поля, которые не должны меняться при редактировании
             if hasattr(self, 'select_box'):
                 self.select_box.setEnabled(False)
 
     def _setup_selection_buttons(self):
-        """Настройка кнопок выбора получателей и исполнителей"""
-        button_style = """
-            QPushButton {
-                border-radius: 10px;
-                border: 1px solid #CCAB6E;
-                padding: 5px;
-                text-align: left;
-                background-color: white;
-                color: #1B232A;
-            }
-            QPushButton:hover {
-                border: 1px solid #998664;
-                background-color: #FDFBF7;
-            }
-            QPushButton:focus {
-                border: 2px solid #CCAB6E;
-            }
-        """
+        """Настройка кнопок выбора. Стили — из .ui (плейсхолдеры {TOKEN})."""
+        if hasattr(self, 'btn_sender'):
+            self.btn_sender.clicked.connect(self._open_sender_selection)
 
         if hasattr(self, 'btn_receiver'):
             self.btn_receiver.clicked.connect(self._open_receiver_selection)
-            self.btn_receiver.setStyleSheet(button_style)
 
         if hasattr(self, 'btnExecutor'):
             self.btnExecutor.clicked.connect(self._open_executor_selection)
-            self.btnExecutor.setStyleSheet(button_style)
 
         if hasattr(self, 'btn_tag'):
             self.btn_tag.clicked.connect(self._open_tag_selection)
-
-    def _setup_sender_autocomplete(self):
-        """Настройка автодополнения для поля отправителя"""
-        if not hasattr(self, 'sender_box'):
-            return
-
-        self.sender_box.setEditable(True)
-        line_edit = self.sender_box.lineEdit()
-        if line_edit:
-            line_edit.setPlaceholderText("Введите для поиска отправителя...")
-
-        # Модель для QCompleter
-        self.sender_model = QStandardItemModel()
-        for sender in self.sender_service.test_senders:
-            item = QStandardItem(sender['display_text'])
-            item.setData(sender, Qt.ItemDataRole.UserRole)
-            self.sender_model.appendRow(item)
-            self.sender_box.addItem(sender['display_text'], sender)
-
-        # Конфигурация QCompleter
-        completer = QCompleter(self.sender_model, self.sender_box)
-        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-
-        completer.popup().setStyleSheet("""
-            QListView { 
-                border: 1px solid #CCAB6E; 
-                border-radius: 6px; 
-                background-color: white; 
-                padding: 4px; 
-            }
-            QListView::item { 
-                padding: 8px; 
-                color: #1B232A; 
-            }
-            QListView::item:hover, 
-            QListView::item:selected { 
-                background-color: #e3f2fd; 
-            }
-        """)
-
-        self.sender_box.setCompleter(completer)
-        completer.activated.connect(self._on_sender_completer_activated)
-
-    def _load_document_data(self):
-        """Загружает данные документа в поля (для режима редактирования)"""
-        if not self.document_data:
-            return
-
-        data = self.document_data
-
-        # Тема
-        if hasattr(self, 'topic_edit'):
-            self.topic_edit.setText(data.get('title', ''))
-
-        # Содержание
-        if hasattr(self, 'regarding_edit'):
-            self.regarding_edit.setText(data.get('about', ''))
-
-        # Номер
-        if hasattr(self, 'number_edit'):
-            self.number_edit.setText(data.get('reg_number', ''))
-
-        # Номер экземпляра
-        if hasattr(self, 'copy_number_edit'):
-            self.copy_number_edit.setText(data.get('numcopy', ''))
-
-        # Дата
-        if hasattr(self, 'date_edit'):
-            created_at = data.get('created_at')
-            if created_at:
-                if isinstance(created_at, datetime):
-                    self.date_edit.setDate(QDate(created_at.year, created_at.month, created_at.day))
-                elif isinstance(created_at, str):
-                    try:
-                        dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                        self.date_edit.setDate(QDate(dt.year, dt.month, dt.day))
-                    except:
-                        pass
-
-        # Направление
-        if hasattr(self, 'direction_box'):
-            direction = data.get('direction', '')
-            direction_map = {
-                'incoming': 'Входящий',
-                'outgoing': 'Исходящий',
-                'internal': 'Внутренний'
-            }
-            dir_text = direction_map.get(direction, direction)
-            index = self.direction_box.findText(dir_text)
-            if index >= 0:
-                self.direction_box.setCurrentIndex(index)
-
-        # Отправитель
-        sender = data.get('sender')
-        if sender and hasattr(self, 'sender_box'):
-            self._set_sender(sender)
-
-        # Получатели
-        self.selected_receivers = data.get('receiver_ids', [])
-        self._update_receiver_button_text()
-
-        # Исполнители
-        self.selected_executors = data.get('executor_ids', [])
-        self._update_executor_button_text()
-
-        tags_data = data.get('tags', [])
-        if tags_data:
-            # Если пришли ID тегов, ищем их в доступных
-            if tags_data and isinstance(tags_data[0], (int, str)):
-                self.selected_tags = [
-                    tag for tag in self.available_tags
-                    if tag.get('id') in tags_data
-                ]
-            else:
-                # Если пришли объекты тегов
-                self.selected_tags = tags_data
-            self._update_tag_button_text()
-
-    def _set_default_dates(self):
-        """Установка дефолтных дат"""
-        today = QDate.currentDate()
-        if hasattr(self, 'date_edit') and self.mode == 'create':
-            self.date_edit.setDate(today)
-        if hasattr(self, 'date_deadline'):
-            self.date_deadline.setDate(today.addDays(30))
 
     def _connect_signals(self):
         """Связывание сигналов"""
@@ -363,16 +207,160 @@ class DocumentDialog(QWidget):
         if hasattr(self, 'select_box'):
             self.select_box.currentIndexChanged.connect(self._on_create_method_changed)
 
-        if hasattr(self, 'sender_box'):
-            self.sender_box.currentIndexChanged.connect(self._on_sender_changed)
-            line_edit = self.sender_box.lineEdit()
-            if line_edit:
-                line_edit.textChanged.connect(self._on_sender_text_changed)
+    def _set_default_dates(self):
+        """Установка дефолтных дат"""
+        today = QDate.currentDate()
+        if hasattr(self, 'date_edit') and self.mode == 'create':
+            self.date_edit.setDate(today)
+        if hasattr(self, 'date_deadline'):
+            self.date_deadline.setDate(today.addDays(30))
 
-    # ========== ВЫБОР ПОЛУЧАТЕЛЕЙ И ИСПОЛНИТЕЛЕЙ ==========
+    # ─────────────────── ЗАГРУЗКА ДАННЫХ (режим edit) ───────────────────
+
+    def _load_document_data(self):
+        """Загружает данные документа в поля (для режима редактирования)"""
+        if not self.document_data:
+            return
+
+        data = self.document_data
+
+        if hasattr(self, 'topic_edit'):
+            self.topic_edit.setText(data.get('title', ''))
+
+        if hasattr(self, 'type_box'):
+            doc_type = data.get('doc_type', '')
+            if doc_type:
+                index = self.type_box.findText(doc_type)
+                if index >= 0:
+                    self.type_box.setCurrentIndex(index)
+
+        if hasattr(self, 'regarding_edit'):
+            self.regarding_edit.setText(data.get('about', ''))
+
+        if hasattr(self, 'number_edit'):
+            self.number_edit.setText(data.get('reg_number', ''))
+
+        if hasattr(self, 'date_edit'):
+            created_at = data.get('created_at')
+            if created_at:
+                if isinstance(created_at, datetime):
+                    self.date_edit.setDate(QDate(created_at.year, created_at.month, created_at.day))
+                elif isinstance(created_at, str):
+                    try:
+                        dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        self.date_edit.setDate(QDate(dt.year, dt.month, dt.day))
+                    except Exception:
+                        pass
+
+        if hasattr(self, 'direction_box'):
+            direction = data.get('direction', '')
+            direction_map = {
+                'incoming': 'Входящий',
+                'outgoing': 'Исходящий',
+                'internal': 'Внутренний',
+            }
+            dir_text = direction_map.get(direction, direction)
+            index = self.direction_box.findText(dir_text)
+            if index >= 0:
+                self.direction_box.setCurrentIndex(index)
+
+        # Отправитель
+        sender = data.get('sender')
+        if sender and hasattr(self, 'btn_sender'):
+            self.selected_sender = sender
+            self._update_sender_button_text()
+
+        # Получатели
+        self.selected_receivers = data.get('receiver_ids', [])
+        self._update_receiver_button_text()
+
+        # Исполнители
+        self.selected_executors = data.get('executor_ids', [])
+        self._update_executor_button_text()
+
+        # Теги
+        tags_data = data.get('tags', [])
+        if tags_data:
+            if isinstance(tags_data[0], (int, str)):
+                self.selected_tags = [
+                    tag for tag in self.available_tags
+                    if tag.get('id') in tags_data
+                ]
+            else:
+                self.selected_tags = tags_data
+            self._update_tag_button_text()
+
+    # ─────────────────── ОТПРАВИТЕЛЬ ───────────────────
+
+    def _open_sender_selection(self):
+        """Открывает диалог выбора отправителя (single-select)."""
+        if not self.employees:
+            QMessageBox.warning(self, "Нет данных", "Данные о сотрудниках не загружены.")
+            return
+
+        preselected = [self.selected_sender['id']] if self.selected_sender else []
+
+        dialog = EmployeeSelectionDialog(
+            organizations=self.organizations,
+            departments=self.departments,
+            employees=self.employees,
+            preselected_ids=preselected,
+            parent=self,
+            title="Выбор отправителя",
+            instruction="Выберите отправителя документа:",
+        )
+        dialog.selection_confirmed.connect(self._on_sender_selected)
+        dialog.exec()
+
+    def _on_sender_selected(self, selected_ids):
+        if not selected_ids:
+            self.selected_sender = None
+            self._update_sender_button_text()
+            return
+
+        if len(selected_ids) > 1:
+            QMessageBox.warning(
+                self, "Внимание",
+                "Можно выбрать только одного отправителя. Будет использован первый."
+            )
+
+        emp_id = selected_ids[0]
+        emp = next((e for e in self.employees if e.get('id') == emp_id), None)
+        self.selected_sender = emp if emp else {'id': emp_id}
+        self._update_sender_button_text()
+
+    def _update_sender_button_text(self):
+        if not hasattr(self, 'btn_sender'):
+            return
+
+        if not self.selected_sender:
+            self.btn_sender.setText("Выберите отправителя")
+            self.btn_sender.setToolTip("")
+            return
+
+        s = self.selected_sender
+        name = (
+            s.get('name')
+            or s.get('full_name')
+            or ' '.join(filter(None, [
+                s.get('last_name', ''),
+                s.get('first_name', ''),
+                s.get('patronymic', ''),
+            ])).strip()
+        )
+        if not name:
+            name = f"ID: {s.get('id')}"
+
+        self.btn_sender.setText(name)
+        self.btn_sender.setToolTip(name)
+
+    def add_sender(self):
+        QMessageBox.information(self, "Поиск",
+                                "Используйте кнопку «Выберите отправителя» для выбора.")
+
+    # ─────────────────── ПОЛУЧАТЕЛИ ───────────────────
 
     def _open_receiver_selection(self):
-        """Открывает диалог выбора получателей"""
         if not self.employees:
             QMessageBox.warning(self, "Нет данных", "Данные о сотрудниках не загружены.")
             return
@@ -384,7 +372,7 @@ class DocumentDialog(QWidget):
             preselected_ids=self.selected_receivers,
             parent=self,
             title="Выбор получателей",
-            instruction="Выберите получателей документа:"
+            instruction="Выберите получателей документа:",
         )
         dialog.selection_confirmed.connect(self._on_receivers_selected)
         dialog.exec()
@@ -393,8 +381,25 @@ class DocumentDialog(QWidget):
         self.selected_receivers = selected_ids
         self._update_receiver_button_text()
 
+    def _update_receiver_button_text(self):
+        if not hasattr(self, 'btn_receiver'):
+            return
+
+        if not self.selected_receivers:
+            self.btn_receiver.setText("Выберите получателя")
+            self.btn_receiver.setToolTip("")
+            return
+
+        names = self._get_employee_names(self.selected_receivers)
+        text = ', '.join(names[:3])
+        if len(self.selected_receivers) > 3:
+            text += f" +{len(self.selected_receivers) - 3}..."
+        self.btn_receiver.setText(text)
+        self.btn_receiver.setToolTip(', '.join(names))
+
+    # ─────────────────── ИСПОЛНИТЕЛИ ───────────────────
+
     def _open_executor_selection(self):
-        """Открывает диалог выбора исполнителей"""
         if not self.employees:
             QMessageBox.warning(self, "Нет данных", "Данные о сотрудниках не загружены.")
             return
@@ -406,7 +411,7 @@ class DocumentDialog(QWidget):
             preselected_ids=self.selected_executors,
             parent=self,
             title="Выбор исполнителей",
-            instruction="Выберите исполнителей документа:"
+            instruction="Выберите исполнителей документа:",
         )
         dialog.selection_confirmed.connect(self._on_executors_selected)
         dialog.exec()
@@ -415,20 +420,54 @@ class DocumentDialog(QWidget):
         self.selected_executors = selected_ids
         self._update_executor_button_text()
 
+    def _update_executor_button_text(self):
+        if not hasattr(self, 'btnExecutor'):
+            return
+
+        if not self.selected_executors:
+            self.btnExecutor.setText("Выберите исполнителя")
+            self.btnExecutor.setToolTip("")
+            return
+
+        names = self._get_employee_names(self.selected_executors)
+        text = ', '.join(names[:3])
+        if len(self.selected_executors) > 3:
+            text += f" +{len(self.selected_executors) - 3}..."
+        self.btnExecutor.setText(text)
+        self.btnExecutor.setToolTip(', '.join(names))
+
+    def _get_employee_names(self, employee_ids: list) -> list:
+        names = []
+        for emp_id in employee_ids:
+            for emp in self.employees:
+                if emp.get('id') == emp_id:
+                    name = (
+                        emp.get('name')
+                        or emp.get('full_name')
+                        or ' '.join(filter(None, [
+                            emp.get('last_name', ''),
+                            emp.get('first_name', ''),
+                            emp.get('patronymic', ''),
+                        ])).strip()
+                        or f'ID:{emp_id}'
+                    )
+                    names.append(name)
+                    break
+        return names
+
+    # ─────────────────── ТЕГИ ───────────────────
+
     def _open_tag_selection(self):
-        """Открывает диалог выбора тегов"""
         if not self.available_tags:
             QMessageBox.warning(self, "Нет данных", "Список тегов не загружен.")
             return
 
         dialog = TagSelectionDialog(tags_list=self.available_tags, parent=self)
 
-        # Если есть уже выбранные теги, передаем их в диалог
         if self.selected_tags:
             selected_ids = [tag.get('id') for tag in self.selected_tags]
             dialog.set_selected_tags(selected_ids)
 
-        # Важно: инициализация UI, если он не инициализируется в __init__ диалога
         if hasattr(dialog, 'setupUi'):
             dialog.setupUi()
 
@@ -436,105 +475,26 @@ class DocumentDialog(QWidget):
         dialog.exec()
 
     def _on_tags_selected(self, selected_tags):
-        """Обработка выбора тегов"""
         self.selected_tags = selected_tags
         self._update_tag_button_text()
 
     def _update_tag_button_text(self):
-        """Обновляет текст кнопки тегов"""
-        if hasattr(self, 'btn_tag'):
-            if not self.selected_tags:
-                self.btn_tag.setText("Выберите теги")
-            else:
-                names = [tag.get('name', '') for tag in self.selected_tags[:3]]
-                text = ', '.join(names)
-                if len(self.selected_tags) > 3:
-                    text += f" +{len(self.selected_tags) - 3}..."
-                self.btn_tag.setText(text)
-                self.btn_tag.setToolTip(f"Выбраны: {', '.join([tag.get('name', '') for tag in self.selected_tags])}")
-
-    def _get_available_tags(self) -> List[Dict]:
-        """
-        Получает список доступных тегов.
-        В реальном приложении здесь должен быть запрос к серверу или сервису.
-        """
-        # Пример тестовых данных (в реальном приложении замените на реальные)
-        test_tags = [
-            {'id': 1, 'name': 'Срочно', 'priority': 'urgent', 'color': '#FF0000'},
-            {'id': 2, 'name': 'Важно', 'priority': 'important', 'color': '#FFA500'},
-            {'id': 3, 'name': 'Обычный', 'priority': 'normal', 'color': '#808080'},
-            {'id': 4, 'name': 'Финансы', 'priority': 'important', 'color': '#008000'},
-            {'id': 5, 'name': 'Кадры', 'priority': 'normal', 'color': '#0000FF'},
-            {'id': 6, 'name': 'Юридический', 'priority': 'normal', 'color': '#800080'},
-            {'id': 7, 'name': 'Договор', 'priority': 'urgent', 'color': '#FF4500'},
-            {'id': 8, 'name': 'Отчет', 'priority': 'important', 'color': '#2E8B57'},
-            {'id': 9, 'name': 'Технический', 'priority': 'normal', 'color': '#4169E1'},
-            {'id': 10, 'name': 'Маркетинг', 'priority': 'normal', 'color': '#FF1493'},
-        ]
-        return test_tags
-
-
-    def _update_receiver_button_text(self):
-        """Обновляет текст кнопки получателей"""
-        if hasattr(self, 'btn_receiver'):
-            if not self.selected_receivers:
-                self.btn_receiver.setText("Выберите получателя")
-            else:
-                names = self._get_employee_names(self.selected_receivers)
-                text = ', '.join(names[:3])
-                if len(self.selected_receivers) > 3:
-                    text += f" +{len(self.selected_receivers) - 3}..."
-                self.btn_receiver.setText(text)
-
-    def _update_executor_button_text(self):
-        """Обновляет текст кнопки исполнителей"""
-        if hasattr(self, 'btnExecutor'):
-            if not self.selected_executors:
-                self.btnExecutor.setText("Выберите исполнителя")
-            else:
-                names = self._get_employee_names(self.selected_executors)
-                text = ', '.join(names[:3])
-                if len(self.selected_executors) > 3:
-                    text += f" +{len(self.selected_executors) - 3}..."
-                self.btnExecutor.setText(text)
-
-    def _get_employee_names(self, employee_ids: list) -> list:
-        """Получает имена сотрудников по ID"""
-        names = []
-        for emp_id in employee_ids:
-            for emp in self.employees:
-                if emp.get('id') == emp_id:
-                    names.append(emp.get('name', f'ID:{emp_id}'))
-                    break
-        return names
-
-    # ========== СЛОТЫ И ОБРАБОТЧИКИ ==========
-
-    def _on_sender_completer_activated(self, index):
-        if index.isValid():
-            item = self.sender_model.itemFromIndex(index)
-            if item:
-                self._set_sender(item.data(Qt.ItemDataRole.UserRole))
-
-    def _on_sender_changed(self, index):
-        if index >= 0:
-            sender_data = self.sender_box.itemData(index, Qt.ItemDataRole.UserRole)
-            if sender_data:
-                self._set_sender(sender_data)
-
-    def _on_sender_text_changed(self, text):
-        if not text.strip():
-            self.selected_sender = None
-
-    def _set_sender(self, sender_data: Dict[str, Any]):
-        if not sender_data:
+        if not hasattr(self, 'btn_tag'):
             return
-        self.selected_sender = sender_data
-        display_text = self.sender_service.get_sender_display_text(sender_data)
 
-        line_edit = self.sender_box.lineEdit()
-        if line_edit:
-            line_edit.setText(display_text)
+        if not self.selected_tags:
+            self.btn_tag.setText("Выберите теги")
+            self.btn_tag.setToolTip("")
+            return
+
+        names = [tag.get('name', '') for tag in self.selected_tags[:3]]
+        text = ', '.join(names)
+        if len(self.selected_tags) > 3:
+            text += f" +{len(self.selected_tags) - 3}..."
+        self.btn_tag.setText(text)
+        self.btn_tag.setToolTip(', '.join(tag.get('name', '') for tag in self.selected_tags))
+
+    # ─────────────────── ПРОЧИЕ ОБРАБОТЧИКИ ───────────────────
 
     def _on_direction_changed(self, index):
         if index >= 0:
@@ -544,12 +504,10 @@ class DocumentDialog(QWidget):
         if index >= 0:
             print(f"[UI] Выбран метод создания: {self.create_methods[index]}")
 
-    def add_sender(self):
-        QMessageBox.information(self, "Поиск", "Используйте встроенное поле ввода для быстрого поиска.")
+    # ─────────────────── СОХРАНЕНИЕ ───────────────────
 
     def save_document(self):
         """Сохранение документа - сбор всех данных"""
-        # Проверяем обязательные поля
         if not self.selected_receivers:
             QMessageBox.warning(self, "Внимание", "Выберите получателей документа")
             return
@@ -558,17 +516,15 @@ class DocumentDialog(QWidget):
             QMessageBox.warning(self, "Внимание", "Введите тему документа")
             return
 
-        # Собираем данные документа
         doc_data = {}
 
-        # Если режим редактирования - берем ID из существующих данных
         if self.mode == 'edit' and self.document_data:
             doc_data['id'] = self.document_data.get('id')
             doc_data['updated_at'] = datetime.now().isoformat()
 
-        # Общие поля
         doc_data.update({
             'direction': self.direction_box.currentText() if hasattr(self, 'direction_box') else None,
+            'doc_type': self.type_box.currentText() if hasattr(self, 'type_box') else None,
             'number': self.number_edit.toPlainText().strip() if hasattr(self, 'number_edit') else None,
             'reg_number': self.number_edit.toPlainText().strip() if hasattr(self, 'number_edit') else None,
             'numcopy': self.copy_number_edit.toPlainText().strip() if hasattr(self, 'copy_number_edit') else None,
@@ -581,25 +537,24 @@ class DocumentDialog(QWidget):
             'create_method': self.select_box.currentText() if hasattr(self, 'select_box') else None,
         })
 
-        # Дата
         if hasattr(self, 'date_edit'):
             qdate = self.date_edit.date()
             doc_data['created_at'] = qdate.toString("yyyy-MM-dd")
 
-        # Дедлайн
         if hasattr(self, 'date_deadline'):
             qdate = self.date_deadline.date()
             doc_data['deadline'] = qdate.toString("yyyy-MM-dd")
 
         print(f"[DocumentDialog] {self.mode} документ: {doc_data}")
 
-        # Отправляем сигнал в зависимости от режима
         if self.mode == 'create':
             self.document_created.emit(doc_data)
         else:
             self.document_updated.emit(doc_data)
 
         self.close()
+
+    # ─────────────────── ПУБЛИЧНЫЕ СЕТТЕРЫ ───────────────────
 
     def set_organizations_data(self, organizations: List[Dict]):
         self.organizations = organizations

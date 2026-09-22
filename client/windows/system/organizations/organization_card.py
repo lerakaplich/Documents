@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.uic import loadUi
 
+from client.core.themes import apply_theme_to_widget
+
 
 class OrganizationCard(QFrame):
     """Карточка организации на основе загруженного UI файла"""
@@ -20,6 +22,7 @@ class OrganizationCard(QFrame):
         ui_path = self.get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
             from PyQt6.QtWidgets import QSizePolicy
             from PyQt6.QtCore import Qt
 
@@ -51,6 +54,7 @@ class OrganizationCard(QFrame):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         # Поднимаемся на уровень выше до client/windows/system/organizations/
         ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'organizations', 'organization_card.ui')
+
         return os.path.normpath(ui_path)
 
     def setup_card(self):

@@ -4,20 +4,22 @@
 from PyQt6.QtWidgets import QMenu, QMessageBox
 from PyQt6.QtCore import pyqtSignal, QObject
 
+from client.core.themes import get_menu_style
+
 
 class ContextMenu(QObject):
     """Класс для управления контекстным меню таблицы документов"""
 
     # Сигналы для действий
-    redirect_requested = pyqtSignal(dict)  # документ для перенаправления
-    comment_requested = pyqtSignal(dict)   # документ для комментария
-    history_requested = pyqtSignal(dict)   # документ для истории
-    edit_requested = pyqtSignal(dict)      # документ для редактирования
-    read_status_requested = pyqtSignal(dict, bool)  # документ, статус прочтения
-    attachment_requested = pyqtSignal(dict) # документ для вложения
-    reply_attachment_requested = pyqtSignal(dict) # документ для ответного вложения
-    delete_requested = pyqtSignal(dict)    # документ для удаления
-    pin_toggle_requested = pyqtSignal(dict)  # документ для закрепления/открепления
+    redirect_requested = pyqtSignal(dict)
+    comment_requested = pyqtSignal(dict)
+    history_requested = pyqtSignal(dict)
+    edit_requested = pyqtSignal(dict)
+    read_status_requested = pyqtSignal(dict, bool)
+    attachment_requested = pyqtSignal(dict)
+    reply_attachment_requested = pyqtSignal(dict)
+    delete_requested = pyqtSignal(dict)
+    pin_toggle_requested = pyqtSignal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -36,29 +38,8 @@ class ContextMenu(QObject):
         """
         menu = QMenu(self.parent_table)
 
-        # Применяем стили
-        menu.setStyleSheet("""
-            QMenu { 
-                background-color: white; 
-                border: 1px solid #c0c0c0; 
-                border-radius: 5px; 
-                padding: 5px; 
-                color: black;
-            }
-            QMenu::item { 
-                padding: 8px 25px 8px 15px; 
-                border-radius: 3px; 
-                font-size: 14px; 
-            }
-            QMenu::item:selected { 
-                background-color: #e3f2fd; 
-            }
-            QMenu::separator { 
-                height: 1px; 
-                background: #e0e0e0; 
-                margin: 5px 10px; 
-            }
-        """)
+        # Применяем стиль из текущей темы
+        menu.setStyleSheet(get_menu_style())
 
         # 1. Перенаправить
         redirect_action = menu.addAction("Перенаправить")

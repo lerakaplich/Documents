@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import (QDialog, QListWidgetItem, QApplication,
 from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from PyQt6.uic import loadUi
 
+from client.core.themes import apply_theme_to_widget, T
+
 
 class RedirectDialog(QDialog):
     # Сигнал: список ID отмеченных получателей, текст комментария
@@ -45,8 +47,15 @@ class RedirectDialog(QDialog):
 
         ui_path = os.path.join(root_dir, "client", "ui", "documents", "redirect_dialog.ui")
         loadUi(ui_path, self)
+        apply_theme_to_widget(self)
 
-        images_dir = os.path.join(root_dir, "client", "icons").replace("\\", "/")
+
+        from client.core.themes import get_manager
+        from client.core.themes.icon_utils import icon_path
+
+        _t = get_manager().current
+        checked   = icon_path("cb_checked",   _t.ICON_COLOR)
+        unchecked = icon_path("cb_unchecked", _t.ICON_COLOR)
 
         self.employeesListWidget.setStyleSheet(f"""
             QListWidget::indicator {{
@@ -55,11 +64,11 @@ class RedirectDialog(QDialog):
                 background-color: transparent;
             }}
             QListWidget::indicator:unchecked {{
-                image: url('{images_dir}/cb_unchecked.svg');
+                image: url({unchecked});
                 background-color: transparent;
             }}
             QListWidget::indicator:checked {{
-                image: url('{images_dir}/cb_checked.svg');
+                image: url({checked});
                 background-color: transparent;
             }}
         """)
@@ -70,35 +79,34 @@ class RedirectDialog(QDialog):
         self.sendButton.clicked.connect(self._on_send)
 
     def _create_separator(self, text: str) -> QWidget:
-        """Создает аккуратный виджет-разделитель: линия | текст | линия"""
+        from client.core.themes import get_manager
+        _t = get_manager().current
         container = QWidget()
-        # Фиксируем высоту контейнера, чтобы Qt не сжимал его в 0 пикселей
         container.setFixedHeight(16)
-
         layout = QHBoxLayout(container)
         layout.setContentsMargins(10, 0, 10, 0)
         layout.setSpacing(12)
 
-        # Левая линия
-        line_left = QFrame()
+        line_left = QFrame();
         line_left.setFrameShape(QFrame.Shape.HLine)
-        line_left.setStyleSheet("color: #dcdcdc; background-color: #dcdcdc; max-height: 1px;")
+        line_left.setStyleSheet(f"color: {_t.SEPARATOR_LINE}; background-color: {_t.SEPARATOR_LINE}; max-height: 1px;")
 
-        # Текст по центру
         label = QLabel(text)
-        label.setStyleSheet("color: #888888; font-size: 12px; font-weight: normal; background: transparent;")
+        label.setStyleSheet(f"color: {_t.TEXT_SUBTLE}; font-size: 12px; background: transparent;")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Правая линия
-        line_right = QFrame()
+        line_right = QFrame();
         line_right.setFrameShape(QFrame.Shape.HLine)
-        line_right.setStyleSheet("color: #dcdcdc; background-color: #dcdcdc; max-height: 1px;")
+        line_right.setStyleSheet(f"color: {_t.SEPARATOR_LINE}; background-color: {_t.SEPARATOR_LINE}; max-height: 1px;")
 
         layout.addWidget(line_left, 1)
         layout.addWidget(label, 0)
         layout.addWidget(line_right, 1)
-
         return container
+
+    def reapply_theme(self):
+        self._init_ui()
+        self._rebuild_list(self.searchEdit.text() if hasattr(self, 'searchEdit') else "")
 
     # ---------- Заполнение списка ----------
     def _rebuild_list(self, filter_text: str = ""):

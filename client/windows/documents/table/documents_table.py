@@ -125,6 +125,11 @@ class DocumentsTable(QWidget):
         self.tableWidget.setRowCount(0)
         self.tableWidget.setColumnCount(0)
 
+    def reapply_theme(self):
+        """Переприменить стили таблицы к актуальной теме."""
+        self.setStyleSheet(TableStyles.get_main_style())
+        self.tableWidget.setStyleSheet(TableStyles.get_table_style())
+
     def get_selected_document(self):
         """Получение выделенного документа"""
         return self._controller.get_selected_document()

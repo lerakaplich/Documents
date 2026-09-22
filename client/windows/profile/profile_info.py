@@ -69,12 +69,19 @@ class ProfileInfo:
         """Полностью перестраивает форму с информацией о сотруднике."""
         print("rebuild_info_layout вызван")
 
+        from client.core.themes import get_manager
+        t = get_manager().current
+
         if self.infoFrame is None:
             print("infoFrame не найден, создаём новый")
             self.infoFrame = QFrame(self.parent)
             self.infoFrame.setObjectName("infoFrame")
-            self.infoFrame.setStyleSheet(
-                "padding: 20px; background-color: white; border-radius: 16px; border: 1px solid #E0E0E0;")
+            self.infoFrame.setStyleSheet(f"""
+                padding: 20px;
+                background-color: {t.BG_CARD};
+                border-radius: 16px;
+                border: 1px solid {t.BORDER_LIGHT};
+            """)
             if self.mainLayout:
                 for i in range(self.mainLayout.count()):
                     item = self.mainLayout.itemAt(i)
@@ -102,9 +109,15 @@ class ProfileInfo:
                 if item.layout():
                     item.layout().deleteLater()
 
-        title_style = "font-size: 24px; color: #333; background-color: transparent; font-weight: 600;"
-        value_style = "font-size: 24px; color: #333; background-color: transparent;"
-        label_style = "font-size: 24px; color: #555; background-color: transparent; font-weight: 500;"
+        # ── Стили из темы ──
+        value_style = (
+            f"font-size: 24px; color: {t.TEXT_PRIMARY}; "
+            f"background-color: transparent;"
+        )
+        label_style = (
+            f"font-size: 24px; color: {t.TEXT_MUTED_ALT}; "
+            f"background-color: transparent; font-weight: 500;"
+        )
 
         # Должность
         label_pos_title = QLabel("Должность:")
@@ -114,13 +127,12 @@ class ProfileInfo:
         layout.addRow(label_pos_title, label_pos_value)
         self.label_position_value = label_pos_value
 
-        # Подразделения - без отступов
+        # Подразделения
         self.department_rows = []
 
         if department_chain and len(department_chain) > 0:
             print(f"📋 Отображаем цепочку подразделений: {department_chain}")
             for dept_type, dept_name in department_chain:
-                # Без отступов
                 title = QLabel(f"{dept_type}:")
                 title.setStyleSheet(label_style)
                 title.setWordWrap(True)
@@ -131,7 +143,6 @@ class ProfileInfo:
 
                 layout.addRow(title, value)
                 self.department_rows.append((title, value))
-                print(f"  ✅ Добавлен ряд: {dept_type} -> {dept_name}")
         else:
             print("⚠️ Цепочка подразделений пуста")
             title = QLabel("Подразделение:")
@@ -141,6 +152,26 @@ class ProfileInfo:
             layout.addRow(title, value)
             self.department_rows.append((title, value))
 
+        # ── Кнопки редактирования: один общий стиль ──
+        edit_btn_style = f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {t.ACCENT_PRIMARY};
+                font-size: 20px;
+                border: none;
+                border-radius: 8px;
+                padding: 5px;
+            }}
+            QPushButton:hover {{
+                color: {t.ACCENT_HOVER};
+                background-color: {t.ACCENT_PRIMARY_ALPHA_10};
+            }}
+            QPushButton:pressed {{
+                color: {t.ACCENT_PRESSED_DEEP};
+                background-color: {t.ACCENT_PRIMARY_ALPHA_20};
+            }}
+        """
+
         # Телефон
         label_phone_title = QLabel("Номер телефона:")
         label_phone_title.setStyleSheet(label_style)
@@ -149,9 +180,8 @@ class ProfileInfo:
 
         if self.btnEditPhone is None:
             self.btnEditPhone = QPushButton("✏️")
-            self.btnEditPhone.setStyleSheet(
-                "background-color: transparent; color: #ccab6e; font-size: 20px; border: none;")
             self.btnEditPhone.setMinimumSize(30, 30)
+        self.btnEditPhone.setStyleSheet(edit_btn_style)
 
         phone_widget = QWidget()
         phone_widget.setStyleSheet("background-color: transparent;")
@@ -172,9 +202,8 @@ class ProfileInfo:
 
         if self.btnEditEmail is None:
             self.btnEditEmail = QPushButton("✏️")
-            self.btnEditEmail.setStyleSheet(
-                "background-color: transparent; color: #ccab6e; font-size: 20px; border: none;")
             self.btnEditEmail.setMinimumSize(30, 30)
+        self.btnEditEmail.setStyleSheet(edit_btn_style)
 
         email_widget = QWidget()
         email_widget.setStyleSheet("background-color: transparent;")

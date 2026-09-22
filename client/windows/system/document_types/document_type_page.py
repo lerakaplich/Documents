@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
 
+from client.core.themes import T, get_menu_style, apply_theme_to_widget
 from client.windows.system.document_types.document_type_card import DocumentTypeCard
 from client.windows.animations.floating_action_button import FloatingActionButton
 from client.windows.system.document_types.document_type_dialog import DocumentTypeDialog
@@ -66,6 +67,7 @@ class DocumentTypesPage(QWidget):
         ui_path = self.get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
 
         # Создаем плавающую кнопку
         self.floating_btn = FloatingActionButton(self)
@@ -209,29 +211,7 @@ class DocumentTypesPage(QWidget):
     def show_sort_menu(self):
         """Показать меню сортировки"""
         menu = QMenu(self)
-
-        menu.setStyleSheet("""
-            QMenu { 
-                background-color: white; 
-                border: 1px solid #c0c0c0; 
-                border-radius: 5px; 
-                padding: 5px; 
-                color: black;
-            }
-            QMenu::item { 
-                padding: 8px 25px 8px 15px; 
-                border-radius: 3px; 
-                font-size: 14px; 
-            }
-            QMenu::item:selected { 
-                background-color: #e3f2fd; 
-            }
-            QMenu::separator { 
-                height: 1px; 
-                background: #e0e0e0; 
-                margin: 5px 10px; 
-            }
-        """)
+        menu.setStyleSheet(get_menu_style())
 
         sort_options = {
             "А→Я (по названию)": self.sort_by_name_asc,
@@ -342,7 +322,9 @@ class DocumentTypesPage(QWidget):
         if not self.filtered_types:
             empty_label = QLabel("Нет типов документов")
             empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_label.setStyleSheet("color: #6c757d; font-size: 16px; padding: 40px;")
+            empty_label.setStyleSheet(
+                f"color: {T.TEXT_MUTED_ALT}; font-size: 16px; padding: 40px;"
+            )
             self.typesLayout.addWidget(empty_label)
             self.position_floating_button()
             return

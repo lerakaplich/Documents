@@ -42,6 +42,24 @@ class EmployeeDialog(QtWidgets.QDialog):
         self._connect_signals()
         self._load_initial_data()
 
+    def _apply_size(self):
+        """Явный размер — иначе QDialog с parent'ом внутри QStackedWidget/Tab
+        считает sizeHint от родителя и получается то крошечным, то огромным."""
+        from PyQt6.QtWidgets import QApplication
+        self.setMinimumWidth(675)
+        self.setMinimumHeight(600)
+
+        screen = QApplication.primaryScreen()
+        max_h = (screen.availableGeometry().height() - 80) if screen else 820
+        self.resize(675, min(820, max_h))
+
+    def reapply_theme(self):
+        """Переприменить тему после set_theme()."""
+        from client.core.themes import apply_theme_to_widget
+        apply_theme_to_widget(self)
+        if hasattr(self, 'hierarchy_manager'):
+            self.hierarchy_manager.apply_theme()
+
     def _load_initial_data(self):
         if self.http_client:
             try:

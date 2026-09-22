@@ -33,13 +33,13 @@ class RowRenderer:
             TagsCellBuilder, AttachmentCellBuilder, ReplyCellBuilder
         )
 
-        self._tags_builder = TagsCellBuilder(config.EVEN_ROW_COLOR, config.ODD_ROW_COLOR)
+        self._tags_builder = TagsCellBuilder(config.get_even_row_color, config.get_odd_row_color)
         self._attachment_builder = AttachmentCellBuilder(
-            config.EVEN_ROW_COLOR, config.ODD_ROW_COLOR,
+            config.get_even_row_color, config.get_odd_row_color,
             config.SUPPORTED_FORMATS, self.cell_signals
         )
         self._reply_builder = ReplyCellBuilder(
-            config.EVEN_ROW_COLOR, config.ODD_ROW_COLOR,
+            config.get_even_row_color, config.get_odd_row_color,
             config.SUPPORTED_FORMATS, self.cell_signals
         )
 
@@ -50,11 +50,11 @@ class RowRenderer:
 
         # Создаем экземпляры билдеров
         self._comments_builder = CommentsCellBuilder(
-            config.EVEN_ROW_COLOR, config.ODD_ROW_COLOR, self.cell_signals
+            config.get_even_row_color, config.get_odd_row_color, self.cell_signals
         )
         self._delegates_builder = DelegatesCellBuilder(
-            even_color=config.EVEN_ROW_COLOR,
-            odd_color=config.ODD_ROW_COLOR,
+            even_color=config.get_even_row_color,
+            odd_color=config.get_odd_row_color,
             signals=self.cell_signals
         )
 
@@ -86,7 +86,7 @@ class RowRenderer:
         """
         Преобразовать документ в UI элементы строки.
         """
-        bg_color = self._config.EVEN_ROW_COLOR if row % 2 == 0 else self._config.ODD_ROW_COLOR
+        bg_color = self._config.get_even_row_color() if row % 2 == 0 else self._config.get_odd_row_color()
         col_map = self._get_col_map()
 
         # Скрываем ID если есть
@@ -129,13 +129,13 @@ class RowRenderer:
         item = QTableWidgetItem(str(reg_number) if reg_number else "")
         item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         item.setBackground(QBrush(bg_color))
-        item.setForeground(QBrush(self._config.TEXT_COLOR))
+        item.setForeground(QBrush(self._config.get_text_color()))
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         item.setData(Qt.ItemDataRole.UserRole, document)
 
         if is_pinned:
             from client.core.utils.icon_manager import icon_manager
-            pin_icon = icon_manager.get_icon('pin', QSize(16, 16))
+            pin_icon = icon_manager.get_icon('pin', QSize(22, 22))
             item.setIcon(pin_icon)
 
         self._table.setItem(row, col, item)
@@ -312,7 +312,7 @@ class RowRenderer:
         item = QTableWidgetItem(text)
         item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         item.setBackground(QBrush(bg_color))
-        item.setForeground(QBrush(self._config.TEXT_COLOR))
+        item.setForeground(QBrush(self._config.get_text_color()))
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         return item
 

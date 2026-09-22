@@ -8,6 +8,7 @@ from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.uic import loadUi
 
 from client.core.data.document_data import DocumentDataConfig
+from client.core.themes import apply_theme_to_widget, T
 from client.windows.documents.history.history_dialog import HistoryDialog
 from client.windows.documents.menus.column_menu import ColumnsMenu
 from client.windows.documents.menus.filter_menu import FilterMenu
@@ -58,6 +59,7 @@ class DocumentsPanel(QWidget):
     def _init_ui(self):
         ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "table", "documents_panel.ui")
         loadUi(ui_path, self)
+        apply_theme_to_widget(self)
         self._setup_buttons()
 
     def _init_table(self):
@@ -80,36 +82,38 @@ class DocumentsPanel(QWidget):
         self.position_floating_button()
 
     def _setup_buttons(self):
-        no_indicator_style = """
-                QPushButton::menu-indicator { image: none; width: 0px; }
-                QPushButton {
-                    background-color: #eeeeee;
-                    border-radius: 4px;
-                    font-weight: normal;
-                    color: black;
-                }
-                QPushButton:hover {
-                    background-color: #dddddd;
-                }
-            """
         if hasattr(self, 'columnsBtn'):
             self.columns_menu = ColumnsMenu(parent=self)
-            self.columnsBtn.setMenu(self.columns_menu)  # ← обязательно
-            self.columnsBtn.setStyleSheet(no_indicator_style)  # ← скрывает стрелку
+            self.columnsBtn.clicked.connect(self._show_columns_menu)
 
         if hasattr(self, 'filterBtn'):
             self.filter_menu = FilterMenu(self)
-            self.filterBtn.setMenu(self.filter_menu)  # ← обязательно
-            self.filterBtn.setStyleSheet(no_indicator_style)
+            self.filterBtn.clicked.connect(self._show_filter_menu)
 
         if hasattr(self, 'statusesBtn'):
             self.statuses_menu = StatusesMenu(self)
-            self.statusesBtn.setMenu(self.statuses_menu)  # ← обязательно
-            self.statusesBtn.setStyleSheet(no_indicator_style)
+            self.statusesBtn.clicked.connect(self._show_statuses_menu)
             self.statuses_menu.connect_clear_signal(self.statuses_menu.clear_selection)
 
         if hasattr(self, 'searchEdit'):
             self.searchEdit.textChanged.connect(self.on_search_changed)
+
+
+
+    def _show_columns_menu(self):
+        self.columns_menu.exec(
+            self.columnsBtn.mapToGlobal(self.columnsBtn.rect().bottomLeft())
+        )
+
+    def _show_filter_menu(self):
+        self.filter_menu.exec(
+            self.filterBtn.mapToGlobal(self.filterBtn.rect().bottomLeft())
+        )
+
+    def _show_statuses_menu(self):
+        self.statuses_menu.exec(
+            self.statusesBtn.mapToGlobal(self.statusesBtn.rect().bottomLeft())
+        )
 
     def _connect_signals(self):
         if hasattr(self, 'documents_table'):

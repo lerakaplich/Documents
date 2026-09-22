@@ -3,6 +3,8 @@ from PyQt6 import uic
 from PyQt6.QtWidgets import QDialog, QMessageBox
 from PyQt6.QtCore import pyqtSignal
 
+from client.core.themes import apply_theme_to_widget
+
 
 class DeleteDialog(QDialog):
     """
@@ -34,7 +36,7 @@ class DeleteDialog(QDialog):
 
         # Загружаем UI
         uic.loadUi(ui_path, self)
-
+        apply_theme_to_widget(self)
         # Настраиваем кнопки
         if hasattr(self, 'buttonYes'):
             self.buttonYes.clicked.connect(self._on_yes_clicked)

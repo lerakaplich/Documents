@@ -53,14 +53,15 @@
        </property>
        <property name="styleSheet">
         <string notr="true">QLineEdit {
-    border: 1px solid #D0D0D0;
+    border: 1px solid {BORDER_INPUT};
     border-radius: 8px;
     padding: 5px 15px;
     font-size: 14px;
-    background-color: white;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
 }
 QLineEdit:focus {
-    border: 2px solid #D22730;
+    border: 2px solid {ACCENT_DANGER};
 }</string>
        </property>
        <property name="placeholderText">
@@ -78,13 +79,13 @@ QLineEdit:focus {
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
-    background-color: #eeeeee;
+    background-color: {BTN_SECONDARY_BG};
     border-radius: 4px;
     font-weight: normal;
-    color: black;
+    color: {TEXT_BLACK};
 }
 QPushButton:hover {
-    background-color: #dddddd;
+    background-color: {BTN_SECONDARY_HOVER_BG};
 }
 </string>
        </property>
@@ -113,18 +114,18 @@ QPushButton:hover {
        <property name="styleSheet">
         <string notr="true">
 QPushButton {
-    background-color: #ccab6e;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border-radius: 8px;
     font-weight: bold;
     font-size: 13px;
     border: none;
 }
 QPushButton:hover {
-    background-color: #998664;
+    background-color: {ACCENT_HOVER_SOFT};
 }
 QPushButton:pressed {
-    background-color: #7a6a50;
+    background-color: {ACCENT_PRESSED_DEEP};
 }
         </string>
        </property>
@@ -158,17 +159,17 @@ QScrollArea {
 }
 QScrollBar:vertical {
     border: none;
-    background-color: #f0f0f0;
+    background-color: {BG_HOVER_LIGHT};
     width: 12px;
     border-radius: 6px;
 }
 QScrollBar::handle:vertical {
-    background-color: #cccccc;
+    background-color: {SCROLLBAR_HANDLE_SOFT};
     border-radius: 6px;
     min-height: 20px;
 }
 QScrollBar::handle:vertical:hover {
-    background-color: #aaaaaa;
+    background-color: {SCROLLBAR_HANDLE_SOFT_HOVER};
 }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     border: none;

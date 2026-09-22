@@ -27,9 +27,9 @@
   </property>
   <property name="styleSheet">
    <string notr="true">
-    QDialog {
-        background-color: #F8F9FA;
-    }
+QDialog {
+    background-color: {BG_SURFACE_HEADER};
+}
    </string>
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
@@ -51,7 +51,7 @@
    <item>
     <widget class="QLabel" name="titleLabel">
      <property name="styleSheet">
-      <string notr="true">font-size: 16px; font-weight: bold; color: #212529;</string>
+      <string notr="true">font-size: 16px; font-weight: bold; color: {TEXT_DARK_STRONG};</string>
      </property>
      <property name="text">
       <string>Выберите цвет тега</string>
@@ -75,9 +75,9 @@
      <property name="styleSheet">
       <string notr="true">
         QFrame {
-            background-color: #CCAB6E;
+            background-color: {ACCENT_PRIMARY};
             border-radius: 8px;
-            border: 2px solid #E0E0E0;
+            border: 2px solid {BORDER_LIGHT};
         }
       </string>
      </property>
@@ -86,7 +86,7 @@
    <item>
     <widget class="QLabel" name="presetsLabel">
      <property name="styleSheet">
-      <string notr="true">font-size: 13px; font-weight: 600; color: #6C757D;</string>
+      <string notr="true">font-size: 13px; font-weight: 600; color: {TEXT_MUTED_ALT};</string>
      </property>
      <property name="text">
       <string>Предустановленные цвета:</string>
@@ -133,10 +133,10 @@
             QPushButton {
                 background-color: #ccab6e;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
-                border: 3px solid #7A6A50;
+                border: 3px solid {ACCENT_PRESSED_DEEP};
             }
          </string>
         </property>
@@ -167,7 +167,7 @@
             QPushButton {
                 background-color: #ff6b6b;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #CC0000;
@@ -201,7 +201,7 @@
             QPushButton {
                 background-color: #4ecdc4;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #2A9D8F;
@@ -235,7 +235,7 @@
             QPushButton {
                 background-color: #45b7d1;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #2E86AB;
@@ -269,7 +269,7 @@
             QPushButton {
                 background-color: #96ceb4;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #5A9E7C;
@@ -303,7 +303,7 @@
             QPushButton {
                 background-color: #f9ca24;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #D4A90E;
@@ -337,7 +337,7 @@
             QPushButton {
                 background-color: #f0932b;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #C77A1E;
@@ -371,7 +371,7 @@
             QPushButton {
                 background-color: #eb4d4b;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #C0392B;
@@ -405,7 +405,7 @@
             QPushButton {
                 background-color: #6ab04c;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #4A8C32;
@@ -439,7 +439,7 @@
             QPushButton {
                 background-color: #7ed6df;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #5CADB8;
@@ -473,7 +473,7 @@
             QPushButton {
                 background-color: #e056fd;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #B83FD0;
@@ -507,7 +507,7 @@
             QPushButton {
                 background-color: #686de0;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #4A4FBF;
@@ -541,7 +541,7 @@
             QPushButton {
                 background-color: #30336b;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #1B1C4A;
@@ -575,7 +575,7 @@
             QPushButton {
                 background-color: #95afc0;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #6C8A9E;
@@ -609,7 +609,7 @@
             QPushButton {
                 background-color: #22a6b3;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #1A7F8A;
@@ -643,7 +643,7 @@
             QPushButton {
                 background-color: #ff9ff3;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #D07AC8;
@@ -677,7 +677,7 @@
             QPushButton {
                 background-color: #feca57;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #D4A31E;
@@ -711,7 +711,7 @@
             QPushButton {
                 background-color: #ff6b6b;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #CC0000;
@@ -745,7 +745,7 @@
             QPushButton {
                 background-color: #48dbfb;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #2FB5D5;
@@ -779,7 +779,7 @@
             QPushButton {
                 background-color: #1dd1a1;
                 border-radius: 16px;
-                border: 2px solid #E0E0E0;
+                border: 2px solid {BORDER_LIGHT};
             }
             QPushButton:hover {
                 border: 3px solid #15A07A;
@@ -808,17 +808,17 @@
      <property name="styleSheet">
       <string notr="true">
         QPushButton {
-            background-color: white;
-            color: #6C757D;
-            border: 1px dashed #CED4DA;
+            background-color: {BG_CARD};
+            color: {TEXT_MUTED_ALT};
+            border: 1px dashed {BORDER_INPUT_SOFT};
             border-radius: 8px;
             font-size: 13px;
             font-weight: 500;
         }
         QPushButton:hover {
-            border: 1px solid #CCAB6E;
-            color: #CCAB6E;
-            background-color: #FDFBF7;
+            border: 1px solid {ACCENT_PRIMARY};
+            color: {ACCENT_PRIMARY};
+            background-color: {BG_HOVER_ACCENT_SOFT};
         }
       </string>
      </property>
@@ -846,18 +846,18 @@
        <property name="styleSheet">
         <string notr="true">
             QPushButton {
-                background-color: #CCAB6E;
-                color: white;
+                background-color: {ACCENT_PRIMARY};
+                color: {TEXT_ON_ACCENT};
                 border: none;
                 border-radius: 8px;
                 font-size: 13px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #998664;
+                background-color: {ACCENT_HOVER_SOFT};
             }
             QPushButton:pressed {
-                background-color: #7A6A50;
+                background-color: {ACCENT_PRESSED_DEEP};
             }
         </string>
        </property>

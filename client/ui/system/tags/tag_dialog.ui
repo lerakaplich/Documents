@@ -28,10 +28,10 @@
   <property name="styleSheet">
    <string notr="true">
 QDialog {
-    background-color: #f8f9fa;
+    background-color: {BG_DIALOG};
 }
 QScrollBar::vertical {
-    background: #F5F5F5;
+    background: {SCROLLBAR_BG};
     width: 8px;
     border-radius: 4px;
     margin: 0px;
@@ -39,17 +39,17 @@ QScrollBar::vertical {
 }
 
 QScrollBar::handle:vertical {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-height: 20px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background: #A0A0A0;
+    background: {SCROLLBAR_HANDLE_HOVER};
 }
 
 QScrollBar::handle:vertical:pressed {
-    background: #888888;
+    background: {SCROLLBAR_HANDLE_PRESSED};
 }
 
 QScrollBar::add-line:vertical,
@@ -67,24 +67,24 @@ QScrollBar::sub-page:vertical {
 
 QScrollBar:horizontal {
     border: none;
-    background: #F5F5F5;
+    background: {SCROLLBAR_BG};
     height: 8px;
     margin: 0px;
     border-radius: 4px;
 }
 
 QScrollBar::handle:horizontal {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-width: 20px;
 }
 
 QScrollBar::handle:horizontal:hover {
-    background: #A0A0A0;
+    background: {SCROLLBAR_HANDLE_HOVER};
 }
 
 QScrollBar::handle:horizontal:pressed {
-    background: #888888;
+    background: {SCROLLBAR_HANDLE_PRESSED};
 }
 
 QScrollBar::add-line:horizontal,
@@ -101,22 +101,22 @@ QScrollBar::sub-page:horizontal {
 }
 
 QComboBox {
-    border: 1px solid #dee2e6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 6px;
     padding: 8px;
     padding-right: 30px;
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
     font-size: 13px;
     outline: none;
 }
 
 QComboBox:hover {
-    border-color: #ccab6e;
+    border-color: {ACCENT_PRIMARY};
 }
 
 QComboBox:focus {
-    border: 2px solid #ccab6e;
+    border: 2px solid {ACCENT_PRIMARY};
 }
 
 QComboBox::drop-down {
@@ -127,7 +127,7 @@ QComboBox::drop-down {
 }
 
 QComboBox::down-arrow {
-    image: url(D:/Documents/client/icons/down_arrow.svg);
+    image: url({ICON_ARROW_DOWN_PATH});
     width: 16px;
     height: 16px;
     margin-right: 6px;
@@ -135,28 +135,28 @@ QComboBox::down-arrow {
 
 QComboBox QAbstractItemView {
     border-radius: 6px;
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     padding: 4px;
     outline: none;
-    border: 1px solid #ccab6e;
+    border: 1px solid {ACCENT_PRIMARY};
 }
 
 QComboBox QAbstractItemView::item {
     padding: 8px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     border: none;
     outline: none;
 }
 
 QComboBox QAbstractItemView::item:hover {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
 
 QComboBox QAbstractItemView::item:selected {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
 </string>
   </property>
@@ -179,7 +179,7 @@ QComboBox QAbstractItemView::item:selected {
    <item>
     <widget class="QLabel" name="titleLabel">
      <property name="styleSheet">
-      <string>font-size: 22px; font-weight: bold; color: #1B232A; margin-bottom: 10px;</string>
+      <string>font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px;</string>
      </property>
      <property name="text">
       <string>Новый хэштег</string>
@@ -228,17 +228,17 @@ QComboBox QAbstractItemView::item:selected {
           <string>QGroupBox {
     font-weight: bold;
     font-size: 14px;
-    border: 1px solid #dee2e6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
-    background-color: white;
+    background-color: {BG_CARD};
 }
 QGroupBox::title {
     subcontrol-origin: margin;
     left: 10px;
     padding: 0 5px 0 5px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
 }</string>
          </property>
          <property name="title">
@@ -261,7 +261,7 @@ QGroupBox::title {
            <number>10</number>
           </property>
           <item row="0" column="0">
-           <widget class="QLabel" name="labelName">
+           <widget class="QLabel" name="{TEXT_PRIMARY}">
             <property name="minimumSize">
              <size>
               <width>120</width>
@@ -269,7 +269,7 @@ QGroupBox::title {
              </size>
             </property>
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
             </property>
             <property name="text">
              <string>Название хэштега *:</string>
@@ -279,7 +279,7 @@ QGroupBox::title {
           <item row="2" column="0">
            <widget class="QLabel" name="labelPriority">
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
             </property>
             <property name="text">
              <string>Приоритет:</string>
@@ -301,7 +301,7 @@ QGroupBox::title {
              </size>
             </property>
             <property name="styleSheet">
-             <string>border: 1px solid #dee2e6; border-radius: 6px; padding: 8px; background-color: white; color: #1B232A;</string>
+             <string>border: 1px solid {BORDER_DEFAULT}; border-radius: 6px; padding: 8px; background-color: {BG_INPUT}; color: {TEXT_PRIMARY};</string>
             </property>
             <property name="placeholderText">
              <string>Введите название хэштега (без #)</string>
@@ -323,7 +323,7 @@ QGroupBox::title {
              </size>
             </property>
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
             </property>
             <property name="text">
              <string>Цвет хэштега *:</string>
@@ -402,11 +402,11 @@ QGroupBox::title {
                <string notr="true">
 QFrame {
     border-radius: 16px;
-    background-color: #ccab6e;
-    border: 2px solid #E0E0E0;
+    background-color: #ccab6e;   /* это ДАННЫЕ, не тема — оставляем */
+    border: 2px solid {BORDER_LIGHT};
 }
 QFrame:hover {
-    border-color: #ccab6e;
+    border-color: {ACCENT_PRIMARY};
 }
 </string>
               </property>
@@ -497,18 +497,18 @@ QFrame:hover {
        </property>
        <property name="styleSheet">
         <string>QPushButton {
-    background-color: #ccab6e;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border-radius: 8px;
     font-weight: bold;
     font-size: 14px;
     border: none;
 }
 QPushButton:hover {
-    background-color: #b8945a;
+    background-color: {ACCENT_HOVER};
 }
 QPushButton:pressed {
-    background-color: #a07d4a;
+    background-color: {ACCENT_PRESSED};
 }</string>
        </property>
        <property name="text">

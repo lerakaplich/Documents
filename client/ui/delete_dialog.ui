@@ -14,7 +14,7 @@
    <string>Удаление</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">background-color: white;
+   <string notr="true">background-color: {BG_CARD};
 </string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -51,19 +51,19 @@
        </property>
        <property name="styleSheet">
         <string>QPushButton {
-             background-color: #ccab6e;
-             color: white;
-             border-radius: 10px;
-             font-weight: bold;
-             font-size: 18px;
-             border: none;
-           }
-           QPushButton:hover {
-             background-color: #998664;
-           }
-           QPushButton:pressed {
-             background-color: #7a6a50;
-           }</string>
+            background-color: {ACCENT_PRIMARY};
+            color: {TEXT_ON_ACCENT};
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 18px;
+            border: none;
+        }
+        QPushButton:hover {
+            background-color: {ACCENT_HOVER_SOFT};
+        }
+        QPushButton:pressed {
+            background-color: {ACCENT_PRESSED_DEEP};
+        }</string>
        </property>
        <property name="text">
         <string>Да</string>
@@ -86,19 +86,19 @@
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
-             background-color: #D22730;
-             color: white;
-             border-radius: 10px;
-             font-weight: bold;
-             font-size: 16px;
-             border: none;
-           }
-           QPushButton:hover {
-             background-color: #862633;
-           }
-           QPushButton:pressed {
-             background-color: #6a1e29;
-           }</string>
+            background-color: {ACCENT_DANGER};
+            color: {TEXT_ON_ACCENT};
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            border: none;
+        }
+        QPushButton:hover {
+            background-color: {ACCENT_DANGER_HOVER};
+        }
+        QPushButton:pressed {
+            background-color: {ACCENT_DANGER_PRESSED};
+        }</string>
        </property>
        <property name="text">
         <string>Нет</string>

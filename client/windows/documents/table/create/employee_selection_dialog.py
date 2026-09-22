@@ -6,6 +6,7 @@ from PyQt6.QtCore import pyqtSignal, Qt
 from client.core.org_structure.hierarchy_builder import HierarchyBuilder
 from client.core.org_structure.selection_manager import SelectionManager
 from client.core.org_structure.tree_builder import TreeBuilder
+from client.core.themes import apply_theme_to_widget
 from client.windows.documents.table.create.employee_selection import EmployeeSelection
 
 
@@ -64,7 +65,7 @@ class EmployeeSelectionDialog(QDialog):
         ui_path = EmployeeSelection.get_ui_path()
 
         EmployeeSelection.load_ui(self, ui_path)
-
+        apply_theme_to_widget(self)
         # Настройка заголовков
         if hasattr(self, 'titleLabel'):
             self.titleLabel.setText(title)

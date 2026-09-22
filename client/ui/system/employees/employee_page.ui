@@ -15,58 +15,51 @@
   </property>
   <property name="styleSheet">
    <string notr="true">background-color: transparent;
+
 QComboBox {
-    border: 1px solid #dee2e6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 6px;
     padding: 8px;
     padding-right: 25px;
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
     font-size: 13px;
     outline: none;
 }
-
 QComboBox:hover {
-    border-color: #ccab6e;
+    border-color: {ACCENT_PRIMARY};
 }
-
 QComboBox::drop-down {
     border: none;
     width: 20px;
 }
-
 QComboBox::down-arrow {
     image: none;
     border: none;
     width: 0px;
     height: 0px;
 }
-
 QComboBox QAbstractItemView {
     border-radius: 6px;
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     padding: 4px;
     outline: none;
 }
-
 QComboBox QAbstractItemView::item {
     padding: 8px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     border: none;
     outline: none;
 }
-
 QComboBox QAbstractItemView::item:hover {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
-
 QComboBox QAbstractItemView::item:selected {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
-
 QComboBox QAbstractItemView::item:focus {
     outline: none;
     border: none;
@@ -109,14 +102,15 @@ QComboBox QAbstractItemView::item:focus {
        </property>
        <property name="styleSheet">
         <string notr="true">QLineEdit {
-    border: 1px solid #D0D0D0;
+    border: 1px solid {BORDER_INPUT};
     border-radius: 8px;
     padding: 5px 15px;
     font-size: 14px;
-    background-color: white;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
 }
 QLineEdit:focus {
-    border: 2px solid #D22730;
+    border: 2px solid {ACCENT_DANGER};
 }</string>
        </property>
        <property name="placeholderText">
@@ -134,13 +128,13 @@ QLineEdit:focus {
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
-    background-color: #eeeeee;
+    background-color: {BTN_SECONDARY_BG};
     border-radius: 4px;
     font-weight: normal;
-    color: black;
+    color: {TEXT_BLACK};
 }
 QPushButton:hover {
-    background-color: #dddddd;
+    background-color: {BTN_SECONDARY_HOVER_BG};
 }
 </string>
        </property>
@@ -160,14 +154,14 @@ QPushButton:hover {
        <property name="styleSheet">
         <string notr="true">
 QComboBox {
-    background-color: white;
-    border: 1px solid #cccccc;
+    background-color: {BG_INPUT};
+    border: 1px solid {BORDER_COMBO_SOFT};
     border-radius: 8px;
     padding: 5px;
-    color: black;
+    color: {TEXT_BLACK};
 }
 QComboBox:hover {
-    border-color: #ccab6e;
+    border-color: {ACCENT_PRIMARY};
 }
 QComboBox::drop-down {
     border: none;
@@ -227,18 +221,18 @@ QComboBox::down-arrow {
        <property name="styleSheet">
         <string notr="true">
 QPushButton {
-    background-color: #ccab6e;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border-radius: 8px;
     font-weight: bold;
     font-size: 13px;
     border: none;
 }
 QPushButton:hover {
-    background-color: #998664;
+    background-color: {ACCENT_HOVER_SOFT};
 }
 QPushButton:pressed {
-    background-color: #7a6a50;
+    background-color: {ACCENT_PRESSED_DEEP};
 }
         </string>
        </property>
@@ -278,17 +272,17 @@ QScrollArea {
 }
 QScrollBar:vertical {
     border: none;
-    background-color: #f0f0f0;
+    background-color: {BG_HOVER_LIGHT};
     width: 12px;
     border-radius: 6px;
 }
 QScrollBar::handle:vertical {
-    background-color: #cccccc;
+    background-color: {SCROLLBAR_HANDLE_SOFT};
     border-radius: 6px;
     min-height: 20px;
 }
 QScrollBar::handle:vertical:hover {
-    background-color: #aaaaaa;
+    background-color: {SCROLLBAR_HANDLE_SOFT_HOVER};
 }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     border: none;

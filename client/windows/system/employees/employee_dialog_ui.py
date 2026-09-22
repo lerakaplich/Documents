@@ -6,6 +6,8 @@ import os
 from PyQt6 import QtWidgets, uic
 from PyQt6.QtWidgets import QVBoxLayout
 
+from client.core.themes import apply_theme_to_widget
+
 
 class EmployeeUI:
     """Строит и настраивает пользовательский интерфейс"""
@@ -15,7 +17,6 @@ class EmployeeUI:
 
     def load_ui(self):
         """Загружает UI из .ui файла"""
-        print("[DEBUG] load_ui() вызван")
         current_dir = os.path.dirname(os.path.abspath(__file__))
         ui_path = os.path.join(
             current_dir, '..', '..', '..', 'ui', 'system', 'employees', 'employee_dialog.ui'
@@ -26,7 +27,7 @@ class EmployeeUI:
             raise FileNotFoundError(f"UI file not found: {ui_path}")
 
         uic.loadUi(ui_path, self.parent)
-        print(f"[DEBUG] UI загружен из {ui_path}")
+        apply_theme_to_widget(self.parent)
 
     def setup_window(self, employee, current_user_rights):
         """Настраивает заголовок окна и инициализирует лейауты"""
@@ -43,6 +44,11 @@ class EmployeeUI:
 
         self.setup_static_comboboxes(current_user_rights)
         self.recreate_hierarchy_layout()
+
+    def reapply_theme(self):
+        """Переприменить тему после set_theme()."""
+        from client.core.themes import apply_theme_to_widget
+        apply_theme_to_widget(self)
 
     def setup_static_comboboxes(self, current_user_rights):
         self.parent.rightsCombo.clear()

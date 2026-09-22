@@ -15,31 +15,31 @@
   </property>
   <property name="styleSheet">
    <string notr="true">QDialog {
-    background-color: #f8f9fa;
+    background-color: {BG_DIALOG};
 }
 
 QLabel {
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     font-weight: 500;
     font-size: 13px;
 }
 
 QDateEdit {
-    border: 1px solid #dee2e6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 6px;
     padding: 8px;
     padding-right: 30px;
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
     font-size: 13px;
 }
 
 QDateEdit:hover {
-    border-color: #ccab6e;
+    border-color: {ACCENT_PRIMARY};
 }
 
 QDateEdit:focus {
-    border: 2px solid #ccab6e;
+    border: 2px solid {ACCENT_PRIMARY};
 }
 
 QDateEdit::drop-down {
@@ -50,26 +50,26 @@ QDateEdit::drop-down {
 }
 
 QDateEdit::down-arrow {
-    image: url(D:/Documents/client/icons/calendar_date.svg);
+    image: url({ICON_CALENDAR_PATH});
     width: 20px;
     height: 20px;
     margin-right: 6px;
 }
 
 QDateEdit QCalendarWidget {
-    background-color: white;
+    background-color: {BG_CARD};
     border-radius: 8px;
     padding: 5px;
 }
 
 QDateEdit QCalendarWidget QTableView {
     border: none;
-    background-color: white;
+    background-color: {BG_CARD};
 }
 
 QDateEdit QCalendarWidget QHeaderView::section {
-    background-color: #f8f9fa;
-    color: #1B232A;
+    background-color: {BG_SURFACE_HEADER};
+    color: {TEXT_PRIMARY};
     font-weight: bold;
     padding: 4px;
     border: none;
@@ -81,12 +81,12 @@ QDateEdit QCalendarWidget QTableView::item {
 }
 
 QDateEdit QCalendarWidget QTableView::item:selected {
-    background-color: #ccab6e;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
 }
 
 QDateEdit QCalendarWidget QTableView::item:hover {
-    background-color: #e3f2fd;
+    background-color: {ACCENT_SELECTION_BG};
 }
 
 /* Стили для кнопок быстрого выбора (будут переопределены в коде) */
@@ -95,7 +95,7 @@ QPushButton#weekButton,
 QPushButton#monthButton,
 QPushButton#quarterButton {
     background-color: transparent;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     font-weight: bold;
     font-size: 12px;
     border: none;
@@ -106,7 +106,7 @@ QPushButton#todayButton:hover,
 QPushButton#weekButton:hover,
 QPushButton#monthButton:hover,
 QPushButton#quarterButton:hover {
-    color: #ccab6e;
+    color: {ACCENT_PRIMARY};
 }
 
 /* Активный стиль будет применяться через код */
@@ -116,8 +116,8 @@ QPushButton#quarterButton:hover {
 } */
 
 QPushButton#applyButton {
-    background-color: #ccab6e;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border-radius: 8px;
     font-weight: bold;
     font-size: 14px;
@@ -126,11 +126,11 @@ QPushButton#applyButton {
 }
 
 QPushButton#applyButton:hover {
-    background-color: #b8945a;
+    background-color: {ACCENT_HOVER};
 }
 
 QPushButton#applyButton:pressed {
-    background-color: #a07d4a;
+    background-color: {ACCENT_PRESSED};
 }
 
 QHBoxLayout, QVBoxLayout {
@@ -156,7 +156,7 @@ QHBoxLayout, QVBoxLayout {
    <item>
     <widget class="QLabel" name="titleLabel">
      <property name="styleSheet">
-      <string notr="true">font-size: 20px; font-weight: bold; color: #1B232A; margin-bottom: 5px; 
+      <string notr="true">font-size: 20px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 5px;
 background-color: transparent;</string>
      </property>
      <property name="text">
@@ -173,17 +173,17 @@ background-color: transparent;</string>
       <string>QGroupBox {
     font-weight: bold;
     font-size: 14px;
-    border: 1px solid #dee2e6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
-    background-color: white;
+    background-color: {BG_CARD};
 }
 QGroupBox::title {
     subcontrol-origin: margin;
     left: 10px;
     padding: 0 5px 0 5px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
 }</string>
      </property>
      <property name="title">

@@ -10,18 +10,27 @@ from PyQt6.QtGui import QIcon
 
 def build_employee_group(title: str, is_expanded: bool = True) -> QWidget:
     """Создаёт сворачиваемую группу сотрудников (используется внутри DepartmentNode)."""
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-    icons_dir = os.path.join(base_dir, 'icons')
-    down_icon = QIcon(os.path.join(icons_dir, 'down_arrow.svg'))
-    up_icon = QIcon(os.path.join(icons_dir, 'up_arrow.svg'))
+    from client.core.themes import get_manager
+    from client.core.themes.icon_utils import icon
+
+    _t = get_manager().current
+    down_icon = icon("down_arrow", _t.ICON_COLOR)
+    up_icon   = icon("up_arrow",   _t.ICON_COLOR)
 
     group_widget = QWidget()
     group_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
     header = QFrame()
-    header.setStyleSheet("""
-        QFrame { border: 1px solid #DEE2E6; border-radius: 6px; padding: 4px 8px; }
-        QFrame:hover { background-color: #FDFBF7; border: 1px solid #CCAB6E; }
+    header.setStyleSheet(f"""
+        QFrame {{
+            border: 1px solid {_t.BORDER_DEFAULT};
+            border-radius: 6px;
+            padding: 4px 8px;
+        }}
+        QFrame:hover {{
+            background-color: {_t.BG_HOVER_ACCENT_SOFT};
+            border: 1px solid {_t.ACCENT_PRIMARY};
+        }}
     """)
     hl = QHBoxLayout(header)
     hl.setContentsMargins(8, 4, 8, 4)
@@ -36,8 +45,8 @@ def build_employee_group(title: str, is_expanded: bool = True) -> QWidget:
 
     lbl = QLabel(title)
     lbl.setStyleSheet(
-        "font-weight: bold; font-size: 14px; color: #212529; "
-        "background: transparent; border: none;"
+        f"font-weight: bold; font-size: 14px; color: {_t.TEXT_BLACK}; "
+        f"background: transparent; border: none;"
     )
 
     hl.addWidget(btn)

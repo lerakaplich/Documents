@@ -4,6 +4,8 @@ from PyQt6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget, QHBoxLay
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.uic import loadUi
 
+from client.core.themes import T, apply_theme_to_widget
+
 
 class EmployeeCard(QFrame):
     """Карточка сотрудника на основе загруженного UI файла"""
@@ -19,6 +21,7 @@ class EmployeeCard(QFrame):
         ui_path = self.get_ui_path()
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
         else:
             print(f"UI файл не найден: {ui_path}")
             self.setup_placeholder()
@@ -40,6 +43,7 @@ class EmployeeCard(QFrame):
         """Возвращает путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
         ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'employees', 'employee_card.ui')
+
         return os.path.normpath(ui_path)
 
     def setup_card(self):
@@ -97,14 +101,21 @@ class EmployeeCard(QFrame):
             if rights:
                 self.rightsLabel.setText(rights)
                 if rights.lower() == 'администратор':
-                    self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #CCAB6E; background-color: transparent;")
+                    color = T.ACCENT_PRIMARY
                 elif rights.lower() == 'пользователь':
-                    self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #28A745; background-color: transparent;")
+                    color = T.TEXT_SUCCESS
                 else:
-                    self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #6C757D; background-color: transparent;")
+                    color = T.TEXT_MUTED_ALT
+                self.rightsLabel.setStyleSheet(
+                    f"border: none; font-size: 12px; font-weight: bold; "
+                    f"color: {color}; background-color: transparent;"
+                )
             else:
                 self.rightsLabel.setText("Права не назначены")
-                self.rightsLabel.setStyleSheet("border: none; font-size: 12px; font-weight: bold; color: #DC3545; background-color: transparent;")
+                self.rightsLabel.setStyleSheet(
+                    f"border: none; font-size: 12px; font-weight: bold; "
+                    f"color: {T.TEXT_DANGER}; background-color: transparent;"
+                )
 
     def on_edit_clicked(self):
         """Обработчик кнопки редактирования"""

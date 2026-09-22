@@ -1,9 +1,13 @@
+# client/windows/period_dialog.py
 import sys
 import os
 from datetime import datetime, timedelta
+
 from PyQt6.QtWidgets import QDialog, QApplication, QMessageBox
 from PyQt6.QtCore import QDate, pyqtSignal
 from PyQt6.uic import loadUi
+
+from client.core.themes import T, apply_theme_to_widget
 
 
 class PeriodDialog(QDialog):
@@ -31,47 +35,35 @@ class PeriodDialog(QDialog):
         Загрузка UI из файла period_dialog.ui
         """
         try:
-            # Получаем путь к текущему файлу (period_dialog.py в windows/)
             current_file = os.path.abspath(__file__)
             current_dir = os.path.dirname(current_file)
-
-            # Путь к папке client (родительская для windows)
             client_dir = os.path.dirname(current_dir)
-
-            # Путь к папке ui
             ui_dir = os.path.join(client_dir, 'ui')
-
-            # Полный путь к файлу period_dialog.ui
             ui_path = os.path.join(ui_dir, 'period_dialog.ui')
 
-            print(f"Поиск UI файла: {ui_path}")  # Для отладки
+            print(f"Поиск UI файла: {ui_path}")
 
-            # Проверяем существование файла
             if not os.path.exists(ui_path):
-                # Если в ui/ не найден, пробуем другие варианты
                 alternative_paths = [
-                    os.path.join(current_dir, 'period_dialog.ui'),  # в windows/
-                    os.path.join(current_dir, '..', 'ui', 'period_dialog.ui'),  # из windows в ui
-                    os.path.join(client_dir, 'period_dialog.ui'),  # в корне client
-                    os.path.join(os.path.dirname(client_dir), 'ui', 'period_dialog.ui'),  # на уровень выше
+                    os.path.join(current_dir, 'period_dialog.ui'),
+                    os.path.join(current_dir, '..', 'ui', 'period_dialog.ui'),
+                    os.path.join(client_dir, 'period_dialog.ui'),
+                    os.path.join(os.path.dirname(client_dir), 'ui', 'period_dialog.ui'),
                 ]
-
                 for alt_path in alternative_paths:
                     if os.path.exists(alt_path):
                         ui_path = alt_path
                         print(f"Найден UI файл: {ui_path}")
                         break
                 else:
-                    # Если файл не найден, создаем UI программно
                     print("UI файл не найден, создаю стандартный интерфейс")
                     self.create_default_ui()
                     return
 
-            # Загружаем UI
             print(f"Загрузка UI из: {ui_path}")
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
 
-            # После загрузки UI, инициализируем список кнопок
             if hasattr(self, 'todayButton'):
                 self.quick_buttons = [
                     self.todayButton,
@@ -79,20 +71,17 @@ class PeriodDialog(QDialog):
                     self.monthButton,
                     self.quarterButton
                 ]
-
-                # Применяем начальный стиль ко всем кнопкам (черные жирные)
                 for btn in self.quick_buttons:
                     self.set_default_button_style(btn)
 
         except Exception as e:
             print(f"Ошибка загрузки UI: {e}")
-            # Создаем простой UI в случае ошибки
             self.create_default_ui()
 
     def create_default_ui(self):
         """Создание UI программно (если файл .ui не найден)"""
         from PyQt6.QtWidgets import (QVBoxLayout, QHBoxLayout, QGroupBox,
-                                     QLabel, QDateEdit, QPushButton, QSpacerItem)
+                                     QLabel, QDateEdit, QPushButton)
         from PyQt6.QtCore import Qt
 
         self.setWindowTitle("Выбор периода")
@@ -104,27 +93,29 @@ class PeriodDialog(QDialog):
 
         # Заголовок
         self.titleLabel = QLabel("Выбор периода")
-        self.titleLabel.setStyleSheet("font-size: 20px; font-weight: bold; color: #1B232A;")
+        self.titleLabel.setStyleSheet(
+            f"font-size: 20px; font-weight: bold; color: {T.TEXT_PRIMARY};"
+        )
         layout.addWidget(self.titleLabel)
 
         # Группа
         group = QGroupBox("Период")
-        group.setStyleSheet("""
-            QGroupBox {
+        group.setStyleSheet(f"""
+            QGroupBox {{
                 font-weight: bold;
                 font-size: 14px;
-                border: 1px solid #dee2e6;
+                border: 1px solid {T.BORDER_DEFAULT};
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
-                background-color: white;
-            }
-            QGroupBox::title {
+                background-color: {T.BG_CARD};
+            }}
+            QGroupBox::title {{
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px;
-                color: #1B232A;
-            }
+                color: {T.TEXT_PRIMARY};
+            }}
         """)
         group_layout = QVBoxLayout(group)
         group_layout.setSpacing(12)
@@ -134,22 +125,24 @@ class PeriodDialog(QDialog):
         start_layout = QHBoxLayout()
         start_label = QLabel("Начало периода:")
         start_label.setMinimumWidth(90)
-        start_label.setStyleSheet("color: #1B232A; font-weight: 500;")
+        start_label.setStyleSheet(
+            f"color: {T.TEXT_PRIMARY}; font-weight: 500;"
+        )
         self.startDateEdit = QDateEdit()
         self.startDateEdit.setCalendarPopup(True)
         self.startDateEdit.setDisplayFormat("dd.MM.yyyy")
-        self.startDateEdit.setStyleSheet("""
-            QDateEdit {
-                border: 1px solid #dee2e6;
+        self.startDateEdit.setStyleSheet(f"""
+            QDateEdit {{
+                border: 1px solid {T.BORDER_DEFAULT};
                 border-radius: 6px;
                 padding: 8px;
-                background-color: white;
-                color: #1B232A;
+                background-color: {T.BG_INPUT};
+                color: {T.TEXT_PRIMARY};
                 font-size: 13px;
                 min-height: 32px;
-            }
-            QDateEdit:hover { border-color: #ccab6e; }
-            QDateEdit:focus { border: 2px solid #ccab6e; }
+            }}
+            QDateEdit:hover {{ border-color: {T.ACCENT_PRIMARY}; }}
+            QDateEdit:focus {{ border: 2px solid {T.ACCENT_PRIMARY}; }}
         """)
         start_layout.addWidget(start_label)
         start_layout.addWidget(self.startDateEdit)
@@ -159,22 +152,24 @@ class PeriodDialog(QDialog):
         end_layout = QHBoxLayout()
         end_label = QLabel("Конец периода:")
         end_label.setMinimumWidth(90)
-        end_label.setStyleSheet("color: #1B232A; font-weight: 500;")
+        end_label.setStyleSheet(
+            f"color: {T.TEXT_PRIMARY}; font-weight: 500;"
+        )
         self.endDateEdit = QDateEdit()
         self.endDateEdit.setCalendarPopup(True)
         self.endDateEdit.setDisplayFormat("dd.MM.yyyy")
-        self.endDateEdit.setStyleSheet("""
-            QDateEdit {
-                border: 1px solid #dee2e6;
+        self.endDateEdit.setStyleSheet(f"""
+            QDateEdit {{
+                border: 1px solid {T.BORDER_DEFAULT};
                 border-radius: 6px;
                 padding: 8px;
-                background-color: white;
-                color: #1B232A;
+                background-color: {T.BG_INPUT};
+                color: {T.TEXT_PRIMARY};
                 font-size: 13px;
                 min-height: 32px;
-            }
-            QDateEdit:hover { border-color: #ccab6e; }
-            QDateEdit:focus { border: 2px solid #ccab6e; }
+            }}
+            QDateEdit:hover {{ border-color: {T.ACCENT_PRIMARY}; }}
+            QDateEdit:focus {{ border: 2px solid {T.ACCENT_PRIMARY}; }}
         """)
         end_layout.addWidget(end_label)
         end_layout.addWidget(self.endDateEdit)
@@ -184,14 +179,13 @@ class PeriodDialog(QDialog):
         quick_layout = QHBoxLayout()
         quick_layout.setSpacing(10)
 
-        # Создаем кнопки
         self.todayButton = QPushButton("Сегодня")
         self.weekButton = QPushButton("Неделя")
         self.monthButton = QPushButton("Месяц")
         self.quarterButton = QPushButton("Квартал")
 
-        # Применяем базовый стиль ко всем кнопкам (черные жирные)
-        for btn in [self.todayButton, self.weekButton, self.monthButton, self.quarterButton]:
+        for btn in [self.todayButton, self.weekButton,
+                    self.monthButton, self.quarterButton]:
             self.set_default_button_style(btn)
             btn.setCursor(True)
 
@@ -211,32 +205,32 @@ class PeriodDialog(QDialog):
         self.cancelButton = QPushButton("Отмена")
         self.applyButton = QPushButton("Применить")
 
-        self.cancelButton.setStyleSheet("""
-            QPushButton {
-                background-color: #e9ecef;
-                color: #1B232A;
+        self.cancelButton.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {T.BG_HOVER_ALT};
+                color: {T.TEXT_PRIMARY};
                 border-radius: 8px;
                 font-size: 14px;
                 border: none;
                 padding: 8px 20px;
                 min-height: 36px;
-            }
-            QPushButton:hover { background-color: #dde0e3; }
+            }}
+            QPushButton:hover {{ background-color: {T.BG_HOVER_ALT_DARK}; }}
         """)
 
-        self.applyButton.setStyleSheet("""
-            QPushButton {
-                background-color: #ccab6e;
-                color: white;
+        self.applyButton.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {T.ACCENT_PRIMARY};
+                color: {T.TEXT_ON_ACCENT};
                 border-radius: 8px;
                 font-weight: bold;
                 font-size: 14px;
                 border: none;
                 padding: 8px 20px;
                 min-height: 36px;
-            }
-            QPushButton:hover { background-color: #b8945a; }
-            QPushButton:pressed { background-color: #a07d4a; }
+            }}
+            QPushButton:hover {{ background-color: {T.ACCENT_HOVER}; }}
+            QPushButton:pressed {{ background-color: {T.ACCENT_PRESSED}; }}
         """)
 
         self.cancelButton.setCursor(True)
@@ -246,63 +240,50 @@ class PeriodDialog(QDialog):
         button_layout.addWidget(self.applyButton)
         layout.addLayout(button_layout)
 
-        # Сохраняем ссылки на важные виджеты
         self.periodGroup = group
-
-        # Сохраняем список кнопок
-        self.quick_buttons = [self.todayButton, self.weekButton, self.monthButton, self.quarterButton]
+        self.quick_buttons = [
+            self.todayButton, self.weekButton,
+            self.monthButton, self.quarterButton
+        ]
 
     def set_default_button_style(self, button):
-        """
-        Установка стандартного стиля для кнопки (черный жирный)
-        Это стиль для НЕактивной кнопки
-        """
-        button.setStyleSheet("""
-            QPushButton {
+        """Стандартный стиль кнопки (НЕактивной): чёрный жирный"""
+        button.setStyleSheet(f"""
+            QPushButton {{
                 background-color: transparent;
-                color: #1B232A;
+                color: {T.TEXT_PRIMARY};
                 font-weight: bold;
                 font-size: 12px;
                 border: none;
                 padding: 4px 8px;
-            }
-            QPushButton:hover {
-                color: #ccab6e;
-            }
+            }}
+            QPushButton:hover {{
+                color: {T.ACCENT_PRIMARY};
+            }}
         """)
 
     def set_active_button_style(self, button):
-        """
-        Установка активного стиля для кнопки (золотой подчеркнутый)
-        Это стиль для АКТИВНОЙ кнопки
-        """
-        button.setStyleSheet("""
-            QPushButton {
+        """Активный стиль кнопки: золотой подчёркнутый"""
+        button.setStyleSheet(f"""
+            QPushButton {{
                 background-color: transparent;
-                color: #ccab6e;
+                color: {T.ACCENT_PRIMARY};
                 font-weight: bold;
                 font-size: 12px;
                 border: none;
                 padding: 4px 8px;
                 text-decoration: underline;
-            }
-            QPushButton:hover {
-                color: #b8945a;
-            }
+            }}
+            QPushButton:hover {{
+                color: {T.ACCENT_HOVER};
+            }}
         """)
 
     def set_active_button(self, button):
-        """
-        Устанавливает активную кнопку и обновляет стили
-
-        Args:
-            button: кнопка, которую нужно сделать активной (или None для сброса)
-        """
-        # Сбрасываем стиль предыдущей активной кнопки
+        """Устанавливает активную кнопку и обновляет стили"""
         if self.active_button and self.active_button in self.quick_buttons:
             self.set_default_button_style(self.active_button)
 
-        # Если передана кнопка, делаем ее активной
         if button and button in self.quick_buttons:
             self.set_active_button_style(button)
             self.active_button = button
@@ -316,7 +297,6 @@ class PeriodDialog(QDialog):
         if start_date:
             self.startDateEdit.setDate(start_date)
         else:
-            # По умолчанию - начало месяца
             first_day = QDate(today.year(), today.month(), 1)
             self.startDateEdit.setDate(first_day)
 
@@ -325,15 +305,12 @@ class PeriodDialog(QDialog):
         else:
             self.endDateEdit.setDate(today)
 
-        # Сохраняем список кнопок, если еще не сохранен
         if hasattr(self, 'todayButton') and not self.quick_buttons:
             self.quick_buttons = [self.todayButton, self.weekButton,
                                   self.monthButton, self.quarterButton]
-            # Применяем начальный стиль
             for btn in self.quick_buttons:
                 self.set_default_button_style(btn)
 
-        # Если даты соответствуют сегодняшнему дню, активируем кнопку "Сегодня"
         if start_date and end_date:
             if start_date == today and end_date == today:
                 self.set_active_button(self.todayButton)
@@ -342,49 +319,38 @@ class PeriodDialog(QDialog):
         """Настройка сигналов"""
         if hasattr(self, 'applyButton'):
             self.applyButton.clicked.connect(self.apply_period)
-
         if hasattr(self, 'cancelButton'):
             self.cancelButton.clicked.connect(self.reject)
-
         if hasattr(self, 'todayButton'):
             self.todayButton.clicked.connect(self.on_today_clicked)
             self.weekButton.clicked.connect(self.on_week_clicked)
             self.monthButton.clicked.connect(self.on_month_clicked)
             self.quarterButton.clicked.connect(self.on_quarter_clicked)
-
-        # Подключаем сигналы изменения даты для сброса активной кнопки
         if hasattr(self, 'startDateEdit'):
             self.startDateEdit.dateChanged.connect(self.on_date_changed)
-
         if hasattr(self, 'endDateEdit'):
             self.endDateEdit.dateChanged.connect(self.on_date_changed)
 
     def on_today_clicked(self):
-        """Обработчик нажатия на кнопку 'Сегодня'"""
         self.set_today()
         self.set_active_button(self.todayButton)
 
     def on_week_clicked(self):
-        """Обработчик нажатия на кнопку 'Неделя'"""
         self.set_week()
         self.set_active_button(self.weekButton)
 
     def on_month_clicked(self):
-        """Обработчик нажатия на кнопку 'Месяц'"""
         self.set_month()
         self.set_active_button(self.monthButton)
 
     def on_quarter_clicked(self):
-        """Обработчик нажатия на кнопку 'Квартал'"""
         self.set_quarter()
         self.set_active_button(self.quarterButton)
 
     def apply_period(self):
-        """Применение выбранного периода"""
         start_date = self.startDateEdit.date()
         end_date = self.endDateEdit.date()
 
-        # Проверка, что начало не позже конца
         if start_date > end_date:
             QMessageBox.warning(self, "Ошибка",
                                 "Дата начала не может быть позже даты окончания")
@@ -403,13 +369,11 @@ class PeriodDialog(QDialog):
         self.accept()
 
     def set_today(self):
-        """Установка сегодняшнего дня"""
         today = QDate.currentDate()
         self.startDateEdit.setDate(today)
         self.endDateEdit.setDate(today)
 
     def set_week(self):
-        """Установка текущей недели"""
         today = QDate.currentDate()
         days_to_monday = today.dayOfWeek() - 1
         start = today.addDays(-days_to_monday)
@@ -418,7 +382,6 @@ class PeriodDialog(QDialog):
         self.endDateEdit.setDate(end)
 
     def set_month(self):
-        """Установка текущего месяца"""
         today = QDate.currentDate()
         first_day = QDate(today.year(), today.month(), 1)
         last_day = QDate(today.year(), today.month(), today.daysInMonth())
@@ -426,7 +389,6 @@ class PeriodDialog(QDialog):
         self.endDateEdit.setDate(last_day)
 
     def set_quarter(self):
-        """Установка текущего квартала"""
         today = QDate.currentDate()
         month = today.month()
 
@@ -448,19 +410,13 @@ class PeriodDialog(QDialog):
         self.endDateEdit.setDate(last_day)
 
     def on_date_changed(self, date):
-        """
-        Сброс активной кнопки при ручном изменении даты.
-        При ручном редактировании все кнопки становятся черными жирными
-        """
-        # Сбрасываем активную кнопку только если это не программное изменение
-        # (определяем по тому, есть ли активная кнопка)
+        """Сброс активной кнопки при ручном изменении даты."""
         if self.active_button:
             self.set_active_button(None)
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
     dialog = PeriodDialog()
 
     def on_period_selected(data):
@@ -468,7 +424,6 @@ if __name__ == "__main__":
         print(f"Объекты дат: {data['start_date_python']} - {data['end_date_python']}")
 
     dialog.period_selected.connect(on_period_selected)
-
     result = dialog.exec()
 
     if result == QDialog.DialogCode.Accepted:

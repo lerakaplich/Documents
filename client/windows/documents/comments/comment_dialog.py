@@ -8,6 +8,8 @@ from PyQt6.QtWidgets import QDialog, QListWidgetItem, QWidget, QHBoxLayout, QLab
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.uic import loadUi
 
+from client.core.themes import apply_theme_to_widget, T
+
 ROOT_DIR = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 )
@@ -34,19 +36,21 @@ class CommentItemWidget(QWidget):
         author_label = QLabel()
         author_name = comment.get('author_name', comment.get('author', 'Неизвестный'))
         author_label.setText(author_name)
-        author_label.setStyleSheet("""
-            QLabel {
+        author_label.setStyleSheet(f"""
+            QLabel {{
                 font-weight: bold;
                 font-size: 13px;
-                color: #1B232A;
+                color: {T.TEXT_PRIMARY};
                 background-color: transparent;
-            }
+            }}
         """)
         header_layout.addWidget(author_label)
 
         # Разделитель
         sep_label = QLabel("•")
-        sep_label.setStyleSheet("color: #999; background-color: transparent;")
+        sep_label.setStyleSheet(
+            f"color: {T.TEXT_TERTIARY}; background-color: transparent;"
+        )
         header_layout.addWidget(sep_label)
 
         # Время
@@ -60,12 +64,12 @@ class CommentItemWidget(QWidget):
         else:
             time_str = "Только что"
         time_label.setText(time_str)
-        time_label.setStyleSheet("""
-            QLabel {
-                color: #999;
+        time_label.setStyleSheet(f"""
+            QLabel {{
+                color: {T.TEXT_TERTIARY};
                 font-size: 11px;
                 background-color: transparent;
-            }
+            }}
         """)
         header_layout.addWidget(time_label)
 
@@ -77,13 +81,13 @@ class CommentItemWidget(QWidget):
         text = comment.get('text', '')
         text_label.setText(text)
         text_label.setWordWrap(True)
-        text_label.setStyleSheet("""
-            QLabel {
-                color: #333;
+        text_label.setStyleSheet(f"""
+            QLabel {{
+                color: {T.TEXT_HEADING};
                 font-size: 14px;
                 background-color: transparent;
                 padding-left: 0px;
-            }
+            }}
         """)
         layout.addWidget(text_label)
 
@@ -91,15 +95,15 @@ class CommentItemWidget(QWidget):
         if show_separator:
             separator = QFrame()
             separator.setFrameShape(QFrame.Shape.HLine)
-            separator.setStyleSheet("""
-                QFrame {
-                    color: #E0E0E0;
-                    background-color: #E8E8E8;
+            separator.setStyleSheet(f"""
+                QFrame {{
+                    color: {T.BORDER_LIGHT};
+                    background-color: {T.SEPARATOR_BG};
                     max-height: 1px;
                     border: none;
                     margin-top: 4px;
                     margin-bottom: 0px;
-                }
+                }}
             """)
             layout.addWidget(separator)
 
@@ -130,6 +134,7 @@ class CommentDialog(QDialog):
         # Загружаем UI
         ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "comments_dialog.ui")
         loadUi(ui_path, self)
+        apply_theme_to_widget(self)
 
         self._setup_ui()
         self._load_comments()

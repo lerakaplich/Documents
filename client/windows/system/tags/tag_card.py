@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import QApplication, QFrame, QMessageBox
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.uic import loadUi
 
+from client.core.themes import T, apply_theme_to_widget
 from client.windows.system.tags.color_picker_dialog import ColorPickerDialog
 
 
@@ -22,8 +23,10 @@ class TagCard(QFrame):
 
         # Загружаем UI дизайн
         ui_path = self.get_ui_path()
+
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
+            apply_theme_to_widget(self)
         else:
             raise FileNotFoundError(f"UI файл не найден: {ui_path}")
 
@@ -77,7 +80,7 @@ class TagCard(QFrame):
 
         # Устанавливаем цвет кружочка
         if hasattr(self, 'colorButton'):
-            color = self.tag_data.get('color', '#CCAB6E')
+            color = self.tag_data.get('color', T.ACCENT_PRIMARY)
             self.set_color(color)
 
     def _apply_priority(self, priority: str):
@@ -86,9 +89,9 @@ class TagCard(QFrame):
             return
 
         mapping = {
-            'urgent': ('Срочно', '#FFEBEE', '#C62828'),  # красный
-            'important': ('Важно', '#FFF4E5', '#B26A00'),  # оранжевый
-            'normal': ('Обычный', '#F1F3F5', '#6C757D'),  # серый
+            'urgent': ('Срочно', T.CHIP_URGENT_BG, T.CHIP_URGENT_TEXT),
+            'important': ('Важно', T.CHIP_IMPORTANT_BG, T.CHIP_IMPORTANT_TEXT),
+            'normal': ('Обычный', T.CHIP_BG, T.CHIP_TEXT),
         }
         text, bg, fg = mapping.get(priority or 'normal', mapping['normal'])
 
@@ -110,7 +113,7 @@ class TagCard(QFrame):
                 QPushButton {{
                     background-color: {color};
                     border-radius: 10px;
-                    border: 2px solid #E8DCC8;
+                    border: 2px solid {T.BORDER_ACCENT_SOFT};
                 }}
                 QPushButton:hover {{
                     border: 2px solid {color};

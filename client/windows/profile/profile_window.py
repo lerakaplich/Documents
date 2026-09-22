@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.uic import loadUi
 
 from client.core.state.app_state import AppState
+from client.core.themes import apply_theme_to_widget, T, get_manager
 from client.windows.profile.overtime.overtime_panel import OvertimePanel
 from client.windows.profile.profile_info import ProfileInfo
 from client.core.http_client import HttpClient
@@ -104,6 +105,7 @@ class ProfileForm(QWidget):
         try:
             if os.path.exists(ui_path):
                 loadUi(ui_path, self)
+                apply_theme_to_widget(self)
                 print("ProfileForm: UI загружен успешно")
             else:
                 print(f"ProfileForm: UI файл не найден: {ui_path}")
@@ -322,23 +324,24 @@ class ProfileForm(QWidget):
 
     def setup_edit_buttons(self):
         """Устанавливает стиль для кнопок редактирования телефона и email."""
-        style = """
-            QToolButton, QPushButton {
+        t = get_manager().current
+        style = f"""
+            QToolButton, QPushButton {{
                 background-color: transparent;
-                color: #ccab6e;
+                color: {t.ACCENT_PRIMARY};
                 font-size: 20px;
                 border: none;
                 border-radius: 8px;
                 padding: 5px;
-            }
-            QToolButton:hover, QPushButton:hover {
-                color: #b8944a;
-                background-color: rgba(204, 171, 110, 0.1);
-            }
-            QToolButton:pressed, QPushButton:pressed {
-                color: #7a6a50;
-                background-color: rgba(204, 171, 110, 0.2);
-            }
+            }}
+            QToolButton:hover, QPushButton:hover {{
+                color: {t.ACCENT_HOVER};
+                background-color: {t.ACCENT_PRIMARY_ALPHA_10};
+            }}
+            QToolButton:pressed, QPushButton:pressed {{
+                color: {t.ACCENT_PRESSED_DEEP};
+                background-color: {t.ACCENT_PRIMARY_ALPHA_20};
+            }}
         """
         if hasattr(self, 'btnEditPhone') and self.btnEditPhone:
             self.btnEditPhone.setStyleSheet(style)
@@ -493,7 +496,10 @@ class ProfileForm(QWidget):
         main_layout.setContentsMargins(20, 20, 20, 20)
 
         title = QLabel("Профиль сотрудника")
-        title.setStyleSheet("font-size: 24px; font-weight: bold;")
+        t = get_manager().current
+        title.setStyleSheet(
+            f"font-size: 24px; font-weight: bold; color: {t.TEXT_PRIMARY};"
+        )
         main_layout.addWidget(title)
 
         self.infoFrame = QFrame()
@@ -509,7 +515,12 @@ class ProfileForm(QWidget):
         self.btnEditEmail = QPushButton("✏️")
         self.tabWidget = QTabWidget()
         main_layout.addWidget(self.tabWidget)
-
+        self.infoFrame.setStyleSheet(f"""
+            background-color: {t.BG_CARD};
+            border: 1px solid {t.BORDER_LIGHT};
+            border-radius: 16px;
+            padding: 20px;
+        """)
         self.profile_info.setup_ui_elements(
             infoFrame=self.infoFrame,
             labelTitle=title,

@@ -4,13 +4,17 @@ from PyQt6 import uic
 import os
 from functools import partial
 
+from client.core.themes import apply_theme_to_widget, T
+
 
 class ColorPickerDialog(QDialog):
     """Диалог выбора цвета для тега"""
     color_selected = pyqtSignal(str)
 
-    def __init__(self, current_color="#ccab6e", parent=None):
+    def __init__(self, current_color=None, parent=None):
         super().__init__(parent)
+        # Импортируем T локально, чтобы избежать циклического импорта на уровне модуля
+        current_color = current_color or T.ACCENT_PRIMARY
         self.current_color = current_color
         self.selected_color = current_color
 
@@ -21,7 +25,7 @@ class ColorPickerDialog(QDialog):
 
 
         uic.loadUi(ui_path, self)
-
+        apply_theme_to_widget(self)
         self.setup_connections()
         # Устанавливаем начальный цвет превью
         self.update_preview()
@@ -69,7 +73,7 @@ class ColorPickerDialog(QDialog):
                 QFrame {{
                     background-color: {self.selected_color};
                     border-radius: 8px;
-                    border: 2px solid #E0E0E0;
+                    border: 2px solid {T.BORDER_LIGHT};
                 }}
             """)
 

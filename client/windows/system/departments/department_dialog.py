@@ -9,6 +9,8 @@ from PyQt6 import uic
 from PyQt6.QtWidgets import QDialog, QMessageBox, QApplication
 from PyQt6.QtCore import Qt
 
+from client.core.themes import apply_theme_to_widget
+
 
 class DepartmentDialog(QDialog):
     """
@@ -61,6 +63,7 @@ class DepartmentDialog(QDialog):
         if os.path.exists(ui_path):
             try:
                 uic.loadUi(ui_path, self)
+                apply_theme_to_widget(self)
                 print(f"[DEBUG] UI файл успешно загружен: {ui_path}")
                 self._create_widget_aliases()
             except Exception as e:
@@ -246,8 +249,6 @@ class DepartmentDialog(QDialog):
             self.setWindowTitle("Добавить отдел")
             if hasattr(self, 'title_label'):
                 self.title_label.setText("Новый отдел")
-
-        self.resize(580, 499)
 
     # ==================== ЗАПОЛНЕНИЕ ====================
 

@@ -7,13 +7,19 @@
     <x>0</x>
     <y>0</y>
     <width>571</width>
-    <height>525</height>
+    <height>547</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>0</width>
     <height>525</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>571</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -25,10 +31,10 @@
  background-color: transparent;
 }
 QDialog {
-    background-color: #f8f9fa;
+    background-color: {BG_DIALOG};
 }
 QCheckBox {
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     spacing: 0px;
     font-size: 12px;
     background: transparent;
@@ -37,15 +43,15 @@ QCheckBox {
 QCheckBox::indicator {
     width: 18px;
     height: 18px;
-    image: url(&quot;D:/Documents/client/icons/cb_unchecked.svg&quot;);
+    image: url({ICON_CHECKBOX_UNCHECKED_PATH});
 }
 
 QCheckBox::indicator:checked {
-    image: url(&quot;D:/Documents/client/icons/cb_checked.svg&quot;);
+    image: url({ICON_CHECKBOX_CHECKED_PATH});
 }
 
 QScrollBar::vertical {
-    background: #F5F5F5;
+    background: {SCROLLBAR_BG};
     width: 8px;
     border-radius: 4px;
     margin: 0px;
@@ -53,17 +59,17 @@ QScrollBar::vertical {
 }
 
 QScrollBar::handle:vertical {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-height: 20px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background: #A0A0A0;
+    background: {SCROLLBAR_HANDLE_HOVER};
 }
 
 QScrollBar::handle:vertical:pressed {
-    background: #888888;
+    background: {SCROLLBAR_HANDLE_PRESSED};
 }
 
 QScrollBar::add-line:vertical,
@@ -81,24 +87,24 @@ QScrollBar::sub-page:vertical {
 
 QScrollBar:horizontal {
     border: none;
-    background: #F5F5F5;
+    background: {SCROLLBAR_BG};
     height: 8px;
     margin: 0px;
     border-radius: 4px;
 }
 
 QScrollBar::handle:horizontal {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-width: 20px;
 }
 
 QScrollBar::handle:horizontal:hover {
-    background: #A0A0A0;
+    background: {SCROLLBAR_HANDLE_HOVER};
 }
 
 QScrollBar::handle:horizontal:pressed {
-    background: #888888;
+    background: {SCROLLBAR_HANDLE_PRESSED};
 }
 
 QScrollBar::add-line:horizontal,
@@ -116,23 +122,23 @@ QScrollBar::sub-page:horizontal {
 
 /* ===== СТИЛИ ДЛЯ QComboBox ===== */
 QComboBox {
-    border: 1px solid #dee2e6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 6px;
     padding: 6px;
     padding-right: 30px;
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
     font-size: 13px;
     outline: none;
     min-height: 22px;
 }
 
 QComboBox:hover {
-    border-color: #ccab6e;
+    border-color: {ACCENT_PRIMARY};
 }
 
 QComboBox:focus {
-    border: 2px solid #ccab6e;
+    border: 2px solid {ACCENT_PRIMARY};
 }
 
 QComboBox::drop-down {
@@ -143,7 +149,7 @@ QComboBox::drop-down {
 }
 
 QComboBox::down-arrow {
-    image: url(D:/Documents/client/icons/down_arrow.svg);
+    image: url({ICON_ARROW_DOWN_PATH});
     width: 16px;
     height: 16px;
     margin-right: 6px;
@@ -151,49 +157,49 @@ QComboBox::down-arrow {
 
 QComboBox QAbstractItemView {
     border-radius: 6px;
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     padding: 4px;
     outline: none;
-    border: 1px solid #ccab6e;
+    border: 1px solid {ACCENT_PRIMARY};
 }
 
 QComboBox QAbstractItemView::item {
     padding: 8px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     border: none;
     outline: none;
 }
 
 QComboBox QAbstractItemView::item:hover {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
 
 QComboBox QAbstractItemView::item:selected {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
 
 /* ===== СТИЛИ ДЛЯ QDateEdit ===== */
 QDateEdit {
-    border: 1px solid #dee2e6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 6px;
     padding: 6px;
     padding-right: 30px;
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
     font-size: 13px;
     outline: none;
     min-height: 22px;
 }
 
 QDateEdit:hover {
-    border-color: #ccab6e;
+    border-color: {ACCENT_PRIMARY};
 }
 
 QDateEdit:focus {
-    border: 2px solid #ccab6e;
+    border: 2px solid {ACCENT_PRIMARY};
 }
 
 QDateEdit::drop-down {
@@ -204,7 +210,7 @@ QDateEdit::drop-down {
 }
 
 QDateEdit::down-arrow {
-    image: url(D:/Documents/client/icons/calendar_date.svg);
+    image: url({ICON_CALENDAR_PATH});
     width: 18px;
     height: 18px;
     margin-right: 8px;
@@ -212,45 +218,57 @@ QDateEdit::down-arrow {
 
 /* ===== СТИЛИ ДЛЯ QLineEdit ===== */
 QLineEdit {
-    border: 1px solid #dee2e6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 6px;
     padding: 6px;
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
     font-size: 13px;
+    outline: none;
     min-height: 22px;
 }
 
 QLineEdit:hover {
-    border-color: #ccab6e;
+    border-color: {ACCENT_PRIMARY};
 }
 
 QLineEdit:focus {
-    border: 2px solid #ccab6e;
+    border: 2px solid {ACCENT_PRIMARY};
+}
+
+QLineEdit:disabled {
+    background-color: {BG_DIALOG};
+    color: {TEXT_SECONDARY};
+    border-color: {BORDER_DEFAULT};
+}
+
+QLineEdit[readOnly=&quot;true&quot;] {
+    background-color: {BG_DIALOG};
+    color: {TEXT_SECONDARY};
 }
 
 /* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ QCalendarWidget ===== */
 QCalendarWidget {
-    background-color: white;
+    background-color: {BG_CARD};
     border-radius: 8px;
-    border: 1px solid #CCAB6E;
+    border: 1px solid {ACCENT_PRIMARY};
 }
 
 QCalendarWidget QWidget#qt_calendar_navigationbar {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     border-radius: 8px 8px 0 0;
 }
 
 QCalendarWidget QWidget {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
 }
 
 QCalendarWidget QToolButton#qt_calendar_prevmonth,
 QCalendarWidget QToolButton#qt_calendar_nextmonth {
     background-color: transparent;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     border: none;
     border-radius: 4px;
     padding: 4px 8px;
@@ -260,13 +278,13 @@ QCalendarWidget QToolButton#qt_calendar_nextmonth {
 
 QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
 QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
-    background-color: #e3f2fd;
+    background-color: {ACCENT_SELECTION_BG};
 }
 
 QCalendarWidget QToolButton#qt_calendar_monthbutton,
 QCalendarWidget QToolButton#qt_calendar_yearbutton {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     border: none;
     border-radius: 4px;
     padding: 4px 12px;
@@ -275,14 +293,14 @@ QCalendarWidget QToolButton#qt_calendar_yearbutton {
 
 QCalendarWidget QToolButton#qt_calendar_monthbutton:hover,
 QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
-    background-color: #e3f2fd;
+    background-color: {ACCENT_SELECTION_BG};
 }
 
 QCalendarWidget QMenu {
-    background-color: white;
-    border: 1px solid #CCAB6E;
+    background-color: {BG_CARD};
+    border: 1px solid {ACCENT_PRIMARY};
     border-radius: 6px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
 }
 
 QCalendarWidget QMenu::item {
@@ -291,14 +309,14 @@ QCalendarWidget QMenu::item {
 }
 
 QCalendarWidget QMenu::item:selected {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
 
 QCalendarWidget QWidget#qt_calendar_weekday {
-    color: white;
+    color: {TEXT_ON_ACCENT};
     font-weight: bold;
-    background-color: #CCAB6E;
+    background-color: {ACCENT_PRIMARY};
     padding: 4px;
 }
 
@@ -306,61 +324,61 @@ QCalendarWidget QToolButton#qt_calendar_day {
     border: none;
     border-radius: 4px;
     padding: 4px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     background-color: transparent;
 }
 
 QCalendarWidget QToolButton#qt_calendar_day:hover {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
 
 QCalendarWidget QToolButton#qt_calendar_day:checked {
-    background-color: #CCAB6E;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border-radius: 4px;
 }
 
 QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
-    background-color: #998664;
+    background-color: {ACCENT_HOVER};
 }
 
 QCalendarWidget QToolButton#qt_calendar_day:disabled {
-    color: #B0B0B0;
+    color: {TEXT_DISABLED};
 }
 
 QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;] {
-    background-color: #D22730;
-    color: white;
+    background-color: {ACCENT_DANGER};
+    color: {TEXT_ON_ACCENT};
     border-radius: 4px;
 }
 
 QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:hover {
-    background-color: #862633;
+    background-color: {ACCENT_DANGER_HOVER};
 }
 
 QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked {
-    background-color: #CCAB6E;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
 }
 
 /* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ В ПОПАПЕ QDateEdit ===== */
 QDateEdit QCalendarWidget {
-    background-color: white;
+    background-color: {BG_CARD};
     border-radius: 8px;
-    border: 1px solid #CCAB6E;
+    border: 1px solid {ACCENT_PRIMARY};
 }
 
 QDateEdit QCalendarWidget QWidget#qt_calendar_navigationbar {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     border-radius: 8px 8px 0 0;
 }
 
 QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth,
 QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth {
     background-color: transparent;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     border: none;
     border-radius: 4px;
     padding: 4px 8px;
@@ -370,13 +388,13 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth {
 
 QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
 QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
-    background-color: #e3f2fd;
+    background-color: {ACCENT_SELECTION_BG};
 }
 
 QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton,
 QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton {
-    background-color: white;
-    color: #1B232A;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
     border: none;
     border-radius: 4px;
     padding: 4px 12px;
@@ -385,13 +403,13 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton {
 
 QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton:hover,
 QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
-    background-color: #e3f2fd;
+    background-color: {ACCENT_SELECTION_BG};
 }
 
 QDateEdit QCalendarWidget QWidget#qt_calendar_weekday {
-    color: white;
+    color: {TEXT_ON_ACCENT};
     font-weight: bold;
-    background-color: #CCAB6E;
+    background-color: {ACCENT_PRIMARY};
     padding: 4px;
 }
 
@@ -399,75 +417,75 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day {
     border: none;
     border-radius: 4px;
     padding: 4px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
     background-color: transparent;
 }
 
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day:hover {
-    background-color: #e3f2fd;
-    color: #1B232A;
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
 }
 
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked {
-    background-color: #CCAB6E;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border-radius: 4px;
 }
 
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
-    background-color: #998664;
+    background-color: {ACCENT_HOVER};
 }
 
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day:disabled {
-    color: #B0B0B0;
+    color: {TEXT_DISABLED};
 }
 
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;] {
-    background-color: #D22730;
-    color: white;
+    background-color: {ACCENT_DANGER};
+    color: {TEXT_ON_ACCENT};
     border-radius: 4px;
 }
 
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:hover {
-    background-color: #862633;
+    background-color: {ACCENT_DANGER_HOVER};
 }
 
 QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked {
-    background-color: #CCAB6E;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
 }
 
 /* ===== СТИЛИ ДЛЯ QGroupBox ===== */
 QGroupBox {
     font-weight: bold;
     font-size: 14px;
-    border: 1px solid #dee2e6;
+    border: 1px solid {BORDER_DEFAULT};
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
-    background-color: white;
+    background-color: {BG_CARD};
 }
 QGroupBox::title {
     subcontrol-origin: margin;
     left: 10px;
     padding: 0 5px 0 5px;
-    color: #1B232A;
+    color: {TEXT_PRIMARY};
 }
 
 /* ===== СТИЛИ ДЛЯ QPushButton (Сохранить) ===== */
 QPushButton#saveButton {
-    background-color: #ccab6e;
-    color: white;
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
     border-radius: 8px;
     font-weight: bold;
     font-size: 14px;
     border: none;
 }
 QPushButton#saveButton:hover {
-    background-color: #b8945a;
+    background-color: {ACCENT_HOVER};
 }
 QPushButton#saveButton:pressed {
-    background-color: #a07d4a;
+    background-color: {ACCENT_PRESSED};
 }</string>
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
@@ -501,7 +519,7 @@ QPushButton#saveButton:pressed {
       </size>
      </property>
      <property name="styleSheet">
-      <string>font-size: 22px; font-weight: bold; color: #1B232A; margin-bottom: 10px;</string>
+      <string>font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px;</string>
      </property>
      <property name="text">
       <string>Новый отдел</string>
@@ -515,7 +533,7 @@ QPushButton#saveButton:pressed {
     <widget class="QScrollArea" name="scrollArea">
      <property name="styleSheet">
       <string notr="true">QScrollBar::vertical {
-    background: #F5F5F5;
+    background: {SCROLLBAR_BG};
     width: 8px;
     border-radius: 4px;
     margin: 0px;
@@ -523,17 +541,17 @@ QPushButton#saveButton:pressed {
 }
 
 QScrollBar::handle:vertical {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-height: 20px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background: #A0A0A0;
+    background: {SCROLLBAR_HANDLE_HOVER};
 }
 
 QScrollBar::handle:vertical:pressed {
-    background: #888888;
+    background: {SCROLLBAR_HANDLE_PRESSED};
 }
 
 QScrollBar::add-line:vertical,
@@ -551,24 +569,24 @@ QScrollBar::sub-page:vertical {
 
 QScrollBar:horizontal {
     border: none;
-    background: #F5F5F5;
+    background: {SCROLLBAR_BG};
     height: 8px;
     margin: 0px;
     border-radius: 4px;
 }
 
 QScrollBar::handle:horizontal {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-width: 20px;
 }
 
 QScrollBar::handle:horizontal:hover {
-    background: #A0A0A0;
+    background: {SCROLLBAR_HANDLE_HOVER};
 }
 
 QScrollBar::handle:horizontal:pressed {
-    background: #888888;
+    background: {SCROLLBAR_HANDLE_PRESSED};
 }
 
 QScrollBar::add-line:horizontal,
@@ -593,7 +611,7 @@ QScrollBar::sub-page:horizontal {
         <x>0</x>
         <y>0</y>
         <width>531</width>
-        <height>375</height>
+        <height>397</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="scrollLayout">
@@ -614,6 +632,12 @@ QScrollBar::sub-page:horizontal {
        </property>
        <item>
         <widget class="QGroupBox" name="departmentInfoGroup">
+         <property name="maximumSize">
+          <size>
+           <width>511</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="title">
           <string>Информация об отделе</string>
          </property>
@@ -636,7 +660,7 @@ QScrollBar::sub-page:horizontal {
           <item row="0" column="0">
            <widget class="QLabel" name="nameLabel">
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
             </property>
             <property name="text">
              <string>Название *:</string>
@@ -665,7 +689,7 @@ QScrollBar::sub-page:horizontal {
           <item row="1" column="0">
            <widget class="QLabel" name="organizationLabel">
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
             </property>
             <property name="text">
              <string>Организация *:</string>
@@ -694,7 +718,7 @@ QScrollBar::sub-page:horizontal {
           <item row="2" column="0">
            <widget class="QLabel" name="parentDepartmentLabel">
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
             </property>
             <property name="text">
              <string>Родительский отдел:</string>
@@ -723,7 +747,7 @@ QScrollBar::sub-page:horizontal {
           <item row="3" column="0">
            <widget class="QLabel" name="typeLabel">
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
             </property>
             <property name="text">
              <string>Тип отдела *:</string>
@@ -752,7 +776,7 @@ QScrollBar::sub-page:horizontal {
           <item row="4" column="0">
            <widget class="QLabel" name="departmentNumberLabel">
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
             </property>
             <property name="text">
              <string>Номер отдела:</string>
@@ -781,7 +805,7 @@ QScrollBar::sub-page:horizontal {
           <item row="5" column="0">
            <widget class="QLabel" name="phoneLabel">
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
             </property>
             <property name="text">
              <string>Телефон:</string>
@@ -810,7 +834,7 @@ QScrollBar::sub-page:horizontal {
           <item row="6" column="0">
            <widget class="QLabel" name="headLabel">
             <property name="styleSheet">
-             <string>color: #1B232A; font-weight: 500;</string>
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
             </property>
             <property name="text">
              <string>Руководитель:</string>
