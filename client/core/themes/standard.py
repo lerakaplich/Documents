@@ -1,0 +1,159 @@
+from client.core.themes.tokens import BaseTheme
+
+
+StandardTheme = BaseTheme(
+    # ── Фоны ──
+    BG_DIALOG="#f8f9fa",
+    BG_DIALOG_ALT="#F5F5F7",
+    BG_CARD="#ffffff",
+    BG_CARD_ELEVATED="#FAFAFB",
+    BG_INPUT="#ffffff",
+    BG_INPUT_READONLY="#f5f5f5",
+    BG_SURFACE_SUBTLE="#FAFAFA",
+    BG_SURFACE_HEADER="#F8F9FA",
+
+    # ── Фоны состояний ──
+    BG_HOVER_LIGHT="#f0f0f0",
+    BG_PRESSED_LIGHT="#e0e0e0",
+    BG_HOVER_ACCENT_SOFT="#FDFBF7",
+    BG_HOVER_ALT="#e9ecef",
+    BG_HOVER_ALT_DARK="#dde0e3",
+    BG_PRESSED_CALENDAR="#d0d0d0",
+
+    # ── Текст ──
+    TEXT_PRIMARY="#1B232A",
+    TEXT_ON_ACCENT="#ffffff",
+    TEXT_BLACK="#000000",
+    TEXT_HEADING="#333333",
+    TEXT_SECONDARY="#555555",
+    TEXT_MUTED="#666666",
+    TEXT_MUTED_ALT="#6c757d",
+    TEXT_TERTIARY="#999999",
+    TEXT_SUBTLE="#888888",
+    TEXT_DISABLED="#B0B0B0",
+    TEXT_DARK_STRONG="#212529",
+    TEXT_BODY="#495057",
+    TEXT_ACCENT_DARK="#7A6A50",
+    TEXT_ACCENT_DARK_STRONG="#4A3B28",
+    TEXT_ACCENT_SOFT="#998664",
+    TEXT_SUCCESS="#28A745",
+    TEXT_DANGER="#DC3545",
+    TEXT_ERROR_DEEP="#B00020",
+
+    # ── Границы ──
+    BORDER_DEFAULT="#dee2e6",
+    BORDER_LIGHT="#E0E0E0",
+    BORDER_INPUT="#D0D0D0",
+    BORDER_HOVER="#999999",
+    BORDER_FRAME_SOFT="#e9ecef",
+    BORDER_ACCENT_SOFT="#E8DCC8",
+    BORDER_COMBO_SOFT="#cccccc",
+    BORDER_ERROR_SOFT="#FEB2B2",
+
+    # ── Акцент ──
+    ACCENT_PRIMARY="#ccab6e",
+    ACCENT_HOVER="#b8945a",
+    ACCENT_PRESSED="#a07d4a",
+    ACCENT_HOVER_SOFT="#998664",
+    ACCENT_PRESSED_DEEP="#7A6A50",
+    ACCENT_SELECTION_BG="#e3f2fd",
+
+    # ── Danger ──
+    ACCENT_DANGER="#D22730",
+    ACCENT_DANGER_HOVER="#862633",
+    ACCENT_DANGER_PRESSED="#6a1e29",
+    ACCENT_REQUIRED="#dc3545",
+
+    # ── Ошибки ──
+    BG_ERROR_SOFT="#FFF5F5",
+
+    # ── Шапка / brand ──
+    HEADER_BG="#D22730",
+
+    # ── Тёмная кнопка ──
+    BTN_DARK_BG="#1B232A",
+    BTN_DARK_HOVER_BG="#D9D9D6",
+    BTN_DARK_PRESSED_BG="#B8B8B5",
+
+    # ── Вторичная кнопка ──
+    BTN_SECONDARY_BG="#eeeeee",
+    BTN_SECONDARY_HOVER_BG="#dddddd",
+
+    # ── Кнопка «Редактировать» ──
+    BTN_EDIT_BG="#FDFBF7",
+    BTN_EDIT_BORDER="#E8DCC8",
+    BTN_EDIT_PRESSED_BG="#7A6A50",
+
+    # ── Кнопка «Удалить» ──
+    BTN_DELETE_BG="#FFF5F5",
+    BTN_DELETE_TEXT="#E53E3E",
+    BTN_DELETE_BORDER="#FEB2B2",
+    BTN_DELETE_HOVER_BG="#E53E3E",
+    BTN_DELETE_PRESSED_BG="#C53030",
+
+    # ── Чипы приоритета ──
+    CHIP_BG="#F1F3F5",
+    CHIP_TEXT="#6C757D",
+    CHIP_URGENT_BG="#FFEBEE",
+    CHIP_URGENT_TEXT="#C62828",
+    CHIP_IMPORTANT_BG="#FFF4E5",
+    CHIP_IMPORTANT_TEXT="#B26A00",
+
+    # ── Разделители ──
+    SEPARATOR_BG="#E8E8E8",
+    SEPARATOR_LINE="#dcdcdc",
+
+    # ── Меню ──
+    MENU_BG="#ffffff",
+    MENU_BORDER="#c0c0c0",
+    MENU_TEXT="#000000",
+    MENU_SEPARATOR="#e0e0e0",
+
+    # ── Скроллбар ──
+    SCROLLBAR_BG="#F5F5F5",
+    SCROLLBAR_HANDLE="#C1C1C1",
+    SCROLLBAR_HANDLE_HOVER="#A0A0A0",
+    SCROLLBAR_HANDLE_PRESSED="#888888",
+    SCROLLBAR_HANDLE_SOFT="#cccccc",
+    SCROLLBAR_HANDLE_SOFT_HOVER="#aaaaaa",
+
+    # ── Sidebar ──
+    SIDEBAR_BG="#1B232A",
+    SIDEBAR_TEXT="#ffffff",
+    SIDEBAR_HOVER_BG="#3A4A54",
+    SIDEBAR_HOVER_TEXT="#DDB87A",
+    SIDEBAR_DIVIDER="#2A3A44",
+
+    ACCENT_PRIMARY_ALPHA_10="rgba(204, 171, 110, 0.1)",
+    ACCENT_PRIMARY_ALPHA_20="rgba(204, 171, 110, 0.2)",
+
+    BORDER_INPUT_SOFT="#CED4DA",
+    BTN_GRAY_BG="#6C757D",
+    BTN_GRAY_HOVER_BG="#5A6268",
+    BTN_GRAY_PRESSED_BG="#4E555B",
+    BTN_ACCENT_DISABLED_BG="#D4C4A8",
+    BTN_SECONDARY_PRESSED_BG="#b0b0b0",
+    TEXT_MUTED_WARM="#B0A090",
+
+    TOOLBAR_BG_DARK="#243040",
+    TABLE_BG="#ffffff",
+    TABLE_ROW_ALT="#F5F7FA",
+    TABLE_ROW_HOVER="#EDF0F5",
+    TABLE_GRID="#D3D3D3",
+    TABLE_SELECTION_BG="#E3F2FD",
+    TABLE_SELECTION_BG_ACTIVE="#BBDEFB",
+    TABLE_SELECTION_TEXT="#1B232A",
+    TABLE_HEADER_BG="#1B232A",
+    TABLE_HEADER_TEXT="#ffffff",
+    TABLE_HEADER_HOVER_BG="#2A3A4A",
+    TABLE_HEADER_BORDER="#2A3A4A",
+    TABLE_ROW_ALT_ACCENT="#FFFBF5",
+    TABLE_ROW_HOVER_ACCENT="#F5F0EA",
+
+    BTN_NEUTRAL_BG="#A1A6AB",
+    BTN_NEUTRAL_HOVER_BG="#7A7E83",
+    BTN_NEUTRAL_PRESSED_BG="#5D5E60",
+
+    ICON_COLOR="#ccab6e",
+    ICON_PIN_COLOR="#1B232A",
+)

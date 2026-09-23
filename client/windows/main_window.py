@@ -9,6 +9,7 @@ from client.core.state.app_state import AppState
 from client.windows.documents.table.documents_panel import DocumentsPanel
 from client.windows.left_panel.left_panel import LeftPanel
 from client.windows.profile.profile_window import ProfileForm
+from client.windows.settings.settings_tab import SettingsTab
 from client.windows.system.tab_system import SystemTab
 
 
@@ -66,10 +67,15 @@ class MainWindow(QMainWindow):
             self.system_tab = SystemTab()
             print("✓ SystemTab создан успешно")
 
+            print("Создание SettingsTab...")
+            self.settings_tab = SettingsTab()
+            print("✓ SettingsTab создан успешно")
+
             # Добавляем панели
             self.content_stack.addWidget(self.documents_panel)  # index 0
-            self.content_stack.addWidget(self.profile_form)      # index 1
-            self.content_stack.addWidget(self.system_tab)        # index 2
+            self.content_stack.addWidget(self.profile_form)  # index 1
+            self.content_stack.addWidget(self.system_tab)  # index 2
+            self.content_stack.addWidget(self.settings_tab)  # index 3
 
             layout.addWidget(self.left_panel)
             layout.addWidget(self.content_stack)
@@ -139,6 +145,10 @@ class MainWindow(QMainWindow):
                 self.left_panel.system_clicked.connect(self.on_system_clicked)
                 print("✓ system_clicked подключен")
 
+            if hasattr(self.left_panel, 'settings_clicked'):
+                self.left_panel.settings_clicked.connect(self.on_settings_clicked)
+                print("✓ settings_clicked подключен")
+
             # Статус-бар
             if hasattr(self.documents_panel, 'data_loaded'):
                 self.documents_panel.data_loaded.connect(
@@ -157,6 +167,12 @@ class MainWindow(QMainWindow):
             traceback.print_exc()
 
     # ========== НАВИГАЦИЯ ==========
+
+    def on_settings_clicked(self):
+        """Переключение на настройки"""
+        self.content_stack.setCurrentWidget(self.settings_tab)
+        self.statusBar().showMessage("Настройки", 3000)
+
     def on_logout_clicked(self):
         """Обработка выхода из аккаунта."""
         from PyQt6.QtWidgets import QMessageBox

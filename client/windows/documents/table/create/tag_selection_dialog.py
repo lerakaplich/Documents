@@ -188,13 +188,30 @@ class TagSelectionDialog(QDialog):
     """
     tags_selected = pyqtSignal(list)
 
-    def __init__(self, tags_list=None, parent=None):
+    def __init__(self, tags_list=None, parent=None, http_client=None):
         super().__init__(parent)
 
         # Инициализация данных
         self.tags = tags_list or []
+        self.http_client = http_client or self._resolve_http_client()
         self.filtered_tags = self.tags.copy()
         self.selected_tags = []
+
+        # Если список тегов пуст — грузим с сервера
+        if not self.tags and self.http_client:
+            print("[TagSelectionDialog] Теги не переданы — грузим с сервера...")
+            try:
+                from client.services.tag_service import get_tag_service
+                service = get_tag_service(self.http_client)
+                self.tags = service.get_all_tags() or []
+                self.filtered_tags = self.tags.copy()
+                print(f"[TagSelectionDialog] Загружено тегов: {len(self.tags)}")
+                if self.tags:
+                    print(f"[TagSelectionDialog] пример: {self.tags[0]}")
+            except Exception as e:
+                print(f"[TagSelectionDialog] Ошибка автозагрузки тегов: {e}")
+                import traceback
+                traceback.print_exc()
 
         from client.core.themes import get_manager
         from client.core.themes.icon_utils import _recolored_svg_path
@@ -238,6 +255,14 @@ class TagSelectionDialog(QDialog):
         if hasattr(self, 'searchEdit'):
             self.searchEdit.setFocus()
 
+    @staticmethod
+    def _resolve_http_client():
+        """Достаём http_client из AppState, если явно не передан."""
+        try:
+            from client.core.state.app_state import AppState
+            return AppState().http_client
+        except Exception:
+            return None
 
     def _create_ui(self):
         """Создает UI программно, если файл не найден"""

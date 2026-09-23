@@ -1,217 +1,449 @@
-import os
-import sys
-from PyQt6.QtWidgets import (QDialog, QListWidgetItem, QApplication,
-                             QWidget, QHBoxLayout, QLabel, QFrame)
-from PyQt6.QtCore import pyqtSignal, Qt, QSize
-from PyQt6.uic import loadUi
+# client/windows/documents/redirect/redirect_dialog.py
+"""
+Диалог перенаправления документа.
 
-from client.core.themes import apply_theme_to_widget, T
+Полностью самостоятельный — собственная логика выбора сотрудников
+через дерево (HierarchyBuilder + SelectionManager + TreeBuilder),
+плюс поле для комментария.
+
+Сигнал: redirect_confirmed(list_of_employee_ids, comment_text)
+"""
+import os
+from typing import List, Dict, Any, Optional
+
+from PyQt6.QtWidgets import QDialog, QTreeWidgetItem, QMessageBox
+from PyQt6.QtCore import pyqtSignal, Qt
+
+from client.core.org_structure.hierarchy_builder import HierarchyBuilder
+from client.core.org_structure.selection_manager import SelectionManager
+from client.core.org_structure.tree_builder import TreeBuilder
+from client.core.org_structure.employee_selection_data_loader import (
+    EmployeeSelectionDataLoader,
+)
+from client.core.themes import apply_theme_to_widget, get_manager
+from client.core.themes.icon_utils import icon_path
 
 
 class RedirectDialog(QDialog):
-    # Сигнал: список ID отмеченных получателей, текст комментария
+    """
+    Диалог перенаправления документа.
+
+    Args:
+        current_recipients: список делегатов (dict с 'id' или строка с именем)
+        all_employees:      опционально — список сотрудников с сервера
+        parent:             родительское окно
+        http_client:        HTTP-клиент (если не передан — берётся из AppState)
+    """
+
     redirect_confirmed = pyqtSignal(list, str)
 
-    def __init__(self, current_recipients: list, all_employees: list, parent=None):
+    def __init__(self,
+                 current_recipients: list,
+                 all_employees: Optional[list] = None,
+                 parent=None,
+                 http_client=None):
+
         super().__init__(parent)
 
-        # Индексируем всех сотрудников по ID и по Имени для быстрого поиска
-        self.all_employees = {emp['id']: emp for emp in all_employees}
-        name_to_emp = {emp['name'].strip(): emp for emp in all_employees}
+        self._updating = False
+        self.http_client = http_client or self._resolve_http_client()
 
-        self.recipient_ids = set()
-        for emp in current_recipients:
-            if isinstance(emp, dict):
-                # Если пришел словарь (правильный формат)
-                self.recipient_ids.add(emp['id'])
-                self.all_employees.setdefault(emp['id'], emp)
-            elif isinstance(emp, str):
-                # Если пришла просто строка с именем (ваш текущий случай)
-                emp_cleaned = emp.strip()
-                if emp_cleaned in name_to_emp:
-                    # Нашли сотрудника по имени и взяли его ID
-                    self.recipient_ids.add(name_to_emp[emp_cleaned]['id'])
-                else:
-                    # Если сотрудника нет в общем списке, можно временно сгенерировать фейковый ID или пропустить
-                    print(f"[WARN] Текущий делегат '{emp_cleaned}' не найден в общем списке сотрудников!")
+        # ─── предзаполненные ID ───
+        self.preselected_ids = self._extract_ids(current_recipients)
 
+        # ─── загрузка данных ───
+        self.organizations: List[Dict] = []
+        self.departments: List[Dict] = []
+        self.employees: List[Dict] = []
+
+        self._load_data(all_employees)
+
+        # ─── инициализация логики ───
+        self._init_data()
+
+        # ─── UI ───
         self._init_ui()
-        self._rebuild_list()
+        self._populate_tree()
         self._connect_signals()
+        self._update_selection_info()
+
+    # ─────────── Вспомогательные ───────────
+
+    @staticmethod
+    def _resolve_http_client():
+        try:
+            from client.core.state.app_state import AppState
+            return AppState().http_client
+        except Exception:
+            return None
+
+    @staticmethod
+    def _extract_ids(current_recipients: list) -> List[int]:
+        """Достаём ID из текущих делегатов (dict или строк)."""
+        ids: List[int] = []
+        for emp in current_recipients or []:
+            if isinstance(emp, dict) and emp.get("id") is not None:
+                ids.append(emp["id"])
+        return ids
+
+    def _load_data(self, all_employees: Optional[list]):
+        """Грузим организации / отделы / сотрудников."""
+        if self.http_client:
+            print("[RedirectDialog] Загрузка данных с сервера...")
+            try:
+                loader = EmployeeSelectionDataLoader(self.http_client)
+                self.organizations = loader.load_organizations()
+                self.departments = loader.load_departments_flat()
+                self.employees = loader.load_employees()
+                print(
+                    f"[RedirectDialog] Загружено: "
+                    f"орг={len(self.organizations)}, "
+                    f"отд={len(self.departments)}, "
+                    f"сотр={len(self.employees)}"
+                )
+                if self.employees:
+                    emp0 = self.employees[0]
+                    print(f"[RedirectDialog] пример сотрудника: "
+                          f"id={emp0.get('id')}, "
+                          f"name={emp0.get('name')!r}, "
+                          f"positions={emp0.get('positions')}")
+            except Exception as e:
+                print(f"[RedirectDialog] Ошибка загрузки: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print("[RedirectDialog] http_client не задан — данные не загружены")
+
+        # Сотрудники снаружи — используем их, если с сервера ничего не пришло
+        if all_employees and not self.employees:
+            self.employees = list(all_employees)
+            print(f"[RedirectDialog] сотрудники взяты снаружи: "
+                  f"{len(self.employees)}")
+
+    # ─────────── Инициализация логики ───────────
+
+    def _init_data(self):
+        self.builder = HierarchyBuilder(
+            self.organizations, self.departments, self.employees
+        )
+        self.org_hierarchy = self.builder.build()
+
+        self.selection_manager = SelectionManager(
+            self.builder.organizations,
+            self.builder.departments,
+            self.builder.employees,
+        )
+
+        # Предзаполнение
+        if self.preselected_ids:
+            typed = []
+            for node_id in self.preselected_ids:
+                t = self._resolve_node_type(node_id)
+                if t is not None:
+                    typed.append((t, node_id))
+            if typed:
+                self.selection_manager.set_selected(typed)
+
+        self.tree_builder = TreeBuilder(self.org_hierarchy, self.selection_manager)
+
+    def _resolve_node_type(self, node_id):
+        if node_id in self.builder.organizations:
+            return 1
+        if node_id in self.builder.departments:
+            return 2
+        if node_id in self.builder.employees:
+            return 3
+        return None
+
+    # ─────────── UI ───────────
+
+    def _load_ui(self):
+        """Путь к .ui."""
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # поднимаемся до client/
+        # client/windows/documents/redirect/ → client/
+        client_dir = os.path.dirname(
+            os.path.dirname(os.path.dirname(current_dir))
+        )
+        return os.path.join(
+            client_dir, "ui", "documents", "redirect_dialog.ui"
+        )
 
     def _init_ui(self):
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        root_dir = base_dir
-        for _ in range(4):
-            root_dir = os.path.dirname(root_dir)
+        from PyQt6.uic import loadUi
 
-        ui_path = os.path.join(root_dir, "client", "ui", "documents", "redirect_dialog.ui")
+        ui_path = self._load_ui()
+        if not os.path.exists(ui_path):
+            raise FileNotFoundError(f"UI файл не найден: {ui_path}")
+
         loadUi(ui_path, self)
         apply_theme_to_widget(self)
 
+        # Заголовок
+        if hasattr(self, "titleLabel"):
+            self.titleLabel.setText("Перенаправление документа")
 
-        from client.core.themes import get_manager
-        from client.core.themes.icon_utils import icon_path
+        # Настройка дерева
+        if hasattr(self, "treeWidget"):
+            self.treeWidget.setHeaderLabel("Структура организации")
+            self.treeWidget.setIndentation(20)
+            self.treeWidget.setItemsExpandable(True)
 
+        # Чекбоксы из темы
+        self._apply_checkbox_styles()
+
+    def _apply_checkbox_styles(self):
+        if not hasattr(self, "treeWidget"):
+            return
         _t = get_manager().current
-        checked   = icon_path("cb_checked",   _t.ICON_COLOR)
+        checked = icon_path("cb_checked", _t.ICON_COLOR)
         unchecked = icon_path("cb_unchecked", _t.ICON_COLOR)
+        partial = icon_path("cb_partial", _t.ICON_COLOR)
 
-        self.employeesListWidget.setStyleSheet(f"""
-            QListWidget::indicator {{
-                width: 18px;
-                height: 18px;
-                background-color: transparent;
+        cb_style = f"""
+            QTreeWidget::indicator {{
+                width: 18px; height: 18px;
             }}
-            QListWidget::indicator:unchecked {{
+            QTreeWidget::indicator:unchecked {{
                 image: url({unchecked});
-                background-color: transparent;
             }}
-            QListWidget::indicator:checked {{
+            QTreeWidget::indicator:checked {{
                 image: url({checked});
-                background-color: transparent;
             }}
-        """)
+            QTreeWidget::indicator:indeterminate {{
+                image: url({partial});
+            }}
+        """
+        current = self.treeWidget.styleSheet() or ""
+        self.treeWidget.setStyleSheet(current + cb_style)
 
     def _connect_signals(self):
-        self.searchEdit.textChanged.connect(self._on_search_text_changed)
-        self.employeesListWidget.itemChanged.connect(self._on_item_changed)
-        self.sendButton.clicked.connect(self._on_send)
+        if hasattr(self, "searchEdit"):
+            self.searchEdit.textChanged.connect(self._on_search)
+        if hasattr(self, "btnSearch"):
+            self.btnSearch.clicked.connect(self._on_search_clicked)
+        if hasattr(self, "treeWidget"):
+            self.treeWidget.itemChanged.connect(self._on_tree_item_changed)
+        if hasattr(self, "sendButton"):
+            self.sendButton.clicked.connect(self._on_send)
 
-    def _create_separator(self, text: str) -> QWidget:
-        from client.core.themes import get_manager
-        _t = get_manager().current
-        container = QWidget()
-        container.setFixedHeight(16)
-        layout = QHBoxLayout(container)
-        layout.setContentsMargins(10, 0, 10, 0)
-        layout.setSpacing(12)
+    # ─────────── Дерево ───────────
 
-        line_left = QFrame();
-        line_left.setFrameShape(QFrame.Shape.HLine)
-        line_left.setStyleSheet(f"color: {_t.SEPARATOR_LINE}; background-color: {_t.SEPARATOR_LINE}; max-height: 1px;")
-
-        label = QLabel(text)
-        label.setStyleSheet(f"color: {_t.TEXT_SUBTLE}; font-size: 12px; background: transparent;")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        line_right = QFrame();
-        line_right.setFrameShape(QFrame.Shape.HLine)
-        line_right.setStyleSheet(f"color: {_t.SEPARATOR_LINE}; background-color: {_t.SEPARATOR_LINE}; max-height: 1px;")
-
-        layout.addWidget(line_left, 1)
-        layout.addWidget(label, 0)
-        layout.addWidget(line_right, 1)
-        return container
-
-    def reapply_theme(self):
-        self._init_ui()
-        self._rebuild_list(self.searchEdit.text() if hasattr(self, 'searchEdit') else "")
-
-    # ---------- Заполнение списка ----------
-    def _rebuild_list(self, filter_text: str = ""):
-        """
-        Полностью перестраивает список с добавлением полноценных разделительных линий.
-        """
-        filter_lower = filter_text.lower().strip()
-
-        checked = []
-        unchecked = []
-        for emp in self.all_employees.values():
-            if filter_lower and filter_lower not in emp['name'].lower():
-                continue
-            if emp['id'] in self.recipient_ids:
-                checked.append(emp)
-            else:
-                unchecked.append(emp)
-
-        checked.sort(key=lambda x: x['name'])
-        unchecked.sort(key=lambda x: x['name'])
-
-        self.employeesListWidget.blockSignals(True)
-        self.employeesListWidget.clear()
-
-        # 1. Добавляем группу "Документ перенаправлен"
-        if checked:
-            sep_checked = QListWidgetItem()
-            sep_checked.setFlags(Qt.ItemFlag.NoItemFlags)
-            # Задаем размер элемента списка вручную через QSize
-            sep_checked.setSizeHint(QSize(10, 28))
-
-            self.employeesListWidget.addItem(sep_checked)
-            self.employeesListWidget.setItemWidget(sep_checked, self._create_separator("Перенаправлено (выполнено)"))
-
-            for emp in checked:
-                item = QListWidgetItem(emp['name'])
-                item.setData(Qt.ItemDataRole.UserRole, emp['id'])
-                item.setCheckState(Qt.CheckState.Checked)
-                self.employeesListWidget.addItem(item)
-
-        # 2. Добавляем группу "Список сотрудников"
-        if unchecked:
-            sep_unchecked = QListWidgetItem()
-            sep_unchecked.setFlags(Qt.ItemFlag.NoItemFlags)
-            # Задаем размер элемента списка вручную через QSize
-            sep_unchecked.setSizeHint(QSize(10, 28))
-
-            self.employeesListWidget.addItem(sep_unchecked)
-            self.employeesListWidget.setItemWidget(sep_unchecked, self._create_separator("Ожидают перенаправления"))
-
-            for emp in unchecked:
-                item = QListWidgetItem(emp['name'])
-                item.setData(Qt.ItemDataRole.UserRole, emp['id'])
-                item.setCheckState(Qt.CheckState.Unchecked)
-                self.employeesListWidget.addItem(item)
-
-        self.employeesListWidget.blockSignals(False)
-
-    def _on_search_text_changed(self, text: str):
-        self._rebuild_list(text)
-
-    def _on_item_changed(self, item: QListWidgetItem):
-        emp_id = item.data(Qt.ItemDataRole.UserRole)
-        if emp_id is None:
+    def _populate_tree(self, filter_text: str = ""):
+        if not hasattr(self, "treeWidget"):
             return
 
-        if item.checkState() == Qt.CheckState.Checked:
-            self.recipient_ids.add(emp_id)
-        else:
-            self.recipient_ids.discard(emp_id)
+        self.treeWidget.blockSignals(True)
+        try:
+            self.treeWidget.clear()
+            items = self.tree_builder.build_tree(filter_text)
 
-        current_filter = self.searchEdit.text()
-        self._rebuild_list(current_filter)
+            for item in items:
+                self.treeWidget.addTopLevelItem(item)
+                data = item.data(0, Qt.ItemDataRole.UserRole)
+                if data and data.get("id") and data.get("id") > 0:
+                    node_id = data["id"]
+                    if self.selection_manager.is_selected(node_id):
+                        item.setCheckState(0, Qt.CheckState.Checked)
+                    else:
+                        item.setCheckState(0, Qt.CheckState.Unchecked)
+                    self._set_checkboxes_recursive(item)
+
+            self._sync_all_checkboxes()
+        finally:
+            self.treeWidget.blockSignals(False)
+
+    def _set_checkboxes_recursive(self, item):
+        for i in range(item.childCount()):
+            child = item.child(i)
+            child_data = child.data(0, Qt.ItemDataRole.UserRole)
+            if child_data and child_data.get("id") and child_data.get("id") > 0:
+                node_id = child_data["id"]
+                child.setCheckState(
+                    0,
+                    Qt.CheckState.Checked
+                    if self.selection_manager.is_selected(node_id)
+                    else Qt.CheckState.Unchecked,
+                )
+            self._set_checkboxes_recursive(child)
+
+    def _sync_all_checkboxes(self):
+        def sync_item(item):
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if data and data.get("id") and data.get("id") > 0:
+                node_id = data["id"]
+                is_sel = self.selection_manager.is_selected(node_id)
+                item.setCheckState(
+                    0, Qt.CheckState.Checked if is_sel else Qt.CheckState.Unchecked
+                )
+            for i in range(item.childCount()):
+                sync_item(item.child(i))
+
+        for i in range(self.treeWidget.topLevelItemCount()):
+            sync_item(self.treeWidget.topLevelItem(i))
+
+    def _on_tree_item_changed(self, item, column):
+        if self._updating:
+            return
+        if not (item.flags() & Qt.ItemFlag.ItemIsUserCheckable):
+            return
+
+        new_state = item.checkState(column)
+        is_checked = (new_state == Qt.CheckState.Checked)
+
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if not data:
+            return
+
+        node_id = data.get("id")
+        node_type = data.get("type")
+        if node_id is None or node_id < 0 or node_type is None:
+            return
+
+        self._updating = True
+        try:
+            self.selection_manager.toggle(node_id, is_checked, node_type)
+
+            all_descendants = self._get_all_descendants(item)
+            desc_pairs = set()
+            for child_item in all_descendants:
+                cd = child_item.data(0, Qt.ItemDataRole.UserRole)
+                if cd and cd.get("id") and cd.get("id") > 0:
+                    t = cd.get("type")
+                    if t is not None:
+                        desc_pairs.add((t, cd["id"]))
+
+            for t, cid in desc_pairs:
+                self.selection_manager.toggle(cid, is_checked, t)
+
+            for child_item in all_descendants:
+                cd = child_item.data(0, Qt.ItemDataRole.UserRole)
+                if cd and cd.get("id") and cd.get("id") > 0:
+                    child_item.setCheckState(
+                        0,
+                        Qt.CheckState.Checked if is_checked
+                        else Qt.CheckState.Unchecked,
+                    )
+
+            if item.parent():
+                self._update_parent_checks_only(item.parent())
+
+            self._update_selection_info()
+        finally:
+            self._updating = False
+
+    def _update_parent_checks_only(self, item):
+        if not (item.flags() & Qt.ItemFlag.ItemIsUserCheckable):
+            return
+        checked = 0
+        total = 0
+        for i in range(item.childCount()):
+            ch = item.child(i)
+            if ch.flags() & Qt.ItemFlag.ItemIsUserCheckable:
+                total += 1
+                if ch.checkState(0) == Qt.CheckState.Checked:
+                    checked += 1
+        if total == 0:
+            return
+        new_state = (Qt.CheckState.Checked if checked == total
+                     else Qt.CheckState.Unchecked)
+        item.setCheckState(0, new_state)
+        if item.parent():
+            self._update_parent_checks_only(item.parent())
+
+    def _get_all_descendants(self, item):
+        out = []
+        for i in range(item.childCount()):
+            child = item.child(i)
+            out.append(child)
+            out.extend(self._get_all_descendants(child))
+        return out
+
+    # ─────────── Поиск ───────────
+
+    def _on_search(self, text: str):
+        self._populate_tree(text)
+
+    def _on_search_clicked(self):
+        if hasattr(self, "searchEdit"):
+            self._populate_tree(self.searchEdit.text())
+
+    # ─────────── Инфо-лейбл ───────────
+
+    def _update_selection_info(self):
+        if not hasattr(self, "selectionInfoLabel"):
+            return
+        items = self.selection_manager.get_selected_items()
+
+        org_c = dept_c = emp_c = 0
+        for t, _ in items:
+            if t == 1:   org_c += 1
+            elif t == 2: dept_c += 1
+            elif t == 3: emp_c += 1
+
+        total = len(items)
+        if total == 0:
+            self.selectionInfoLabel.setText("Выбрано: 0 элементов")
+            return
+
+        parts = [f"Выбрано: {total} элементов"]
+        if org_c:  parts.append(f"организаций: {org_c}")
+        if dept_c: parts.append(f"отделов: {dept_c}")
+        if emp_c:  parts.append(f"сотрудников: {emp_c}")
+        self.selectionInfoLabel.setText(" (".join(parts) + ")")
+
+    # ─────────── Отправка ───────────
 
     def _on_send(self):
-        recipient_ids = list(self.recipient_ids)
-        comment = self.commentTextEdit.toPlainText().strip()
-        self.redirect_confirmed.emit(recipient_ids, comment)
+        """Собираем ID выбранных сотрудников и комментарий → сигнал."""
+        employee_ids = []
+        for t, node_id in self.selection_manager.get_selected_items():
+            if t == 3:
+                employee_ids.append(node_id)
+
+        # Если выбраны отделы/организации — соберём из них сотрудников
+        if not employee_ids:
+            for t, node_id in self.selection_manager.get_selected_items():
+                if t == 2:  # department
+                    for emp_id, emp in self.builder.employees.items():
+                        for pos in (emp.get("positions") or []):
+                            if pos.get("department_id") == node_id:
+                                employee_ids.append(emp_id)
+                                break
+                elif t == 1:  # organization
+                    for emp_id, emp in self.builder.employees.items():
+                        for pos in (emp.get("positions") or []):
+                            # отдел принадлежит этой организации?
+                            dept_id = pos.get("department_id")
+                            dept = self.builder.departments.get(dept_id)
+                            if dept and dept.get("organization_id") == node_id:
+                                employee_ids.append(emp_id)
+                                break
+
+        # Убираем дубли, сохраняя порядок
+        seen = set()
+        employee_ids = [x for x in employee_ids
+                        if not (x in seen or seen.add(x))]
+
+        if not employee_ids:
+            QMessageBox.warning(
+                self, "Внимание",
+                "Не выбрано ни одного сотрудника для перенаправления."
+            )
+            return
+
+        comment = ""
+        if hasattr(self, "commentTextEdit"):
+            comment = self.commentTextEdit.toPlainText().strip()
+
+        print(f"[RedirectDialog] ID сотрудников: {employee_ids}, "
+              f"комментарий: {comment!r}")
+
+        self.redirect_confirmed.emit(employee_ids, comment)
         self.accept()
 
+    # ─────────── Тема ───────────
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    current = [
-        {"id": 1, "name": "Иванов И.И."},
-        {"id": 2, "name": "Петров П.П."}
-    ]
-    all_emp = [
-        {"id": 1, "name": "Иванов И.И."},
-        {"id": 2, "name": "Петров П.П."},
-        {"id": 3, "name": "Сидоров С.С."},
-        {"id": 4, "name": "Кузнецов А.А."},
-        {"id": 5, "name": "Смирнова Е.В."},
-        {"id": 6, "name": "Фёдоров Ф.Ф."},
-        {"id": 7, "name": "Алексеев А.А."},
-        {"id": 8, "name": "Борисов Б.Б."},
-    ]
-
-    dialog = RedirectDialog(current, all_emp)
-
-
-    def on_confirm(ids, comment):
-        print("Отмеченные получатели (ID):", ids)
-        print("Комментарий:", comment)
-
-
-    dialog.redirect_confirmed.connect(on_confirm)
-    dialog.exec()
+    def reapply_theme(self):
+        apply_theme_to_widget(self)
+        self._apply_checkbox_styles()

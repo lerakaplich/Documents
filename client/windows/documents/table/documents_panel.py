@@ -8,6 +8,7 @@ from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.uic import loadUi
 
 from client.core.data.document_data import DocumentDataConfig
+from client.core.state.app_state import AppState           # ← НОВОЕ
 from client.core.themes import apply_theme_to_widget, T
 from client.windows.documents.history.history_dialog import HistoryDialog
 from client.windows.documents.menus.column_menu import ColumnsMenu
@@ -42,6 +43,10 @@ class DocumentsPanel(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        # HTTP-клиент — нужен для загрузки реальных данных в диалоге
+        self.http_client = AppState().http_client          # ← НОВОЕ
+        print(f"[DocumentsPanel] http_client = {self.http_client}")
 
         # Контроллер бизнес-логики
         self.controller = DocumentsPanelController()
@@ -97,8 +102,6 @@ class DocumentsPanel(QWidget):
 
         if hasattr(self, 'searchEdit'):
             self.searchEdit.textChanged.connect(self.on_search_changed)
-
-
 
     def _show_columns_menu(self):
         self.columns_menu.exec(
@@ -169,7 +172,8 @@ class DocumentsPanel(QWidget):
                 organizations=organizations,
                 departments=departments,
                 employees=employees,
-                tags=tags
+                tags=tags,
+                http_client=self.http_client,         # ← НОВОЕ
             )
 
             self.document_dialog.document_created.connect(self._on_document_created_success)
@@ -185,24 +189,22 @@ class DocumentsPanel(QWidget):
             traceback.print_exc()
 
     def _get_tags_data(self) -> list:
-        """Получает список доступных тегов из контроллера"""
+        """Возвращает список тегов из контроллера, либо пустой список —
+        тогда диалог сам подтянет данные с сервера."""
         try:
             if hasattr(self.controller, 'get_tags'):
-                return self.controller.get_tags()
-            else:
-                # Возвращаем теги из конфига
-                from client.core.data.document_data import DocumentDataConfig
-                # Если есть метод в конфиге
-                if hasattr(DocumentDataConfig, 'get_tags_data'):
-                    return DocumentDataConfig.get_tags_data()
-                # Или возвращаем тестовые данные
-                return [
-                    {'id': 1, 'name': 'Срочно', 'priority': 'urgent', 'color': '#FF0000'},
-                    {'id': 2, 'name': 'Важно', 'priority': 'important', 'color': '#FFA500'},
-                    {'id': 3, 'name': 'Обычный', 'priority': 'normal', 'color': '#808080'},
-                    {'id': 4, 'name': 'Финансы', 'priority': 'important', 'color': '#008000'},
-                    {'id': 5, 'name': 'Кадры', 'priority': 'normal', 'color': '#0000FF'},
-                ]
+                data = self.controller.get_tags()
+                if data:
+                    return data
+            # Пробуем напрямую через TagService (если есть http_client)
+            if self.http_client:
+                from client.services.tag_service import get_tag_service
+                service = get_tag_service(self.http_client)
+                data = service.get_all_tags()
+                if data:
+                    return data
+            print("[DocumentsPanel] Теги не получены — отдаём пустой список (диалог загрузит с сервера)")
+            return []
         except Exception as e:
             print(f"[DocumentsPanel] Ошибка получения тегов: {e}")
             return []
@@ -230,7 +232,8 @@ class DocumentsPanel(QWidget):
                 organizations=organizations,
                 departments=departments,
                 employees=employees,
-                tags=tags
+                tags=tags,
+                http_client=self.http_client,         # ← НОВОЕ
             )
 
             self.document_dialog.document_updated.connect(self._on_document_updated)
@@ -284,71 +287,59 @@ class DocumentsPanel(QWidget):
                 "Ошибка",
                 f"Произошла ошибка при обновлении: {str(e)}"
             )
+
     def _get_organizations_data(self) -> list:
-        """Получает список организаций из контроллера"""
+        """Получает список организаций из контроллера.
+        Если контроллер не умеет — возвращаем пустой список,
+        диалог сам подтянет данные с сервера через http_client."""
         try:
             if hasattr(self.controller, 'get_organizations'):
-                return self.controller.get_organizations()
+                data = self.controller.get_organizations()
+                if data:
+                    return data
             # Если метод отсутствует, пробуем получить через репозиторий
             elif hasattr(self.controller, 'organization_repo'):
-                return self.controller.organization_repo.get_all()
-            else:
-                # Возвращаем тестовые данные для отладки
-                print("[DocumentsPanel] Используются тестовые данные организаций")
-                return [
-                    {"id": 1, "name": "ОАО МАЗ", "unp": "123456789"},
-                    {"id": 2, "name": "ОАО БелАЗ", "unp": "987654321"},
-                    {"id": 3, "name": "ОАО Гомсельмаш", "unp": "456789123"},
-                ]
+                data = self.controller.organization_repo.get_all()
+                if data:
+                    return data
+            print("[DocumentsPanel] Организации не получены — отдаём пустой список (диалог загрузит с сервера)")
+            return []                                 # ← ИЗМЕНЕНО (было тестовые данные)
         except Exception as e:
             print(f"[DocumentsPanel] Ошибка получения организаций: {e}")
             return []
 
     def _get_departments_data(self) -> list:
-        """Получает список отделов из контроллера"""
+        """Получает список отделов из контроллера.
+        Если контроллер не умеет — возвращаем пустой список."""
         try:
             if hasattr(self.controller, 'get_departments'):
-                return self.controller.get_departments()
+                data = self.controller.get_departments()
+                if data:
+                    return data
             elif hasattr(self.controller, 'department_repo'):
-                return self.controller.department_repo.get_all()
-            else:
-                # Тестовые данные
-                print("[DocumentsPanel] Используются тестовые данные отделов")
-                return [
-                    {"id": 1, "organization_id": 1, "parent_id": None, "name": "Заводоуправление", "number": 1},
-                    {"id": 2, "organization_id": 1, "parent_id": None, "name": "Сборочный цех", "number": 2},
-                    {"id": 3, "organization_id": 1, "parent_id": 2, "name": "Участок 1", "number": 1},
-                    {"id": 4, "organization_id": 1, "parent_id": 2, "name": "Участок 2", "number": 2},
-                    {"id": 5, "organization_id": 2, "parent_id": None, "name": "Главная дирекция", "number": 1},
-                ]
+                data = self.controller.department_repo.get_all()
+                if data:
+                    return data
+            print("[DocumentsPanel] Отделы не получены — отдаём пустой список (диалог загрузит с сервера)")
+            return []                                 # ← ИЗМЕНЕНО (было тестовые данные)
         except Exception as e:
             print(f"[DocumentsPanel] Ошибка получения отделов: {e}")
             return []
 
     def _get_employees_data(self) -> list:
-        """Получает список сотрудников из контроллера"""
+        """Получает список сотрудников из контроллера.
+        Если контроллер не умеет — возвращаем пустой список."""
         try:
             if hasattr(self.controller, 'get_employees'):
-                return self.controller.get_employees()
+                data = self.controller.get_employees()
+                if data:
+                    return data
             elif hasattr(self.controller, 'employee_repo'):
-                return self.controller.employee_repo.get_all()
-            else:
-                # Тестовые данные
-                print("[DocumentsPanel] Используются тестовые данные сотрудников")
-                return [
-                    {"id": 1, "last_name": "Иванов", "first_name": "Иван", "patronymic": "Иванович",
-                     "name": "Иванов И.И.", "positions": [{"department_id": 1}]},
-                    {"id": 2, "last_name": "Петров", "first_name": "Петр", "patronymic": "Петрович",
-                     "name": "Петров П.П.", "positions": [{"department_id": 1}]},
-                    {"id": 3, "last_name": "Сидоров", "first_name": "Сидор", "patronymic": "Сидорович",
-                     "name": "Сидоров С.С.", "positions": [{"department_id": 2}]},
-                    {"id": 4, "last_name": "Кузнецов", "first_name": "Алексей", "patronymic": "Алексеевич",
-                     "name": "Кузнецов А.А.", "positions": [{"department_id": 3}]},
-                    {"id": 5, "last_name": "Смирнова", "first_name": "Елена", "patronymic": "Владимировна",
-                     "name": "Смирнова Е.В.", "positions": [{"department_id": 4}]},
-                    {"id": 6, "last_name": "Фёдоров", "first_name": "Фёдор", "patronymic": "Фёдорович",
-                     "name": "Фёдоров Ф.Ф.", "positions": [{"department_id": 5}]},
-                ]
+                data = self.controller.employee_repo.get_all()
+                if data:
+                    return data
+            print("[DocumentsPanel] Сотрудники не получены — отдаём пустой список (диалог загрузит с сервера)")
+            return []                                 # ← ИЗМЕНЕНО (было тестовые данные)
         except Exception as e:
             print(f"[DocumentsPanel] Ошибка получения сотрудников: {e}")
             return []

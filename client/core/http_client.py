@@ -91,6 +91,25 @@ class HttpClient:
 
         return headers
 
+    def _get_multipart_headers(self) -> Dict[str, str]:
+        """
+        Заголовки для multipart/form-data.
+        НЕ ставим Content-Type — requests сам выставит boundary.
+        НЕ ставим Accept-Encoding: br — requests не умеет распаковывать brotli.
+        """
+        headers = {
+            "Accept": "*/*",
+        }
+        if self._access_token:
+            if self._is_token_expired():
+                logger.info("⏰ Токен истек, обновляем...")
+                if not self._refresh_access_token():
+                    raise AuthError("Не удалось обновить токен")
+            headers["Authorization"] = f"Bearer {self._access_token}"
+        else:
+            logger.warning("⚠️ Токен отсутствует в запросе!")
+        return headers
+
     def _request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
         """Базовый метод для всех запросов с обработкой ошибок"""
         url = f"{self.base_url}{endpoint}"
@@ -174,3 +193,62 @@ class HttpClient:
     def delete(self, endpoint: str) -> Dict[str, Any]:
         """DELETE запрос"""
         return self._request("DELETE", endpoint)
+
+    def post_file(self, endpoint: str, file_path: str, field_name: str = "file",
+                  extra_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        POST multipart/form-data с файлом (загрузка вложений).
+        Content-Type НЕ ставим — requests сам выставит boundary.
+        Accept-Encoding НЕ ставим — иначе requests не распакует br.
+        """
+        import os
+
+        url = f"{self.base_url}{endpoint}"
+        filename = os.path.basename(file_path)
+
+        def _do_request() -> requests.Response:
+            with open(file_path, "rb") as f:
+                files = {field_name: (filename, f, "application/octet-stream")}
+                return self.session.request(
+                    method="POST",
+                    url=url,
+                    headers=self._get_multipart_headers(),
+                    files=files,
+                    data=extra_data or {},
+                    timeout=60,
+                )
+
+        logger.info(f"📤 POST (file) {url} — {filename}")
+
+        response = _do_request()
+
+        if response.status_code == 401:
+            logger.warning("Получена 401 при загрузке файла, обновляем токен...")
+            if not self._refresh_access_token():
+                raise AuthError("Не удалось обновить токен, требуется повторная авторизация")
+            response = _do_request()
+
+        # ДИАГНОСТИКА — увидишь, что реально ушло
+        logger.info(f"📋 Фактический URL: {response.request.url}")
+        logger.info(f"📋 Фактические заголовки: {dict(response.request.headers)}")
+        logger.info(f"📥 Статус ответа (file): {response.status_code}")
+
+        if response.status_code >= 400:
+            body = response.text[:500] if response.content else "<empty>"
+            logger.error(f"❌ Текст ошибки: {body}")
+            raise Exception(f"Ошибка {response.status_code}: {body}")
+
+        if not response.content:
+            return {"ok": True}
+
+        try:
+            data = response.json()
+        except ValueError:
+            logger.warning(f"Ответ не JSON: {response.text[:200]}")
+            return {"ok": True}
+
+        if data is None:
+            # сервер вернул literal null — это успех
+            return {"ok": True}
+
+        return data

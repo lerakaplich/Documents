@@ -25,6 +25,7 @@ class LeftPanel(QWidget):
     profile_clicked = pyqtSignal()
     all_documents_clicked = pyqtSignal()
     system_clicked = pyqtSignal()
+    settings_clicked = pyqtSignal()
     logout_clicked = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -64,6 +65,8 @@ class LeftPanel(QWidget):
         self.groups: Dict[str, DirectionGroup] = {}
 
         self.setup_groups_container()
+
+        self._ensure_settings_button()
         self.setup_buttons()
 
         # Анимация
@@ -166,6 +169,26 @@ class LeftPanel(QWidget):
 
         main_layout.addWidget(self.bottom_widget)
 
+    def _ensure_settings_button(self):
+        """Создаёт кнопку «Настройки» рядом с systemBtn, если её нет в .ui."""
+        if hasattr(self, "settingsBtn"):
+            return
+        if not hasattr(self, "systemBtn"):
+            return
+
+        parent = self.systemBtn.parentWidget()
+        if parent is None or parent.layout() is None:
+            return
+
+        self.settingsBtn = QPushButton("Настройки")
+        self.settingsBtn.setStyleSheet(self._get_button_style())
+        self.settingsBtn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.set_button_icon(self.settingsBtn, "gear.svg", QSize(20, 20))
+
+        layout = parent.layout()
+        idx = layout.indexOf(self.systemBtn)
+        layout.insertWidget(idx if idx >= 0 else 0, self.settingsBtn)
+
     def set_button_icon(self, button, icon_name, icon_size):
         """Устанавливает иконку для кнопки с указанным размером"""
         icons_path = "D:/Documents/client/icons"
@@ -266,6 +289,8 @@ class LeftPanel(QWidget):
             self.profileBtn.clicked.connect(self.on_profile_clicked)
         if hasattr(self, 'allDocsBtn'):
             self.allDocsBtn.clicked.connect(self.on_all_documents_clicked)
+        if hasattr(self, 'settingsBtn'):
+            self.settingsBtn.clicked.connect(self.on_settings_clicked)
         if hasattr(self, 'systemBtn'):
             self.systemBtn.clicked.connect(self.on_system_clicked)
         if hasattr(self, 'logoutBtn'):
@@ -349,6 +374,13 @@ class LeftPanel(QWidget):
                 self.logoutBtn.setStyleSheet(self._get_compact_logout_style())
                 self.logoutBtn.setIconSize(QSize(24, 24))
 
+        if hasattr(self, 'settingsBtn'):
+            self.settingsBtn.setText("Настройки" if visible else "")
+            self.settingsBtn.setStyleSheet(
+                self._get_button_style() if visible else self._get_compact_button_style()
+            )
+            self.settingsBtn.setIconSize(QSize(24, 24) if not visible else QSize(20, 20))
+
         if hasattr(self, 'hidePanelBtn'):
             if visible:
                 self.hidePanelBtn.setText("Скрыть панель")
@@ -385,6 +417,10 @@ class LeftPanel(QWidget):
             self.parent().updateGeometry()
 
     # ========== ОБРАБОТЧИКИ КНОПОК ==========
+
+    def on_settings_clicked(self):
+        print("Нажата кнопка настроек")
+        self.settings_clicked.emit()
 
     def on_profile_clicked(self):
         """Обработчик клика по кнопке профиля"""
