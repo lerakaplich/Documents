@@ -26,7 +26,6 @@ class LeftPanel(QWidget):
     all_documents_clicked = pyqtSignal()
     system_clicked = pyqtSignal()
     settings_clicked = pyqtSignal()
-    logout_clicked = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -87,7 +86,6 @@ class LeftPanel(QWidget):
             'profileBtn': 'profile_white.svg',
             'allDocsBtn': 'folder.svg',
             'systemBtn': 'gear.svg',
-            'logoutBtn': 'logout.svg',
             'hidePanelBtn': 'hide.svg'  # Добавляем иконку для скрытия панели
         }
 
@@ -155,11 +153,6 @@ class LeftPanel(QWidget):
         self.set_button_icon(self.systemBtn, "gear.svg", QSize(20, 20))
         bottom_layout.addWidget(self.systemBtn)
 
-        self.logoutBtn = QPushButton("Выйти из аккаунта")
-        self.logoutBtn.setStyleSheet(self._get_button_style())
-        self.logoutBtn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.set_button_icon(self.logoutBtn, "logout.svg", QSize(20, 20))
-        bottom_layout.addWidget(self.logoutBtn)
 
         self.hidePanelBtn = QPushButton("Скрыть панель")
         self.hidePanelBtn.setStyleSheet(self._get_collapse_button_style())
@@ -261,29 +254,6 @@ class LeftPanel(QWidget):
             }}
         """
 
-    def _get_compact_logout_style(self):
-        return f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {T.SIDEBAR_HOVER_TEXT};
-                border: none;
-                border-radius: 5px;
-                padding: 10px;
-                text-align: center;
-                min-height: 42px;
-            }}
-            QPushButton:hover {{
-                background-color: {T.SIDEBAR_HOVER_BG};
-            }}
-            QPushButton QIcon {{
-                padding: 8px;
-            }}
-            QPushButton::icon {{
-                width: 24px;
-                height: 24px;
-            }}
-        """
-
     def setup_buttons(self):
         if hasattr(self, 'profileBtn'):
             self.profileBtn.clicked.connect(self.on_profile_clicked)
@@ -293,8 +263,6 @@ class LeftPanel(QWidget):
             self.settingsBtn.clicked.connect(self.on_settings_clicked)
         if hasattr(self, 'systemBtn'):
             self.systemBtn.clicked.connect(self.on_system_clicked)
-        if hasattr(self, 'logoutBtn'):
-            self.logoutBtn.clicked.connect(self.on_logout_clicked)
         if hasattr(self, 'hidePanelBtn'):
             self.hidePanelBtn.clicked.connect(self.toggle_panel)
 
@@ -323,11 +291,6 @@ class LeftPanel(QWidget):
             self.groups_layout = QVBoxLayout(self.groups_container)
             self.groups_layout.setSpacing(10)
             self.groups_layout.setContentsMargins(0, 0, 0, 0)
-            _t = get_manager().current
-            for w in (self.scrollArea, self.scrollArea.widget(), self.groups_container):
-                if w:
-                    w.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-                    w.setStyleSheet(f"background-color: {_t.SIDEBAR_BG};")
             # Добавляем в начало scroll_layout
             scroll_layout.insertWidget(0, self.groups_container)
 
@@ -364,15 +327,7 @@ class LeftPanel(QWidget):
             else:
                 self.systemBtn.setIconSize(QSize(20, 20))
 
-        if hasattr(self, 'logoutBtn'):
-            if visible:
-                self.logoutBtn.setText("Выйти из аккаунта")
-                self.logoutBtn.setStyleSheet(self._get_button_style())
-                self.logoutBtn.setIconSize(QSize(20, 20))
-            else:
-                self.logoutBtn.setText("")
-                self.logoutBtn.setStyleSheet(self._get_compact_logout_style())
-                self.logoutBtn.setIconSize(QSize(24, 24))
+
 
         if hasattr(self, 'settingsBtn'):
             self.settingsBtn.setText("Настройки" if visible else "")

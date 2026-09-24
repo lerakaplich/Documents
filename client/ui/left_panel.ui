@@ -190,44 +190,37 @@ QScrollArea {
     background-color: transparent;
 }
 
-/* Борьба с крапинкой - принудительно задаём фон для всех внутренних виджетов */
 QScrollArea > QWidget,
 QScrollArea > QWidget > QWidget,
 QScrollArea QWidget {
-    background-color: #1B232A;
-    background: #1B232A;
+    background-color: {SIDEBAR_BG};
+    background: {SIDEBAR_BG};
 }
 
-/* Красим viewport */
 QScrollArea QWidget#qt_scrollarea_viewport {
-    background-color: #1B232A !important;
-    background: #1B232A !important;
+    background-color: {SIDEBAR_BG} !important;
+    background: {SIDEBAR_BG} !important;
 }
 
 QScrollArea QWidget#qt_scrollarea_viewport > QWidget {
-    background-color: #1B232A !important;
+    background-color: {SIDEBAR_BG} !important;
 }
 
-/* Вертикальный скроллбар - фон прозрачный */
 QScrollBar:vertical {
     background: transparent;
     width: 8px;
     border-radius: 4px;
     margin: 0px;
 }
-
-/* Бегунок (ползунок) */
 QScrollBar::handle:vertical {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-height: 20px;
 }
-
 QScrollBar::handle:vertical:hover {
-    background: #A0A0A0;
+    background: {SCROLLBAR_HANDLE_HOVER};
 }
 
-/* Горизонтальный скроллбар - фон прозрачный */
 QScrollBar:horizontal {
     border: none;
     background: transparent;
@@ -235,30 +228,21 @@ QScrollBar:horizontal {
     margin: 0px;
     border-radius: 4px;
 }
-
-/* Бегунок горизонтальный */
 QScrollBar::handle:horizontal {
-    background: #C1C1C1;
+    background: {SCROLLBAR_HANDLE};
     border-radius: 4px;
     min-width: 20px;
 }
-
 QScrollBar::handle:horizontal:hover {
-    background: #A0A0A0;
+    background: {SCROLLBAR_HANDLE_HOVER};
 }
 
-/* Убираем стрелки */
-QScrollBar::add-line,
-QScrollBar::sub-line {
+QScrollBar::add-line, QScrollBar::sub-line {
     border: none;
     background: none;
 }
-
-/* Убираем фон для области между полосой и краями */
-QScrollBar::add-page:vertical,
-QScrollBar::sub-page:vertical,
-QScrollBar::add-page:horizontal,
-QScrollBar::sub-page:horizontal {
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical,
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
     background: none;
 }
 </string>

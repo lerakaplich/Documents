@@ -6,11 +6,11 @@ import logging
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 
-from client.core.themes import set_theme, DarkTheme, apply_theme_to_all_windows, StandardTheme, PinkDarkTheme, \
-    TiffanyTheme, TiffanyDarkTheme, LilacDarkTheme, LilacTheme
-from client.core.themes.blue import BlueTheme
-from client.core.themes.green import GreenTheme
-from client.core.themes.pink import PinkTheme
+from client.core.themes import set_theme, apply_theme_to_all_windows, apply_saved_theme
+from client.core.themes.dark.pink_dark import PinkDarkTheme
+from client.core.themes.light.blue import BlueTheme
+from client.core.themes.light.green import GreenTheme
+from client.core.themes.light.pink import PinkTheme
 from client.windows.login.login_window import LoginWindow
 
 logging.basicConfig(
@@ -30,7 +30,7 @@ def main():
 
         # LoginWindow сам решит: показать себя или сразу открыть MainWindow
         set_theme(PinkDarkTheme)
-        apply_theme_to_all_windows()
+        apply_saved_theme()
         window = LoginWindow()
         # window.showMaximized()  ← УБРАТЬ! Окно покажет сам LoginWindow
 

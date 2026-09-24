@@ -25,8 +25,8 @@ class EmployeeService:
         return self.client.get(f"/employees/{employee_id}")
 
     def update_my_profile(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Обновить профиль текущего пользователя"""
-        return self.client.patch("/employees/me/profile", data=data)
+        """Обновить профиль текущего пользователя (PATCH /employees/me/profile)."""
+        return self.client.patch("/employees/me/profile", json=data)
 
     def get_all_employees(self) -> list:
         """Загружает всех сотрудников постранично (по 100 за раз)."""

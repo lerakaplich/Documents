@@ -65,7 +65,7 @@ class TagsCellBuilder:
 # client/windows/documents/table/builders/cell_builders.py
 
 class ElidedLabel(QLabel):
-    """QLabel с автоматическим обрезанием текста при изменении размера"""
+    """QLabel с автоматическим обрезанием текста и цветом из темы."""
 
     def __init__(self, text="", parent=None):
         super().__init__(text, parent)
@@ -76,32 +76,35 @@ class ElidedLabel(QLabel):
             QSizePolicy.Policy.Preferred
         )
         self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self._apply_theme()
+
+    def _apply_theme(self):
+        from client.core.themes import get_manager
+        t = get_manager().current
         self.setStyleSheet(f"""
             QLabel {{
                 background-color: transparent;
                 border: none;
-                color: {T.TEXT_BLACK};
+                color: {t.TEXT_BLACK};
                 font-size: 12px;
                 padding: 4px 6px;
             }}
         """)
 
+    def reapply_theme(self):
+        self._apply_theme()
+
     def set_full_text(self, text):
-        """Установить полный текст"""
         self._full_text = text
         self.update_elided_text()
 
     def update_elided_text(self):
-        """Обновить текст с эллипсисом"""
         if not self._full_text:
             self.setText("")
             return
-
-        # Получаем доступную ширину
-        available_width = self.width() - 12  # Отступы
+        available_width = self.width() - 12
         if available_width <= 0:
-            available_width = 100  # Минимальная ширина
-
+            available_width = 100
         font_metrics = self.fontMetrics()
         elided_text = font_metrics.elidedText(
             self._full_text,
@@ -111,7 +114,6 @@ class ElidedLabel(QLabel):
         self.setText(elided_text)
 
     def resizeEvent(self, event):
-        """При изменении размера обновляем текст"""
         super().resizeEvent(event)
         self.update_elided_text()
 
@@ -125,7 +127,6 @@ class CommentsCellBuilder:
         self.signals = signals
 
     def build(self, row, document):
-        """Создание виджета с комментариями"""
         widget = QWidget()
         widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         widget.setStyleSheet("""
@@ -147,7 +148,6 @@ class CommentsCellBuilder:
             if not text_to_show and comments:
                 text_to_show = comments[-1].get('text', '')
 
-            # Используем кастомный ElidedLabel
             label = ElidedLabel()
             label.set_full_text(text_to_show)
             label.setToolTip(f"Последний комментарий: {text_to_show}")
@@ -164,24 +164,8 @@ class CommentsCellBuilder:
             widget.mousePressEvent = on_cell_pressed
         else:
             btn = QPushButton("Добавить")
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #F0FDF4;
-                    color: #16A34A;
-                    border: 1px solid #16A34A;
-                    border-radius: 5px;
-                    font-size: 11px;
-                    font-weight: 500;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #16A34A;
-                    color: white;
-                }
-                QPushButton:pressed {
-                    background-color: #15803D;
-                }
-            """)
+            btn.setProperty("_cell_role", "comments_add")
+            btn.setStyleSheet(self._button_style())
             btn.clicked.connect(
                 lambda checked: self.signals.comment_clicked.emit(document)
             )
@@ -189,8 +173,38 @@ class CommentsCellBuilder:
 
         return widget
 
+    @staticmethod
+    def _button_style():
+        """Добавить комментарий — тёплый акцентный (не совпадает с темой)."""
+        from client.core.themes import get_manager
+        t = get_manager().current
+        return f"""
+            QPushButton {{
+                background-color: {t.BG_CARD_ELEVATED};
+                color: {t.TEXT_ACCENT_DARK};
+                border: 1px solid {t.TEXT_ACCENT_DARK};
+                border-radius: 5px;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 4px 12px;
+            }}
+            QPushButton:hover {{
+                background-color: {t.TEXT_ACCENT_DARK};
+                color: {t.TEXT_ON_ACCENT};
+                border-color: {t.TEXT_ACCENT_DARK};
+            }}
+            QPushButton:pressed {{
+                background-color: {t.TEXT_ACCENT_DARK_STRONG};
+                border-color: {t.TEXT_ACCENT_DARK_STRONG};
+            }}
+        """
+
+    def reapply_theme(self):
+        # Делегируем в ячейку — но проще перекрашивать «на лету» в row_renderer,
+        # если перерисовываем таблицу целиком. См. пункт 3.
+        pass
+
 class AttachmentCellBuilder:
-    """Построитель ячейки с вложениями"""
 
     def __init__(self, even_color, odd_color, supported_formats, signals):
         self.even_color = even_color
@@ -199,14 +213,10 @@ class AttachmentCellBuilder:
         self.signals = signals
 
     def build(self, row, document):
-        """Создание виджета с кнопкой вложения"""
         container = QWidget()
         container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         container.setStyleSheet("""
-            QWidget {
-                background-color: transparent;
-                border: none;
-            }
+            QWidget { background-color: transparent; border: none; }
         """)
 
         layout = QHBoxLayout(container)
@@ -217,86 +227,80 @@ class AttachmentCellBuilder:
 
         if attachments:
             btn = QPushButton("Открыть")
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #FFF8ED;
-                    color: #CCAB6E;
-                    border: 1px solid #CCAB6E;
-                    border-radius: 5px;
-                    font-size: 11px;
-                    font-weight: 500;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #CCAB6E;
-                    color: white;
-                }
-                QPushButton:pressed {
-                    background-color: #998664;
-                }
-            """)
+            btn.setStyleSheet(self._open_style())
             btn.setProperty("attachments", attachments)
             btn.setProperty("document", document)
             btn.clicked.connect(lambda checked, b=btn: self._show_attachments_menu(b))
         else:
             btn = QPushButton("Загрузить")
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #F0F8FF;
-                    color: #5A8FBF;
-                    border: 1px solid #5A8FBF;
-                    border-radius: 5px;
-                    font-size: 11px;
-                    font-weight: 500;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #5A8FBF;
-                    color: white;
-                }
-                QPushButton:pressed {
-                    background-color: #4A7A9E;
-                }
-            """)
+            btn.setStyleSheet(self._upload_style())
             btn.setProperty("document_id", document.get("id"))
             btn.clicked.connect(lambda checked, b=btn: self._upload_attachment(b))
 
         layout.addWidget(btn)
         return container
 
+    @staticmethod
+    def _upload_style():
+        """Загрузить вложение — зелёный, «призыв добавить»."""
+        from client.core.themes import get_manager
+        t = get_manager().current
+        return f"""
+            QPushButton {{
+                background-color: {t.BG_CARD_ELEVATED};
+                color: {t.TEXT_SUCCESS};
+                border: 1px solid {t.TEXT_SUCCESS};
+                border-radius: 5px;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 4px 12px;
+            }}
+            QPushButton:hover {{
+                background-color: {t.TEXT_SUCCESS};
+                color: {t.TEXT_ON_ACCENT};
+                border-color: {t.TEXT_SUCCESS};
+            }}
+            QPushButton:pressed {{
+                background-color: {t.ACCENT_PRESSED_DEEP};
+                border-color: {t.ACCENT_PRESSED_DEEP};
+            }}
+        """
+
+    @staticmethod
+    def _open_style():
+        """Открыть вложение — нейтральный, спокойный."""
+        from client.core.themes import get_manager
+        t = get_manager().current
+        return f"""
+            QPushButton {{
+                background-color: {t.BTN_SECONDARY_BG};
+                color: {t.TEXT_PRIMARY};
+                border: 1px solid {t.BORDER_DEFAULT};
+                border-radius: 5px;
+                font-size: 11px;
+                font-weight: 500;
+                padding: 4px 12px;
+            }}
+            QPushButton:hover {{
+                background-color: {t.BTN_SECONDARY_HOVER_BG};
+                border-color: {t.TEXT_ACCENT_DARK};
+                color: {t.TEXT_ACCENT_DARK};
+            }}
+            QPushButton:pressed {{
+                background-color: {t.BTN_SECONDARY_PRESSED_BG};
+            }}
+        """
+
     def _show_attachments_menu(self, button):
-        """Показать меню со списком вложений"""
+        from client.core.themes import get_menu_style
         attachments = button.property("attachments")
         document = button.property("document")
-
         if not attachments:
             return
 
         menu = QMenu()
-        menu.setStyleSheet("""
-            QMenu { 
-                background-color: white; 
-                border: 1px solid #c0c0c0; 
-                border-radius: 5px; 
-                padding: 5px; 
-                color: black;
-            }
-            QMenu::item { 
-                padding: 8px 25px 8px 15px; 
-                border-radius: 3px; 
-                font-size: 14px; 
-            }
-            QMenu::item:selected { 
-                background-color: #e3f2fd; 
-            }
-            QMenu::separator { 
-                height: 1px; 
-                background: #e0e0e0; 
-                margin: 5px 10px; 
-            }
-        """)
+        menu.setStyleSheet(get_menu_style())
 
-        # Добавляем все файлы в меню
         for attachment in attachments:
             file_icon = "📄" if not attachment['name'].lower().endswith('.pdf') else "📕"
             action = QAction(f"{file_icon} {attachment['name']}", menu)
@@ -306,28 +310,19 @@ class AttachmentCellBuilder:
             )
             menu.addAction(action)
 
-        # Добавляем сепаратор
         menu.addSeparator()
-
-        # Добавляем опцию загрузки нового файла
         add_action = QAction("➕ Добавить файл", menu)
         add_action.triggered.connect(lambda checked: self._upload_attachment(button))
         menu.addAction(add_action)
 
-        # Показываем меню под кнопкой
         menu.exec(button.mapToGlobal(button.rect().bottomLeft()))
 
     def _upload_attachment(self, button):
-        """Загрузить вложение"""
         document_id = button.property("document_id")
-
         file_path, _ = QFileDialog.getOpenFileName(
-            None,
-            "Выберите файл для загрузки",
-            "",
+            None, "Выберите файл для загрузки", "",
             "Документы (*.pdf *.docx *.doc *.txt *.tif);;PDF (*.pdf);;Word (*.docx *.doc);;Текст (*.txt);;TIFF (*.tif)"
         )
-
         if file_path:
             self.signals.attachment_upload.emit(document_id, file_path)
 
@@ -353,14 +348,10 @@ class DelegatesCellBuilder:
         self.signals = signals
 
     def build(self, row, document):
-        """Создание виджета с делегатами"""
         container = QWidget()
         container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         container.setStyleSheet("""
-            QWidget {
-                background-color: transparent;
-                border: none;
-            }
+            QWidget { background-color: transparent; border: none; }
         """)
 
         layout = QHBoxLayout(container)
@@ -380,7 +371,6 @@ class DelegatesCellBuilder:
 
             delegates_text = ", ".join(filter(None, processed_names)) if processed_names else "-"
 
-            # Используем ElidedLabel
             label = ElidedLabel()
             label.set_full_text(delegates_text)
             label.setToolTip(f"Делегаты: {delegates_text}")
@@ -397,24 +387,7 @@ class DelegatesCellBuilder:
             container.mousePressEvent = on_cell_pressed
         else:
             btn = QPushButton("Добавить")
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #FFF0F5;
-                    color: #D87093;
-                    border: 1px solid #D87093;
-                    border-radius: 5px;
-                    font-size: 11px;
-                    font-weight: 500;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #D87093;
-                    color: white;
-                }
-                QPushButton:pressed {
-                    background-color: #B05A7A;
-                }
-            """)
+            btn.setStyleSheet(self._button_style())
             btn.clicked.connect(
                 lambda checked: self.signals.redirect_requested.emit(doc_id, [])
             )
@@ -422,9 +395,34 @@ class DelegatesCellBuilder:
 
         return container
 
+    @staticmethod
+    def _button_style():
+        """Добавить делегата — красный (важное действие)."""
+        from client.core.themes import get_manager
+        t = get_manager().current
+        return f"""
+            QPushButton {{
+                background-color: {t.BG_CARD_ELEVATED};
+                color: {t.ACCENT_DANGER};
+                border: 1px solid {t.ACCENT_DANGER};
+                border-radius: 5px;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 4px 12px;
+            }}
+            QPushButton:hover {{
+                background-color: {t.ACCENT_DANGER};
+                color: {t.TEXT_ON_ACCENT};
+                border-color: {t.ACCENT_DANGER};
+            }}
+            QPushButton:pressed {{
+                background-color: {t.ACCENT_DANGER_PRESSED};
+                border-color: {t.ACCENT_DANGER_PRESSED};
+            }}
+        """
+
 
 class ReplyCellBuilder:
-    """Построитель ячейки с ответом"""
 
     def __init__(self, even_color, odd_color, supported_formats, signals):
         self.even_color = even_color
@@ -433,14 +431,10 @@ class ReplyCellBuilder:
         self.signals = signals
 
     def build(self, row, document):
-        """Создание виджета с кнопкой ответа"""
         container = QWidget()
         container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         container.setStyleSheet("""
-            QWidget {
-                background-color: transparent;
-                border: none;
-            }
+            QWidget { background-color: transparent; border: none; }
         """)
 
         layout = QHBoxLayout(container)
@@ -451,47 +445,13 @@ class ReplyCellBuilder:
 
         if reply_file:
             btn = QPushButton("Открыть")
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #F5F0FF;
-                    color: #8B6BAE;
-                    border: 1px solid #8B6BAE;
-                    border-radius: 5px;
-                    font-size: 11px;
-                    font-weight: 500;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #8B6BAE;
-                    color: white;
-                }
-                QPushButton:pressed {
-                    background-color: #6B4D8A;
-                }
-            """)
+            btn.setStyleSheet(self._open_style())
             btn.clicked.connect(
                 lambda checked, rf=reply_file: self.signals.reply_clicked.emit(rf)
             )
         else:
             btn = QPushButton("Загрузить")
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #FFF5F0;
-                    color: #D4896B;
-                    border: 1px solid #D4896B;
-                    border-radius: 5px;
-                    font-size: 11px;
-                    font-weight: 500;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #D4896B;
-                    color: white;
-                }
-                QPushButton:pressed {
-                    background-color: #B06D52;
-                }
-            """)
+            btn.setStyleSheet(self._upload_style())
             btn.clicked.connect(
                 lambda checked, did=document.get("id"): self._upload_reply(did)
             )
@@ -499,14 +459,61 @@ class ReplyCellBuilder:
         layout.addWidget(btn)
         return container
 
+    @staticmethod
+    def _upload_style():
+        """Загрузить ответ — зелёный, как вложение."""
+        from client.core.themes import get_manager
+        t = get_manager().current
+        return f"""
+            QPushButton {{
+                background-color: {t.BG_CARD_ELEVATED};
+                color: {t.TEXT_SUCCESS};
+                border: 1px solid {t.TEXT_SUCCESS};
+                border-radius: 5px;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 4px 12px;
+            }}
+            QPushButton:hover {{
+                background-color: {t.TEXT_SUCCESS};
+                color: {t.TEXT_ON_ACCENT};
+                border-color: {t.TEXT_SUCCESS};
+            }}
+            QPushButton:pressed {{
+                background-color: {t.ACCENT_PRESSED_DEEP};
+                border-color: {t.ACCENT_PRESSED_DEEP};
+            }}
+        """
+
+    @staticmethod
+    def _open_style():
+        """Открыть ответ — нейтральный."""
+        from client.core.themes import get_manager
+        t = get_manager().current
+        return f"""
+            QPushButton {{
+                background-color: {t.BTN_SECONDARY_BG};
+                color: {t.TEXT_PRIMARY};
+                border: 1px solid {t.BORDER_DEFAULT};
+                border-radius: 5px;
+                font-size: 11px;
+                font-weight: 500;
+                padding: 4px 12px;
+            }}
+            QPushButton:hover {{
+                background-color: {t.BTN_SECONDARY_HOVER_BG};
+                border-color: {t.TEXT_ACCENT_DARK};
+                color: {t.TEXT_ACCENT_DARK};
+            }}
+            QPushButton:pressed {{
+                background-color: {t.BTN_SECONDARY_PRESSED_BG};
+            }}
+        """
+
     def _upload_reply(self, document_id):
-        """Загрузить файл ответа"""
         file_path, _ = QFileDialog.getOpenFileName(
-            None,
-            "Выберите файл ответа",
-            "",
+            None, "Выберите файл ответа", "",
             "Документы (*.pdf *.docx *.doc *.txt *.tif);;PDF (*.pdf);;Word (*.docx *.doc);;Текст (*.txt);;TIFF (*.tif)"
         )
-
         if file_path:
             self.signals.reply_upload.emit(document_id, file_path)

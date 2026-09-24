@@ -394,3 +394,17 @@ class SettingsManager:
         self.remove(SettingsKeys.AUTH_PHONE)
         self.remove(SettingsKeys.AUTH_SAVED_AT)
         print("[SettingsManager] Auth session cleared")
+
+    # ============ ТЕМА ============
+
+    def get_theme(self) -> tuple[str, str]:
+        """Возвращает (palette, mode). По умолчанию ('standard', 'light')."""
+        palette = self.get(SettingsKeys.THEME_PALETTE, "standard")
+        mode = self.get(SettingsKeys.THEME_MODE, "light")
+        return palette, mode
+
+    def set_theme(self, palette: str, mode: str):
+        """Сохраняет выбранную тему."""
+        self.set(SettingsKeys.THEME_PALETTE, palette)
+        self.set(SettingsKeys.THEME_MODE, mode)
+        print(f"[SettingsManager] Theme saved: {palette} / {mode}")

@@ -134,10 +134,8 @@ class ProfileForm(QWidget):
             label_phone_value=self.label_phone_value if hasattr(self, 'label_phone_value') else None,
             label_email_value=self.label_email_value if hasattr(self, 'label_email_value') else None,
             label_birth_date_value=self.label_birth_date_value if hasattr(self, 'label_birth_date_value') else None,
-            btnEditPhone=self.btnEditPhone if hasattr(self, 'btnEditPhone') else None,
-            btnEditEmail=self.btnEditEmail if hasattr(self, 'btnEditEmail') else None,
-            mainLayout=self.mainLayout if hasattr(self, 'mainLayout') else None
-        )
+            mainLayout=self.mainLayout if hasattr(self, 'mainLayout') else None,
+            )
 
         self.profile_info.set_http_client(self.http_client)
         # ===== Конец передачи виджетов =====
@@ -175,7 +173,6 @@ class ProfileForm(QWidget):
         # ===== Конец настройки overtime panel =====
 
         # ===== Стилизация кнопок =====
-        self.setup_edit_buttons()
         # ===== Конец стилизации =====
 
         # ===== Подключение сигналов =====
@@ -321,37 +318,6 @@ class ProfileForm(QWidget):
         print(f"❌ Ошибка загрузки профиля: {error_msg}")
         QMessageBox.warning(self, "Ошибка загрузки", error_msg)
         self.load_test_data()
-
-    def setup_edit_buttons(self):
-        """Устанавливает стиль для кнопок редактирования телефона и email."""
-        t = get_manager().current
-        style = f"""
-            QToolButton, QPushButton {{
-                background-color: transparent;
-                color: {t.ACCENT_PRIMARY};
-                font-size: 20px;
-                border: none;
-                border-radius: 8px;
-                padding: 5px;
-            }}
-            QToolButton:hover, QPushButton:hover {{
-                color: {t.ACCENT_HOVER};
-                background-color: {t.ACCENT_PRIMARY_ALPHA_10};
-            }}
-            QToolButton:pressed, QPushButton:pressed {{
-                color: {t.ACCENT_PRESSED_DEEP};
-                background-color: {t.ACCENT_PRIMARY_ALPHA_20};
-            }}
-        """
-        if hasattr(self, 'btnEditPhone') and self.btnEditPhone:
-            self.btnEditPhone.setStyleSheet(style)
-            self.btnEditPhone.setText("✏️")
-            self.btnEditPhone.setMinimumSize(30, 30)
-
-        if hasattr(self, 'btnEditEmail') and self.btnEditEmail:
-            self.btnEditEmail.setStyleSheet(style)
-            self.btnEditEmail.setText("✏️")
-            self.btnEditEmail.setMinimumSize(30, 30)
 
     def setup_connections(self):
         """Подключает сигналы кнопок и фильтров."""

@@ -182,3 +182,22 @@ class FloatingActionButton(QPushButton):
         super().showEvent(event)
         if self.is_visible:
             self.move(self.base_position)
+
+    def reapply_theme(self):
+        """Перекрашивает кнопку при смене темы (вызывается из apply_theme_to_all_windows)."""
+        from client.core.themes import get_manager
+        _t = get_manager().current
+        self.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {_t.ACCENT_PRIMARY};
+                color: {_t.TEXT_ON_ACCENT};
+                border-radius: 28px;
+                border: none;
+            }}
+            QPushButton:hover {{
+                background-color: {_t.ACCENT_HOVER};
+            }}
+            QPushButton:pressed {{
+                background-color: {_t.ACCENT_PRESSED};
+            }}
+        """)

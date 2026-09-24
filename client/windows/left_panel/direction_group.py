@@ -5,8 +5,6 @@ from PyQt6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QApplication, QSp
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
 
-from client.core.themes import T
-
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -117,13 +115,19 @@ class DirectionGroup(QWidget):
 
     def animate_button_press(self):
         """Мини-анимация при нажатии на кнопку"""
+        # ВАЖНО: раньше здесь был статический `from client.core.themes import T` —
+        # значение T «застывало» на моменте импорта модуля и никогда не
+        # обновлялось при смене темы. Берём тему заново через get_manager().
+        from client.core.themes import get_manager
+        _t = get_manager().current
+
         original_style = self.toggle_btn.styleSheet()
 
         # Эффект нажатия
         self.toggle_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
-                color: {T.SIDEBAR_TEXT};
+                color: {_t.SIDEBAR_TEXT};
                 border: none;
                 border-radius: 5px;
                 padding: 8px 12px;
@@ -132,8 +136,8 @@ class DirectionGroup(QWidget):
                 text-align: left;
             }}
             QPushButton:hover {{
-                background-color: {T.SIDEBAR_HOVER_BG};
-                color: {T.SIDEBAR_HOVER_TEXT};
+                background-color: {_t.SIDEBAR_HOVER_BG};
+                color: {_t.SIDEBAR_HOVER_TEXT};
             }}
         """)
 
@@ -157,13 +161,15 @@ class DirectionGroup(QWidget):
         pulse_animation.setEndValue(original_geometry)
         pulse_animation.start()
 
-    def add_direction(self, direction_name: str, callback):
-        """Добавляет направление в группу"""
-        btn = QPushButton(direction_name)
-        btn.setStyleSheet(f"""
+    def _direction_button_style(self) -> str:
+        """Стиль кнопки направления из АКТУАЛЬНОЙ темы (не из устаревшего
+        статического T)."""
+        from client.core.themes import get_manager
+        _t = get_manager().current
+        return f"""
             QPushButton {{
                 background-color: transparent;
-                color: {T.SIDEBAR_TEXT};
+                color: {_t.SIDEBAR_TEXT};
                 border: none;
                 border-radius: 5px;
                 padding: 8px 12px;
@@ -171,13 +177,18 @@ class DirectionGroup(QWidget):
                 text-align: left;
             }}
             QPushButton:hover {{
-                background-color: {T.SIDEBAR_HOVER_BG};
-                color: {T.SIDEBAR_HOVER_TEXT};
+                background-color: {_t.SIDEBAR_HOVER_BG};
+                color: {_t.SIDEBAR_HOVER_TEXT};
             }}
             QPushButton:pressed {{
-                background-color: {T.SIDEBAR_BG};
+                background-color: {_t.SIDEBAR_BG};
             }}
-        """)
+        """
+
+    def add_direction(self, direction_name: str, callback):
+        """Добавляет направление в группу"""
+        btn = QPushButton(direction_name)
+        btn.setStyleSheet(self._direction_button_style())
 
         # Добавляем мини-анимацию при клике на направление
         def on_click():
@@ -228,6 +239,39 @@ class DirectionGroup(QWidget):
         for btn in self.direction_buttons:
             btn.deleteLater()
         self.direction_buttons.clear()
+
+    def reapply_theme(self):
+        """Вызывается apply_theme_to_all_windows(). Раньше этого метода не
+        было — при смене темы группа направлений (фон, кнопка-заголовок,
+        сами кнопки направлений) оставалась раскрашена старой темой."""
+        from client.core.themes import get_manager
+        _t = get_manager().current
+
+        self.setStyleSheet(f"background-color: {_t.SIDEBAR_BG};")
+
+        self.toggle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {_t.SIDEBAR_TEXT};
+                border: none;
+                border-radius: 5px;
+                padding: 8px 12px;
+                font-size: 14px;
+                font-weight: bold;
+                text-align: left;
+            }}
+            QPushButton:hover {{
+                background-color: {_t.SIDEBAR_HOVER_BG};
+                color: {_t.SIDEBAR_HOVER_TEXT};
+            }}
+        """)
+
+        self.content_widget.setStyleSheet(
+            f"QWidget {{ background-color: {_t.SIDEBAR_BG}; }}"
+        )
+
+        for btn in self.direction_buttons:
+            btn.setStyleSheet(self._direction_button_style())
 
     def set_compact_mode(self, compact: bool):
         """Устанавливает компактный режим (для свернутой панели)"""

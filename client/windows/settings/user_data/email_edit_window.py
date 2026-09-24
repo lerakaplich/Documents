@@ -15,7 +15,7 @@ class EmailEditWindow(QtWidgets.QDialog):
 
         ui_path = os.path.join(
             os.path.dirname(__file__),
-            "../../../ui/profile/user_data/email_edit_window.ui",
+            "../../../ui/settings/user_data/email_edit_window.ui",
         )
         uic.loadUi(ui_path, self)
 

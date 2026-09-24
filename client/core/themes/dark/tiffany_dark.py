@@ -1,5 +1,5 @@
 from dataclasses import replace
-from client.core.themes.dark import DarkTheme
+from client.core.themes.dark.dark import DarkTheme
 
 
 TiffanyDarkTheme = replace(

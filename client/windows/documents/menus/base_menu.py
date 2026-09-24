@@ -15,3 +15,13 @@ class BaseMenu(QMenu):
         action.setChecked(checked)
         self.addAction(action)
         return action
+
+    def showEvent(self, event):
+        """Переприменяем стиль при каждом показе — берём актуальную тему."""
+        from client.core.themes import get_menu_style
+        self.setStyleSheet(get_menu_style())
+        super().showEvent(event)
+
+    def reapply_theme(self):
+        from client.core.themes import get_menu_style
+        self.setStyleSheet(get_menu_style())

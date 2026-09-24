@@ -147,7 +147,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
            <x>0</x>
            <y>0</y>
            <width>850</width>
-           <height>448</height>
+           <height>554</height>
           </rect>
          </property>
          <layout class="QVBoxLayout" name="scrollLayout">
@@ -363,6 +363,276 @@ QPushButton:pressed {
            </widget>
           </item>
           <item>
+           <widget class="QFrame" name="themeCard">
+            <property name="styleSheet">
+             <string notr="true">QFrame#themeCard {
+    background-color: {BG_CARD};
+    border: 1px solid {BORDER_DEFAULT};
+    border-radius: 12px;
+}</string>
+            </property>
+            <layout class="QVBoxLayout" name="themeLayout">
+             <property name="spacing">
+              <number>14</number>
+             </property>
+             <property name="leftMargin">
+              <number>24</number>
+             </property>
+             <property name="topMargin">
+              <number>20</number>
+             </property>
+             <property name="rightMargin">
+              <number>24</number>
+             </property>
+             <property name="bottomMargin">
+              <number>20</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="themeTitle">
+               <property name="styleSheet">
+                <string notr="true">font-size: 18px; font-weight: bold; color: {TEXT_PRIMARY}; background-color: transparent;</string>
+               </property>
+               <property name="text">
+                <string>Оформление</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="paletteRow">
+               <property name="spacing">
+                <number>12</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="paletteLabel">
+                 <property name="minimumSize">
+                  <size>
+                   <width>160</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                 </property>
+                 <property name="text">
+                  <string>Цветовая гамма:</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QComboBox" name="paletteCombo">
+                 <property name="minimumSize">
+                  <size>
+                   <width>220</width>
+                   <height>36</height>
+                  </size>
+                 </property>
+                 <property name="cursor">
+                  <cursorShape>PointingHandCursor</cursorShape>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">
+QComboBox, QTextEdit, QDateEdit, QTextBrowser {
+border-radius: 10px;
+border: 1px solid {ACCENT_PRIMARY};
+padding: 5px;
+background-color: {BG_INPUT};
+color: {TEXT_PRIMARY};
+}
+QComboBox:hover, QTextEdit:hover, QDateEdit:hover, QTextBrowser:hover {
+border: 1px solid {ACCENT_HOVER_SOFT};
+}
+QComboBox:focus, QTextEdit:focus, QDateEdit:focus, QTextBrowser:focus {
+border: 2px solid {ACCENT_PRIMARY};
+}
+
+/* Стили для выпадающего контейнера QComboBox */
+QComboBox::drop-down {
+subcontrol-origin: padding;
+subcontrol-position: top right;
+width: 30px;
+border: none;
+}
+
+QComboBox::down-arrow {
+image: url({ICON_ARROW_DOWN_PATH});
+width: 16px;
+height: 16px;
+margin-right: 6px;
+}
+
+/* ===== ВЫПАДАЮЩИЕ СПИСКИ QComboBox ===== */
+QComboBox QAbstractItemView {
+border-radius: 6px;
+background-color: {BG_CARD};
+color: {TEXT_PRIMARY};
+padding: 4px;
+outline: none;
+border: 1px solid {ACCENT_PRIMARY};
+}
+QComboBox QAbstractItemView::item {
+padding: 8px;
+color: {TEXT_PRIMARY};
+border: none;
+outline: none;
+}
+QComboBox QAbstractItemView::item:hover {
+background-color: {ACCENT_SELECTION_BG};
+color: {TEXT_PRIMARY};
+}
+QComboBox QAbstractItemView::item:selected {
+background-color: {ACCENT_SELECTION_BG};
+color: {TEXT_PRIMARY};
+}
+QComboBox QAbstractItemView::item:focus {
+outline: none;
+border: none;
+}
+
+
+</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="paletteSpacer">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="modeRow">
+               <property name="spacing">
+                <number>12</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="modeLabel">
+                 <property name="minimumSize">
+                  <size>
+                   <width>160</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                 </property>
+                 <property name="text">
+                  <string>Режим:</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QComboBox" name="modeCombo">
+                 <property name="minimumSize">
+                  <size>
+                   <width>220</width>
+                   <height>36</height>
+                  </size>
+                 </property>
+                 <property name="cursor">
+                  <cursorShape>PointingHandCursor</cursorShape>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">
+QComboBox, QTextEdit, QDateEdit, QTextBrowser {
+border-radius: 10px;
+border: 1px solid {ACCENT_PRIMARY};
+padding: 5px;
+background-color: {BG_INPUT};
+color: {TEXT_PRIMARY};
+}
+QComboBox:hover, QTextEdit:hover, QDateEdit:hover, QTextBrowser:hover {
+border: 1px solid {ACCENT_HOVER_SOFT};
+}
+QComboBox:focus, QTextEdit:focus, QDateEdit:focus, QTextBrowser:focus {
+border: 2px solid {ACCENT_PRIMARY};
+}
+
+/* Стили для выпадающего контейнера QComboBox */
+QComboBox::drop-down {
+subcontrol-origin: padding;
+subcontrol-position: top right;
+width: 30px;
+border: none;
+}
+
+QComboBox::down-arrow {
+image: url({ICON_ARROW_DOWN_PATH});
+width: 16px;
+height: 16px;
+margin-right: 6px;
+}
+
+/* ===== ВЫПАДАЮЩИЕ СПИСКИ QComboBox ===== */
+QComboBox QAbstractItemView {
+border-radius: 6px;
+background-color: {BG_CARD};
+color: {TEXT_PRIMARY};
+padding: 4px;
+outline: none;
+border: 1px solid {ACCENT_PRIMARY};
+}
+QComboBox QAbstractItemView::item {
+padding: 8px;
+color: {TEXT_PRIMARY};
+border: none;
+outline: none;
+}
+QComboBox QAbstractItemView::item:hover {
+background-color: {ACCENT_SELECTION_BG};
+color: {TEXT_PRIMARY};
+}
+QComboBox QAbstractItemView::item:selected {
+background-color: {ACCENT_SELECTION_BG};
+color: {TEXT_PRIMARY};
+}
+QComboBox QAbstractItemView::item:focus {
+outline: none;
+border: none;
+}
+
+
+</string>
+                 </property>
+                 <item>
+                  <property name="text">
+                   <string>Светлая</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Тёмная</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+               <item>
+                <spacer name="modeSpacer">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
            <widget class="QFrame" name="securityCard">
             <property name="styleSheet">
              <string notr="true">QFrame#securityCard {
@@ -406,8 +676,14 @@ QPushButton:pressed {
                 <widget class="QLabel" name="passwordLabel">
                  <property name="minimumSize">
                   <size>
-                   <width>120</width>
+                   <width>70</width>
                    <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>70</width>
+                   <height>16777215</height>
                   </size>
                  </property>
                  <property name="styleSheet">
@@ -480,139 +756,57 @@ QPushButton:pressed {
            </widget>
           </item>
           <item>
-           <widget class="QFrame" name="themeCard">
-            <property name="styleSheet">
-             <string notr="true">QFrame#themeCard {
-    background-color: {BG_CARD};
-    border: 1px solid {BORDER_DEFAULT};
-    border-radius: 12px;
-}</string>
+           <layout class="QHBoxLayout" name="logoutRow">
+            <property name="spacing">
+             <number>12</number>
             </property>
-            <layout class="QVBoxLayout" name="themeLayout">
-             <property name="spacing">
-              <number>14</number>
-             </property>
-             <property name="leftMargin">
-              <number>24</number>
-             </property>
-             <property name="topMargin">
-              <number>20</number>
-             </property>
-             <property name="rightMargin">
-              <number>24</number>
-             </property>
-             <property name="bottomMargin">
-              <number>20</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="themeTitle">
-               <property name="styleSheet">
-                <string notr="true">font-size: 18px; font-weight: bold; color: {TEXT_PRIMARY}; background-color: transparent;</string>
-               </property>
-               <property name="text">
-                <string>Оформление</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <layout class="QHBoxLayout" name="themeRow">
-               <property name="spacing">
-                <number>12</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="themeLabel">
-                 <property name="minimumSize">
-                  <size>
-                   <width>120</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
-                 </property>
-                 <property name="text">
-                  <string>Тема:</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QComboBox" name="themeCombo">
-                 <property name="minimumSize">
-                  <size>
-                   <width>220</width>
-                   <height>36</height>
-                  </size>
-                 </property>
-                 <property name="cursor">
-                  <cursorShape>PointingHandCursor</cursorShape>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">QComboBox {
-    border: 1px solid {BORDER_DEFAULT};
+            <item>
+             <widget class="QPushButton" name="logoutBtn">
+              <property name="minimumSize">
+               <size>
+                <width>180</width>
+                <height>36</height>
+               </size>
+              </property>
+              <property name="cursor">
+               <cursorShape>PointingHandCursor</cursorShape>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">QPushButton {
+    background-color: {BTN_DELETE_BG};
+    color: {BTN_DELETE_TEXT};
+    border: 1px solid {BTN_DELETE_BORDER};
     border-radius: 8px;
-    padding: 6px 30px 6px 12px;
-    background-color: {BG_INPUT};
-    color: {TEXT_PRIMARY};
     font-size: 13px;
-    outline: none;
+    font-weight: 600;
 }
-QComboBox:hover {
-    border-color: {ACCENT_PRIMARY};
+QPushButton:hover {
+    background-color: {BTN_DELETE_HOVER_BG};
+    color: {TEXT_ON_ACCENT};
 }
-QComboBox:focus {
-    border: 2px solid {ACCENT_PRIMARY};
-}
-QComboBox::drop-down {
-    subcontrol-origin: padding;
-    subcontrol-position: top right;
-    width: 30px;
-    border: none;
-}
-QComboBox::down-arrow {
-    image: url({ICON_ARROW_DOWN_PATH});
-    width: 16px;
-    height: 16px;
-    margin-right: 6px;
-}
-QComboBox QAbstractItemView {
-    border: 1px solid {ACCENT_PRIMARY};
-    border-radius: 6px;
-    background-color: {BG_CARD};
-    color: {TEXT_PRIMARY};
-    padding: 4px;
-    outline: none;
-}
-QComboBox QAbstractItemView::item {
-    padding: 8px;
-    border: none;
-    outline: none;
-}
-QComboBox QAbstractItemView::item:hover {
-    background-color: {ACCENT_SELECTION_BG};
-}
-QComboBox QAbstractItemView::item:selected {
-    background-color: {ACCENT_SELECTION_BG};
+QPushButton:pressed {
+    background-color: {BTN_DELETE_PRESSED_BG};
 }</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="themeSpacer">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-              </layout>
-             </item>
-            </layout>
-           </widget>
+              </property>
+              <property name="text">
+               <string>Выйти из аккаунта</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="logoutSpacer">
+              <property name="orientation">
+               <enum>Qt::Orientation::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
           </item>
           <item>
            <spacer name="bottomSpacer">

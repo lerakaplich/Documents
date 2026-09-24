@@ -33,7 +33,7 @@ QCheckBox::indicator {
     image: url({ICON_CHECKBOX_UNCHECKED_PATH});
 }
 QCheckBox::indicator:checked {
-    image: url("D:/Documents/client/icons/cb_checked.svg");
+    image: url({ICON_CHECKBOX_CHECKED_PATH});
 }
 
 /* --- скроллбары --- */

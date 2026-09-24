@@ -1,250 +1,194 @@
 import os
-from PyQt6.QtWidgets import QWidget, QFormLayout, QLabel, QPushButton, QHBoxLayout, QMessageBox, QFrame, QVBoxLayout
-from PyQt6.QtCore import Qt
-
-from client.windows.profile.user_data.email_edit_window import EmailEditWindow
-from client.windows.profile.user_data.phone_edit_window import PhoneEditWindow
+from PyQt6.QtWidgets import QLabel, QMessageBox, QFormLayout
 
 
 class ProfileInfo:
-    """Управление информацией профиля сотрудника"""
+    """Управление информацией профиля сотрудника.
+
+    Все QLabel'ы берутся из profile.ui (статические — Должность, Телефон,
+    Email, Дата рождения; динамические — строки подразделений из
+    department_chain). Цвета заданы токенами {TEXT_*} в .ui и подставляются
+    ThemeManager'ом при смене темы.
+    """
 
     def __init__(self, parent=None):
         self.parent = parent
         self.current_phone_raw = ""
         self.current_email_raw = ""
-        self.department_rows = []
         self.http_client = None
 
-        # Виджеты
         self.infoFrame = None
         self.labelTitle = None
+
         self.label_position_value = None
         self.label_phone_value = None
         self.label_email_value = None
         self.label_birth_date_value = None
-        self.btnEditPhone = None
-        self.btnEditEmail = None
+
         self.mainLayout = None
 
+        # Динамически созданные лейблы строк подразделений
+        self._dept_type_labels = []
+        self._dept_name_labels = []
+
+    # ─────────────────────────────────────────────
+    # Инъекция виджетов
+
     def set_http_client(self, http_client):
-        """Устанавливает HTTP клиент для отправки запросов"""
         self.http_client = http_client
         print("✅ HTTP клиент установлен в ProfileInfo")
 
-    def setup_ui_elements(self, infoFrame, labelTitle, label_position_value, label_phone_value,
-                          label_email_value, label_birth_date_value, btnEditPhone, btnEditEmail,
-                          mainLayout=None):
-        """Передаёт ссылки на виджеты из главного окна."""
+    def setup_ui_elements(
+        self,
+        infoFrame,
+        labelTitle,
+        label_position_value,
+        label_phone_value,
+        label_email_value,
+        label_birth_date_value,
+        mainLayout=None,
+    ):
         self.infoFrame = infoFrame
         self.labelTitle = labelTitle
         self.label_position_value = label_position_value
         self.label_phone_value = label_phone_value
         self.label_email_value = label_email_value
         self.label_birth_date_value = label_birth_date_value
-        self.btnEditPhone = btnEditPhone
-        self.btnEditEmail = btnEditEmail
         self.mainLayout = mainLayout
 
-    def connect_signals(self):
-        """Подключает сигналы кнопок редактирования."""
-        if self.btnEditPhone:
-            self.btnEditPhone.clicked.connect(self.on_edit_phone_clicked)
-        if self.btnEditEmail:
-            self.btnEditEmail.clicked.connect(self.on_edit_email_clicked)
+
+    # ─────────────────────────────────────────────
+    # Обновление данных
 
     def update_profile(self, full_name, position, department_chain, phone, email, birth_date):
-        """Обновляет все данные профиля и перестраивает информационную панель."""
         print("update_profile вызван")
+        self._last_department_chain = department_chain
+
         if self.labelTitle:
             self.labelTitle.setText(full_name)
-        else:
-            print("labelTitle не найден")
 
         self.current_phone_raw = phone
         self.current_email_raw = email
-        self.rebuild_info_layout(position, department_chain, phone, email, birth_date)
 
-    def rebuild_info_layout(self, position, department_chain, phone, email, birth_date):
-        """Полностью перестраивает форму с информацией о сотруднике."""
-        print("rebuild_info_layout вызван")
+        # ── Должность ──
+        if self.label_position_value:
+            self.label_position_value.setText(position or "Не указана")
 
-        from client.core.themes import get_manager
-        t = get_manager().current
+        # ── Подразделения (динамические строки) ──
+        # department_chain: [(type, name), ...] сверху вниз от ВЕРХНЕГО к ГЛУБОКОМУ,
+        # например:
+        #   [('Подразделение', 'НТЦ'), ('Отдел', 'Телематика'), ('Сектор', 'Бэкенд')]
+        # В UI нужно наоборот — от глубокого к верхнему:
+        #   Сектор: Бэкенд
+        #   Отдел: Телематика
+        #   Подразделение: НТЦ
+        self._rebuild_department_rows(department_chain)
 
-        if self.infoFrame is None:
-            print("infoFrame не найден, создаём новый")
-            self.infoFrame = QFrame(self.parent)
-            self.infoFrame.setObjectName("infoFrame")
-            self.infoFrame.setStyleSheet(f"""
-                padding: 20px;
-                background-color: {t.BG_CARD};
-                border-radius: 16px;
-                border: 1px solid {t.BORDER_LIGHT};
-            """)
-            if self.mainLayout:
-                for i in range(self.mainLayout.count()):
-                    item = self.mainLayout.itemAt(i)
-                    if item.widget() and item.widget().objectName() == "infoFrame":
-                        self.mainLayout.removeWidget(item.widget())
-                        break
-                self.mainLayout.insertWidget(1, self.infoFrame)
-            else:
-                layout = self.parent.layout()
-                if layout:
-                    layout.insertWidget(1, self.infoFrame)
+        # ── Телефон ──
+        if self.label_phone_value:
+            self.label_phone_value.setText(
+                self.format_phone_display(phone) if phone else "Не указан"
+            )
+
+        # ── Email ──
+        if self.label_email_value:
+            self.label_email_value.setText(email if email else "Не указан")
+
+        # ── Дата рождения ──
+        if self.label_birth_date_value:
+            self.label_birth_date_value.setText(
+                birth_date if birth_date else "Не указана"
+            )
+
+
+        print("update_profile завершён")
+
+    def _rebuild_department_rows(self, department_chain):
+        """
+        Создаёт строки подразделений в QFormLayout infoFrame динамически.
+        Каждая строка: [Тип]: [Название], сверху вниз от глубокого к верхнему.
+        Старые строки удаляются.
+        """
+        if not self.infoFrame:
+            return
 
         layout = self.infoFrame.layout()
-        if layout is None:
-            layout = QFormLayout()
-            layout.setSpacing(10)
-            layout.setContentsMargins(0, 0, 0, 0)
-            self.infoFrame.setLayout(layout)
-        else:
-            while layout.count():
-                item = layout.takeAt(0)
-                widget = item.widget()
-                if widget:
-                    widget.deleteLater()
-                if item.layout():
-                    item.layout().deleteLater()
+        if not isinstance(layout, QFormLayout):
+            return
 
-        # ── Стили из темы ──
-        value_style = (
-            f"font-size: 24px; color: {t.TEXT_PRIMARY}; "
-            f"background-color: transparent;"
-        )
-        label_style = (
-            f"font-size: 24px; color: {t.TEXT_MUTED_ALT}; "
-            f"background-color: transparent; font-weight: 500;"
-        )
+        # 1. Удаляем ранее созданные строки подразделений
+        for lbl in self._dept_type_labels + self._dept_name_labels:
+            try:
+                layout.removeWidget(lbl)
+                lbl.deleteLater()
+            except Exception:
+                pass
+        self._dept_type_labels.clear()
+        self._dept_name_labels.clear()
 
-        # Должность
-        label_pos_title = QLabel("Должность:")
-        label_pos_title.setStyleSheet(label_style)
-        label_pos_value = QLabel(position if position else "Не указана")
-        label_pos_value.setStyleSheet(value_style)
-        layout.addRow(label_pos_title, label_pos_value)
-        self.label_position_value = label_pos_value
+        if not department_chain:
+            return
 
-        # Подразделения
-        self.department_rows = []
+        # 2. Идём по цепочке в обратном порядке: от глубокого к верхнему.
+        # department_chain[0] — самый верхний (напр. Подразделение),
+        # department_chain[-1] — самый глубокий (напр. Сектор).
+        ordered = list(reversed(department_chain))
 
-        if department_chain and len(department_chain) > 0:
-            print(f"📋 Отображаем цепочку подразделений: {department_chain}")
-            for dept_type, dept_name in department_chain:
-                title = QLabel(f"{dept_type}:")
-                title.setStyleSheet(label_style)
-                title.setWordWrap(True)
+        # 3. Вставляем строки сразу после строки «Должность» (row 0),
+        # перед строкой «Телефон». В .ui телефон и остальные сдвинуты на
+        # большие индексы (100+), поэтому вставим с row=1, 2, 3...
+        # QFormLayout сам сдвинет существующие строки, если задать явный row.
+        insert_row = 1
+        for dept_type, dept_name in ordered:
+            # Тип: «Отдел», «Сектор», «Подразделение» — как пришло из БД
+            type_text = (dept_type or "").strip()
+            type_label_text = f"{type_text}:" if type_text else "—"
 
-                value = QLabel(dept_name if dept_name else "Не указано")
-                value.setStyleSheet(value_style)
-                value.setWordWrap(True)
+            type_lbl = QLabel(type_label_text)
+            type_lbl.setObjectName("label_dept_type_title")
 
-                layout.addRow(title, value)
-                self.department_rows.append((title, value))
-        else:
-            print("⚠️ Цепочка подразделений пуста")
-            title = QLabel("Подразделение:")
-            title.setStyleSheet(label_style)
-            value = QLabel("Не указано")
-            value.setStyleSheet(value_style)
-            layout.addRow(title, value)
-            self.department_rows.append((title, value))
+            name_lbl = QLabel(dept_name or "—")
+            name_lbl.setObjectName("label_dept_name_value")
 
-        # ── Кнопки редактирования: один общий стиль ──
-        edit_btn_style = f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {t.ACCENT_PRIMARY};
-                font-size: 20px;
-                border: none;
-                border-radius: 8px;
-                padding: 5px;
-            }}
-            QPushButton:hover {{
-                color: {t.ACCENT_HOVER};
-                background-color: {t.ACCENT_PRIMARY_ALPHA_10};
-            }}
-            QPushButton:pressed {{
-                color: {t.ACCENT_PRESSED_DEEP};
-                background-color: {t.ACCENT_PRIMARY_ALPHA_20};
-            }}
+            # Применяем стили темы (в .ui для этих objectName заданы стили)
+            from client.core.themes import apply_theme_to_widget
+            # Пока просто зададим objectName — ThemeManager подставит по нему
+            # при следующем apply_theme_to_all_windows(). Но чтобы цвета
+            # применились СРАЗУ при создании, скопируем стиль у соседнего
+            # лейбла «Должность» — у него тот же objectName-паттерн.
+
+            # Берём актуальные стили из label_position_title / value
+            title_style = self._style_for("label_position_title")
+            value_style = self._style_for("label_position_value")
+            if title_style:
+                type_lbl.setStyleSheet(title_style)
+            if value_style:
+                name_lbl.setStyleSheet(value_style)
+
+            layout.insertRow(insert_row, type_lbl, name_lbl)
+            self._dept_type_labels.append(type_lbl)
+            self._dept_name_labels.append(name_lbl)
+            insert_row += 1
+
+    def _style_for(self, object_name: str) -> str:
         """
-
-        # Телефон
-        label_phone_title = QLabel("Номер телефона:")
-        label_phone_title.setStyleSheet(label_style)
-        label_phone_value = QLabel(self.format_phone_display(phone) if phone else "Не указан")
-        label_phone_value.setStyleSheet(value_style)
-
-        if self.btnEditPhone is None:
-            self.btnEditPhone = QPushButton("✏️")
-            self.btnEditPhone.setMinimumSize(30, 30)
-        self.btnEditPhone.setStyleSheet(edit_btn_style)
-
-        phone_widget = QWidget()
-        phone_widget.setStyleSheet("background-color: transparent;")
-        phone_layout = QHBoxLayout(phone_widget)
-        phone_layout.setContentsMargins(0, 0, 0, 0)
-        phone_layout.setSpacing(5)
-        phone_layout.addWidget(label_phone_value)
-        phone_layout.addWidget(self.btnEditPhone)
-        phone_layout.addStretch()
-        layout.addRow(label_phone_title, phone_widget)
-        self.label_phone_value = label_phone_value
-
-        # Email
-        label_email_title = QLabel("Электронная почта:")
-        label_email_title.setStyleSheet(label_style)
-        label_email_value = QLabel(email if email else "Не указан")
-        label_email_value.setStyleSheet(value_style)
-
-        if self.btnEditEmail is None:
-            self.btnEditEmail = QPushButton("✏️")
-            self.btnEditEmail.setMinimumSize(30, 30)
-        self.btnEditEmail.setStyleSheet(edit_btn_style)
-
-        email_widget = QWidget()
-        email_widget.setStyleSheet("background-color: transparent;")
-        email_layout = QHBoxLayout(email_widget)
-        email_layout.setContentsMargins(0, 0, 0, 0)
-        email_layout.setSpacing(5)
-        email_layout.addWidget(label_email_value)
-        email_layout.addWidget(self.btnEditEmail)
-        email_layout.addStretch()
-        layout.addRow(label_email_title, email_widget)
-        self.label_email_value = label_email_value
-
-        # Дата рождения
-        label_birth_title = QLabel("Дата рождения:")
-        label_birth_title.setStyleSheet(label_style)
-        label_birth_value = QLabel(birth_date if birth_date else "Не указана")
-        label_birth_value.setStyleSheet(value_style)
-        layout.addRow(label_birth_title, label_birth_value)
-        self.label_birth_date_value = label_birth_value
-
-        self.connect_signals()
-        print("rebuild_info_layout завершён")
+        Возвращает styleSheet лейбла с данным objectName внутри infoFrame
+        (уже с подставленными токенами темы).
+        """
+        if not self.infoFrame:
+            return ""
+        for child in self.infoFrame.findChildren(QLabel):
+            if child.objectName() == object_name:
+                return child.styleSheet()
+        return ""
 
     @staticmethod
     def format_phone_display(phone: str) -> str:
-        """Форматирует номер телефона в читаемый вид."""
         if len(phone) == 12 and phone.isdigit():
             return f"+{phone[:3]} ({phone[3:5]}) {phone[5:8]}-{phone[8:10]}-{phone[10:12]}"
         return phone
 
-    def on_edit_phone_clicked(self):
-        """Открывает диалог редактирования телефона."""
-        try:
-            dialog = PhoneEditWindow(self.current_phone_raw, parent=None)
-            dialog.phone_updated.connect(self.on_phone_updated)
-            dialog.exec()
-        except Exception as e:
-            QMessageBox.warning(self.parent, "Ошибка", f"Не удалось открыть окно редактирования телефона\n{str(e)}")
-
     def on_phone_updated(self, new_phone: str):
-        """Обновляет отображение телефона после редактирования."""
         self.current_phone_raw = new_phone
         if self.label_phone_value:
             self.label_phone_value.setText(self.format_phone_display(new_phone))
@@ -252,16 +196,22 @@ class ProfileInfo:
         if self.http_client:
             try:
                 from client.services.employee_service import EmployeeService
-                service = EmployeeService(self.http_client)
-                service.update_my_profile({"phone_number": new_phone})
+                EmployeeService(self.http_client).update_my_profile(
+                    {"phone_number": new_phone}
+                )
                 QMessageBox.information(self.parent, "Успешно", "Номер телефона обновлён")
             except Exception as e:
-                QMessageBox.warning(self.parent, "Ошибка", f"Не удалось обновить телефон на сервере:\n{str(e)}")
+                QMessageBox.warning(
+                    self.parent, "Ошибка",
+                    f"Не удалось обновить телефон на сервере:\n{str(e)}"
+                )
         else:
-            QMessageBox.information(self.parent, "Успешно", "Номер телефона обновлён (локально)")
+            QMessageBox.information(self.parent, "Успешно",
+                                    "Номер телефона обновлён (локально)")
+
+
 
     def on_email_updated(self, new_email: str):
-        """Обновляет отображение email после редактирования."""
         self.current_email_raw = new_email
         if self.label_email_value:
             self.label_email_value.setText(new_email if new_email else "Не указан")
@@ -269,19 +219,19 @@ class ProfileInfo:
         if self.http_client:
             try:
                 from client.services.employee_service import EmployeeService
-                service = EmployeeService(self.http_client)
-                service.update_my_profile({"email": new_email})
+                EmployeeService(self.http_client).update_my_profile({"email": new_email})
                 QMessageBox.information(self.parent, "Успешно", "Email обновлён")
             except Exception as e:
-                QMessageBox.warning(self.parent, "Ошибка", f"Не удалось обновить email на сервере:\n{str(e)}")
+                QMessageBox.warning(
+                    self.parent, "Ошибка",
+                    f"Не удалось обновить email на сервере:\n{str(e)}"
+                )
         else:
-            QMessageBox.information(self.parent, "Успешно", "Email обновлён (локально)")
+            QMessageBox.information(self.parent, "Успешно",
+                                    "Email обновлён (локально)")
 
-    def on_edit_email_clicked(self):
-        """Открывает диалог редактирования email."""
-        try:
-            dialog = EmailEditWindow(self.current_email_raw, parent=None)
-            dialog.email_updated.connect(self.on_email_updated)
-            dialog.exec()
-        except Exception as e:
-            QMessageBox.warning(self.parent, "Ошибка", f"Не удалось открыть окно редактирования email\n{str(e)}")
+    def reapply_theme(self):
+        """Пересоздать строки подразделений с актуальными стилями темы."""
+        # Сохраняем последний department_chain
+        if hasattr(self, "_last_department_chain"):
+            self._rebuild_department_rows(self._last_department_chain)

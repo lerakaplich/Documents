@@ -126,9 +126,26 @@ class DocumentsTable(QWidget):
         self.tableWidget.setColumnCount(0)
 
     def reapply_theme(self):
-        """Переприменить стили таблицы к актуальной теме."""
+        """Переприменить стили таблицы и её ячеек-виджетов."""
         self.setStyleSheet(TableStyles.get_main_style())
         self.tableWidget.setStyleSheet(TableStyles.get_table_style())
+
+        # Перекрасить виджеты в ячейках (комментарии, делегаты, вложения, ответы)
+        from PyQt6.QtWidgets import QWidget
+        for r in range(self.tableWidget.rowCount()):
+            for c in range(self.tableWidget.columnCount()):
+                w = self.tableWidget.cellWidget(r, c)
+                if not w:
+                    continue
+                # вызываем reapply_theme у самого виджета и его потомков
+                targets = [w] + w.findChildren(QWidget)
+                for t in targets:
+                    ra = getattr(t, "reapply_theme", None)
+                    if callable(ra):
+                        try:
+                            ra()
+                        except Exception as e:
+                            print(f"[DocumentsTable] reapply_theme error in {type(t).__name__}: {e}")
 
     def get_selected_document(self):
         """Получение выделенного документа"""

@@ -328,23 +328,25 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         for param in self.available_parameters:
             frame = QtWidgets.QFrame()
             frame.setObjectName(f"paramFrame_{param}")
-            frame.setStyleSheet("""
-                QFrame {
-                    border: 1px solid #E0E0E0; 
-                    border-radius: 6px; 
-                    background: white; 
+            from client.core.themes import get_manager
+            _t = get_manager().current
+            frame.setStyleSheet(f"""
+                QFrame {{
+                    border: 1px solid {_t.BORDER_FRAME_SOFT};
+                    border-radius: 6px;
+                    background: {_t.BG_CARD};
                     margin: 2px;
-                }
-                QFrame:hover {
-                    border-color: #ccab6e;
-                    background-color: #fdfcf7;
-                }
+                }}
+                QFrame:hover {{
+                    border-color: {_t.ACCENT_PRIMARY};
+                    background-color: {_t.BG_HOVER_ACCENT_SOFT};
+                }}
             """)
             flayout = QtWidgets.QHBoxLayout(frame)
             flayout.setContentsMargins(10, 5, 10, 5)
 
             lbl = QtWidgets.QLabel(self.parameter_names[param])
-            lbl.setStyleSheet("font-weight: bold; border: none; color: #1B232A;")
+            lbl.setStyleSheet(f"""font-weight: bold; border: none; background-color: transparent; color: {_t.TEXT_MUTED_ALT};""")
             flayout.addWidget(lbl)
             flayout.addStretch()
 
@@ -626,6 +628,12 @@ class DocumentTypeDialog(QtWidgets.QDialog):
                 errors.append(f"Параметр '{self.parameter_names[param]}' обязателен")
 
         return errors
+
+    def reapply_theme(self):
+        from client.core.themes import get_manager
+        _t = get_manager().current
+        for param, btn in getattr(self, 'toggle_buttons', {}).items():
+            self.update_toggle_style(btn)
 
 
 if __name__ == "__main__":

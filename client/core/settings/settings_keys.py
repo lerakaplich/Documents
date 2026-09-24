@@ -10,6 +10,10 @@ class SettingsKeys:
     PINNED = "pinned"
     HIDDEN_ROWS = "hidden_rows"
 
+    # ============ ТЕМА ============
+    THEME_PALETTE = "theme_palette"   # "standard" | "blue" | ...
+    THEME_MODE    = "theme_mode"      # "light" | "dark"
+
     # ============ НАСТРОЙКИ ПО ТИПУ ДОКУМЕНТА ============
     COLUMN_WIDTHS = "column_widths"
     HIDDEN_COLUMNS = "hidden_columns"

@@ -294,3 +294,22 @@ class CollapsibleGroup(QWidget):
         # При показе обновляем высоту
         if self.is_expanded and self.content_widgets:
             QTimer.singleShot(100, self._delayed_height_update)
+
+    def reapply_theme(self):
+        from client.core.themes import get_manager
+        _t = get_manager().current
+        self.header.setStyleSheet(f"""
+            QPushButton {{
+                text-align: left;
+                background-color: {_t.BG_SURFACE_HEADER};
+                border: 1px solid {_t.BORDER_DEFAULT};
+                border-radius: 8px;
+                padding: 12px 15px;
+                font-size: 14px;
+                font-weight: bold;
+                color: {_t.TEXT_HEADING};
+            }}
+            QPushButton:hover {{
+                background-color: {_t.BG_HOVER_ALT};
+            }}
+        """)

@@ -156,9 +156,25 @@ class MainWindow(QMainWindow):
                 )
                 print("✓ data_loaded подключен")
 
-            if hasattr(self.left_panel, 'logout_clicked'):
-                self.left_panel.logout_clicked.connect(self.on_logout_clicked)
-                print("✓ logout_clicked подключен")
+            if hasattr(self.settings_tab, 'theme_change_requested'):
+                self.settings_tab.theme_change_requested.connect(self.on_theme_changed)
+                print("✓ theme_change_requested подключен")
+
+            if hasattr(self.settings_tab, 'phone_change_requested'):
+                self.settings_tab.phone_change_requested.connect(self.on_phone_change)
+                print("✓ settings phone_change_requested подключен")
+
+            if hasattr(self.settings_tab, 'email_change_requested'):
+                self.settings_tab.email_change_requested.connect(self.on_email_change)
+                print("✓ settings email_change_requested подключен")
+
+            if hasattr(self.settings_tab, 'password_change_requested'):
+                self.settings_tab.password_change_requested.connect(self.on_password_change)
+                print("✓ settings password_change_requested подключен")
+
+            if hasattr(self.settings_tab, 'logout_requested'):
+                self.settings_tab.logout_requested.connect(self.on_logout_clicked)
+                print("✓ settings logout_requested подключен")
 
             print("✓ Все сигналы настроены успешно")
 
@@ -170,8 +186,114 @@ class MainWindow(QMainWindow):
 
     def on_settings_clicked(self):
         """Переключение на настройки"""
+        # синхронизируем UI с текущей темой и данными профиля
+        from client.core.settings.settings_manager import SettingsManager
+
+        palette, mode = SettingsManager().get_theme()
+        from client.core.themes import resolve_theme_key
+        self.settings_tab.set_current_theme(resolve_theme_key(palette, mode))
+
+        # телефон / email из уже загруженного профиля
+        if hasattr(self.profile_form, 'profile_info'):
+            self.settings_tab.set_phone(self.profile_form.profile_info.current_phone_raw or "")
+            self.settings_tab.set_email(self.profile_form.profile_info.current_email_raw or "")
+
         self.content_stack.setCurrentWidget(self.settings_tab)
         self.statusBar().showMessage("Настройки", 3000)
+
+    def on_theme_changed(self, key: str):
+        """Применить выбранную тему, сохранить её локально."""
+        from client.core.themes import (
+            get_theme, get_palette_and_mode,
+            set_theme, apply_theme_to_all_windows,
+        )
+        from client.core.settings.settings_manager import SettingsManager
+
+        palette, mode = get_palette_and_mode(key)
+        theme = get_theme(palette, mode)
+
+        # 1. Сохранить локально
+        SettingsManager().set_theme(palette, mode)
+
+        # 2. Применить
+        set_theme(theme)
+        apply_theme_to_all_windows()
+        self.reapply_theme()
+        self.content_stack.setStyleSheet(
+            f"QStackedWidget {{ background-color: {theme.BG_DIALOG_ALT}; }}"
+        )
+        print(f"[MainWindow] Тема применена и сохранена: {palette} / {mode}")
+
+    def on_phone_change(self):
+        """Диалог смены телефона."""
+        from client.windows.profile.user_data.phone_edit_window import PhoneEditWindow
+        from PyQt6.QtWidgets import QMessageBox
+
+        current = ""
+        if hasattr(self.profile_form, 'profile_info'):
+            current = self.profile_form.profile_info.current_phone_raw or ""
+
+        dialog = PhoneEditWindow(current, parent=self)
+        dialog.phone_updated.connect(self._apply_phone_change)
+        dialog.exec()
+
+    def _apply_phone_change(self, new_phone: str):
+        """Отправляет новый телефон на сервер, обновляет UI."""
+        from PyQt6.QtWidgets import QMessageBox
+        from client.services.employee_service import EmployeeService
+
+        try:
+            EmployeeService(self.http_client).update_my_profile({"phone_number": new_phone})
+        except Exception as e:
+            QMessageBox.warning(self, "Ошибка", f"Не удалось обновить телефон:\n{e}")
+            return
+
+        # синхронизируем с профилем
+        if hasattr(self.profile_form, 'profile_info'):
+            pi = self.profile_form.profile_info
+            pi.current_phone_raw = new_phone
+            if pi.label_phone_value:
+                pi.label_phone_value.setText(pi.format_phone_display(new_phone))
+
+        self.settings_tab.set_phone(new_phone)
+        QMessageBox.information(self, "Успешно", "Номер телефона обновлён")
+
+    def on_email_change(self):
+        """Диалог смены email."""
+        from client.windows.profile.user_data.email_edit_window import EmailEditWindow
+
+        current = ""
+        if hasattr(self.profile_form, 'profile_info'):
+            current = self.profile_form.profile_info.current_email_raw or ""
+
+        dialog = EmailEditWindow(current, parent=self)
+        dialog.email_updated.connect(self._apply_email_change)
+        dialog.exec()
+
+    def _apply_email_change(self, new_email: str):
+        """Отправляет новый email на сервер, обновляет UI."""
+        from PyQt6.QtWidgets import QMessageBox
+        from client.services.employee_service import EmployeeService
+
+        try:
+            EmployeeService(self.http_client).update_my_profile({"email": new_email})
+        except Exception as e:
+            QMessageBox.warning(self, "Ошибка", f"Не удалось обновить email:\n{e}")
+            return
+
+        if hasattr(self.profile_form, 'profile_info'):
+            pi = self.profile_form.profile_info
+            pi.current_email_raw = new_email
+            if pi.label_email_value:
+                pi.label_email_value.setText(new_email or "Не указан")
+
+        self.settings_tab.set_email(new_email)
+        QMessageBox.information(self, "Успешно", "Email обновлён")
+
+    def on_password_change(self):
+        """Заглушка на будущее."""
+        from PyQt6.QtWidgets import QMessageBox
+        QMessageBox.information(self, "Пароль", "Смена пароля будет добавлена позже")
 
     def on_logout_clicked(self):
         """Обработка выхода из аккаунта."""
