@@ -270,7 +270,7 @@ QPushButton:hover {
        </spacer>
       </item>
       <item>
-       <widget class="QPushButton" name="statusesBtn_2">
+       <widget class="QPushButton" name="statsBtn">
         <property name="minimumSize">
          <size>
           <width>100</width>

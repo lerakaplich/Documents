@@ -53,6 +53,7 @@ class LeftPanel(QWidget):
 
         # Настройка иконок для всех кнопок (унифицированный размер 20x20)
         self.setup_icons()
+        self._apply_button_styles()
 
         # Скрываем старые виджеты
         for widget_name in ['externalWidget', 'internalWidget']:
@@ -65,7 +66,6 @@ class LeftPanel(QWidget):
 
         self.setup_groups_container()
 
-        self._ensure_settings_button()
         self.setup_buttons()
 
         # Анимация
@@ -85,6 +85,7 @@ class LeftPanel(QWidget):
         icon_mapping = {
             'profileBtn': 'profile_white.svg',
             'allDocsBtn': 'folder.svg',
+            'settingsBtn': 'gear.svg',
             'systemBtn': 'gear.svg',
             'hidePanelBtn': 'hide.svg'  # Добавляем иконку для скрытия панели
         }
@@ -99,6 +100,25 @@ class LeftPanel(QWidget):
                     btn.setIconSize(icon_size)
                 else:
                     print(f"Предупреждение: иконка не найдена - {icon_path}")
+
+    def _apply_button_styles(self):
+        """Единый стиль всех кнопок панели — как у кнопок направлений."""
+        for name in ('profileBtn', 'allDocsBtn', 'settingsBtn', 'systemBtn', 'hidePanelBtn'):
+            btn = getattr(self, name, None)
+            if btn is None:
+                continue
+            btn.setStyleSheet(
+                self._get_button_style() if self.is_expanded
+                else self._get_compact_button_style()
+            )
+
+    def reapply_theme(self):
+        """Вызывается при смене темы."""
+        apply_theme_to_widget(self)
+        self.setStyleSheet(
+            f"QWidget#LeftPanel {{ background-color: {get_manager().current.SIDEBAR_BG}; }}"
+        )
+        self._apply_button_styles()
 
     def create_fallback_ui(self):
         """Создает UI с разделением на верхнюю и нижнюю части"""
@@ -162,26 +182,6 @@ class LeftPanel(QWidget):
 
         main_layout.addWidget(self.bottom_widget)
 
-    def _ensure_settings_button(self):
-        """Создаёт кнопку «Настройки» рядом с systemBtn, если её нет в .ui."""
-        if hasattr(self, "settingsBtn"):
-            return
-        if not hasattr(self, "systemBtn"):
-            return
-
-        parent = self.systemBtn.parentWidget()
-        if parent is None or parent.layout() is None:
-            return
-
-        self.settingsBtn = QPushButton("Настройки")
-        self.settingsBtn.setStyleSheet(self._get_button_style())
-        self.settingsBtn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.set_button_icon(self.settingsBtn, "gear.svg", QSize(20, 20))
-
-        layout = parent.layout()
-        idx = layout.indexOf(self.systemBtn)
-        layout.insertWidget(idx if idx >= 0 else 0, self.settingsBtn)
-
     def set_button_icon(self, button, icon_name, icon_size):
         """Устанавливает иконку для кнопки с указанным размером"""
         icons_path = "D:/Documents/client/icons"
@@ -192,10 +192,12 @@ class LeftPanel(QWidget):
             button.setIconSize(icon_size)
 
     def _get_button_style(self):
+        """Стиль как у кнопок направлений (DirectionGroup._direction_button_style)."""
+        t = get_manager().current
         return f"""
             QPushButton {{
                 background-color: transparent;
-                color: {T.SIDEBAR_TEXT};
+                color: {t.SIDEBAR_TEXT};
                 border: none;
                 border-radius: 5px;
                 padding: 8px 12px;
@@ -204,8 +206,11 @@ class LeftPanel(QWidget):
                 text-align: left;
             }}
             QPushButton:hover {{
-                background-color: {T.SIDEBAR_HOVER_BG};
-                color: {T.SIDEBAR_HOVER_TEXT};
+                background-color: {t.SIDEBAR_HOVER_BG};
+                color: {t.SIDEBAR_HOVER_TEXT};
+            }}
+            QPushButton:pressed {{
+                background-color: {t.SIDEBAR_BG};
             }}
             QPushButton::icon {{
                 width: 20px;
@@ -214,30 +219,15 @@ class LeftPanel(QWidget):
         """
 
     def _get_collapse_button_style(self):
-        return f"""
-            QPushButton {{
-                background-color: {T.SIDEBAR_DIVIDER};
-                color: {T.SIDEBAR_HOVER_TEXT};
-                border: none;
-                border-radius: 5px;
-                padding: 8px 12px;
-                font-size: 12px;
-                text-align: center;
-            }}
-            QPushButton:hover {{
-                background-color: {T.SIDEBAR_HOVER_BG};
-            }}
-            QPushButton::icon {{
-                width: 20px;
-                height: 20px;
-            }}
-        """
+        # «Скрыть панель» теперь выглядит как остальные кнопки
+        return self._get_button_style()
 
     def _get_compact_button_style(self):
+        t = get_manager().current
         return f"""
             QPushButton {{
                 background-color: transparent;
-                color: {T.SIDEBAR_HOVER_TEXT};
+                color: {t.SIDEBAR_HOVER_TEXT};
                 border: none;
                 border-radius: 5px;
                 padding: 10px;
@@ -246,7 +236,7 @@ class LeftPanel(QWidget):
                 min-height: 42px;
             }}
             QPushButton:hover {{
-                background-color: {T.SIDEBAR_HOVER_BG};
+                background-color: {t.SIDEBAR_HOVER_BG};
             }}
             QPushButton::icon {{
                 width: 24px;
@@ -301,6 +291,7 @@ class LeftPanel(QWidget):
 
     def toggle_buttons_visibility(self, visible: bool):
         """Только скрываем/показываем контент, не трогаем структуру layout"""
+        t = get_manager().current
         # Верхние кнопки
         if hasattr(self, 'profileBtn'):
             self.profileBtn.setText("Мой профиль" if visible else "")
@@ -346,7 +337,7 @@ class LeftPanel(QWidget):
                 self.hidePanelBtn.setStyleSheet(f"""
                     QPushButton {{
                         background-color: transparent;
-                        color: {T.SIDEBAR_HOVER_TEXT};
+                        color: {t.SIDEBAR_HOVER_TEXT};
                         border: none;
                         border-radius: 5px;
                         padding: 10px;
@@ -354,7 +345,7 @@ class LeftPanel(QWidget):
                         min-height: 42px;
                     }}
                     QPushButton:hover {{
-                        background-color: {T.SIDEBAR_HOVER_BG};
+                        background-color: {t.SIDEBAR_HOVER_BG};
                     }}
                     QPushButton::icon {{
                         width: 24px;
@@ -392,10 +383,6 @@ class LeftPanel(QWidget):
         print("Нажата кнопка системы")
         self.system_clicked.emit()
 
-    def on_logout_clicked(self):
-        """Обработчик клика по кнопке выхода"""
-        print("Нажата кнопка выхода из аккаунта")
-        self.logout_clicked.emit()
 
     def add_group(self, group_name: str) -> DirectionGroup:
         """Добавляет новую группу направлений"""
@@ -484,6 +471,7 @@ class LeftPanel(QWidget):
             self.collapse_animation.setEndValue(self.EXPANDED_WIDTH)
             self.is_expanded = True
             self.toggle_buttons_visibility(True)
+            self.update_hide_button_icon()
 
         self.collapse_animation.start()
 

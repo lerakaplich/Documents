@@ -94,6 +94,7 @@ class AuthWidget(QWidget):
             raise FileNotFoundError(f"UI файл не найден: {ui_path}")
 
         loadUi(ui_path, self)
+        self._apply_checkbox_icons()
 
         self.notification_manager = None
         self.eye_closed_path = os.path.join(self.root_dir, "icons", "eye-closed.svg")
@@ -277,6 +278,20 @@ class AuthWidget(QWidget):
             )
 
         self.login_successful.emit(user_data)
+
+    def _apply_checkbox_icons(self):
+        """Подставляет золотые иконки чекбокса из папки icons в стиль .ui."""
+        if not hasattr(self, 'rememberCheckBox'):
+            return
+
+        def _p(name: str) -> str:
+            path = os.path.join(self.root_dir, "icons", name).replace("\\", "/")
+            return f'"{path}"'  # кавычки обязательны для url() в QSS
+
+        qss = self.rememberCheckBox.styleSheet()
+        qss = qss.replace("{ICON_CHECKBOX_UNCHECKED_PATH}", _p("cb_unchecked.svg"))
+        qss = qss.replace("{ICON_CHECKBOX_CHECKED_PATH}", _p("cb_checked.svg"))
+        self.rememberCheckBox.setStyleSheet(qss)
 
     def _on_login_error(self, error_msg):
         """Ошибка входа"""

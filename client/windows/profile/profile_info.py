@@ -31,8 +31,30 @@ class ProfileInfo:
         self._dept_type_labels = []
         self._dept_name_labels = []
 
+        from client.core.state.data_events import get_data_events
+        get_data_events().profile_changed.connect(self._on_profile_changed)
+
+        # в SettingsTab.__init__
+        from client.core.state.data_events import get_data_events
+        get_data_events().profile_changed.connect(self._on_profile_changed)
+
+    def _on_profile_changed(self, data: dict):
+        if "phone_number" in data:
+            phone = data["phone_number"] or ""
+            self.current_phone_raw = phone
+            if self.label_phone_value:
+                self.label_phone_value.setText(
+                    self.format_phone_display(phone) if phone else "Не указан"
+                )
+        if "email" in data:
+            email = data["email"] or ""
+            self.current_email_raw = email
+            if self.label_email_value:
+                self.label_email_value.setText(email or "Не указан")
+
     # ─────────────────────────────────────────────
     # Инъекция виджетов
+
 
     def set_http_client(self, http_client):
         self.http_client = http_client
@@ -100,6 +122,11 @@ class ProfileInfo:
                 birth_date if birth_date else "Не указана"
             )
 
+        from client.core.state.data_events import get_data_events
+        get_data_events().profile_changed.emit({
+            "phone_number": phone or "",
+            "email": email or "",
+        })
 
         print("update_profile завершён")
 
@@ -184,8 +211,9 @@ class ProfileInfo:
 
     @staticmethod
     def format_phone_display(phone: str) -> str:
-        if len(phone) == 12 and phone.isdigit():
-            return f"+{phone[:3]} ({phone[3:5]}) {phone[5:8]}-{phone[8:10]}-{phone[10:12]}"
+        digits = "".join(filter(str.isdigit, phone or ""))
+        if len(digits) == 12:
+            return f"+{digits[:3]} ({digits[3:5]}) {digits[5:8]}-{digits[8:10]}-{digits[10:12]}"
         return phone
 
     def on_phone_updated(self, new_phone: str):

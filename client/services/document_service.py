@@ -191,3 +191,14 @@ class DocumentService:
                 payload.pop(k)
 
         return payload
+
+    def get_unanswered_stats(self) -> List[Dict[str, Any]]:
+        """GET /documents/documents/stats/unanswered."""
+        try:
+            r = self.client.get(f"{self.base_path}/stats/unanswered")
+            if isinstance(r, list):
+                return r
+            return []
+        except Exception as e:
+            print(f"❌ get_unanswered_stats: {e}")
+            return []

@@ -379,6 +379,48 @@ min-height: 1px;</string>
        </widget>
       </item>
 
+      <!-- Кнопка настроек -->
+      <item>
+       <widget class="QPushButton" name="settingsBtn">
+        <property name="styleSheet">
+         <string notr="true">QPushButton {
+    background-color: transparent;
+    color: {SIDEBAR_TEXT};
+    border: none;
+    border-radius: 5px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: left;
+}
+QPushButton:hover {
+    background-color: {SIDEBAR_HOVER_BG};
+    color: {SIDEBAR_HOVER_TEXT};
+}
+QPushButton::icon {
+    width: 20px;
+    height: 20px;
+}</string>
+        </property>
+        <property name="text">
+         <string>Настройки</string>
+        </property>
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="icon">
+         <iconset resource="icons.qrc">
+          <normaloff>gear.svg</normaloff>gear.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+
       <!-- Кнопка системы -->
       <item>
        <widget class="QPushButton" name="systemBtn">
@@ -411,48 +453,6 @@ QPushButton::icon {
         <property name="icon">
          <iconset resource="icons.qrc">
           <normaloff>gear.svg</normaloff>gear.svg</iconset>
-        </property>
-        <property name="iconSize">
-         <size>
-          <width>20</width>
-          <height>20</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-
-      <!-- Кнопка выхода из аккаунта -->
-      <item>
-       <widget class="QPushButton" name="logoutBtn">
-        <property name="styleSheet">
-         <string notr="true">QPushButton {
-    background-color: transparent;
-    color: {SIDEBAR_TEXT};
-    border: none;
-    border-radius: 5px;
-    padding: 8px 12px;
-    font-size: 14px;
-    font-weight: bold;
-    text-align: left;
-}
-QPushButton:hover {
-    background-color: {SIDEBAR_HOVER_BG};
-    color: {SIDEBAR_HOVER_TEXT};
-}
-QPushButton::icon {
-    width: 20px;
-    height: 20px;
-}</string>
-        </property>
-        <property name="text">
-         <string>Выйти из аккаунта</string>
-        </property>
-        <property name="cursor">
-         <cursorShape>PointingHandCursor</cursorShape>
-        </property>
-        <property name="icon">
-         <iconset resource="icons.qrc">
-          <normaloff>logout.svg</normaloff>logout.svg</iconset>
         </property>
         <property name="iconSize">
          <size>

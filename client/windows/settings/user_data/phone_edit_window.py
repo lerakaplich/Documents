@@ -21,9 +21,15 @@ class PhoneEditWindow(QtWidgets.QDialog):
 
         self._apply_styles()
 
-        # Убираем знак + если есть
+        # Жёсткая маска: '+' зафиксирован, разрешены только 12 цифр
+        self.phoneInput.setInputMask("+375 (99) 999-99-99;_")
+
+        # Подставляем текущий номер БЕЗ плюса (маска сама его добавит)
         display_phone = current_phone.lstrip("+") if current_phone else ""
         self.phoneInput.setText(display_phone)
+
+        # Курсор в конец
+        self.phoneInput.setCursorPosition(len(self.phoneInput.text()))
 
         self.saveButton.clicked.connect(self.save_phone)
         self.setModal(True)
@@ -97,7 +103,8 @@ class PhoneEditWindow(QtWidgets.QDialog):
             msg_box.exec()
             return
 
-        self.phone_updated.emit(cleaned)
+        # Отправляем С ПЛЮСОМ — так сервер принимает
+        self.phone_updated.emit(f"+{cleaned}")
         self.accept()
 
 

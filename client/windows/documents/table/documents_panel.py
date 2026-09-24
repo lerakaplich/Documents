@@ -103,6 +103,28 @@ class DocumentsPanel(QWidget):
         if hasattr(self, 'searchEdit'):
             self.searchEdit.textChanged.connect(self.on_search_changed)
 
+        if hasattr(self, 'statsBtn'):
+            self.statsBtn.clicked.connect(self._show_unanswered_stats)
+
+    def _show_unanswered_stats(self):
+        """Открывает диалог со статистикой по неотвеченным документам."""
+        from client.services.document_service import DocumentService
+        from client.windows.documents.stats.unanswered_stats_dialog import (
+            UnansweredStatsDialog,
+        )
+
+        try:
+            service = DocumentService(self.http_client)
+            stats = service.get_unanswered_stats()
+
+            dialog = UnansweredStatsDialog(stats, parent=self)
+            dialog.exec()
+        except Exception as e:
+            QMessageBox.warning(
+                self, "Ошибка",
+                f"Не удалось загрузить статистику: {e}"
+            )
+
     def _show_columns_menu(self):
         self.columns_menu.exec(
             self.columnsBtn.mapToGlobal(self.columnsBtn.rect().bottomLeft())
