@@ -143,7 +143,11 @@ class CommentsCellBuilder:
         comments = document.get("comments", [])
         last_comment_text = document.get("last_comment_text", "")
 
-        if comments:
+        # ВАЖНО: реестр документов (GET /documents/documents/) отдаёт только
+        # last_comment_text, полный список comments сюда не приходит.
+        # Раньше условие было `if comments:`, из-за чего строка с уже
+        # существующим последним комментарием показывала кнопку "Добавить".
+        if comments or last_comment_text:
             text_to_show = last_comment_text
             if not text_to_show and comments:
                 text_to_show = comments[-1].get('text', '')

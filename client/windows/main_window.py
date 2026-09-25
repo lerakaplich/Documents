@@ -13,8 +13,6 @@ from client.windows.settings.settings_tab import SettingsTab
 from client.windows.system.tab_system import SystemTab
 
 
-
-
 class MainWindow(QMainWindow):
     """Главное окно приложения - ТОЛЬКО НАВИГАЦИЯ"""
     logout_requested = pyqtSignal()
@@ -39,7 +37,6 @@ class MainWindow(QMainWindow):
             central_widget = QWidget()
             self.setCentralWidget(central_widget)
 
-
             layout = QHBoxLayout(central_widget)
             layout.setContentsMargins(0, 0, 0, 0)
             layout.setSpacing(0)
@@ -53,7 +50,6 @@ class MainWindow(QMainWindow):
             self.content_stack.setStyleSheet(
                 f"QStackedWidget {{ background-color: {_t.BG_DIALOG_ALT}; }}"
             )
-
 
             print("Создание DocumentsPanel...")
             self.documents_panel = DocumentsPanel()
@@ -112,7 +108,7 @@ class MainWindow(QMainWindow):
                 background-color: {t.SIDEBAR_BG};
                 color: {t.SIDEBAR_TEXT};
             }}
-            
+
         """)
 
     def reapply_theme(self):
@@ -256,7 +252,7 @@ class MainWindow(QMainWindow):
     def on_type_selected(self, type_id: int, type_name: str):
         """Выбор типа документа"""
         self.content_stack.setCurrentWidget(self.documents_panel)
-        self.documents_panel.load_documents_by_type(type_id)
+        self.documents_panel.load_documents_by_type(type_id, type_name)
 
     def on_direction_selected(self, direction_name: str, group_name: str = ""):
         """Выбор направления"""
@@ -273,7 +269,6 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     try:
         print("Запуск приложения...")
-
 
         app = QApplication(sys.argv)
         window = MainWindow()

@@ -48,8 +48,8 @@ class DocumentsPanel(QWidget):
         self.http_client = AppState().http_client          # ← НОВОЕ
         print(f"[DocumentsPanel] http_client = {self.http_client}")
 
-        # Контроллер бизнес-логики
-        self.controller = DocumentsPanelController()
+        # Контроллер бизнес-логики (реальные документы идут через http_client)
+        self.controller = DocumentsPanelController(self.http_client)
 
         self._init_ui()
         self._init_table()
@@ -407,8 +407,8 @@ class DocumentsPanel(QWidget):
         self._update_table(documents, doc_type, title, view_mode)
         self.data_loaded.emit(len(documents))
 
-    def load_documents_by_type(self, type_id: int):
-        documents, title, view_mode, doc_type = self.controller.load_documents_by_type(type_id)
+    def load_documents_by_type(self, type_id: int, type_name: str = None):
+        documents, title, view_mode, doc_type = self.controller.load_documents_by_type(type_id, type_name)
         self._update_table(documents, doc_type, title, view_mode)
         self.type_changed.emit(type_id)
         self.data_loaded.emit(len(documents))

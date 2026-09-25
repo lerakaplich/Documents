@@ -41,9 +41,76 @@ class DocumentService:
         self.base_path = "/documents/documents"
 
     # ─────────── ЧТЕНИЕ ───────────
-    def get_all_documents(self) -> List[Dict[str, Any]]:
+
+    DEFAULT_PAGE_SIZE = 100  # максимум, который сервер отдаёт за один запрос (limit ≤ 100)
+
+    def get_documents(
+        self,
+        scope: str = "all",
+        type_id: Optional[int] = None,
+        direction: Optional[str] = None,
+        search: Optional[str] = None,
+        tag_ids: Optional[List[int]] = None,
+        status_filters: Optional[List[str]] = None,
+        is_completed: Optional[bool] = None,
+        is_archived: Optional[bool] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = DEFAULT_PAGE_SIZE,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """
+        GET /documents/documents/ — реестр документов с фильтрацией и пагинацией.
+        Возвращает {"total": int, "limit": int, "offset": int, "items": [...]}
+        как отдаёт сервер (DocumentPaginationResponse), без потерь.
+
+        ВАЖНО: сервер отдаёт максимум `limit=100` документов за раз. Если total > limit,
+        часть документов не попадёт в первую страницу — здесь пока нет UI-пагинации
+        ("показать ещё" / бесконечная прокрутка), это следующий шаг.
+        """
+        params: Dict[str, Any] = {
+            "scope": scope,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+            "limit": limit,
+            "offset": offset,
+        }
+        if type_id is not None:
+            params["type_id"] = type_id
+        if direction:
+            params["direction"] = direction
+        if search:
+            params["search"] = search
+        if tag_ids:
+            params["tag_ids"] = tag_ids
+        if status_filters:
+            params["status_filters"] = status_filters
+        if is_completed is not None:
+            params["is_completed"] = is_completed
+        if is_archived is not None:
+            params["is_archived"] = is_archived
+        if date_from:
+            params["date_from"] = date_from
+        if date_to:
+            params["date_to"] = date_to
+
         try:
-            r = self.client.get(self.base_path)
+            r = self.client.get(f"{self.base_path}/", params=params)
+            if isinstance(r, dict) and "items" in r:
+                return r
+            # на случай, если сервер вдруг вернёт голый список
+            items = r if isinstance(r, list) else []
+            return {"total": len(items), "limit": limit, "offset": offset, "items": items}
+        except Exception as e:
+            print(f"❌ get_documents: {e}")
+            return {"total": 0, "limit": limit, "offset": offset, "items": []}
+
+    def get_all_documents(self) -> List[Dict[str, Any]]:
+        """Оставлено для обратной совместимости. Предпочитайте get_documents()."""
+        try:
+            r = self.client.get(f"{self.base_path}/")
             return r.get("items", []) if isinstance(r, dict) else r
         except Exception as e:
             print(f"❌ get_all_documents: {e}")
