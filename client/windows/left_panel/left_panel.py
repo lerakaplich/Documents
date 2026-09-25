@@ -10,7 +10,9 @@ from PyQt6.QtGui import QIcon
 from PyQt6.uic import loadUi
 
 from client.core.data.document_data import DocumentDataConfig
+from client.core.state.app_state import AppState
 from client.core.themes import apply_theme_to_widget, T, get_manager
+from client.services.doc_type_service import DocTypeService
 from client.windows.left_panel.direction_group import DirectionGroup
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,6 +28,10 @@ class LeftPanel(QWidget):
     all_documents_clicked = pyqtSignal()
     system_clicked = pyqtSignal()
     settings_clicked = pyqtSignal()
+
+    GROUP_EXTERNAL = "Внешние документы"
+    GROUP_INTERNAL = "Внутренние документы"
+    ALL_TYPES_LABEL = "Все типы"
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -74,8 +80,8 @@ class LeftPanel(QWidget):
         self.collapse_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self.collapse_animation.finished.connect(self.on_animation_finished)
 
-        # Загружаем данные из DocumentDataConfig
-        self.load_from_data()
+        # Загружаем типы документов с сервера
+        self.load_doc_types()
 
     def setup_icons(self):
         """Настраивает иконки для всех кнопок с единым размером"""
@@ -85,8 +91,8 @@ class LeftPanel(QWidget):
         icon_mapping = {
             'profileBtn': 'profile_white.svg',
             'allDocsBtn': 'folder.svg',
-            'settingsBtn': 'gear.svg',
-            'systemBtn': 'gear.svg',
+            'settingsBtn': 'settings.svg',  # ← было gear.svg
+            'systemBtn': 'office.svg',
             'hidePanelBtn': 'hide.svg'  # Добавляем иконку для скрытия панели
         }
 
@@ -417,26 +423,44 @@ class LeftPanel(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-    def load_from_data(self, data: List[Dict[str, Any]] = None):
+    def load_doc_types(self):
         """
-        Загружает направления из данных.
-        Если данные не переданы, использует DocumentDataConfig.get_directions_data()
+        Загружает типы документов с сервера и раскладывает их
+        в две группы: «Внешние документы» и «Внутренние документы».
+        В каждой группе — пункт «Все типы».
         """
-        if data is None:
-            data = DocumentDataConfig.get_directions_data()
-
         self.clear_all_directions()
 
-        for group_data in data:
-            group_name = group_data.get("group", "Без группы")
-            directions = group_data.get("directions", [])
+        # Заглушка на время загрузки
+        self.add_direction(self.GROUP_EXTERNAL, self.ALL_TYPES_LABEL,
+                           {"type_id": None, "group": self.GROUP_EXTERNAL})
+        self.add_direction(self.GROUP_INTERNAL, self.ALL_TYPES_LABEL,
+                           {"type_id": None, "group": self.GROUP_INTERNAL})
 
-            for direction in directions:
-                direction_name = direction.get("name")
-                if direction_name:
-                    self.add_direction(group_name, direction_name, direction)
+        try:
+            http_client = AppState().http_client
+            service = DocTypeService(http_client)
+            types = service.get_all_types() or []
+        except Exception as e:
+            print(f"LeftPanel: не удалось загрузить типы документов — {e}")
+            return
 
-        print(f"LeftPanel: загружено {len(data)} групп, {sum(len(g.get('directions', [])) for g in data)} направлений")
+        # Первый проход — «Все типы» уже добавлены, теперь реальные типы
+        for doc_type in types:
+            type_id = doc_type.get("id")
+            name = doc_type.get("name")
+            if not name:
+                continue
+
+            # В каждой группе — свой пункт «Все типы» (уже добавлен).
+            # Все реальные типы кладём в обе группы, чтобы пользователь
+            # мог фильтровать по типу в любом разделе.
+            self.add_direction(self.GROUP_EXTERNAL, name,
+                               {"type_id": type_id, "group": self.GROUP_EXTERNAL})
+            self.add_direction(self.GROUP_INTERNAL, name,
+                               {"type_id": type_id, "group": self.GROUP_INTERNAL})
+
+        print(f"LeftPanel: загружено {len(types)} типов документов в 2 группы")
 
     def load_test_data(self):
         """Загружает тестовые данные из DocumentDataConfig"""

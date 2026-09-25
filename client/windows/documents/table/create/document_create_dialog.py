@@ -12,7 +12,6 @@ from PyQt6 import uic
 from PyQt6.QtCore import pyqtSignal, Qt, QDate
 from PyQt6.QtWidgets import QWidget, QMessageBox, QDateEdit, QFileDialog
 
-from client.core.data.sender_service import SenderService
 from client.core.themes import apply_theme_to_widget, get_manager
 from client.windows.date_edit import CustomCalendarDateEdit
 from client.windows.documents.table.create.employee_selection_dialog import EmployeeSelectionDialog
@@ -415,7 +414,17 @@ class DocumentDialog(QWidget):
 
     def _open_sender_selection(self):
         """Открывает диалог выбора отправителя (single-select)."""
-        preselected = [self.selected_sender['id']] if self.selected_sender else []
+        print(f"[DEBUG] selected_sender = {self.selected_sender!r}")
+        print(f"[DEBUG] type = {type(self.selected_sender)}")
+        if self.selected_sender:
+            print(
+                f"[DEBUG] keys = {list(self.selected_sender.keys()) if isinstance(self.selected_sender, dict) else 'не dict'}")
+
+        # Безопасно достаём id
+        sender_id = None
+        if isinstance(self.selected_sender, dict):
+            sender_id = self.selected_sender.get("id")
+        preselected = [sender_id] if sender_id else []
 
         dialog = EmployeeSelectionDialog(
             organizations=self.organizations,

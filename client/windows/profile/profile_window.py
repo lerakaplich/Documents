@@ -494,10 +494,15 @@ class ProfileForm(QWidget):
             label_phone_value=self.label_phone_value,
             label_email_value=self.label_email_value,
             label_birth_date_value=self.label_birth_date_value,
-            btnEditPhone=self.btnEditPhone,
-            btnEditEmail=self.btnEditEmail,
             mainLayout=main_layout
         )
+
+    def reapply_theme(self):
+        """Переприменить стили к вложенным менеджерам (пагинация, инфо)."""
+        if hasattr(self, 'overtime_panel') and self.overtime_panel:
+            self.overtime_panel.reapply_theme()
+        if hasattr(self, 'profile_info') and self.profile_info:
+            self.profile_info.reapply_theme()
 
 
 if __name__ == "__main__":

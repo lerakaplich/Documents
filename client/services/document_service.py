@@ -42,7 +42,7 @@ class DocumentService:
 
     # ─────────── ЧТЕНИЕ ───────────
 
-    DEFAULT_PAGE_SIZE = 100  # максимум, который сервер отдаёт за один запрос (limit ≤ 100)
+    DEFAULT_PAGE_SIZE = 50  # максимум, который сервер отдаёт за один запрос (limit ≤ 100)
 
     def get_documents(
         self,

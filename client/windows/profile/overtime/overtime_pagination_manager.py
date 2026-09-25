@@ -61,19 +61,38 @@ class OvertimePaginationManager:
         return bar, prev_btn, next_btn, page_label
 
     def _create_bar(self):
+        from client.core.themes import get_manager
+        t = get_manager().current
+
         bar = QWidget()
         layout = QHBoxLayout(bar)
         layout.setContentsMargins(0, 5, 0, 5)
         layout.setSpacing(10)
         layout.addStretch()
 
-        btn_style = """
-            QPushButton { border: none; border-radius: 8px; background-color: #1B232A;
-                          color: white; font-size: 14px; font-weight: bold; }
-            QPushButton:hover { background-color: #D9D9D6; color: black; }
-            QPushButton:pressed { background-color: #B8B8B5; }
-            QPushButton:disabled { background-color: #E5E5E5; color: #999999; }
+        btn_style = f"""
+            QPushButton {{
+                border: none;
+                border-radius: 8px;
+                background-color: {t.ACCENT_PRIMARY};
+                color: {t.TEXT_ON_ACCENT};
+                font-size: 14px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {t.ACCENT_HOVER_SOFT};
+                color: {t.TEXT_ON_ACCENT};
+            }}
+            QPushButton:pressed {{
+                background-color: {t.ACCENT_PRESSED_DEEP};
+                color: {t.TEXT_ON_ACCENT};
+            }}
+            QPushButton:disabled {{
+                background-color: {t.BG_PRESSED_LIGHT};
+                color: {t.TEXT_ON_ACCENT};
+            }}
         """
+        bar.setStyleSheet(f"background-color: {t.BG_CARD};")
 
         prev_btn = QPushButton("◀")
         prev_btn.setFixedSize(32, 32)
@@ -81,7 +100,9 @@ class OvertimePaginationManager:
         prev_btn.setStyleSheet(btn_style)
 
         page_label = QLabel("Страница 1 из 1")
-        page_label.setStyleSheet("font-size: 13px; color: #4A3B28; font-weight: 500;")
+        page_label.setStyleSheet(
+            f"font-size: 13px; color: {t.TEXT_PRIMARY}; font-weight: 500;"
+        )
         page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         page_label.setMinimumWidth(200)
 
@@ -137,3 +158,46 @@ class OvertimePaginationManager:
         )
         prev_btn.setEnabled(p['page'] > 1)
         next_btn.setEnabled(p['page'] < pages)
+
+    def reapply_theme(self):
+        """Перерисовать стили кнопок и метки под актуальную тему."""
+        from client.core.themes import get_manager
+        t = get_manager().current
+
+        btn_style = f"""
+            QPushButton {{
+                border: none;
+                border-radius: 8px;
+                background-color: {t.ACCENT_PRIMARY};
+                color: {t.TEXT_ON_ACCENT};
+                font-size: 14px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {t.ACCENT_HOVER_SOFT};
+                color: {t.TEXT_ON_ACCENT};
+            }}
+            QPushButton:pressed {{
+                background-color: {t.ACCENT_PRESSED_DEEP};
+                color: {t.TEXT_ON_ACCENT};
+            }}
+            QPushButton:disabled {{
+                background-color: {t.BG_PRESSED_LIGHT};
+                color: {t.TEXT_ON_ACCENT};
+            }}
+        """
+
+        for btn in (self.my_prev_btn, self.my_next_btn,
+                    self.all_prev_btn, self.all_next_btn):
+            if btn is not None:
+                btn.setStyleSheet(btn_style)
+
+        for bar in (self.my_bar, self.all_bar):
+            if bar is not None:
+                bar.setStyleSheet(f"background-color: {t.BG_CARD};")
+
+        label_style = f"font-size: 13px; color: {t.TEXT_PRIMARY}; font-weight: 500;"
+        for label in (self.my_page_label, self.all_page_label):
+            if label is not None:
+                label.setStyleSheet(label_style)
+

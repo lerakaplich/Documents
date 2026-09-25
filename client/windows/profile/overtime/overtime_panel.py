@@ -330,3 +330,7 @@ class OvertimePanel:
     def _notify(self, message, duration=3000):
         if hasattr(self.parent, 'notification_manager'):
             self.parent.notification_manager.show_notification(message, duration=duration)
+
+    def reapply_theme(self):
+        if self.pagination:
+            self.pagination.reapply_theme()

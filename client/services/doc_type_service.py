@@ -102,6 +102,30 @@ class DocTypeService:
             logger.error(f"❌ Ошибка удаления типа {type_id}: {e}")
             return False
 
+    def get_types_grouped(self) -> List[Dict[str, Any]]:
+        """
+        Возвращает список групп для LeftPanel.load_from_data().
+        Все типы показываются и во «Внутренних», и во «Внешних» —
+        потому что каждый тип может быть использован в обоих направлениях.
+        """
+        types = self.get_all_types()
+
+        if not types:
+            return []
+
+        # Один и тот же список для обеих групп.
+        # Копируем dict'ы, чтобы будущие изменения в UI не пересекались.
+        directions = [
+            {"name": t.get("name") or "—", "type_id": t.get("id")}
+            for t in types
+            if t.get("id") is not None
+        ]
+
+        return [
+            {"group": "Внешние документы", "directions": list(directions)},
+            {"group": "Внутренние документы", "directions": list(directions)},
+        ]
+
 # Синглтон
 _doc_type_service_instance: Optional[DocTypeService] = None
 

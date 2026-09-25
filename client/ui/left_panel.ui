@@ -410,7 +410,7 @@ QPushButton::icon {
         </property>
         <property name="icon">
          <iconset resource="icons.qrc">
-          <normaloff>gear.svg</normaloff>gear.svg</iconset>
+          <normaloff>settings.svg</normaloff>settings.svg</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -452,7 +452,7 @@ QPushButton::icon {
         </property>
         <property name="icon">
          <iconset resource="icons.qrc">
-          <normaloff>gear.svg</normaloff>gear.svg</iconset>
+          <normaloff>office.svg</normaloff>office.svg</iconset>
         </property>
         <property name="iconSize">
          <size>
