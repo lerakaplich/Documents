@@ -33,8 +33,9 @@ class DocumentsTable(QWidget):
     pin_status_changed = pyqtSignal(int, bool)
     data_loaded = pyqtSignal(int)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, http_client=None):
         super().__init__(parent)
+        self.http_client = http_client  # для реальной подгрузки вложений (RowRenderer) и полей типа (TableController)
 
         self._init_ui()
         self._init_components()
@@ -58,7 +59,7 @@ class DocumentsTable(QWidget):
     def _init_components(self):
         """Инициализация компонентов - создание, но без логики"""
         self.config = DocumentDataConfig()
-        self.row_renderer = RowRenderer(self.tableWidget, self.config, self)
+        self.row_renderer = RowRenderer(self.tableWidget, self.config, self, http_client=self.http_client)
         self.data_manager = TableDataManager(self.tableWidget, self.row_renderer)
         self.updater = TableUpdater(self.tableWidget)
 
@@ -67,7 +68,8 @@ class DocumentsTable(QWidget):
             table_widget=self.tableWidget,
             data_manager=self.data_manager,
             row_renderer=self.row_renderer,
-            updater=self.updater
+            updater=self.updater,
+            http_client=self.http_client
         )
 
         self.context_menu_manager = ContextMenu(self)

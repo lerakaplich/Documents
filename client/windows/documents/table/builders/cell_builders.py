@@ -210,11 +210,14 @@ class CommentsCellBuilder:
 
 class AttachmentCellBuilder:
 
-    def __init__(self, even_color, odd_color, supported_formats, signals):
+    def __init__(self, even_color, odd_color, supported_formats, signals, attachment_service=None):
         self.even_color = even_color
         self.odd_color = odd_color
         self.supported_formats = supported_formats
         self.signals = signals
+        # Может отсутствовать (например, тестовый запуск без http_client) —
+        # тогда падаем обратно на document.get("attachments", []), если он есть.
+        self.attachment_service = attachment_service
 
     def build(self, row, document):
         container = QWidget()
@@ -227,12 +230,14 @@ class AttachmentCellBuilder:
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        attachments = document.get("attachments", [])
+        # Реестр документов (GET /documents/documents/) не отдаёт список файлов —
+        # только флаг has_attachments. Реальный список подгружаем по клику
+        # (см. _show_attachments_menu), а не заранее для каждой строки.
+        has_attachments = document.get("has_attachments", bool(document.get("attachments")))
 
-        if attachments:
-            btn = QPushButton("Открыть")
+        if has_attachments:
+            btn = QPushButton("Вложения")
             btn.setStyleSheet(self._open_style())
-            btn.setProperty("attachments", attachments)
             btn.setProperty("document", document)
             btn.clicked.connect(lambda checked, b=btn: self._show_attachments_menu(b))
         else:
@@ -297,17 +302,25 @@ class AttachmentCellBuilder:
 
     def _show_attachments_menu(self, button):
         from client.core.themes import get_menu_style
-        attachments = button.property("attachments")
         document = button.property("document")
+        if not document:
+            return
+
+        attachments = self._fetch_attachments(document)
         if not attachments:
+            QMessageBox.information(
+                button, "Вложения",
+                "Не удалось получить список вложений (или их нет)."
+            )
             return
 
         menu = QMenu()
         menu.setStyleSheet(get_menu_style())
 
         for attachment in attachments:
-            file_icon = "📄" if not attachment['name'].lower().endswith('.pdf') else "📕"
-            action = QAction(f"{file_icon} {attachment['name']}", menu)
+            file_name = attachment.get("file_name") or attachment.get("name") or "Без имени"
+            file_icon = "📄" if not file_name.lower().endswith('.pdf') else "📕"
+            action = QAction(f"{file_icon} {file_name}", menu)
             action.triggered.connect(
                 lambda checked, a=attachment, d=document:
                 self.signals.attachment_clicked.emit(d, a)
@@ -316,13 +329,24 @@ class AttachmentCellBuilder:
 
         menu.addSeparator()
         add_action = QAction("➕ Добавить файл", menu)
-        add_action.triggered.connect(lambda checked: self._upload_attachment(button))
+        add_action.triggered.connect(lambda checked: self._upload_attachment_for(document.get("id")))
         menu.addAction(add_action)
 
         menu.exec(button.mapToGlobal(button.rect().bottomLeft()))
 
+    def _fetch_attachments(self, document: dict) -> list:
+        """Получить реальный список вложений документа (по клику, не заранее)."""
+        doc_id = document.get("id")
+        if self.attachment_service and doc_id:
+            return self.attachment_service.get_attachments(doc_id)
+        # Фолбэк для окружений без сервиса (например, автономный тестовый запуск)
+        return document.get("attachments", [])
+
     def _upload_attachment(self, button):
         document_id = button.property("document_id")
+        self._upload_attachment_for(document_id)
+
+    def _upload_attachment_for(self, document_id):
         file_path, _ = QFileDialog.getOpenFileName(
             None, "Выберите файл для загрузки", "",
             "Документы (*.pdf *.docx *.doc *.txt *.tif);;PDF (*.pdf);;Word (*.docx *.doc);;Текст (*.txt);;TIFF (*.tif)"

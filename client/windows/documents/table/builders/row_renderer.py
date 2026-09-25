@@ -11,11 +11,19 @@ class RowRenderer:
     Поддерживает как стандартные QTableWidgetItem, так и кастомные TableCellItem
     """
 
-    def __init__(self, table_widget, config, signals, columns_config=None):
+    def __init__(self, table_widget, config, signals, columns_config=None, http_client=None):
         self._table = table_widget
         self._config = config
         self._signals = signals
         self._columns = columns_config or config.COLUMNS_CONFIG
+
+        # Реальный список вложений подгружается лениво по клику (см.
+        # AttachmentCellBuilder), а не на каждую строку сразу — иначе это
+        # N+1 запросов на каждую отрисовку таблицы.
+        self._attachment_service = None
+        if http_client is not None:
+            from client.services.attachment_service import AttachmentService
+            self._attachment_service = AttachmentService(http_client)
 
         # Создаем ОДИН общий экземпляр сигналов для всех билдеров ячеек
         from client.windows.documents.table.builders.cell_builders import CellBuilderSignals
@@ -36,7 +44,8 @@ class RowRenderer:
         self._tags_builder = TagsCellBuilder(config.get_even_row_color, config.get_odd_row_color)
         self._attachment_builder = AttachmentCellBuilder(
             config.get_even_row_color, config.get_odd_row_color,
-            config.SUPPORTED_FORMATS, self.cell_signals
+            config.SUPPORTED_FORMATS, self.cell_signals,
+            attachment_service=self._attachment_service
         )
         self._reply_builder = ReplyCellBuilder(
             config.get_even_row_color, config.get_odd_row_color,
@@ -317,9 +326,28 @@ class RowRenderer:
         return item
 
     def _on_attachment_clicked(self, document, attachment):
+        # У сервера нет рабочего одиночного preview_url (см. предупреждение в
+        # attachment_service.py) — постраничного просмотра пока не существует.
+        # Показываем то немногое, что реально можно узнать: число страниц.
+        name = attachment.get("name") or attachment.get("file_name") or "Файл"
+        attachment_id = attachment.get("id")
+
+        pages = None
+        if self._attachment_service and attachment_id:
+            pages = self._attachment_service.get_page_count(attachment_id)
+
+        from PyQt6.QtWidgets import QMessageBox
+        if pages is not None:
+            QMessageBox.information(
+                None, "Вложение",
+                f"{name}\nСтраниц: {pages}\n\nПостраничный просмотр пока не реализован."
+            )
+        else:
+            QMessageBox.information(None, "Вложение", f"{name}\n\nПросмотр пока не реализован.")
+
         self._signals.attachment_opened.emit(
             document.get("id"),
-            attachment.get('path') or attachment.get('storage_path')
+            attachment.get('path') or attachment.get('storage_path') or attachment.get('preview_url') or ""
         )
 
     def _on_attachment_upload(self, document_id, file_path):
@@ -333,4 +361,3 @@ class RowRenderer:
         from PyQt6.QtWidgets import QMessageBox
         import os
         QMessageBox.information(None, "Загрузка ответа", f"Файл ответа загружен: {os.path.basename(file_path)}")
-

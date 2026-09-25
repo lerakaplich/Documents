@@ -5,7 +5,7 @@
 import os
 from datetime import datetime
 from PyQt6.QtWidgets import QDialog, QListWidgetItem, QWidget, QHBoxLayout, QLabel, QVBoxLayout, QFrame
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from PyQt6.uic import loadUi
 
 from client.core.themes import apply_theme_to_widget, T
@@ -34,7 +34,7 @@ class CommentItemWidget(QWidget):
 
         # Имя автора (жирный)
         author_label = QLabel()
-        author_name = comment.get('author_name', comment.get('author', 'Неизвестный'))
+        author_name = comment.get('author_fio') or comment.get('author_name') or comment.get('author') or 'Неизвестный'
         author_label.setText(author_name)
         author_label.setStyleSheet(f"""
             QLabel {{
@@ -116,28 +116,25 @@ class CommentItemWidget(QWidget):
         """)
 
 
+from client.core.state.app_state import AppState
+from client.services.comment_service import CommentService
+
 class CommentDialog(QDialog):
-    """
-    Диалог просмотра и добавления комментариев
-    """
-
-    # Сигнал при добавлении нового комментария
     comment_added = pyqtSignal(dict)
-
-    def __init__(self, document_data: dict, parent=None, current_user: dict = None):
+    def __init__(self, document_data, parent=None, current_user=None, http_client=None):
         super().__init__(parent)
-
         self.document_data = document_data
         self.current_user = current_user or self._get_default_user()
-        self._comments_cache = []  # Кеш комментариев для избежания рекурсии
+        self._comments_cache = []
+        self.http_client = http_client or AppState().http_client
+        self.comment_service = CommentService(self.http_client)
 
-        # Загружаем UI
         ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "comments_dialog.ui")
         loadUi(ui_path, self)
         apply_theme_to_widget(self)
 
         self._setup_ui()
-        self._load_comments()
+        self._load_comments_from_server()   # ← вместо self._load_comments()
         self._connect_signals()
 
     def _get_default_user(self) -> dict:
@@ -157,13 +154,45 @@ class CommentDialog(QDialog):
         doc_title = self.document_data.get('title', self.document_data.get('subject', 'Без темы'))
 
         self.docInfoLabel.setText(f"Документ №{doc_number}")
-
+        self.commentsListWidget.setStyleSheet(f"""
+            QListWidget {{
+                border: 1px solid {T.BORDER_LIGHT};
+                border-radius: 8px;
+                background-color: {T.BG_SURFACE_SUBTLE};
+                padding: 6px 0px;
+            }}
+            QListWidget::item {{
+                padding: 0px;
+                margin: 0px;
+                width: 100%;
+            }}
+        """)
         # Настраиваем размеры
         self.setMinimumWidth(600)
         self.setMinimumHeight(500)
 
         # Устанавливаем фокус на поле ввода
         self.commentTextEdit.setFocus()
+
+    def _load_comments_from_server(self):
+        doc_id = self.document_data.get("id")
+        if not doc_id:
+            self._load_comments()
+            return
+
+        try:
+            server_comments = self.comment_service.get_comments(doc_id) or []
+        except Exception as e:
+            print(f"[CommentDialog] Ошибка загрузки комментариев: {e}")
+            server_comments = []
+
+        # Локальные (добавленные в этой сессии) — оставляем тоже
+        local = self.document_data.get("comments", []) or []
+        server_ids = {c.get("id") for c in server_comments}
+        merged = list(server_comments) + [c for c in local if c.get("id") not in server_ids]
+
+        self.document_data["comments"] = merged
+        self._load_comments()
 
     def _load_comments(self):
         """Загрузка комментариев в список"""
@@ -176,9 +205,9 @@ class CommentDialog(QDialog):
             item = QListWidgetItem("Нет комментариев")
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            item.setSizeHint(QSize(0, 60))  # высота, ширина = по вьюпорту
             self.commentsListWidget.addItem(item)
             return
-
         # Функция для преобразования created_at в datetime (без часового пояса)
         def parse_created_at(comment):
             created_at = comment.get('created_at')
@@ -263,20 +292,27 @@ class CommentDialog(QDialog):
         return super().eventFilter(obj, event)
 
     def _on_send_clicked(self):
-        """Обработка отправки комментария"""
         text = self.commentTextEdit.toPlainText().strip()
-
         if not text:
             return
 
-        # Создаем новый комментарий
+        doc_id = self.document_data.get("id")
+
+        # 1. Отправляем на сервер (если возможно)
+        if doc_id:
+            try:
+                self.comment_service.add_comment(doc_id, text)
+            except Exception as e:
+                print(f"[CommentDialog] Не удалось отправить комментарий: {e}")
+
+        # 2. Локально — как раньше
         new_comment = {
             'id': len(self._comments_cache) + 1,
+            'author_fio': self.current_user.get('full_name', 'Пользователь'),
             'author': self.current_user.get('full_name', 'Пользователь'),
-            'author_name': self.current_user.get('full_name', 'Пользователь'),
             'text': text,
             'created_at': datetime.now(),
-            'user_id': self.current_user.get('id', 0)
+            'user_id': self.current_user.get('id', 0),
         }
 
         # Добавляем в кеш

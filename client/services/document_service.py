@@ -2,7 +2,7 @@
 
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from client.core.http_client import HttpClient
+from client.core.http_client import HttpClient, logger
 
 # Поля, обязательные по контракту POST /documents (DocumentCreateForm).
 # Ключ -> сообщение, которое покажем пользователю, если поле не заполнено.
@@ -268,4 +268,14 @@ class DocumentService:
             return []
         except Exception as e:
             print(f"❌ get_unanswered_stats: {e}")
+            return []
+
+    def get_document_history(self, document_id: int) -> list:
+        """GET /documents/{document_id}/history — сквозная история документа."""
+        try:
+            logger.info(f"📥 Запрос истории документа {document_id}")
+            r = self.client.get(f"{self.base_path}/{document_id}/history")
+            return r if isinstance(r, list) else []
+        except Exception as e:
+            logger.error(f"❌ Ошибка загрузки истории: {e}")
             return []

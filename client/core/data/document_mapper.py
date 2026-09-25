@@ -22,17 +22,16 @@
 
 ЧТО ПОКА НЕ РЕШЕНО (см. TODO ниже) — не гадаем, оставляем пусто/False,
 чтобы не показать пользователю неверные данные:
-    executors, delegates  — сервер отдаёт общий список `participants`
-        с полем `role`, но нет подтверждённого перечня значений role
-        (нужен server/app/schemas/doc/document_dto.py, чтобы узнать,
-        как отличить исполнителя от делегата). Пока фильтруем по
-        значениям "executor"/"delegate" — ЭТО ДОГАДКА, проверьте и
-        поправьте EXECUTOR_ROLES/DELEGATE_ROLES ниже под реальный enum.
+    executors  — фильтруется по role == "executor", это ДОГАДКА (не
+        подтверждена в DocumentRole). delegates используют role == "delegate",
+        это подтверждено докстрингом на сервере (см. document_mapper.py).
     attachments, reply_file — реестр отдаёт только флаги has_attachments
-        и reply_id, полного списка файлов/объекта ответа тут нет.
-        Нужен client/services/attachment_service.py (или расширение
-        DocumentDetailRead), чтобы подгружать это по клику, а не в
-        каждой строке таблицы разом.
+        и reply_id, полного списка файлов тут нет. Реальный список теперь
+        подгружается лениво по клику через AttachmentService.get_attachments()
+        (см. cell_builders.AttachmentCellBuilder) — не через этот маппер,
+        т.к. дёргать вложения для каждой строки сразу при рендере таблицы
+        значит по одному HTTP-запросу на строку. reply_file по-прежнему
+        не решён: сервер отдаёт только reply_id (число), а не объект ответа.
     comments — список комментариев реестр не отдаёт, только
         last_comment_text. Оставляем [] — этого достаточно, т.к.
         CommentsCellBuilder показывает last_comment_text напрямую
@@ -40,9 +39,12 @@
 """
 from typing import Any, Dict, List, Optional
 
-# TODO(бэкенд): сверить с реальными значениями role в document_dto.py
-EXECUTOR_ROLES = {"executor"}
-DELEGATE_ROLES = {"delegate"}
+# TODO(бэкенд): значение "delegate" подтверждено докстрингом
+# UnansweredDocumentStat.assignees на сервере ("ФИО Получателей (recipient)
+# и Делегатов (delegate)"). Значение "executor" НЕ подтверждено — сам enum
+# DocumentRole (server/app/database/document_models.py) не проверялся.
+EXECUTOR_ROLES = {"executor"}  # ⚠ догадка, сверить с DocumentRole
+DELEGATE_ROLES = {"delegate"}  # подтверждено докстрингом на сервере
 
 
 def map_document_list_item(item: Dict[str, Any]) -> Dict[str, Any]:

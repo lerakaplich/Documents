@@ -252,3 +252,18 @@ class HttpClient:
             return {"ok": True}
 
         return data
+
+    def post_form(self, endpoint: str, data: dict) -> Dict[str, Any]:
+        """POST application/x-www-form-urlencoded (для FastAPI Form)."""
+        url = f"{self.base_url}{endpoint}"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {self._access_token}" if self._access_token else "",
+        }
+        logger.info(f"📤 POST (form) {url}")
+        response = self.session.post(url, headers=headers, data=data, timeout=30)
+        if response.status_code >= 400:
+            raise Exception(f"Ошибка {response.status_code}: {response.text[:200]}")
+        if not response.content:
+            return {}
+        return response.json()

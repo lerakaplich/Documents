@@ -68,7 +68,7 @@ class DocumentsPanel(QWidget):
         self._setup_buttons()
 
     def _init_table(self):
-        self.documents_table = DocumentsTable()
+        self.documents_table = DocumentsTable(http_client=self.http_client)
         if hasattr(self, 'contentFrame'):
             self.contentLayout.addWidget(self.documents_table)
         elif hasattr(self, 'horizontalLayoutHeader'):
@@ -574,7 +574,8 @@ class DocumentsPanel(QWidget):
             dialog = HistoryDialog(
                 document_data=full_document_data,
                 parent=self,
-                current_user=current_user
+                current_user=current_user,
+                http_client=self.http_client,
             )
             dialog.exec()
 
@@ -716,7 +717,8 @@ class DocumentsPanel(QWidget):
             dialog = CommentDialog(
                 document_data=document_to_pass,
                 parent=self,
-                current_user=current_user
+                current_user=current_user,
+                http_client=self.http_client,  # ← добавить
             )
             dialog.comment_added.connect(
                 lambda comment: self._on_comment_added(document_data.get("id"), comment)

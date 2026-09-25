@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QDialog, QListWidgetItem, QWidget, QHBoxLayout,
     QLabel, QVBoxLayout, QFrame, QApplication, QPushButton, QListWidget
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
 from PyQt6.uic import loadUi
 
 from client.core.themes import apply_theme_to_widget, get_manager
@@ -22,26 +22,30 @@ ROOT_DIR = os.path.dirname(
 
 def parse_datetime(value) -> datetime:
     """
-    Универсальный парсер даты/времени
-
-    Args:
-        value: строка или datetime объект
-
-    Returns:
-        datetime: объект datetime
+    Универсальный парсер даты/времени.
+    Всегда возвращает NAIVE datetime (UTC), чтобы сортировка
+    не падала на сравнении aware vs naive.
     """
     if value is None:
-        return datetime.now()
+        return datetime.min
 
     if isinstance(value, datetime):
-        return value
+        return _to_naive_utc(value)
 
     if isinstance(value, str):
+        # ISO с 'Z' → +00:00, чтобы fromisoformat понял
+        s = value.replace("Z", "+00:00")
+
+        try:
+            dt = datetime.fromisoformat(s)
+            return _to_naive_utc(dt)
+        except (ValueError, TypeError):
+            pass
+
         formats = [
             "%Y-%m-%d %H:%M:%S",
             "%Y-%m-%dT%H:%M:%S",
             "%Y-%m-%dT%H:%M:%S.%f",
-            "%Y-%m-%dT%H:%M:%S.%fZ",
             "%Y-%m-%d %H:%M:%S.%f",
             "%d.%m.%Y %H:%M",
             "%d.%m.%Y %H:%M:%S",
@@ -52,15 +56,17 @@ def parse_datetime(value) -> datetime:
             except (ValueError, TypeError):
                 continue
 
-        try:
-            return datetime.fromisoformat(value.replace('Z', '+00:00'))
-        except (ValueError, TypeError):
-            pass
-
         print(f"[parse_datetime] Не удалось распарсить: {value}")
-        return datetime.now()
+        return datetime.min
 
-    return datetime.now()
+    return datetime.min
+
+
+def _to_naive_utc(dt: datetime) -> datetime:
+    """aware → naive UTC; naive оставляем как есть."""
+    if dt.tzinfo is not None:
+        return dt.astimezone(tz=None).replace(tzinfo=None)  # локальная TZ → naive
+    return dt
 
 
 class HistoryItemWidget(QWidget):
@@ -157,10 +163,13 @@ class HistoryItemWidget(QWidget):
             to_user = event.get('to_user', 'Неизвестный пользователь')
             return f'Пользователь {from_user} перенаправил документ пользователю {to_user}'
 
+
         elif event_type == 'comment':
             user = event.get('user', 'Неизвестный пользователь')
-            text = event.get('text', '')
-            return f'Пользователь {user} оставил комментарий «{text}»'
+            text = (event.get('text') or '').strip()
+            if text:
+                return f'Пользователь {user} оставил комментарий «{text}»'
+            return f'Пользователь {user} оставил комментарий'
 
         elif event_type == 'status_change':
             user = event.get('user', 'Неизвестный пользователь')
@@ -168,9 +177,10 @@ class HistoryItemWidget(QWidget):
             new_status = event.get('new_status', 'Неизвестный статус')
             return f'Пользователь {user} изменил статус документа с "{old_status}" на "{new_status}"'
 
-        elif event_type == 'created':
+
+        elif event_type == 'read':
             user = event.get('user', 'Неизвестный пользователь')
-            return f'Пользователь {user} создал документ'
+            return f'Пользователь {user} прочитал документ'
 
         else:
             user = event.get('user', 'Неизвестный пользователь')
@@ -214,16 +224,17 @@ class HistoryItemWidget(QWidget):
             """)
 
 
+from client.core.state.app_state import AppState
+from client.services.document_service import DocumentService
+
 class HistoryDialog(QDialog):
-    """
-    Диалог просмотра истории документа
-    """
-
-    def __init__(self, document_data: dict, parent=None, current_user: dict = None):
+    def __init__(self, document_data, parent=None, current_user=None, http_client=None):
         super().__init__(parent)
-
         self.document_data = document_data
         self.current_user = current_user or self._get_default_user()
+        self.http_client = http_client or AppState().http_client
+        self.document_service = DocumentService(self.http_client)
+
 
         # Загружаем UI
         ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "history_dialog.ui")
@@ -333,14 +344,28 @@ class HistoryDialog(QDialog):
         self.setMinimumHeight(600)
 
     def _load_history(self):
-        """Загрузка истории в список"""
         if not hasattr(self, 'historyListWidget'):
             print("Ошибка: historyListWidget не найден")
             return
 
         self.historyListWidget.clear()
 
-        history = self.document_data.get('history', [])
+        # 1. Пробуем подтянуть с сервера
+        doc_id = self.document_data.get("id")
+        server_history = []
+        if doc_id:
+            try:
+                server_history = self.document_service.get_document_history(doc_id)
+            except Exception as e:
+                print(f"[HistoryDialog] Ошибка загрузки истории: {e}")
+
+        # 2. Fallback — локальные данные
+        # 2. Маппинг серверных DTO в формат HistoryItemWidget
+        if server_history:
+            server_history = [self._map_server_event(ev) for ev in server_history]
+
+        history = server_history or self.document_data.get('history', [])
+        history = [ev for ev in history if ev.get("type") not in ("created", "read")]
 
         if not history:
             history = self._generate_history_from_data()
@@ -349,8 +374,10 @@ class HistoryDialog(QDialog):
             item = QListWidgetItem("История пуста")
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            item.setSizeHint(QSize(0, 60))
             self.historyListWidget.addItem(item)
             return
+
 
         def get_sort_key(event):
             created_at = event.get('created_at')
@@ -461,6 +488,50 @@ class HistoryDialog(QDialog):
             print(f"[HistoryDialog] Error sorting generated history: {e}")
 
         return history
+
+    @staticmethod
+    def _map_server_event(ev: dict) -> dict:
+        """
+        DocumentHistoryItemRead → формат HistoryItemWidget.
+        Серверные event_type: 'comment' | 'redirected' | 'read' | 'created' | 'status_changed'
+        """
+        et = (ev.get("event_type") or "").lower()
+
+        base = {
+            "created_at": ev.get("created_at"),
+            "user": ev.get("employee_full_name") or "Неизвестный пользователь",
+        }
+
+        # комментарий — сервер присылает 'comment', поддержим оба варианта
+        if et in ("comment", "commented"):
+            base["type"] = "comment"
+            base["text"] = ev.get("comment_text") or ev.get("text") or ""
+            return base
+
+        if et == "status_changed":
+            base["type"] = "status_change"
+            base["old_status"] = ev.get("old_status") or ""
+            base["new_status"] = ev.get("new_status") or ""
+            return base
+
+        if et == "redirected":
+            base["type"] = "redirect"
+            base["from_user"] = ev.get("employee_full_name") or "Неизвестный пользователь"
+            base["to_user"] = ev.get("target_employee_full_name") or "Неизвестный пользователь"
+            return base
+
+        if et == "read":
+            base["type"] = "read"
+            base["text"] = "прочитал документ"
+            return base
+
+        if et == "created":
+            base["type"] = "created"
+            return base
+
+        base["type"] = et or "unknown"
+        return base
+        return base
 
     def _add_event_to_list(self, event: dict, show_separator: bool = True):
         """Добавление события в список"""

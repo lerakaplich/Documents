@@ -17,12 +17,22 @@ class TableController(QObject):
     pin_status_changed = pyqtSignal(int, bool)
     data_loaded = pyqtSignal(int)
 
-    def __init__(self, table_widget, data_manager, row_renderer, updater):
+    def __init__(self, table_widget, data_manager, row_renderer, updater, http_client=None):
         super().__init__()
         self._table = table_widget
         self._data_manager = data_manager
         self._row_renderer = row_renderer
         self._updater = updater
+
+        # Реальные доп. поля типа документа (для колонок 20+) — берём через
+        # DocTypeService, если есть http_client; иначе (например, автономный
+        # запуск модуля из __main__) откатываемся на фейковый document_repository.
+        self._http_client = http_client
+        self._doc_type_service = None
+        if http_client is not None:
+            from client.services.doc_type_service import DocTypeService
+            self._doc_type_service = DocTypeService(http_client)
+        self._type_fields_cache = {}
 
         self._current_doc_type = "default"
         self._current_view_mode = "all"
@@ -84,16 +94,35 @@ class TableController(QObject):
         try:
             type_id = int(doc_type) if doc_type != "default" else None
             if type_id:
-                from client.core.data.document_repository import document_repository
-                type_info = document_repository.get_document_type_by_id(type_id)
-                if type_info and type_info.get("fields"):
-                    for idx, field in enumerate(type_info["fields"], start=20):
-                        field_name = field.get("label", field.get("name", f"Поле_{idx}"))
-                        columns_config[idx] = field_name
+                for idx, field in enumerate(self._get_type_fields(type_id), start=20):
+                    field_name = field.get("label", field.get("name", f"Поле_{idx}"))
+                    columns_config[idx] = field_name
         except (ValueError, TypeError):
             pass
 
         return columns_config
+
+    def _get_type_fields(self, type_id: int) -> list:
+        """Доп. поля типа документа, для колонок 20+. Кэшируется на время жизни контроллера."""
+        if type_id in self._type_fields_cache:
+            return self._type_fields_cache[type_id]
+
+        fields = []
+        if self._doc_type_service is not None:
+            try:
+                type_info = self._doc_type_service.get_type(type_id)
+                fields = (type_info or {}).get("fields") or []
+            except Exception as e:
+                print(f"[TableController] Не удалось получить поля типа {type_id}: {e}")
+                fields = []
+        else:
+            # Нет http_client (напр. автономный запуск __main__) — тестовые метаданные
+            from client.core.data.document_repository import document_repository
+            type_info = document_repository.get_document_type_by_id(type_id)
+            fields = (type_info or {}).get("fields") or []
+
+        self._type_fields_cache[type_id] = fields
+        return fields
 
     def _find_reg_number_column(self) -> int:
         if self._row_manager:
