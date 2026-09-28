@@ -4,7 +4,7 @@
 import os
 import sys
 from PyQt6.QtWidgets import QWidget, QApplication, QVBoxLayout, QMessageBox
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import pyqtSignal, Qt, QTimer
 from PyQt6.uic import loadUi
 
 from client.core.data.document_data import DocumentDataConfig
@@ -16,6 +16,7 @@ from client.windows.documents.menus.filter_menu import FilterMenu
 from client.windows.documents.menus.status_menu import StatusesMenu
 from client.windows.documents.table.create.document_create_dialog import DocumentDialog
 from client.windows.documents.table.documents_table import DocumentsTable
+from client.windows.documents.table.documents_pagination_manager import DocumentsPaginationManager
 from client.core.table.documents_panel_controller import DocumentsPanelController
 
 # Импортируем вашу плавающую кнопку
@@ -51,6 +52,13 @@ class DocumentsPanel(QWidget):
         # Контроллер бизнес-логики (реальные документы идут через http_client)
         self.controller = DocumentsPanelController(self.http_client)
 
+        # Поиск идёт на сервер — не шлём запрос на каждую букву
+        self._pending_search = ""
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(350)
+        self._search_timer.timeout.connect(self._run_search)
+
         self._init_ui()
         self._init_table()
         self._connect_signals()
@@ -70,13 +78,18 @@ class DocumentsPanel(QWidget):
     def _init_table(self):
         self.documents_table = DocumentsTable(http_client=self.http_client)
         if hasattr(self, 'contentFrame'):
-            self.contentLayout.addWidget(self.documents_table)
+            target_layout = self.contentLayout
         elif hasattr(self, 'horizontalLayoutHeader'):
-            self.verticalLayout.addWidget(self.documents_table)
+            target_layout = self.verticalLayout
         elif hasattr(self, 'panelLayout'):
-            self.panelLayout.addWidget(self.documents_table)
+            target_layout = self.panelLayout
         else:
-            self.layout().addWidget(self.documents_table)
+            target_layout = self.layout()
+        target_layout.addWidget(self.documents_table)
+
+        # Панель пагинации — сразу под таблицей
+        self.pagination = DocumentsPaginationManager()
+        self.pagination.setup_bar(target_layout, self._change_page)
 
     def _init_floating_button(self):
         self.floating_btn = FloatingActionButton(self)
@@ -430,13 +443,24 @@ class DocumentsPanel(QWidget):
             if title and hasattr(self, 'labelTitle'):
                 self.labelTitle.setText(title)
 
+            self.pagination.update(self.controller.pagination)
+
         except Exception as e:
             print(f"[DocumentsPanel] Error updating table: {e}")
             import traceback
             traceback.print_exc()
 
+    def _change_page(self, delta: int):
+        """◀ / ▶ в панели пагинации."""
+        p = self.controller.pagination
+        if not 1 <= p['page'] + delta <= p['pages']:
+            return
+        documents, title, view_mode, doc_type = self.controller.change_page(delta)
+        self._update_table(documents, doc_type, title, view_mode)
+        self.documents_table.tableWidget.scrollToTop()
+
     def refresh(self):
-        """Перезагрузить текущие данные через контроллер"""
+        """Перезагрузить текущую страницу через контроллер"""
         documents, title, view_mode, doc_type = self.controller.refresh()
         self._update_table(documents, doc_type, title, view_mode)
 
@@ -444,8 +468,16 @@ class DocumentsPanel(QWidget):
 
     def on_search_changed(self, text):
         self.search_requested.emit(text)
-        documents, title, view_mode, doc_type = self.controller.search_documents(text)
+        self._pending_search = text
+        self._search_timer.start()  # перезапуск: запрос уйдёт после паузы в наборе
+
+    def _run_search(self):
+        documents, title, view_mode, doc_type = self.controller.search_documents(self._pending_search)
         self._update_table(documents, doc_type, title, view_mode)
+
+    def reapply_theme(self):
+        apply_theme_to_widget(self)
+        self.pagination.reapply_theme()
 
     def update_title(self, title):
         if hasattr(self, 'labelTitle'):

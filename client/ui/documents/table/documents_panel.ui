@@ -164,6 +164,47 @@ QLineEdit:focus {
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="btnSearch">
+        <property name="minimumSize">
+         <size>
+          <width>70</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>70</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="toolTip">
+         <string>Сбросить все фильтры и поиск</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">
+QPushButton {
+    background-color: {ACCENT_DANGER};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+}
+QPushButton:hover {
+    background-color: {ACCENT_DANGER_HOVER};
+}
+QPushButton:pressed {
+    background-color: {ACCENT_DANGER_PRESSED};
+}
+        
+</string>
+        </property>
+        <property name="text">
+         <string>Поиск</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="columnsBtn">
         <property name="minimumSize">
          <size>

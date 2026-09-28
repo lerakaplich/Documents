@@ -1,9 +1,14 @@
 # client/core/table/documents_panel_controller.py
 
+import math
+
 from client.core.data.document_repository import document_repository
 from client.core.data.document_data import DocumentDataConfig
 from client.core.data.document_mapper import map_documents_response
 from client.services.document_service import DocumentService
+
+
+PAGE_SIZE = 50
 
 
 class DocumentsPanelController:
@@ -40,72 +45,109 @@ class DocumentsPanelController:
         self.current_title = "Все документы"
         self.current_view_mode = "all"
 
-    # ========== ЗАГРУЗКА СПИСКА ДОКУМЕНТОВ (реальный API) ==========
+        # Пагинация: сервер отдаёт total/limit/offset, лимит ≤ 100
+        self.page_size = PAGE_SIZE
+        self.current_page = 1
+        self.pagination = {"page": 1, "pages": 1, "total": 0}
+
+    # ========== ЗАГРУЗКА СПИСКА ДОКУМЕНТОВ (реальный API, постранично) ==========
+
+    def _fetch(self, page: int, **filters) -> list:
+        """Запрашивает одну страницу, обновляет self.pagination / self.current_page."""
+        page = max(1, page)
+
+        def _request(p):
+            return self.service.get_documents(
+                scope="all",
+                limit=self.page_size,
+                offset=(p - 1) * self.page_size,
+                **filters,
+            )
+
+        response = _request(page)
+        total = int(response.get("total", 0) or 0)
+        pages = max(1, math.ceil(total / self.page_size))
+
+        # Страницы больше нет (например, удалили последний документ на ней) —
+        # переходим на последнюю существующую.
+        if page > pages:
+            page = pages
+            response = _request(page)
+
+        self.current_page = page
+        self.pagination = {"page": page, "pages": pages, "total": total}
+        return map_documents_response(response)
+
+    def _search_active(self) -> bool:
+        return bool(self.current_query) and len(self.current_query) >= 3
+
+    def _load_current(self, page: int):
+        """Загружает страницу текущего режима (поиск > тип > направление > все).
+        Возвращает (documents, title, view_mode, doc_type)."""
+        if self._search_active():
+            documents = self._fetch(page, search=self.current_query)
+            return documents, f"Поиск: {self.current_query}", "search", "default"
+
+        if self.current_type_id is not None:
+            documents = self._fetch(page, type_id=self.current_type_id)
+            return documents, self.current_title, "type", str(self.current_type_id)
+
+        if self.current_direction is not None:
+            documents = self._fetch(page, direction=self.current_direction)
+            direction = self.current_direction
+            doc_type = direction if direction in ["incoming", "outgoing", "internal"] else "default"
+            return documents, self.current_title, "direction", doc_type
+
+        documents = self._fetch(page)
+        return documents, self.current_title, "all", "default"
 
     def load_all_documents(self):
-        """Загружает все документы, обновляет состояние."""
-        response = self.service.get_documents(scope="all")
-        documents = map_documents_response(response)
-
+        """Загружает все документы (страница 1), обновляет состояние."""
         self.current_type_id = None
         self.current_direction = None
+        self.current_query = ""
         self.current_title = "Все документы"
         self.current_view_mode = "all"
-        return documents, self.current_title, self.current_view_mode, "default"
+        return self._load_current(1)
 
     def load_documents_by_type(self, type_id: int, title: str = None):
-        """Загружает документы по типу, обновляет состояние.
+        """Загружает документы по типу (страница 1).
 
-        `title` — имя типа, если оно уже известно вызывающей стороне (например,
-        LeftPanel передаёт его вместе с type_id в сигнале type_clicked). Если не
-        передано, используем f"Тип {type_id}" — специального запроса за именем
-        типа отсюда не делаем.
+        `title` — имя типа, если оно уже известно вызывающей стороне (LeftPanel
+        передаёт его вместе с type_id). Иначе f"Тип {type_id}".
         """
-        response = self.service.get_documents(scope="all", type_id=type_id)
-        documents = map_documents_response(response)
-
         self.current_type_id = type_id
         self.current_direction = None
+        self.current_query = ""
         self.current_view_mode = "type"
         self.current_title = title or f"Тип {type_id}"
-
-        return documents, self.current_title, "type", str(type_id)
+        return self._load_current(1)
 
     def load_documents_by_direction(self, direction: str, title: str = None):
-        """Загружает документы по направлению (internal/external)."""
-        response = self.service.get_documents(scope="all", direction=direction)
-        documents = map_documents_response(response)
-
+        """Загружает документы по направлению (internal/external), страница 1."""
         self.current_direction = direction
         self.current_type_id = None
+        self.current_query = ""
         self.current_view_mode = "direction"
-
         if title is None:
             title = DocumentDataConfig.DIRECTION_MAPPING.get(direction, direction)
         self.current_title = title
-
-        doc_type = direction if direction in ["incoming", "outgoing", "internal"] else "default"
-        return documents, title, "direction", doc_type
+        return self._load_current(1)
 
     def search_documents(self, query: str):
-        """Поиск документов по строке через сервер. Изменяет состояние поиска."""
-        self.current_query = query
-        if query and len(query) >= 3:
-            response = self.service.get_documents(scope="all", search=query)
-            results = map_documents_response(response)
-            return results, f"Поиск: {query}", "search", "default"
-        else:
-            # Короткий запрос — возвращаем всё в рамках текущего режима
-            return self.refresh()
+        """Поиск через сервер (страница 1). Короткий запрос (<3 символов) —
+        возврат к текущему режиму просмотра."""
+        self.current_query = query or ""
+        return self._load_current(1)
+
+    def change_page(self, delta: int):
+        """Перейти на страницу current_page + delta в рамках текущего режима."""
+        new_page = min(max(1, self.current_page + delta), self.pagination["pages"])
+        return self._load_current(new_page)
 
     def refresh(self):
-        """Обновляет данные в соответствии с текущим состоянием."""
-        if self.current_type_id is not None:
-            return self.load_documents_by_type(self.current_type_id, self.current_title)
-        elif self.current_direction is not None:
-            return self.load_documents_by_direction(self.current_direction, self.current_title)
-        else:
-            return self.load_all_documents()
+        """Перезагружает ТЕКУЩУЮ страницу текущего режима."""
+        return self._load_current(self.current_page)
 
     # ========== ОСТАЛЬНАЯ БИЗНЕС-ЛОГИКА (пока на фейковых данных — см. докстринг класса) ==========
 
