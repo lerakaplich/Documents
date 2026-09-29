@@ -15,23 +15,19 @@ class DeleteDialog(QDialog):
 
     deleted = pyqtSignal()
 
-    def __init__(self, parent=None, ui_path: str = None):
+    def __init__(self, parent=None, ui_path: str | None = None):
         super().__init__(parent)
 
         # Определяем путь к UI-файлу, если он не передан
         if ui_path is None:
             current_dir = os.path.dirname(os.path.abspath(__file__))
             # Ищем в папке system (где находится delete_dialog.py)
-            ui_path = os.path.join(
-                current_dir, "..", "..", "client", "ui", "system", "delete_dialog.ui"
-            )
+            ui_path = os.path.join(current_dir, "..", "..", "client", "ui", "system", "delete_dialog.ui")
             ui_path = os.path.normpath(ui_path)
 
             # Если не найден, пробуем альтернативный путь (в папке ui)
             if not os.path.exists(ui_path):
-                ui_path = os.path.join(
-                    current_dir, "..", "..", "client", "ui", "delete_dialog.ui"
-                )
+                ui_path = os.path.join(current_dir, "..", "..", "client", "ui", "delete_dialog.ui")
                 ui_path = os.path.normpath(ui_path)
 
         # Проверяем существование файла
@@ -57,7 +53,7 @@ class DeleteDialog(QDialog):
         self.accept()
 
     @staticmethod
-    def show_confirmation(parent=None, ui_path: str = None) -> bool:
+    def show_confirmation(parent=None, ui_path: str | None = None) -> bool:
         """
         Удобный статический метод для показа диалога.
         Возвращает True, если пользователь нажал 'Да', иначе False.

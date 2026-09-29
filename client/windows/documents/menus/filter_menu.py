@@ -40,24 +40,16 @@ class FilterMenu(BaseMenu):
         self.addAction(self.reset_date_action)
 
         self.only_read_action.toggled.connect(
-            lambda c: self._on_pair_toggled(
-                self.only_read_action, self.only_unread_action, c, must_keep_one=False
-            )
+            lambda c: self._on_pair_toggled(self.only_read_action, self.only_unread_action, c, must_keep_one=False)
         )
         self.only_unread_action.toggled.connect(
-            lambda c: self._on_pair_toggled(
-                self.only_unread_action, self.only_read_action, c, must_keep_one=False
-            )
+            lambda c: self._on_pair_toggled(self.only_unread_action, self.only_read_action, c, must_keep_one=False)
         )
         self.my_docs_action.toggled.connect(
-            lambda c: self._on_pair_toggled(
-                self.my_docs_action, self.all_docs_action, c, must_keep_one=True
-            )
+            lambda c: self._on_pair_toggled(self.my_docs_action, self.all_docs_action, c, must_keep_one=True)
         )
         self.all_docs_action.toggled.connect(
-            lambda c: self._on_pair_toggled(
-                self.all_docs_action, self.my_docs_action, c, must_keep_one=True
-            )
+            lambda c: self._on_pair_toggled(self.all_docs_action, self.my_docs_action, c, must_keep_one=True)
         )
         self.by_date_action.triggered.connect(lambda: self.dateFilterRequested.emit())
         self.reset_date_action.triggered.connect(self._on_reset_date)
@@ -70,9 +62,7 @@ class FilterMenu(BaseMenu):
         action.setChecked(state)
         action.blockSignals(False)
 
-    def _on_pair_toggled(
-        self, changed: QAction, other: QAction, checked: bool, must_keep_one: bool
-    ):
+    def _on_pair_toggled(self, changed: QAction, other: QAction, checked: bool, must_keep_one: bool):
         if checked:
             self._set_silent(other, False)
         elif must_keep_one:
@@ -87,9 +77,7 @@ class FilterMenu(BaseMenu):
 
     def _update_date_text(self):
         if self._date_from and self._date_to:
-            self.by_date_action.setText(
-                f"По дате: {self._date_from:%d.%m.%Y} – {self._date_to:%d.%m.%Y}"
-            )
+            self.by_date_action.setText(f"По дате: {self._date_from:%d.%m.%Y} – {self._date_to:%d.%m.%Y}")
         else:
             self.by_date_action.setText("По дате…")
         self.reset_date_action.setVisible(bool(self._date_from and self._date_to))

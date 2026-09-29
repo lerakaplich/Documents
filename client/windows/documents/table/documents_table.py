@@ -57,9 +57,7 @@ class DocumentsTable(QWidget):
     def _init_components(self):
         """Инициализация компонентов - создание, но без логики"""
         self.config = DocumentDataConfig()
-        self.row_renderer = RowRenderer(
-            self.tableWidget, self.config, self, http_client=self.http_client
-        )
+        self.row_renderer = RowRenderer(self.tableWidget, self.config, self, http_client=self.http_client)
         self.data_manager = TableDataManager(self.tableWidget, self.row_renderer)
         self.updater = TableUpdater(self.tableWidget)
 
@@ -89,13 +87,9 @@ class DocumentsTable(QWidget):
         self.context_menu_manager.history_requested.connect(
             lambda doc: self.document_action_triggered.emit("history", doc)
         )
-        self.context_menu_manager.edit_requested.connect(
-            lambda doc: self.document_action_triggered.emit("edit", doc)
-        )
+        self.context_menu_manager.edit_requested.connect(lambda doc: self.document_action_triggered.emit("edit", doc))
         self.context_menu_manager.read_status_requested.connect(
-            lambda doc, status: self.document_action_triggered.emit(
-                "read_status", {**doc, "is_read": status}
-            )
+            lambda doc, status: self.document_action_triggered.emit("read_status", {**doc, "is_read": status})
         )
         self.context_menu_manager.attachment_requested.connect(
             lambda doc: self.document_action_triggered.emit("attachment", doc)
@@ -106,9 +100,7 @@ class DocumentsTable(QWidget):
         self.context_menu_manager.delete_requested.connect(
             lambda doc: self.document_action_triggered.emit("delete", doc)
         )
-        self.context_menu_manager.pin_toggle_requested.connect(
-            lambda doc: self._controller.toggle_pin(doc.get("id"))
-        )
+        self.context_menu_manager.pin_toggle_requested.connect(lambda doc: self._controller.toggle_pin(doc.get("id")))
 
         self.read_status_changed.connect(self._controller.change_read_status)
 
@@ -123,9 +115,9 @@ class DocumentsTable(QWidget):
     def load_documents(
         self,
         documents: list,
-        doc_type: str = None,
-        title: str = None,
-        view_mode: str = None,
+        doc_type: str | None = None,
+        title: str | None = None,
+        view_mode: str | None = None,
     ):
         """Загрузить документы - делегируем контроллеру"""
         self._controller.load_documents(documents, doc_type, view_mode)
@@ -149,16 +141,14 @@ class DocumentsTable(QWidget):
                 if not w:
                     continue
                 # вызываем reapply_theme у самого виджета и его потомков
-                targets = [w] + w.findChildren(QWidget)
+                targets = [w, *w.findChildren(QWidget)]
                 for t in targets:
                     ra = getattr(t, "reapply_theme", None)
                     if callable(ra):
                         try:
                             ra()
                         except Exception as e:
-                            print(
-                                f"[DocumentsTable] reapply_theme error in {type(t).__name__}: {e}"
-                            )
+                            print(f"[DocumentsTable] reapply_theme error in {type(t).__name__}: {e}")
 
     def get_selected_document(self):
         """Получение выделенного документа"""
@@ -226,8 +216,6 @@ if __name__ == "__main__":
 
     from client.core.data.document_repository import document_repository
 
-    window.load_documents(
-        document_repository.get_all_documents(), "default", "Все документы", "all"
-    )
+    window.load_documents(document_repository.get_all_documents(), "default", "Все документы", "all")
 
     sys.exit(app.exec())

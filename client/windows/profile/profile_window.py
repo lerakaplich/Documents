@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 import sys
@@ -70,20 +71,14 @@ class ProfileLoader(QThread):
             self.finished.emit(data)
 
         except requests.exceptions.ConnectionError:
-            self.error.emit(
-                "Не удалось подключиться к серверу. Проверьте, что сервер запущен."
-            )
+            self.error.emit("Не удалось подключиться к серверу. Проверьте, что сервер запущен.")
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 401:
-                self.error.emit(
-                    f"Ошибка авторизации. Токен истек или неверный.\n{e.response.text}"
-                )
+                self.error.emit(f"Ошибка авторизации. Токен истек или неверный.\n{e.response.text}")
             elif e.response.status_code == 404:
                 self.error.emit("Профиль пользователя не найден.")
             else:
-                self.error.emit(
-                    f"Ошибка сервера: {e.response.status_code}\n{e.response.text}"
-                )
+                self.error.emit(f"Ошибка сервера: {e.response.status_code}\n{e.response.text}")
         except Exception as e:
             import traceback
 
@@ -94,7 +89,7 @@ class ProfileLoader(QThread):
 class ProfileForm(QWidget):
     """Главная форма профиля, объединяет ProfileInfo и OvertimePanel."""
 
-    def __init__(self, parent=None, employee_id: int = None):
+    def __init__(self, parent=None, employee_id: int | None = None):
         super().__init__(parent)
 
         self.employee_id = employee_id
@@ -148,18 +143,10 @@ class ProfileForm(QWidget):
         self.profile_info.setup_ui_elements(
             infoFrame=self.infoFrame if hasattr(self, "infoFrame") else None,
             labelTitle=self.labelTitle if hasattr(self, "labelTitle") else None,
-            label_position_value=self.label_position_value
-            if hasattr(self, "label_position_value")
-            else None,
-            label_phone_value=self.label_phone_value
-            if hasattr(self, "label_phone_value")
-            else None,
-            label_email_value=self.label_email_value
-            if hasattr(self, "label_email_value")
-            else None,
-            label_birth_date_value=self.label_birth_date_value
-            if hasattr(self, "label_birth_date_value")
-            else None,
+            label_position_value=self.label_position_value if hasattr(self, "label_position_value") else None,
+            label_phone_value=self.label_phone_value if hasattr(self, "label_phone_value") else None,
+            label_email_value=self.label_email_value if hasattr(self, "label_email_value") else None,
+            label_birth_date_value=self.label_birth_date_value if hasattr(self, "label_birth_date_value") else None,
             mainLayout=self.mainLayout if hasattr(self, "mainLayout") else None,
         )
 
@@ -169,36 +156,16 @@ class ProfileForm(QWidget):
         # ===== Настройка overtime panel =====
         # Проверяем наличие виджетов перед передачей
         tabWidget = self.tabWidget if hasattr(self, "tabWidget") else None
-        btnSelectPeriod = (
-            self.btnSelectPeriod if hasattr(self, "btnSelectPeriod") else None
-        )
-        btnSelectPeriodAll = (
-            self.btnSelectPeriodAll if hasattr(self, "btnSelectPeriodAll") else None
-        )
-        btnResetFilters = (
-            self.btnResetFilters if hasattr(self, "btnResetFilters") else None
-        )
-        btnResetFiltersAll = (
-            self.btnResetFiltersAll if hasattr(self, "btnResetFiltersAll") else None
-        )
-        btnAddOvertimeAll = (
-            self.btnAddOvertimeAll if hasattr(self, "btnAddOvertimeAll") else None
-        )
+        btnSelectPeriod = self.btnSelectPeriod if hasattr(self, "btnSelectPeriod") else None
+        btnSelectPeriodAll = self.btnSelectPeriodAll if hasattr(self, "btnSelectPeriodAll") else None
+        btnResetFilters = self.btnResetFilters if hasattr(self, "btnResetFilters") else None
+        btnResetFiltersAll = self.btnResetFiltersAll if hasattr(self, "btnResetFiltersAll") else None
+        btnAddOvertimeAll = self.btnAddOvertimeAll if hasattr(self, "btnAddOvertimeAll") else None
         btnExport = self.btnExport if hasattr(self, "btnExport") else None
-        labelTotalHoursMy = (
-            self.labelTotalHoursMy if hasattr(self, "labelTotalHoursMy") else None
-        )
-        labelTotalHoursAll = (
-            self.labelTotalHoursAll if hasattr(self, "labelTotalHoursAll") else None
-        )
-        allOvertimeFiltersLayout = (
-            self.allOvertimeFiltersLayout
-            if hasattr(self, "allOvertimeFiltersLayout")
-            else None
-        )
-        btnAddOvertime = (
-            self.btnAddOvertime if hasattr(self, "btnAddOvertime") else None
-        )
+        labelTotalHoursMy = self.labelTotalHoursMy if hasattr(self, "labelTotalHoursMy") else None
+        labelTotalHoursAll = self.labelTotalHoursAll if hasattr(self, "labelTotalHoursAll") else None
+        allOvertimeFiltersLayout = self.allOvertimeFiltersLayout if hasattr(self, "allOvertimeFiltersLayout") else None
+        btnAddOvertime = self.btnAddOvertime if hasattr(self, "btnAddOvertime") else None
         btnImport = self.btnImport if hasattr(self, "btnImport") else None
 
         # Настраиваем UI элементы панели переработок
@@ -241,9 +208,7 @@ class ProfileForm(QWidget):
             self.load_test_data()
             return
 
-        self.loader = ProfileLoader(
-            self.http_client, use_current_user=self.use_current_user
-        )
+        self.loader = ProfileLoader(self.http_client, use_current_user=self.use_current_user)
         self.loader.finished.connect(self.on_profile_loaded)
         self.loader.error.connect(self.on_profile_error)
         self.loader.start()
@@ -305,9 +270,7 @@ class ProfileForm(QWidget):
                     else:
                         dept_id = first_position.get("department_id")
                         if dept_id:
-                            print(
-                                f"⚠️ Нет цепочки подразделений, только department_id: {dept_id}"
-                            )
+                            print(f"⚠️ Нет цепочки подразделений, только department_id: {dept_id}")
                             department_chain.append(("Подразделение", f"ID: {dept_id}"))
 
             print(f"📋 Должность: {position_name}")
@@ -329,7 +292,7 @@ class ProfileForm(QWidget):
 
                     dt = datetime.fromisoformat(birth_date.replace("Z", "+00:00"))
                     birth_date = dt.strftime("%d.%m.%Y")
-                except:
+                except (ValueError, TypeError):
                     pass
             print(f"🎂 Дата рождения: {birth_date}")
 
@@ -360,9 +323,7 @@ class ProfileForm(QWidget):
             import traceback
 
             traceback.print_exc()
-            QMessageBox.warning(
-                self, "Ошибка", f"Не удалось обработать данные профиля:\n{e!s}"
-            )
+            QMessageBox.warning(self, "Ошибка", f"Не удалось обработать данные профиля:\n{e!s}")
 
     def on_profile_error(self, error_msg: str):
         """Обработка ошибки загрузки профиля"""
@@ -373,25 +334,17 @@ class ProfileForm(QWidget):
     def setup_connections(self):
         """Подключает сигналы кнопок и фильтров."""
         if hasattr(self, "btnSelectPeriod") and self.btnSelectPeriod:
-            self.btnSelectPeriod.clicked.connect(
-                self.overtime_panel.on_select_period_clicked
-            )
+            self.btnSelectPeriod.clicked.connect(self.overtime_panel.on_select_period_clicked)
         if hasattr(self, "btnSelectPeriodAll") and self.btnSelectPeriodAll:
-            self.btnSelectPeriodAll.clicked.connect(
-                self.overtime_panel.on_select_period_all_clicked
-            )
+            self.btnSelectPeriodAll.clicked.connect(self.overtime_panel.on_select_period_all_clicked)
 
         if hasattr(self, "btnResetFilters") and self.btnResetFilters:
             self.btnResetFilters.clicked.connect(self.overtime_panel.reset_my_filters)
         if hasattr(self, "btnResetFiltersAll") and self.btnResetFiltersAll:
-            self.btnResetFiltersAll.clicked.connect(
-                self.overtime_panel.reset_all_filters
-            )
+            self.btnResetFiltersAll.clicked.connect(self.overtime_panel.reset_all_filters)
 
         if hasattr(self, "btnAddOvertimeAll") and self.btnAddOvertimeAll:
-            self.btnAddOvertimeAll.clicked.connect(
-                self.overtime_panel.on_add_overtime_all_clicked
-            )
+            self.btnAddOvertimeAll.clicked.connect(self.overtime_panel.on_add_overtime_all_clicked)
 
         if hasattr(self, "btnExport") and self.btnExport:
             self.btnExport.clicked.connect(self.overtime_panel.on_export_clicked)
@@ -525,9 +478,7 @@ class ProfileForm(QWidget):
 
         title = QLabel("Профиль сотрудника")
         t = get_manager().current
-        title.setStyleSheet(
-            f"font-size: 24px; font-weight: bold; color: {t.TEXT_PRIMARY};"
-        )
+        title.setStyleSheet(f"font-size: 24px; font-weight: bold; color: {t.TEXT_PRIMARY};")
         main_layout.addWidget(title)
 
         self.infoFrame = QFrame()
@@ -572,10 +523,8 @@ if __name__ == "__main__":
 
     employee_id = None
     if len(sys.argv) > 1:
-        try:
+        with contextlib.suppress(ValueError):
             employee_id = int(sys.argv[1])
-        except ValueError:
-            pass
 
     window = ProfileForm(employee_id=employee_id)
     window.setWindowTitle("Профиль сотрудника")

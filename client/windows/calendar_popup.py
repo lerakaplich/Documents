@@ -94,9 +94,7 @@ class CalendarPopup(QFrame):
         self.spin_year.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
         self.spin_year.setFixedWidth(60)
         self.spin_year.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.spin_year.setKeyboardTracking(
-            False
-        )  # valueChanged — после Enter/потери фокуса
+        self.spin_year.setKeyboardTracking(False)  # valueChanged — после Enter/потери фокуса
         self.spin_year.valueChanged.connect(self._on_year_changed)
         self.spin_year.editingFinished.connect(self._on_year_editing_finished)
 

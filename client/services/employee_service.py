@@ -35,9 +35,7 @@ class EmployeeService:
         page = 1
         while True:
             print(f"[DEBUG] Запрос /employees/all page={page} limit=100")
-            result = self.client.get(
-                "/employees/all", params={"page": page, "limit": 100}
-            )
+            result = self.client.get("/employees/all", params={"page": page, "limit": 100})
             print(f"[DEBUG] Получено {len(result) if result else 0} записей")
             if not result:
                 break

@@ -28,7 +28,7 @@ class IconManager:
 
     # ── публичное API ────────────────────────────────────────────────
 
-    def get_icon(self, icon_name: str, size: QSize = None, color: str = None) -> QIcon:
+    def get_icon(self, icon_name: str, size: QSize = None, color: str | None = None) -> QIcon:
         """
         Получить иконку по имени.
 
@@ -59,9 +59,7 @@ class IconManager:
         self._icons[cache_key] = ic
         return ic
 
-    def get_pixmap(
-        self, icon_name: str, size: QSize = None, color: str = None
-    ) -> QPixmap:
+    def get_pixmap(self, icon_name: str, size: QSize = None, color: str | None = None) -> QPixmap:
         if color is None:
             color = self._default_color_for(icon_name)
         path = self._resolve_path(icon_name, color)

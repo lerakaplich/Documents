@@ -30,9 +30,7 @@ class EmployeeAsyncOperations:
             self.parent.hierarchy_manager.organizations = {
                 o["id"]: o["name"] for o in orgs if isinstance(o, dict) and o.get("id")
             }
-            print(
-                f"[INFO] Загружено организаций: {len(self.parent.hierarchy_manager.organizations)}"
-            )
+            print(f"[INFO] Загружено организаций: {len(self.parent.hierarchy_manager.organizations)}")
 
             # отделы по каждой организации, разворачиваем в плоский список
             depts = []
@@ -47,9 +45,7 @@ class EmployeeAsyncOperations:
                     continue
                 depts.extend(self._flatten(struct))
             self.parent.hierarchy_manager.build_departments_tree(depts)
-            print(
-                f"[INFO] Загружено подразделений: {len(self.parent.hierarchy_manager.departments_tree)}"
-            )
+            print(f"[INFO] Загружено подразделений: {len(self.parent.hierarchy_manager.departments_tree)}")
 
             self.parent.hierarchy_manager.group_departments_by_organization()
 
@@ -75,9 +71,7 @@ class EmployeeAsyncOperations:
             if not isinstance(n, dict):
                 continue
             out.append(n)
-            out.extend(
-                self._flatten(n.get("children") or n.get("subdepartments") or [])
-            )
+            out.extend(self._flatten(n.get("children") or n.get("subdepartments") or []))
         return out
 
     def _fill_test_data(self):
@@ -110,9 +104,7 @@ class EmployeeAsyncOperations:
         try:
             employee_id = self.data_manager.employee["id"]
             if self.employee_service:
-                self.employee_service.client.patch(
-                    f"/employees/{employee_id}", json=data
-                )
+                self.employee_service.client.patch(f"/employees/{employee_id}", json=data)
                 self.parent.employee_updated.emit(employee_id)
                 self.parent.accept()
                 return

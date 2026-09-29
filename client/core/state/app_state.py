@@ -38,9 +38,7 @@ class AppState:
         """Установить данные текущего пользователя"""
         self.current_user = user_data
         self.is_authenticated = True
-        logger.info(
-            f"Пользователь авторизован: {user_data.get('full_name', 'Unknown')}"
-        )
+        logger.info(f"Пользователь авторизован: {user_data.get('full_name', 'Unknown')}")
 
     def clear_user(self):
         """Очистить данные пользователя"""

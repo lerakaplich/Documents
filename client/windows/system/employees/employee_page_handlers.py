@@ -103,9 +103,7 @@ class EmployeeHandlers:
             dialog = DeleteDialog(parent=self.page)
 
             if hasattr(dialog, "messageLabel"):
-                dialog.messageLabel.setText(
-                    f"Вы уверены, что хотите удалить сотрудника:\n\n{full_name}?"
-                )
+                dialog.messageLabel.setText(f"Вы уверены, что хотите удалить сотрудника:\n\n{full_name}?")
             if hasattr(dialog, "nameLabel"):
                 dialog.nameLabel.setText(f"Сотрудник: {full_name}")
 
@@ -125,9 +123,7 @@ class EmployeeHandlers:
 
             del self.page.data_manager.employees[employee_id]
             self.page.data_manager.employee_positions = [
-                pos
-                for pos in self.page.data_manager.employee_positions
-                if pos.get("employee_id") != employee_id
+                pos for pos in self.page.data_manager.employee_positions if pos.get("employee_id") != employee_id
             ]
 
             QMessageBox.information(self.page, "Успешно", "Сотрудник успешно удален!")
@@ -140,22 +136,16 @@ class EmployeeHandlers:
                 self.page._self_change_in_progress = False
 
         except Exception as e:
-            QMessageBox.critical(
-                self.page, "Ошибка", f"Не удалось удалить сотрудника:\n{e!s}"
-            )
+            QMessageBox.critical(self.page, "Ошибка", f"Не удалось удалить сотрудника:\n{e!s}")
 
     def on_employee_created(self, employee_id):
-        QMessageBox.information(
-            self.page, "Успешно", f"Сотрудник с ID {employee_id} успешно создан!"
-        )
+        QMessageBox.information(self.page, "Успешно", f"Сотрудник с ID {employee_id} успешно создан!")
         self.page.data_manager.load_test_data(self.page)
         self.page.update_display()
         self.page.employees_updated.emit()
 
     def on_employee_updated(self, employee_id):
-        QMessageBox.information(
-            self.page, "Успешно", f"Сотрудник с ID {employee_id} успешно обновлен!"
-        )
+        QMessageBox.information(self.page, "Успешно", f"Сотрудник с ID {employee_id} успешно обновлен!")
         self.page.data_manager.load_test_data(self.page)
         self.page.update_display()
         self.page.employees_updated.emit()

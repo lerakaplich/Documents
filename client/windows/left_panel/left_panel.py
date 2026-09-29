@@ -59,17 +59,13 @@ class LeftPanel(QWidget):
         # Загружаем UI
         ui_path = os.path.join(ROOT_DIR, "ui", "left_panel.ui")
         if os.path.exists(ui_path):
-            self.setAttribute(
-                Qt.WidgetAttribute.WA_StyledBackground, True
-            )  # ← ДО loadUi
+            self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # ← ДО loadUi
             loadUi(ui_path, self)
             apply_theme_to_widget(self)
             from client.core.themes import get_manager
 
             _t = get_manager().current
-            self.setStyleSheet(
-                f"QWidget#LeftPanel {{ background-color: {_t.SIDEBAR_BG}; }}"
-            )
+            self.setStyleSheet(f"QWidget#LeftPanel {{ background-color: {_t.SIDEBAR_BG}; }}")
 
         # Настройка иконок для всех кнопок (унифицированный размер 20x20)
         self.setup_icons()
@@ -135,18 +131,12 @@ class LeftPanel(QWidget):
             btn = getattr(self, name, None)
             if btn is None:
                 continue
-            btn.setStyleSheet(
-                self._get_button_style()
-                if self.is_expanded
-                else self._get_compact_button_style()
-            )
+            btn.setStyleSheet(self._get_button_style() if self.is_expanded else self._get_compact_button_style())
 
     def reapply_theme(self):
         """Вызывается при смене темы."""
         apply_theme_to_widget(self)
-        self.setStyleSheet(
-            f"QWidget#LeftPanel {{ background-color: {get_manager().current.SIDEBAR_BG}; }}"
-        )
+        self.setStyleSheet(f"QWidget#LeftPanel {{ background-color: {get_manager().current.SIDEBAR_BG}; }}")
         self._apply_button_styles()
 
     def create_fallback_ui(self):
@@ -332,11 +322,7 @@ class LeftPanel(QWidget):
         # Верхние кнопки
         if hasattr(self, "profileBtn"):
             self.profileBtn.setText("Мой профиль" if visible else "")
-            self.profileBtn.setStyleSheet(
-                self._get_button_style()
-                if visible
-                else self._get_compact_button_style()
-            )
+            self.profileBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
             if not visible:
                 self.profileBtn.setIconSize(QSize(24, 24))
             else:
@@ -344,11 +330,7 @@ class LeftPanel(QWidget):
 
         if hasattr(self, "allDocsBtn"):
             self.allDocsBtn.setText("Все документы" if visible else "")
-            self.allDocsBtn.setStyleSheet(
-                self._get_button_style()
-                if visible
-                else self._get_compact_button_style()
-            )
+            self.allDocsBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
             if not visible:
                 self.allDocsBtn.setIconSize(QSize(24, 24))
             else:
@@ -356,21 +338,13 @@ class LeftPanel(QWidget):
 
         if hasattr(self, "archiveBtn"):
             self.archiveBtn.setText("Архив" if visible else "")
-            self.archiveBtn.setStyleSheet(
-                self._get_button_style()
-                if visible
-                else self._get_compact_button_style()
-            )
+            self.archiveBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
             self.archiveBtn.setIconSize(QSize(24, 24) if not visible else QSize(20, 20))
 
         # Нижние кнопки
         if hasattr(self, "systemBtn"):
             self.systemBtn.setText("Система" if visible else "")
-            self.systemBtn.setStyleSheet(
-                self._get_button_style()
-                if visible
-                else self._get_compact_button_style()
-            )
+            self.systemBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
             if not visible:
                 self.systemBtn.setIconSize(QSize(24, 24))
             else:
@@ -378,14 +352,8 @@ class LeftPanel(QWidget):
 
         if hasattr(self, "settingsBtn"):
             self.settingsBtn.setText("Настройки" if visible else "")
-            self.settingsBtn.setStyleSheet(
-                self._get_button_style()
-                if visible
-                else self._get_compact_button_style()
-            )
-            self.settingsBtn.setIconSize(
-                QSize(24, 24) if not visible else QSize(20, 20)
-            )
+            self.settingsBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+            self.settingsBtn.setIconSize(QSize(24, 24) if not visible else QSize(20, 20))
 
         if hasattr(self, "hidePanelBtn"):
             if visible:
@@ -453,9 +421,7 @@ class LeftPanel(QWidget):
         self.groups_layout.addWidget(group)
         return group
 
-    def add_direction(
-        self, group_name: str, direction_name: str, metadata: dict[str, Any] = None
-    ):
+    def add_direction(self, group_name: str, direction_name: str, metadata: dict[str, Any] | None = None):
         """Добавляет направление (тип документа) в указанную группу"""
         group = self.add_group(group_name)
 
@@ -574,13 +540,9 @@ class LeftPanel(QWidget):
         if self.parent():
             self.parent().update()
 
-    def on_direction_clicked(
-        self, direction_name: str, group_name: str, type_id: int = None
-    ):
+    def on_direction_clicked(self, direction_name: str, group_name: str, type_id: int | None = None):
         """Обработчик клика по направлению (типу документа)"""
-        print(
-            f"Выбрано направление: {direction_name} (группа: {group_name}, type_id: {type_id})"
-        )
+        print(f"Выбрано направление: {direction_name} (группа: {group_name}, type_id: {type_id})")
 
         if type_id is not None:
             self.type_clicked.emit(type_id, direction_name)
@@ -631,9 +593,7 @@ class LeftPanel(QWidget):
             if os.path.exists(icon_path):
                 icon = QIcon(icon_path)
                 self.hidePanelBtn.setIcon(icon)
-                self.hidePanelBtn.setIconSize(
-                    QSize(20, 20) if self.is_expanded else QSize(24, 24)
-                )
+                self.hidePanelBtn.setIconSize(QSize(20, 20) if self.is_expanded else QSize(24, 24))
 
 
 # Для тестирования

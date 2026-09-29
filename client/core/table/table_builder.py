@@ -19,7 +19,7 @@ class TableBuilder:
         self,
         table_widget,
         columns_config: dict,
-        doc_type: str = None,
+        doc_type: str | None = None,
         view_mode: str = "all",
     ):
         self._table_widget = table_widget
@@ -40,9 +40,9 @@ class TableBuilder:
         self._setup_appearance()
 
         # Создаем фасад
-        self._facade = TableFacade(
-            self._table_widget, self._columns_config, self._doc_type, self._view_mode
-        ).build(data_manager, updater)
+        self._facade = TableFacade(self._table_widget, self._columns_config, self._doc_type, self._view_mode).build(
+            data_manager, updater
+        )
 
         return self._facade
 
@@ -70,12 +70,8 @@ class TableBuilder:
     def _setup_appearance(self):
         """Настройка внешнего вида"""
         self._table_widget.setShowGrid(False)
-        self._table_widget.setVerticalScrollMode(
-            QAbstractItemView.ScrollMode.ScrollPerPixel
-        )
-        self._table_widget.setHorizontalScrollMode(
-            QAbstractItemView.ScrollMode.ScrollPerPixel
-        )
+        self._table_widget.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self._table_widget.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
 
     def get_facade(self) -> TableFacade:
         """Получить фасад таблицы"""

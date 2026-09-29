@@ -14,9 +14,7 @@ class RowRenderer:
     Поддерживает как стандартные QTableWidgetItem, так и кастомные TableCellItem
     """
 
-    def __init__(
-        self, table_widget, config, signals, columns_config=None, http_client=None
-    ):
+    def __init__(self, table_widget, config, signals, columns_config=None, http_client=None):
         self._table = table_widget
         self._config = config
         self._signals = signals
@@ -52,9 +50,7 @@ class RowRenderer:
             TagsCellBuilder,
         )
 
-        self._tags_builder = TagsCellBuilder(
-            config.get_even_row_color, config.get_odd_row_color
-        )
+        self._tags_builder = TagsCellBuilder(config.get_even_row_color, config.get_odd_row_color)
         self._attachment_builder = AttachmentCellBuilder(
             config.get_even_row_color,
             config.get_odd_row_color,
@@ -107,11 +103,7 @@ class RowRenderer:
         self._columns = columns_config
 
     def render_row(self, row: int, document: dict):
-        bg_color = (
-            self._config.get_even_row_color()
-            if row % 2 == 0
-            else self._config.get_odd_row_color()
-        )
+        bg_color = self._config.get_even_row_color() if row % 2 == 0 else self._config.get_odd_row_color()
         col_map = self._get_col_map()
 
         self._hide_id_column(col_map)
@@ -141,9 +133,7 @@ class RowRenderer:
         is_pinned = document.get("is_pinned", False)
 
         item = QTableWidgetItem(str(reg_number) if reg_number else "")
-        item.setTextAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
+        item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         item.setBackground(QBrush(bg_color))
         item.setForeground(QBrush(self._config.get_text_color()))
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -207,11 +197,7 @@ class RowRenderer:
             values = document.get(key, [])
             if isinstance(values, list):
                 if values and isinstance(values[0], dict):
-                    text = (
-                        ", ".join(v.get("name", str(v)) for v in values)
-                        if values
-                        else "-"
-                    )
+                    text = ", ".join(v.get("name", str(v)) for v in values) if values else "-"
                 else:
                     text = ", ".join(str(v) for v in values) if values else "-"
             else:
@@ -223,9 +209,7 @@ class RowRenderer:
 
     # ============== НОВЫЙ МЕТОД - ГИБРИДНЫЙ РЕНДЕРИНГ ==============
 
-    def _render_special_widgets_hybrid(
-        self, row: int, document: dict, col_map: dict, bg_color
-    ):
+    def _render_special_widgets_hybrid(self, row: int, document: dict, col_map: dict, bg_color):
         """
         ГИБРИДНЫЙ подход: используем TableCellItem для комментариев и делегатов,
         а для остальных - стандартные виджеты
@@ -283,9 +267,7 @@ class RowRenderer:
             widget = self._reply_builder.build(row, document)
             self._table.setCellWidget(row, col, widget)
 
-    def _create_comments_cell_item(
-        self, row: int, document: dict, bg_color
-    ) -> TableCellItem:
+    def _create_comments_cell_item(self, row: int, document: dict, bg_color) -> TableCellItem:
         """Создать TableCellItem для комментариев"""
         cell_data = CellData(
             value="",
@@ -302,9 +284,7 @@ class RowRenderer:
         item.set_row_data(row, document)
         return item
 
-    def _create_delegates_cell_item(
-        self, row: int, document: dict, bg_color
-    ) -> TableCellItem:
+    def _create_delegates_cell_item(self, row: int, document: dict, bg_color) -> TableCellItem:
         """Создать TableCellItem для делегатов"""
         cell_data = CellData(
             value="",
@@ -324,9 +304,7 @@ class RowRenderer:
     def _create_text_item(self, text: str, bg_color) -> QTableWidgetItem:
         """Создать стандартный текстовый элемент"""
         item = QTableWidgetItem(text)
-        item.setTextAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
+        item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         item.setBackground(QBrush(bg_color))
         item.setForeground(QBrush(self._config.get_text_color()))
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -352,16 +330,11 @@ class RowRenderer:
                 f"{name}\nСтраниц: {pages}\n\nПостраничный просмотр пока не реализован.",
             )
         else:
-            QMessageBox.information(
-                None, "Вложение", f"{name}\n\nПросмотр пока не реализован."
-            )
+            QMessageBox.information(None, "Вложение", f"{name}\n\nПросмотр пока не реализован.")
 
         self._signals.attachment_opened.emit(
             document.get("id"),
-            attachment.get("path")
-            or attachment.get("storage_path")
-            or attachment.get("preview_url")
-            or "",
+            attachment.get("path") or attachment.get("storage_path") or attachment.get("preview_url") or "",
         )
 
     def _on_attachment_upload(self, document_id, file_path):
@@ -370,9 +343,7 @@ class RowRenderer:
     def _on_reply_clicked(self, reply_file):
         from PyQt6.QtWidgets import QMessageBox
 
-        QMessageBox.information(
-            None, "Открытие ответа", f"Открывается: {reply_file.get('name')}"
-        )
+        QMessageBox.information(None, "Открытие ответа", f"Открывается: {reply_file.get('name')}")
 
     def _on_reply_upload(self, document_id, file_path):
         import os

@@ -59,9 +59,7 @@ class LoginWorker(QObject):
     def run(self):
         try:
             app_state = AppState()
-            result = app_state.auth_service.login(
-                self.phone, self.password, self.remember_me
-            )
+            result = app_state.auth_service.login(self.phone, self.password, self.remember_me)
 
             if "user" in result:
                 user_data = result["user"]
@@ -77,7 +75,7 @@ class LoginWorker(QObject):
             self.finished.emit(result)
 
         except Exception as e:
-            logger.error(f"Ошибка входа: {e}")
+            logger.exception(f"Ошибка входа: {e}")
             self.error.emit(str(e))
 
 
@@ -88,9 +86,7 @@ class AuthWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.root_dir = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
+        self.root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         ui_path = os.path.join(self.root_dir, "ui", "login", "auth_widget.ui")
 
         if not os.path.exists(ui_path):
@@ -168,15 +164,11 @@ class AuthWidget(QWidget):
             return ""
         return "".join(filter(str.isdigit, self.phoneInput.text()))
 
-    def _is_valid_phone(self, phone: str = None) -> bool:
+    def _is_valid_phone(self, phone: str | None = None) -> bool:
         """
         Проверяет, содержит ли номер РОВНО 12 цифр и начинается ли с 375
         """
-        digits = (
-            self._get_clean_phone()
-            if phone is None
-            else "".join(filter(str.isdigit, phone))
-        )
+        digits = self._get_clean_phone() if phone is None else "".join(filter(str.isdigit, phone))
         return len(digits) == 12 and digits.startswith("375")
 
     def _on_phone_changed(self, text):
@@ -193,9 +185,7 @@ class AuthWidget(QWidget):
     def _on_forgot_password_clicked(self):
         if not self._is_valid_phone():
             if self.notification_manager:
-                self.notification_manager.show_notification(
-                    "Введите полный номер телефона (12 цифр)", duration=3000
-                )
+                self.notification_manager.show_notification("Введите полный номер телефона (12 цифр)", duration=3000)
             if hasattr(self, "phoneInput"):
                 self.phoneInput.setFocus()
             return
@@ -204,12 +194,8 @@ class AuthWidget(QWidget):
 
     def _on_login_clicked(self):
         clean_phone = self._get_clean_phone()
-        password = (
-            self.passwordInput.text().strip() if hasattr(self, "passwordInput") else ""
-        )
-        remember_me = (
-            hasattr(self, "rememberCheckBox") and self.rememberCheckBox.isChecked()
-        )
+        password = self.passwordInput.text().strip() if hasattr(self, "passwordInput") else ""
+        remember_me = hasattr(self, "rememberCheckBox") and self.rememberCheckBox.isChecked()
 
         # Валидация
         if not self._is_valid_phone(clean_phone):
@@ -221,9 +207,7 @@ class AuthWidget(QWidget):
 
         if not password:
             if self.notification_manager:
-                self.notification_manager.show_notification(
-                    "Введите пароль", duration=3000
-                )
+                self.notification_manager.show_notification("Введите пароль", duration=3000)
             return
 
         # Отправляем на бэкенд чистый номер с '+' (например, +375291234567)
@@ -280,9 +264,7 @@ class AuthWidget(QWidget):
         user_data = result.get("user", {})
 
         if self.notification_manager:
-            self.notification_manager.show_notification(
-                "Добро пожаловать!", duration=2000
-            )
+            self.notification_manager.show_notification("Добро пожаловать!", duration=2000)
 
         self.login_successful.emit(user_data)
 
@@ -307,17 +289,11 @@ class AuthWidget(QWidget):
 
         if self.notification_manager:
             if "401" in error_msg or "Unauthorized" in error_msg:
-                self.notification_manager.show_notification(
-                    "Неверный номер телефона или пароль", duration=3000
-                )
+                self.notification_manager.show_notification("Неверный номер телефона или пароль", duration=3000)
             elif "Connection" in error_msg or "Failed to connect" in error_msg:
-                self.notification_manager.show_notification(
-                    "Не удалось подключиться к серверу", duration=3000
-                )
+                self.notification_manager.show_notification("Не удалось подключиться к серверу", duration=3000)
             else:
-                self.notification_manager.show_notification(
-                    f"Ошибка: {error_msg[:50]}...", duration=3000
-                )
+                self.notification_manager.show_notification(f"Ошибка: {error_msg[:50]}...", duration=3000)
 
     def _cleanup_thread(self):
         """Очистка потока после завершения"""

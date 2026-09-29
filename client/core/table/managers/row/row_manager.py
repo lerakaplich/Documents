@@ -19,7 +19,7 @@ class RowManager(QObject):
     pin_changed = pyqtSignal(int, bool)
     order_changed = pyqtSignal(list)
 
-    def __init__(self, table_widget, data_manager, updater, doc_type: str = None):
+    def __init__(self, table_widget, data_manager, updater, doc_type: str | None = None):
         super().__init__()
         self._table = table_widget
         self._data_manager = data_manager

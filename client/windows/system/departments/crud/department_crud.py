@@ -7,9 +7,7 @@ from client.windows.system.departments.department_dialog import DepartmentDialog
 class DepartmentCrud:
     """Создание / редактирование / удаление отделов."""
 
-    def __init__(
-        self, page, service, organizations_provider, items_provider, employees_provider
-    ):
+    def __init__(self, page, service, organizations_provider, items_provider, employees_provider):
         self.page = page
         self.service = service
         self.get_orgs = organizations_provider
@@ -103,9 +101,7 @@ class DepartmentCrud:
         try:
             res = self.service.update_department(dept_id, data)
             if res:
-                self.page.show_success_notification(
-                    f"Отдел «{res.get('name')}» обновлен"
-                )
+                self.page.show_success_notification(f"Отдел «{res.get('name')}» обновлен")
                 self.page.load_data()
             else:
                 self.page.show_error_notification("Не удалось обновить отдел")

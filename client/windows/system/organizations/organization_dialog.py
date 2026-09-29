@@ -14,9 +14,7 @@ def load_ui(ui_filename):
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Формируем путь к UI файлу
-    ui_path = os.path.join(
-        current_dir, "..", "..", "..", "ui", "system", "organizations", ui_filename
-    )
+    ui_path = os.path.join(current_dir, "..", "..", "..", "ui", "system", "organizations", ui_filename)
     ui_path = os.path.normpath(ui_path)
 
     if not os.path.exists(ui_path):
@@ -62,14 +60,10 @@ class OrganizationDialog(QDialog):
 
         # Настройка заголовка
         is_edit = self.item.get("id") is not None
-        self.setWindowTitle(
-            "Редактировать организацию" if is_edit else "Добавить организацию"
-        )
+        self.setWindowTitle("Редактировать организацию" if is_edit else "Добавить организацию")
 
         if hasattr(self, "titleLabel"):
-            self.titleLabel.setText(
-                "Редактировать организацию" if is_edit else "Новая организация"
-            )
+            self.titleLabel.setText("Редактировать организацию" if is_edit else "Новая организация")
 
     # client/windows/system/organizations/organization_dialog.py
 
@@ -83,12 +77,7 @@ class OrganizationDialog(QDialog):
         print(f"[DEBUG] Загрузка данных в диалог: {self.item}")
 
         # Полное наименование
-        full_name = (
-            self.item.get("full_name")
-            or self.item.get("fullName")
-            or self.item.get("name")
-            or ""
-        )
+        full_name = self.item.get("full_name") or self.item.get("fullName") or self.item.get("name") or ""
         if hasattr(self, "fullNameEdit"):
             self.fullNameEdit.setText(full_name)
             print(f"[DEBUG] fullNameEdit установлен: {full_name}")
@@ -176,9 +165,7 @@ class OrganizationDialog(QDialog):
         if hasattr(self, "phoneEdit"):
             phone = self.phoneEdit.text().strip()
             data["phone"] = phone
-            data["phone_number"] = (
-                phone if phone else None
-            )  # Если пусто, отправляем None
+            data["phone_number"] = phone if phone else None  # Если пусто, отправляем None
 
         if hasattr(self, "emailEdit"):
             data["email"] = self.emailEdit.text().strip()
@@ -202,9 +189,7 @@ class OrganizationDialog(QDialog):
             )
             if hasattr(self, "fullNameEdit"):
                 self.fullNameEdit.setFocus()
-                self.fullNameEdit.setStyleSheet(
-                    "border: 2px solid #D22730; border-radius: 6px; padding: 8px;"
-                )
+                self.fullNameEdit.setStyleSheet("border: 2px solid #D22730; border-radius: 6px; padding: 8px;")
             return
 
         # Сохраняем в item (сохраняем все поля для совместимости)

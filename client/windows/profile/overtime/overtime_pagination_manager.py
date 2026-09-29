@@ -27,12 +27,12 @@ class OvertimePaginationManager:
     def setup_bars(self, my_container, all_container, change_page_callback):
         """Создаёт панели пагинации под карточками.
         change_page_callback(tab, delta) вызывается при клике ◀/▶."""
-        (self.my_bar, self.my_prev_btn, self.my_next_btn, self.my_page_label) = (
-            self._attach(my_container, "my", change_page_callback)
+        (self.my_bar, self.my_prev_btn, self.my_next_btn, self.my_page_label) = self._attach(
+            my_container, "my", change_page_callback
         )
 
-        (self.all_bar, self.all_prev_btn, self.all_next_btn, self.all_page_label) = (
-            self._attach(all_container, "all", change_page_callback)
+        (self.all_bar, self.all_prev_btn, self.all_next_btn, self.all_page_label) = self._attach(
+            all_container, "all", change_page_callback
         )
 
     def _attach(self, container, tab_key, callback):
@@ -102,9 +102,7 @@ class OvertimePaginationManager:
         prev_btn.setStyleSheet(btn_style)
 
         page_label = QLabel("Страница 1 из 1")
-        page_label.setStyleSheet(
-            f"font-size: 13px; color: {t.TEXT_PRIMARY}; font-weight: 500;"
-        )
+        page_label.setStyleSheet(f"font-size: 13px; color: {t.TEXT_PRIMARY}; font-weight: 500;")
         page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         page_label.setMinimumWidth(200)
 

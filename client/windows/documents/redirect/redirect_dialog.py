@@ -128,9 +128,7 @@ class RedirectDialog(QDialog):
     # ─────────── Инициализация логики ───────────
 
     def _init_data(self):
-        self.builder = HierarchyBuilder(
-            self.organizations, self.departments, self.employees
-        )
+        self.builder = HierarchyBuilder(self.organizations, self.departments, self.employees)
         self.org_hierarchy = self.builder.build()
 
         self.selection_manager = SelectionManager(
@@ -262,9 +260,7 @@ class RedirectDialog(QDialog):
                 node_id = child_data["id"]
                 child.setCheckState(
                     0,
-                    Qt.CheckState.Checked
-                    if self.selection_manager.is_selected(node_id)
-                    else Qt.CheckState.Unchecked,
+                    Qt.CheckState.Checked if self.selection_manager.is_selected(node_id) else Qt.CheckState.Unchecked,
                 )
             self._set_checkboxes_recursive(child)
 
@@ -274,9 +270,7 @@ class RedirectDialog(QDialog):
             if data and data.get("id") and data.get("id") > 0:
                 node_id = data["id"]
                 is_sel = self.selection_manager.is_selected(node_id)
-                item.setCheckState(
-                    0, Qt.CheckState.Checked if is_sel else Qt.CheckState.Unchecked
-                )
+                item.setCheckState(0, Qt.CheckState.Checked if is_sel else Qt.CheckState.Unchecked)
             for i in range(item.childCount()):
                 sync_item(item.child(i))
 
@@ -322,9 +316,7 @@ class RedirectDialog(QDialog):
                 if cd and cd.get("id") and cd.get("id") > 0:
                     child_item.setCheckState(
                         0,
-                        Qt.CheckState.Checked
-                        if is_checked
-                        else Qt.CheckState.Unchecked,
+                        Qt.CheckState.Checked if is_checked else Qt.CheckState.Unchecked,
                     )
 
             if item.parent():
@@ -347,9 +339,7 @@ class RedirectDialog(QDialog):
                     checked += 1
         if total == 0:
             return
-        new_state = (
-            Qt.CheckState.Checked if checked == total else Qt.CheckState.Unchecked
-        )
+        new_state = Qt.CheckState.Checked if checked == total else Qt.CheckState.Unchecked
         item.setCheckState(0, new_state)
         if item.parent():
             self._update_parent_checks_only(item.parent())
@@ -434,18 +424,14 @@ class RedirectDialog(QDialog):
         employee_ids = [x for x in employee_ids if not (x in seen or seen.add(x))]
 
         if not employee_ids:
-            QMessageBox.warning(
-                self, "Внимание", "Не выбрано ни одного сотрудника для перенаправления."
-            )
+            QMessageBox.warning(self, "Внимание", "Не выбрано ни одного сотрудника для перенаправления.")
             return
 
         comment = ""
         if hasattr(self, "commentTextEdit"):
             comment = self.commentTextEdit.toPlainText().strip()
 
-        print(
-            f"[RedirectDialog] ID сотрудников: {employee_ids}, комментарий: {comment!r}"
-        )
+        print(f"[RedirectDialog] ID сотрудников: {employee_ids}, комментарий: {comment!r}")
 
         self.redirect_confirmed.emit(employee_ids, comment)
         self.accept()

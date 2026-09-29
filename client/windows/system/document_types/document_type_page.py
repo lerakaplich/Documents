@@ -116,9 +116,7 @@ class DocumentTypesPage(QWidget):
         """Показать информационное уведомление"""
         self.notification_manager.show_notification(f"ℹ️ {message}", duration=2500)
 
-    def _normalize_fields(
-        self, fields: dict[str, bool] | list[str] | None
-    ) -> dict[str, bool]:
+    def _normalize_fields(self, fields: dict[str, bool] | list[str] | None) -> dict[str, bool]:
         """
         Нормализует поле fields в словарь {field_name: True/False}
 
@@ -133,7 +131,7 @@ class DocumentTypesPage(QWidget):
 
         # Если это список - конвертируем в словарь со значением True
         if isinstance(fields, list):
-            return {item: True for item in fields}
+            return dict.fromkeys(fields, True)
 
         # Если это уже словарь - возвращаем как есть
         if isinstance(fields, dict):
@@ -142,9 +140,7 @@ class DocumentTypesPage(QWidget):
         # Если что-то другое - возвращаем пустой словарь
         return {}
 
-    def _convert_fields_to_parameters(
-        self, fields: dict[str, bool] | list[str] | None
-    ) -> list[str]:
+    def _convert_fields_to_parameters(self, fields: dict[str, bool] | list[str] | None) -> list[str]:
         """
         Конвертирует fields в список активных параметров
 
@@ -170,7 +166,7 @@ class DocumentTypesPage(QWidget):
         """
         if not parameters:
             return {}
-        return {param: True for param in parameters}
+        return dict.fromkeys(parameters, True)
 
     # ==================== ЗАГРУЗКА ДАННЫХ ====================
 
@@ -213,15 +209,13 @@ class DocumentTypesPage(QWidget):
             self.data_loaded.emit()
 
             if self.document_types:
-                self.show_success_notification(
-                    f"Загружено {len(self.document_types)} типов документов"
-                )
+                self.show_success_notification(f"Загружено {len(self.document_types)} типов документов")
 
         except Exception as e:
             self.is_loading = False
             import logging
 
-            logging.error(f"Ошибка загрузки типов документов: {e}")
+            logging.exception(f"Ошибка загрузки типов документов: {e}")
 
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -244,9 +238,7 @@ class DocumentTypesPage(QWidget):
 
         for name, func in sort_options.items():
             action = menu.addAction(name)
-            action.triggered.connect(
-                lambda checked, f=func, n=name: self.apply_sort(f, n)
-            )
+            action.triggered.connect(lambda checked, f=func, n=name: self.apply_sort(f, n))
 
         menu.exec(self.btnSort.mapToGlobal(self.btnSort.rect().bottomLeft()))
 
@@ -279,9 +271,7 @@ class DocumentTypesPage(QWidget):
     def has_active_filters(self):
         if self.searchEdit.text().strip():
             return True
-        if self.current_sort != "А→Я":
-            return True
-        return False
+        return self.current_sort != "А→Я"
 
     def update_reset_button_visibility(self):
         if self.has_active_filters():
@@ -347,9 +337,7 @@ class DocumentTypesPage(QWidget):
         if not self.filtered_types:
             empty_label = QLabel("Нет типов документов")
             empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_label.setStyleSheet(
-                f"color: {T.TEXT_MUTED_ALT}; font-size: 16px; padding: 40px;"
-            )
+            empty_label.setStyleSheet(f"color: {T.TEXT_MUTED_ALT}; font-size: 16px; padding: 40px;")
             self.typesLayout.addWidget(empty_label)
             self.position_floating_button()
             return
@@ -375,9 +363,7 @@ class DocumentTypesPage(QWidget):
             type_card = DocumentTypeCard(doc_type)
             type_card.edit_clicked.connect(self.on_edit_type)
             type_card.delete_clicked.connect(self.on_delete_type)
-            type_card.setSizePolicy(
-                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-            )
+            type_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
             if i % 2 == 0:
                 left_column.addWidget(type_card)
@@ -429,18 +415,14 @@ class DocumentTypesPage(QWidget):
                 "fields": type_data.get("fields", {}),
                 "auto_num": type_data.get(
                     "auto_num",
-                    type_data.get(
-                        "auto_number", type_data.get("auto_numbering", False)
-                    ),
+                    type_data.get("auto_number", type_data.get("auto_numbering", False)),
                 ),
                 "smdo_code_type": type_data.get("smdo_code_type", ""),
             }
 
             # Если fields пустой, берем из parameters (для обратной совместимости)
             if not server_data["fields"] and type_data.get("parameters"):
-                server_data["fields"] = {
-                    param: True for param in type_data["parameters"]
-                }
+                server_data["fields"] = dict.fromkeys(type_data["parameters"], True)
 
             print(f"[DEBUG] Создание типа: server_data={server_data}")
 
@@ -483,7 +465,7 @@ class DocumentTypesPage(QWidget):
         except Exception as e:
             import logging
 
-            logging.error(f"Ошибка создания типа: {e}")
+            logging.exception(f"Ошибка создания типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
@@ -500,18 +482,14 @@ class DocumentTypesPage(QWidget):
                 "fields": updated_data.get("fields", {}),
                 "auto_num": updated_data.get(
                     "auto_num",
-                    updated_data.get(
-                        "auto_number", updated_data.get("auto_numbering", False)
-                    ),
+                    updated_data.get("auto_number", updated_data.get("auto_numbering", False)),
                 ),
                 "smdo_code_type": updated_data.get("smdo_code_type", ""),
             }
 
             # Если fields пустой, берем из parameters (для обратной совместимости)
             if not server_data["fields"] and updated_data.get("parameters"):
-                server_data["fields"] = {
-                    param: True for param in updated_data["parameters"]
-                }
+                server_data["fields"] = dict.fromkeys(updated_data["parameters"], True)
 
             print(f"[DEBUG] Обновление типа {type_id}: server_data={server_data}")
 
@@ -544,9 +522,7 @@ class DocumentTypesPage(QWidget):
                                 "smdo_code_type": result.get("smdo_code_type", ""),
                             }
                         )
-                        print(
-                            f"[DEBUG] Обновлен тип в памяти: {self.document_types[i]}"
-                        )
+                        print(f"[DEBUG] Обновлен тип в памяти: {self.document_types[i]}")
                         break
 
                 self.update_display()
@@ -557,7 +533,7 @@ class DocumentTypesPage(QWidget):
         except Exception as e:
             import logging
 
-            logging.error(f"Ошибка обновления типа: {e}")
+            logging.exception(f"Ошибка обновления типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
@@ -618,7 +594,7 @@ class DocumentTypesPage(QWidget):
             import logging
             import traceback
 
-            logging.error(f"Ошибка загрузки типа для редактирования: {e}")
+            logging.exception(f"Ошибка загрузки типа для редактирования: {e}")
             traceback.print_exc()
             self.show_error_notification("Не удалось загрузить данные типа")
 
@@ -639,9 +615,7 @@ class DocumentTypesPage(QWidget):
             success = self.doc_type_service.delete_type(type_id)
 
             if success:
-                self.document_types = [
-                    dt for dt in self.document_types if dt.get("id") != type_id
-                ]
+                self.document_types = [dt for dt in self.document_types if dt.get("id") != type_id]
                 self.update_display()
                 self.show_success_notification(f"Тип «{type_name}» удален")
             else:
@@ -650,7 +624,7 @@ class DocumentTypesPage(QWidget):
         except Exception as e:
             import logging
 
-            logging.error(f"Ошибка удаления типа: {e}")
+            logging.exception(f"Ошибка удаления типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
@@ -676,9 +650,7 @@ class DocumentTypesPage(QWidget):
         self.position_floating_button()
 
         if hasattr(self, "notification_manager"):
-            self.notification_manager.container.setGeometry(
-                0, 0, self.width(), self.height()
-            )
+            self.notification_manager.container.setGeometry(0, 0, self.width(), self.height())
 
     def get_all_types(self):
         return self.document_types.copy()

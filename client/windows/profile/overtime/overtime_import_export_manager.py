@@ -68,12 +68,8 @@ class OvertimeImportExportManager:
             period_manager = self.panel.period_manager
             if period_manager.all_period:
                 try:
-                    start_date = QDate.fromString(
-                        period_manager.all_period["start"], "dd.MM.yyyy"
-                    )
-                    end_date = QDate.fromString(
-                        period_manager.all_period["end"], "dd.MM.yyyy"
-                    )
+                    start_date = QDate.fromString(period_manager.all_period["start"], "dd.MM.yyyy")
+                    end_date = QDate.fromString(period_manager.all_period["end"], "dd.MM.yyyy")
                 except Exception:
                     pass
 
@@ -82,9 +78,7 @@ class OvertimeImportExportManager:
                 start_date = QDate.fromString(default["start"], "dd.MM.yyyy")
                 end_date = QDate.fromString(default["end"], "dd.MM.yyyy")
 
-            dialog = PeriodDialog(
-                self.panel.parent, start_date=start_date, end_date=end_date
-            )
+            dialog = PeriodDialog(self.panel.parent, start_date=start_date, end_date=end_date)
             dialog.period_selected.connect(self.on_export_period_selected)
             dialog.exec()
         except Exception as e:
@@ -97,9 +91,7 @@ class OvertimeImportExportManager:
             print(f"Экспорт данных за период: {start_date_str} - {end_date_str}")
 
             if not self.panel.overtime_service:
-                self._notify(
-                    f"Экспорт за период {start_date_str} - {end_date_str} (заглушка)"
-                )
+                self._notify(f"Экспорт за период {start_date_str} - {end_date_str} (заглушка)")
                 return
 
             try:

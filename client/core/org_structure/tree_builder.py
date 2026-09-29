@@ -90,9 +90,7 @@ class TreeBuilder:
         item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
         item.setCheckState(0, Qt.CheckState.Unchecked)
 
-    def _add_departments(
-        self, parent: QTreeWidgetItem, departments: list[dict], filter_text: str
-    ):
+    def _add_departments(self, parent: QTreeWidgetItem, departments: list[dict], filter_text: str):
         for dept_struct in departments:
             dept = dept_struct["department"]
 
@@ -107,16 +105,12 @@ class TreeBuilder:
                 self._add_departments(dept_item, dept_struct["children"], filter_text)
 
             if dept_struct["employees"]:
-                self._add_employee_group(
-                    dept_item, dept_struct["employees"], filter_text
-                )
+                self._add_employee_group(dept_item, dept_struct["employees"], filter_text)
 
             if filter_text and TreeFilter.has_match_in_node(dept_item, filter_text):
                 dept_item.setExpanded(True)
 
-    def _add_employee_group(
-        self, parent: QTreeWidgetItem, employees: list[dict], filter_text: str
-    ):
+    def _add_employee_group(self, parent: QTreeWidgetItem, employees: list[dict], filter_text: str):
         group_item = QTreeWidgetItem(parent)
         group_item.setText(0, "Сотрудники")
         group_item.setData(
@@ -132,8 +126,6 @@ class TreeBuilder:
             emp_item = self._create_employee_item(emp)
             group_item.addChild(emp_item)
 
-    def _add_employees(
-        self, parent: QTreeWidgetItem, employees: list[dict], filter_text: str
-    ):
+    def _add_employees(self, parent: QTreeWidgetItem, employees: list[dict], filter_text: str):
         if employees:
             self._add_employee_group(parent, employees, filter_text)

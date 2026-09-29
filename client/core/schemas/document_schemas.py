@@ -44,17 +44,13 @@ class DocumentSchema:
     def _get_receivers(data: dict) -> list[str]:
         """Получить получателей"""
         employees = data.get("employees", [])
-        return [
-            emp.get("fio", "") for emp in employees if emp.get("role") == "recipient"
-        ]
+        return [emp.get("fio", "") for emp in employees if emp.get("role") == "recipient"]
 
     @staticmethod
     def _get_executors(data: dict) -> list[str]:
         """Получить исполнителей"""
         employees = data.get("employees", [])
-        return [
-            emp.get("fio", "") for emp in employees if emp.get("role") == "executor"
-        ]
+        return [emp.get("fio", "") for emp in employees if emp.get("role") == "executor"]
 
     @staticmethod
     def _get_tags(data: dict) -> list[dict]:

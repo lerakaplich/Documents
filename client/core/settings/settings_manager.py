@@ -36,7 +36,7 @@ class SettingsManager:
         """Загрузка настроек из JSON файла"""
         try:
             if os.path.exists(self.settings_file):
-                with open(self.settings_file, "r", encoding="utf-8") as f:
+                with open(self.settings_file, encoding="utf-8") as f:
                     return json.load(f)
         except Exception as e:
             print(f"[SettingsManager] Error loading settings: {e}")
@@ -74,7 +74,7 @@ class SettingsManager:
         """Получить текущий тип документа"""
         return self._current_document_type or "default"
 
-    def _get_type_key(self, base_key: str, doc_type: str = None) -> str:
+    def _get_type_key(self, base_key: str, doc_type: str | None = None) -> str:
         """Получить ключ с типом документа"""
         if doc_type is None:
             doc_type = self.get_current_document_type()
@@ -113,67 +113,67 @@ class SettingsManager:
     # ============ НАСТРОЙКИ ПО ТИПУ ДОКУМЕНТА ============
 
     # --- Колонки ---
-    def get_column_widths(self, doc_type: str = None) -> dict:
+    def get_column_widths(self, doc_type: str | None = None) -> dict:
         key = self._get_type_key(SettingsKeys.COLUMN_WIDTHS, doc_type)
         return self.get(key, {})
 
-    def set_column_widths(self, widths: dict, doc_type: str = None):
+    def set_column_widths(self, widths: dict, doc_type: str | None = None):
         key = self._get_type_key(SettingsKeys.COLUMN_WIDTHS, doc_type)
         self.set(key, widths)
 
-    def get_hidden_columns(self, doc_type: str = None) -> list:
+    def get_hidden_columns(self, doc_type: str | None = None) -> list:
         key = self._get_type_key(SettingsKeys.HIDDEN_COLUMNS, doc_type)
         return self.get(key, [])
 
-    def set_hidden_columns(self, hidden: list, doc_type: str = None):
+    def set_hidden_columns(self, hidden: list, doc_type: str | None = None):
         key = self._get_type_key(SettingsKeys.HIDDEN_COLUMNS, doc_type)
         self.set(key, hidden)
 
-    def get_column_order(self, doc_type: str = None) -> list:
+    def get_column_order(self, doc_type: str | None = None) -> list:
         key = self._get_type_key(SettingsKeys.COLUMN_ORDER, doc_type)
         return self.get(key, [])
 
-    def set_column_order(self, order: list, doc_type: str = None):
+    def set_column_order(self, order: list, doc_type: str | None = None):
         key = self._get_type_key(SettingsKeys.COLUMN_ORDER, doc_type)
         self.set(key, order)
 
     # --- Строки для типа ---
-    def get_row_heights_by_type(self, doc_type: str = None) -> dict:
+    def get_row_heights_by_type(self, doc_type: str | None = None) -> dict:
         """Получить высоты строк для типа документа"""
         key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, doc_type)
         return self.get(key, {})
 
-    def set_row_heights_by_type(self, heights: dict, doc_type: str = None):
+    def set_row_heights_by_type(self, heights: dict, doc_type: str | None = None):
         """Сохранить высоты строк для типа документа"""
         key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, doc_type)
         self.set(key, heights)
 
-    def get_row_order_by_type(self, doc_type: str = None) -> list:
+    def get_row_order_by_type(self, doc_type: str | None = None) -> list:
         """Получить порядок строк для типа документа"""
         key = self._get_type_key(SettingsKeys.ROW_ORDER_TYPE, doc_type)
         return self.get(key, [])
 
-    def set_row_order_by_type(self, order: list, doc_type: str = None):
+    def set_row_order_by_type(self, order: list, doc_type: str | None = None):
         """Сохранить порядок строк для типа документа"""
         key = self._get_type_key(SettingsKeys.ROW_ORDER_TYPE, doc_type)
         self.set(key, order)
 
-    def get_pinned_by_type(self, doc_type: str = None) -> list:
+    def get_pinned_by_type(self, doc_type: str | None = None) -> list:
         """Получить закрепленные документы для типа"""
         key = self._get_type_key(SettingsKeys.PINNED_TYPE, doc_type)
         return self.get(key, [])
 
-    def set_pinned_by_type(self, ids: list, doc_type: str = None):
+    def set_pinned_by_type(self, ids: list, doc_type: str | None = None):
         """Сохранить закрепленные документы для типа"""
         key = self._get_type_key(SettingsKeys.PINNED_TYPE, doc_type)
         self.set(key, ids)
 
-    def get_hidden_rows_by_type(self, doc_type: str = None) -> list:
+    def get_hidden_rows_by_type(self, doc_type: str | None = None) -> list:
         """Получить скрытые строки для типа документа"""
         key = self._get_type_key(SettingsKeys.HIDDEN_ROWS_TYPE, doc_type)
         return self.get(key, [])
 
-    def set_hidden_rows_by_type(self, rows: list, doc_type: str = None):
+    def set_hidden_rows_by_type(self, rows: list, doc_type: str | None = None):
         """Сохранить скрытые строки для типа документа"""
         key = self._get_type_key(SettingsKeys.HIDDEN_ROWS_TYPE, doc_type)
         self.set(key, rows)
@@ -181,13 +181,13 @@ class SettingsManager:
     # ============ МЕТОДЫ ДЛЯ СОВМЕСТИМОСТИ ============
 
     # Для обратной совместимости с существующим кодом
-    def get_pinned_ids(self, doc_type: str = None) -> list:
+    def get_pinned_ids(self, doc_type: str | None = None) -> list:
         """Получить закрепленные ID документов (совместимость)"""
         if doc_type:
             return self.get_pinned_by_type(doc_type)
         return self.get_pinned()
 
-    def set_pinned_ids(self, ids: list, doc_type: str = None):
+    def set_pinned_ids(self, ids: list, doc_type: str | None = None):
         """Сохранить закрепленные ID документов (совместимость)"""
         if doc_type:
             self.set_pinned_by_type(ids, doc_type)
@@ -219,7 +219,7 @@ class SettingsManager:
         self._save_settings()
         print("[SettingsManager] All local settings cleared")
 
-    def print_settings_for_type(self, doc_type: str = None):
+    def print_settings_for_type(self, doc_type: str | None = None):
         """Вывести настройки для типа документа"""
         if doc_type is None:
             doc_type = self.get_current_document_type()
@@ -269,7 +269,7 @@ class SettingsManager:
 
     # ============ НОВЫЕ МЕТОДЫ ДЛЯ СОВМЕСТИМОСТИ ============
 
-    def get_row_heights_by_doc_type(self, doc_type: str = None) -> dict:
+    def get_row_heights_by_doc_type(self, doc_type: str | None = None) -> dict:
         """
         Получить высоты строк (совместимость).
         Сначала пытается получить новый формат (по ID),
@@ -288,13 +288,13 @@ class SettingsManager:
         old_key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, doc_type)
         return self.get(old_key, {})
 
-    def set_row_heights_by_doc_type(self, heights: dict, doc_type: str = None):
+    def set_row_heights_by_doc_type(self, heights: dict, doc_type: str | None = None):
         """Сохранить высоты строк для типа документа"""
         doc_type = doc_type or self.get_current_document_type()
         key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, doc_type)
         self.set(key, heights)
 
-    def get_row_order_by_doc_type(self, doc_type: str = None) -> list:
+    def get_row_order_by_doc_type(self, doc_type: str | None = None) -> list:
         """Получить порядок строк для типа документа"""
         doc_type = doc_type or self.get_current_document_type()
 
@@ -307,13 +307,13 @@ class SettingsManager:
         default_key = self._get_type_key(SettingsKeys.ROW_ORDER_TYPE, "default")
         return self.get(default_key, [])
 
-    def set_row_order_by_doc_type(self, order: list, doc_type: str = None):
+    def set_row_order_by_doc_type(self, order: list, doc_type: str | None = None):
         """Сохранить порядок строк для типа документа"""
         doc_type = doc_type or self.get_current_document_type()
         key = self._get_type_key(SettingsKeys.ROW_ORDER_TYPE, doc_type)
         self.set(key, order)
 
-    def get_pinned_by_doc_type(self, doc_type: str = None) -> list:
+    def get_pinned_by_doc_type(self, doc_type: str | None = None) -> list:
         """Получить закрепленные документы для типа"""
         doc_type = doc_type or self.get_current_document_type()
 
@@ -326,13 +326,13 @@ class SettingsManager:
         default_key = self._get_type_key(SettingsKeys.PINNED_TYPE, "default")
         return self.get(default_key, [])
 
-    def set_pinned_by_doc_type(self, ids: list, doc_type: str = None):
+    def set_pinned_by_doc_type(self, ids: list, doc_type: str | None = None):
         """Сохранить закрепленные документы для типа"""
         doc_type = doc_type or self.get_current_document_type()
         key = self._get_type_key(SettingsKeys.PINNED_TYPE, doc_type)
         self.set(key, ids)
 
-    def get_hidden_rows_by_doc_type(self, doc_type: str = None) -> list:
+    def get_hidden_rows_by_doc_type(self, doc_type: str | None = None) -> list:
         """Получить скрытые строки для типа документа"""
         doc_type = doc_type or self.get_current_document_type()
 
@@ -345,7 +345,7 @@ class SettingsManager:
         default_key = self._get_type_key(SettingsKeys.HIDDEN_ROWS_TYPE, "default")
         return self.get(default_key, [])
 
-    def set_hidden_rows_by_doc_type(self, rows: list, doc_type: str = None):
+    def set_hidden_rows_by_doc_type(self, rows: list, doc_type: str | None = None):
         """Сохранить скрытые строки для типа документа"""
         doc_type = doc_type or self.get_current_document_type()
         key = self._get_type_key(SettingsKeys.HIDDEN_ROWS_TYPE, doc_type)
@@ -357,24 +357,24 @@ class SettingsManager:
 
     # ============ ВЫСОТЫ СТРОК ПО ID ============
 
-    def get_row_heights_by_id(self, doc_type: str = None) -> dict:
+    def get_row_heights_by_id(self, doc_type: str | None = None) -> dict:
         """Получить высоты строк по ID документа"""
         key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_BY_ID_TYPE, doc_type)
         return self.get(key, {})
 
-    def set_row_heights_by_id(self, heights: dict, doc_type: str = None):
+    def set_row_heights_by_id(self, heights: dict, doc_type: str | None = None):
         """Сохранить высоты строк по ID документа"""
         key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_BY_ID_TYPE, doc_type)
         self.set(key, heights)
 
-    def remove_row_heights_by_type(self, doc_type: str = None):
+    def remove_row_heights_by_type(self, doc_type: str | None = None):
         """Удалить старые высоты строк для типа"""
         key = self._get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, doc_type)
         if key in self._settings:
             del self._settings[key]
             self._save_settings()
 
-    def save_auth_session(self, refresh_token: str, phone: str = None):
+    def save_auth_session(self, refresh_token: str, phone: str | None = None):
         """Сохраняет refresh_token и телефон для авто-входа."""
         self.set(SettingsKeys.AUTH_REFRESH_TOKEN, refresh_token)
         if phone:

@@ -22,10 +22,9 @@ class DepartmentService:
     def get_department(self, dept_id: int) -> dict[str, Any] | None:
         """Получить подразделение по ID"""
         try:
-            response = self.http.get(f"{self.base_path}/{dept_id}")
-            return response
+            return self.http.get(f"{self.base_path}/{dept_id}")
         except Exception as e:
-            logger.error(f"Ошибка получения подразделения {dept_id}: {e}")
+            logger.exception(f"Ошибка получения подразделения {dept_id}: {e}")
             return None
 
     def create_department(self, dept_data):
@@ -41,7 +40,7 @@ class DepartmentService:
             logger.info(f"✅ Подразделение {dept_id} удалено")
             return True
         except Exception as e:
-            logger.error(f"❌ Ошибка удаления подразделения {dept_id}: {e}")
+            logger.exception(f"❌ Ошибка удаления подразделения {dept_id}: {e}")
             return False
 
     def move_department(self, dept_id: int, new_parent_id: int | None) -> bool:
@@ -52,7 +51,7 @@ class DepartmentService:
             logger.info(f"✅ Подразделение {dept_id} перемещено")
             return True
         except Exception as e:
-            logger.error(f"❌ Ошибка перемещения подразделения {dept_id}: {e}")
+            logger.exception(f"❌ Ошибка перемещения подразделения {dept_id}: {e}")
             return False
 
     def set_department_head(self, dept_id: int, head_id: int) -> bool:
@@ -65,7 +64,7 @@ class DepartmentService:
             logger.info(f"✅ Назначен руководитель для подразделения {dept_id}")
             return True
         except Exception as e:
-            logger.error(f"❌ Ошибка назначения руководителя {dept_id}: {e}")
+            logger.exception(f"❌ Ошибка назначения руководителя {dept_id}: {e}")
             return False
 
     def remove_department_head(self, dept_id: int) -> bool:
@@ -75,7 +74,7 @@ class DepartmentService:
             logger.info(f"✅ Руководитель убран у подразделения {dept_id}")
             return True
         except Exception as e:
-            logger.error(f"❌ Ошибка удаления руководителя {dept_id}: {e}")
+            logger.exception(f"❌ Ошибка удаления руководителя {dept_id}: {e}")
             return False
 
     def get_department_staff(self, dept_id: int) -> list[dict[str, Any]]:
@@ -84,7 +83,7 @@ class DepartmentService:
             response = self.http.get(f"{self.base_path}/{dept_id}/staff")
             return response if isinstance(response, list) else []
         except Exception as e:
-            logger.error(f"Ошибка получения сотрудников подразделения {dept_id}: {e}")
+            logger.exception(f"Ошибка получения сотрудников подразделения {dept_id}: {e}")
             return []
 
 

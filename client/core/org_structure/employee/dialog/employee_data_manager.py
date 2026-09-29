@@ -38,9 +38,7 @@ class EmployeeDataManager:
             self.parent.patronymicEdit.setText(self.employee.get("patronymic", ""))
 
         if hasattr(self.parent, "serviceNumberEdit"):
-            self.parent.serviceNumberEdit.setText(
-                self.employee.get("service_number", "")
-            )
+            self.parent.serviceNumberEdit.setText(self.employee.get("service_number", ""))
 
         birth_date = self.employee.get("birth_date")
         if birth_date and hasattr(self.parent, "birthDateEdit"):
@@ -49,7 +47,7 @@ class EmployeeDataManager:
 
                 try:
                     birth_date = datetime.strptime(birth_date, "%Y-%m-%d").date()
-                except:
+                except (ValueError, TypeError):
                     birth_date = date(1980, 1, 1)
             self.parent.birthDateEdit.setDate(birth_date)
         elif hasattr(self.parent, "birthDateEdit"):
@@ -111,9 +109,7 @@ class EmployeeDataManager:
                     self.hierarchy_manager.update_label_text(0, org_id)
 
             if dept_id:
-                QTimer.singleShot(
-                    500, lambda: self.set_old_format_data(dept_id, is_leader)
-                )
+                QTimer.singleShot(500, lambda: self.set_old_format_data(dept_id, is_leader))
 
     def set_old_format_data(self, dept_id, is_leader):
         """Устанавливает данные из старого формата"""
@@ -122,9 +118,7 @@ class EmployeeDataManager:
             current_id = dept_id
             while current_id:
                 path.insert(0, current_id)
-                current_id = self.hierarchy_manager.departments_tree[current_id][
-                    "parent_id"
-                ]
+                current_id = self.hierarchy_manager.departments_tree[current_id]["parent_id"]
 
             for level, item_id in enumerate(path):
                 combo_level = level + 1
@@ -140,21 +134,11 @@ class EmployeeDataManager:
 
     def get_data(self):
         """Возвращает данные из формы"""
-        rights_index = (
-            self.parent.rightsCombo.currentIndex()
-            if hasattr(self.parent, "rightsCombo")
-            else -1
-        )
-        rights = (
-            self.parent.rightsCombo.itemData(rights_index) or "user"
-            if rights_index >= 0
-            else "user"
-        )
+        rights_index = self.parent.rightsCombo.currentIndex() if hasattr(self.parent, "rightsCombo") else -1
+        rights = self.parent.rightsCombo.itemData(rights_index) or "user" if rights_index >= 0 else "user"
 
         assignment_index = (
-            self.parent.assignmentTypeCombo.currentIndex()
-            if hasattr(self.parent, "assignmentTypeCombo")
-            else -1
+            self.parent.assignmentTypeCombo.currentIndex() if hasattr(self.parent, "assignmentTypeCombo") else -1
         )
         assignment_kind = (
             self.parent.assignmentTypeCombo.itemData(assignment_index) or "primary"
@@ -165,9 +149,7 @@ class EmployeeDataManager:
         hierarchy_path = self.hierarchy_manager.get_current_hierarchy_path()
 
         is_leader = (
-            self.hierarchy_manager.leader_checkbox.isChecked()
-            if self.hierarchy_manager.leader_checkbox
-            else False
+            self.hierarchy_manager.leader_checkbox.isChecked() if self.hierarchy_manager.leader_checkbox else False
         )
 
         if is_leader:
@@ -190,32 +172,16 @@ class EmployeeDataManager:
 
         organization_id = hierarchy_path[0] if hierarchy_path else None
 
-        chat_id_text = (
-            self.parent.chatIdEdit.text().strip()
-            if hasattr(self.parent, "chatIdEdit")
-            else ""
-        )
+        chat_id_text = self.parent.chatIdEdit.text().strip() if hasattr(self.parent, "chatIdEdit") else ""
         chat_id = int(chat_id_text) if chat_id_text and chat_id_text.isdigit() else None
 
         data = {
-            "last_name": self.parent.lastNameEdit.text().strip()
-            if hasattr(self.parent, "lastNameEdit")
-            else "",
-            "first_name": self.parent.firstNameEdit.text().strip()
-            if hasattr(self.parent, "firstNameEdit")
-            else "",
-            "patronymic": self.parent.patronymicEdit.text().strip()
-            if hasattr(self.parent, "patronymicEdit")
-            else "",
-            "phone_number": self.parent.phoneEdit.text().strip()
-            if hasattr(self.parent, "phoneEdit")
-            else "",
-            "work_number": self.parent.workPhoneEdit.text().strip()
-            if hasattr(self.parent, "workPhoneEdit")
-            else "",
-            "email": self.parent.emailEdit.text().strip()
-            if hasattr(self.parent, "emailEdit")
-            else "",
+            "last_name": self.parent.lastNameEdit.text().strip() if hasattr(self.parent, "lastNameEdit") else "",
+            "first_name": self.parent.firstNameEdit.text().strip() if hasattr(self.parent, "firstNameEdit") else "",
+            "patronymic": self.parent.patronymicEdit.text().strip() if hasattr(self.parent, "patronymicEdit") else "",
+            "phone_number": self.parent.phoneEdit.text().strip() if hasattr(self.parent, "phoneEdit") else "",
+            "work_number": self.parent.workPhoneEdit.text().strip() if hasattr(self.parent, "workPhoneEdit") else "",
+            "email": self.parent.emailEdit.text().strip() if hasattr(self.parent, "emailEdit") else "",
             "birth_date": self.parent.birthDateEdit.date().toPyDate()
             if hasattr(self.parent, "birthDateEdit")
             else date(1980, 1, 1),
@@ -223,9 +189,7 @@ class EmployeeDataManager:
             "organization_id": organization_id,
             "department_id": department_id,
             "hierarchy_path": hierarchy_path,
-            "position_name": self.parent.positionEdit.text().strip()
-            if hasattr(self.parent, "positionEdit")
-            else "",
+            "position_name": self.parent.positionEdit.text().strip() if hasattr(self.parent, "positionEdit") else "",
             "assignment_kind": assignment_kind,
             "is_leader": is_leader,
             "rights": rights,
@@ -241,22 +205,13 @@ class EmployeeDataManager:
         """Валидация данных"""
         errors = []
 
-        if (
-            hasattr(self.parent, "lastNameEdit")
-            and not self.parent.lastNameEdit.text().strip()
-        ):
+        if hasattr(self.parent, "lastNameEdit") and not self.parent.lastNameEdit.text().strip():
             errors.append("Фамилия обязательна для заполнения")
 
-        if (
-            hasattr(self.parent, "firstNameEdit")
-            and not self.parent.firstNameEdit.text().strip()
-        ):
+        if hasattr(self.parent, "firstNameEdit") and not self.parent.firstNameEdit.text().strip():
             errors.append("Имя обязательно для заполнения")
 
-        if (
-            hasattr(self.parent, "positionEdit")
-            and not self.parent.positionEdit.text().strip()
-        ):
+        if hasattr(self.parent, "positionEdit") and not self.parent.positionEdit.text().strip():
             errors.append("Должность обязательна для заполнения")
 
         hierarchy_path = self.hierarchy_manager.get_current_hierarchy_path()

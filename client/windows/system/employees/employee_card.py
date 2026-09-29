@@ -124,8 +124,7 @@ class EmployeeCard(QFrame):
                 else:
                     color = T.TEXT_MUTED_ALT
                 self.rightsLabel.setStyleSheet(
-                    f"border: none; font-size: 12px; font-weight: bold; "
-                    f"color: {color}; background-color: transparent;"
+                    f"border: none; font-size: 12px; font-weight: bold; color: {color}; background-color: transparent;"
                 )
             else:
                 self.rightsLabel.setText("Права не назначены")

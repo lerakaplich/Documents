@@ -16,9 +16,7 @@ class OvertimeCardContainer:
         """Создаёт QWidget с QGridLayout для размещения карточек."""
         container = QWidget()
         container.setStyleSheet("background-color: transparent;")
-        container.setSizePolicy(
-            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum
-        )  # ← добавить
+        container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)  # ← добавить
 
         main_layout = QVBoxLayout(container)
         main_layout.setSpacing(0)
@@ -60,9 +58,7 @@ class OvertimeCardContainer:
         layout = tab.layout()
         if not layout:
             return
-        old_table_name = (
-            "myOvertimeTable" if tab_name == "tabMyOvertime" else "allOvertimeTable"
-        )
+        old_table_name = "myOvertimeTable" if tab_name == "tabMyOvertime" else "allOvertimeTable"
         replaced = False
         for i in range(layout.count()):
             item = layout.itemAt(i)
@@ -79,9 +75,7 @@ class OvertimeCardContainer:
             if last_item is not None and last_item.spacerItem() is None:
                 layout.addStretch()
 
-    def populate_card_container(
-        self, container, data_list, edit_callback, delete_callback
-    ):
+    def populate_card_container(self, container, data_list, edit_callback, delete_callback):
         """Заполняет контейнер карточками."""
         try:
             if not container:
@@ -128,21 +122,13 @@ class OvertimeCardContainer:
                     continue
 
                 card = OvertimeCard(real_id, data)
-                card.edit_clicked.connect(
-                    lambda checked, oid=real_id: edit_callback(oid)
-                )
-                card.delete_clicked.connect(
-                    lambda checked, oid=real_id: delete_callback(oid)
-                )
-                card.setSizePolicy(
-                    QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-                )
+                card.edit_clicked.connect(lambda checked, oid=real_id: edit_callback(oid))
+                card.delete_clicked.connect(lambda checked, oid=real_id: delete_callback(oid))
+                card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
                 row = i // 2
                 col = i % 2
-                grid_layout.addWidget(
-                    card, row, col, alignment=Qt.AlignmentFlag.AlignTop
-                )
+                grid_layout.addWidget(card, row, col, alignment=Qt.AlignmentFlag.AlignTop)
                 container.cards.append(card)
             # Пересчитываем размер контейнера после перерисовки
             container.updateGeometry()

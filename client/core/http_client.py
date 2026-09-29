@@ -61,14 +61,11 @@ class HttpClient:
                     expires_in=data.get("expires_in", 3600),
                 )
                 return True
-            else:
-                logger.error(
-                    f"Ошибка обновления токена: {response.status_code} | {response.text[:300]}"
-                )
-                return False
+            logger.error(f"Ошибка обновления токена: {response.status_code} | {response.text[:300]}")
+            return False
 
         except Exception as e:
-            logger.error(f"Ошибка при обновлении токена: {e}")
+            logger.exception(f"Ошибка при обновлении токена: {e}")
             return False
 
     def _get_headers(self) -> dict[str, str]:
@@ -131,23 +128,17 @@ class HttpClient:
 
         try:
             # Явно передаем все параметры
-            response = self.session.request(
-                method=method, url=url, headers=headers, timeout=30, **kwargs
-            )
+            response = self.session.request(method=method, url=url, headers=headers, timeout=30, **kwargs)
 
             if response.status_code == 401:
                 logger.warning("Получена 401 ошибка, пробуем обновить токен...")
                 if self._refresh_access_token():
                     headers["Authorization"] = f"Bearer {self._access_token}"
-                    response = self.session.request(
-                        method, url, headers=headers, **kwargs
-                    )
+                    response = self.session.request(method, url, headers=headers, **kwargs)
                     if response.status_code != 401:
                         logger.info("Запрос повторно выполнен успешно")
                 else:
-                    raise AuthError(
-                        "Не удалось обновить токен, требуется повторная авторизация"
-                    )
+                    raise AuthError("Не удалось обновить токен, требуется повторная авторизация")
 
             if response.status_code == 401:
                 raise AuthError("Сессия истекла, требуется повторный вход")
@@ -169,7 +160,7 @@ class HttpClient:
             return response.json()
 
         except requests.RequestException as e:
-            logger.error(f"Ошибка запроса: {e}")
+            logger.exception(f"Ошибка запроса: {e}")
             raise
 
     # ==================== ОСНОВНЫЕ МЕТОДЫ ====================
@@ -178,21 +169,15 @@ class HttpClient:
         """GET запрос"""
         return self._request("GET", endpoint, params=params)
 
-    def post(
-        self, endpoint: str, data: dict | None = None, json: dict | None = None
-    ) -> dict[str, Any]:
+    def post(self, endpoint: str, data: dict | None = None, json: dict | None = None) -> dict[str, Any]:
         """POST запрос"""
         return self._request("POST", endpoint, json=json, data=data)
 
-    def put(
-        self, endpoint: str, data: dict | None = None, json: dict | None = None
-    ) -> dict[str, Any]:
+    def put(self, endpoint: str, data: dict | None = None, json: dict | None = None) -> dict[str, Any]:
         """PUT запрос"""
         return self._request("PUT", endpoint, json=json, data=data)
 
-    def patch(
-        self, endpoint: str, data: dict | None = None, json: dict | None = None
-    ) -> dict[str, Any]:
+    def patch(self, endpoint: str, data: dict | None = None, json: dict | None = None) -> dict[str, Any]:
         """PATCH запрос"""
         return self._request("PATCH", endpoint, json=json, data=data)
 
@@ -236,9 +221,7 @@ class HttpClient:
         if response.status_code == 401:
             logger.warning("Получена 401 при загрузке файла, обновляем токен...")
             if not self._refresh_access_token():
-                raise AuthError(
-                    "Не удалось обновить токен, требуется повторная авторизация"
-                )
+                raise AuthError("Не удалось обновить токен, требуется повторная авторизация")
             response = _do_request()
 
         # ДИАГНОСТИКА — увидишь, что реально ушло
@@ -271,9 +254,7 @@ class HttpClient:
         url = f"{self.base_url}{endpoint}"
         headers = {
             "Accept": "application/json",
-            "Authorization": f"Bearer {self._access_token}"
-            if self._access_token
-            else "",
+            "Authorization": f"Bearer {self._access_token}" if self._access_token else "",
         }
         logger.info(f"📤 POST (form) {url}")
         response = self.session.post(url, headers=headers, data=data, timeout=30)

@@ -81,9 +81,7 @@ class FloatingActionButton(QPushButton):
     def _set_icon_from_file(self):
         """Установить иконку из файла SVG с динамическим размером"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        client_dir = os.path.dirname(
-            os.path.dirname(current_dir)
-        )  # поднимаемся на два уровня
+        client_dir = os.path.dirname(os.path.dirname(current_dir))  # поднимаемся на два уровня
         icon_path = os.path.join(client_dir, "icons", "plus28_gold.svg")
 
         try:
@@ -106,9 +104,7 @@ class FloatingActionButton(QPushButton):
             self.setIconSize(pixmap.rect().size())
 
         except ImportError:
-            print(
-                "[FloatingActionButton] QtSvg не доступен, используем fallback иконку"
-            )
+            print("[FloatingActionButton] QtSvg не доступен, используем fallback иконку")
             self._set_fallback_icon()
         except Exception as e:
             print(f"[FloatingActionButton] Ошибка загрузки SVG из файла: {e}")
@@ -141,9 +137,7 @@ class FloatingActionButton(QPushButton):
             self.fade_animation.setEndValue(1.0)
 
             # Настраиваем анимацию позиции (всплытие снизу)
-            start_pos = QPoint(
-                self.base_position.x(), self.base_position.y() + self.offset
-            )
+            start_pos = QPoint(self.base_position.x(), self.base_position.y() + self.offset)
             end_pos = self.base_position
 
             self.slide_animation.setStartValue(start_pos)
@@ -171,9 +165,7 @@ class FloatingActionButton(QPushButton):
 
             # Настраиваем анимацию позиции (погружение вниз)
             start_pos = self.pos()
-            end_pos = QPoint(
-                self.base_position.x(), self.base_position.y() + self.offset
-            )
+            end_pos = QPoint(self.base_position.x(), self.base_position.y() + self.offset)
 
             self.slide_animation.setStartValue(start_pos)
             self.slide_animation.setEndValue(end_pos)

@@ -1,3 +1,4 @@
+import contextlib
 import re
 from dataclasses import asdict
 
@@ -64,10 +65,7 @@ class ThemeManager:
 
     def apply_to_widget(self, widget) -> None:
         if not isinstance(widget, QWidget):
-            print(
-                f"[ThemeManager] apply_to_widget: ожидался QWidget, "
-                f"получен {type(widget).__name__}. Пропускаем."
-            )
+            print(f"[ThemeManager] apply_to_widget: ожидался QWidget, получен {type(widget).__name__}. Пропускаем.")
             return
 
         theme = self.theme_dict()
@@ -86,10 +84,7 @@ def get_manager() -> ThemeManager:
 def apply_theme_to_widget(widget) -> None:
     """Рекурсивно подставить цвета темы во все styleSheet виджета и потомков."""
     if not isinstance(widget, QWidget):
-        print(
-            f"[themes] apply_theme_to_widget: ожидался QWidget, "
-            f"получен {type(widget).__name__}. Пропускаем."
-        )
+        print(f"[themes] apply_theme_to_widget: ожидался QWidget, получен {type(widget).__name__}. Пропускаем.")
         return
     _manager.apply_to_widget(widget)
 
@@ -102,10 +97,8 @@ def apply_theme_to_all_windows() -> None:
     if app is None:
         return
 
-    try:
+    with contextlib.suppress(Exception):
         icon_manager.clear_cache()
-    except Exception:
-        pass
 
     for top in app.topLevelWidgets():
         # 1. Обычная подстановка {TOKEN} → hex в стилях из .ui

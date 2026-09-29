@@ -58,9 +58,7 @@ class OvertimeCard(QFrame):
     def _load_ui(self):
         """Загрузка UI из файла"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(
-            current_dir, "../../../../client/ui/profile/overtime/overtime_card.ui"
-        )
+        ui_path = os.path.join(current_dir, "../../../../client/ui/profile/overtime/overtime_card.ui")
         ui_path = os.path.normpath(ui_path)
 
         if not os.path.exists(ui_path):
@@ -93,14 +91,10 @@ class OvertimeCard(QFrame):
             f"border: none; font-size: 16px; font-weight: bold; "
             f"color: {T.TEXT_ACCENT_DARK_STRONG}; background-color: transparent;"
         )
-        self.labelEmployee.setSizePolicy(
-            self.sizePolicy().Policy.Expanding, self.sizePolicy().Policy.Preferred
-        )
+        self.labelEmployee.setSizePolicy(self.sizePolicy().Policy.Expanding, self.sizePolicy().Policy.Preferred)
         header_layout.addWidget(self.labelEmployee)
 
-        spacer = QSpacerItem(
-            40, 20, QSpacerItem.SizePolicy.Expanding, QSpacerItem.SizePolicy.Minimum
-        )
+        spacer = QSpacerItem(40, 20, QSpacerItem.SizePolicy.Expanding, QSpacerItem.SizePolicy.Minimum)
         header_layout.addItem(spacer)
 
         self.labelCreatedAt = QLabel()
@@ -120,9 +114,7 @@ class OvertimeCard(QFrame):
             f"border: none; font-size: 13px; color: {T.TEXT_ACCENT_DARK}; background-color: transparent;"
         )
         self.labelDescription.setWordWrap(True)
-        self.labelDescription.setSizePolicy(
-            self.sizePolicy().Policy.Expanding, self.sizePolicy().Policy.Preferred
-        )
+        self.labelDescription.setSizePolicy(self.sizePolicy().Policy.Expanding, self.sizePolicy().Policy.Preferred)
         description_layout.addWidget(self.labelDescription)
 
         self.btnEdit = QPushButton("✏️ Редактировать")
@@ -160,9 +152,7 @@ class OvertimeCard(QFrame):
         self.labelDateIcon.setMaximumSize(16, 16)
         self.labelDateIcon.setCursor(Qt.CursorShape.ArrowCursor)
         self.labelDateIcon.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.labelDateIcon.setStyleSheet(
-            "border: none; background-color: transparent; padding: 0px;"
-        )
+        self.labelDateIcon.setStyleSheet("border: none; background-color: transparent; padding: 0px;")
         info_layout.addWidget(self.labelDateIcon)
 
         self.labelDate = QLabel()
@@ -177,9 +167,7 @@ class OvertimeCard(QFrame):
         self.labelTimeIcon.setMaximumSize(16, 16)
         self.labelTimeIcon.setCursor(Qt.CursorShape.ArrowCursor)
         self.labelTimeIcon.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.labelTimeIcon.setStyleSheet(
-            "border: none; background-color: transparent; padding: 0px;"
-        )
+        self.labelTimeIcon.setStyleSheet("border: none; background-color: transparent; padding: 0px;")
         info_layout.addWidget(self.labelTimeIcon)
 
         self.labelTime = QLabel()
@@ -219,9 +207,7 @@ class OvertimeCard(QFrame):
         """)
         info_layout.addWidget(self.btnDelete)
 
-        info_spacer = QSpacerItem(
-            40, 20, QSpacerItem.SizePolicy.Expanding, QSpacerItem.SizePolicy.Minimum
-        )
+        info_spacer = QSpacerItem(40, 20, QSpacerItem.SizePolicy.Expanding, QSpacerItem.SizePolicy.Minimum)
         info_layout.addItem(info_spacer)
 
         left_layout.addLayout(info_layout)

@@ -43,9 +43,7 @@ class EmployeeUI:
         is_edit = employee and employee.get("id")
 
         if is_edit:
-            full_name = (
-                f"{employee.get('last_name', '')} {employee.get('first_name', '')}"
-            )
+            full_name = f"{employee.get('last_name', '')} {employee.get('first_name', '')}"
             self.parent.setWindowTitle(f"Редактирование сотрудника - {full_name}")
             self.parent.titleLabel.setText("Редактирование сотрудника")
         else:
@@ -81,6 +79,4 @@ class EmployeeUI:
         new_layout = QVBoxLayout()
         new_layout.setSpacing(8)
         self.parent.hierarchyLayout = new_layout
-        parent_widget.layout().insertLayout(
-            parent_widget.layout().indexOf(old_layout), new_layout
-        )
+        parent_widget.layout().insertLayout(parent_widget.layout().indexOf(old_layout), new_layout)

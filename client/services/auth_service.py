@@ -13,9 +13,7 @@ class AuthService:
     def __init__(self, http_client: HttpClient):
         self.client = http_client
 
-    def login(
-        self, phone: str, password: str, remember_me: bool = False
-    ) -> dict[str, Any]:
+    def login(self, phone: str, password: str, remember_me: bool = False) -> dict[str, Any]:
         try:
             clean_phone = phone.strip()
             if not clean_phone.startswith("+"):
@@ -42,15 +40,13 @@ class AuthService:
 
                 # ─── Постоянная сессия ───
                 if remember_me:
-                    SettingsManager().save_auth_session(
-                        response["refresh_token"], clean_phone
-                    )
+                    SettingsManager().save_auth_session(response["refresh_token"], clean_phone)
                 else:
                     SettingsManager().clear_auth_session()
 
             return response
         except Exception as e:
-            logger.error(f"Ошибка входа: {e}")
+            logger.exception(f"Ошибка входа: {e}")
             raise
 
     def try_restore_session(self) -> dict[str, Any] | None:
@@ -84,11 +80,11 @@ class AuthService:
             return response
 
         except Exception as e:
-            logger.error(f"Не удалось восстановить сессию: {e}")
+            logger.exception(f"Не удалось восстановить сессию: {e}")
             SettingsManager().clear_auth_session()
             return None
 
-    def logout(self, refresh_token: str = None) -> bool:
+    def logout(self, refresh_token: str | None = None) -> bool:
         try:
             token = refresh_token or self.client._refresh_token
             if not token:
@@ -103,7 +99,7 @@ class AuthService:
             logger.info("Выход выполнен успешно")
             return True
         except Exception as e:
-            logger.error(f"Ошибка выхода: {e}")
+            logger.exception(f"Ошибка выхода: {e}")
             self.client.clear_tokens()
             SettingsManager().clear_auth_session()  # ← NEW
             return False
@@ -115,16 +111,12 @@ class AuthService:
                 logger.warning("Нет refresh_token для обновления")
                 return None
 
-            response = self.client.post(
-                "/auth/refresh", json={"refresh_token": self.client._refresh_token}
-            )
+            response = self.client.post("/auth/refresh", json={"refresh_token": self.client._refresh_token})
 
             if "access_token" in response:
                 self.client.set_tokens(
                     access_token=response["access_token"],
-                    refresh_token=response.get(
-                        "refresh_token", self.client._refresh_token
-                    ),
+                    refresh_token=response.get("refresh_token", self.client._refresh_token),
                     expires_in=response.get("expires_in", 3600),
                 )
                 logger.info("Токен успешно обновлен")
@@ -133,7 +125,7 @@ class AuthService:
             return None
 
         except Exception as e:
-            logger.error(f"Ошибка обновления токена: {e}")
+            logger.exception(f"Ошибка обновления токена: {e}")
             return None
 
     def change_password(self, current_password: str, new_password: str) -> bool:
@@ -150,7 +142,7 @@ class AuthService:
             return True
 
         except Exception as e:
-            logger.error(f"Ошибка смены пароля: {e}")
+            logger.exception(f"Ошибка смены пароля: {e}")
             raise
 
     def forgot_password(self, phone_number: str) -> bool:
@@ -160,14 +152,12 @@ class AuthService:
             if not clean_phone.startswith("+"):
                 clean_phone = "+" + clean_phone
 
-            self.client.post(
-                "/auth/forgot-password", json={"phone_number": clean_phone}
-            )
+            self.client.post("/auth/forgot-password", json={"phone_number": clean_phone})
             logger.info(f"Запрос восстановления отправлен для {clean_phone}")
             return True
 
         except Exception as e:
-            logger.error(f"Ошибка запроса восстановления: {e}")
+            logger.exception(f"Ошибка запроса восстановления: {e}")
             raise
 
     def verify_reset_code(self, phone_number: str, code: str) -> bool:
@@ -185,7 +175,7 @@ class AuthService:
             return True
 
         except Exception as e:
-            logger.error(f"Ошибка подтверждения кода: {e}")
+            logger.exception(f"Ошибка подтверждения кода: {e}")
             raise
 
     def reset_password(self, phone_number: str, code: str, new_password: str) -> bool:
@@ -207,5 +197,5 @@ class AuthService:
             return True
 
         except Exception as e:
-            logger.error(f"Ошибка сброса пароля: {e}")
+            logger.exception(f"Ошибка сброса пароля: {e}")
             raise

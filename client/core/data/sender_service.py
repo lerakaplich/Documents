@@ -85,22 +85,14 @@ class SenderService:
 
         if sender_type == "employee":
             last_name = sender.get("last_name", "")
-            first_initial = (
-                sender.get("first_name", "")[0] + "."
-                if sender.get("first_name")
-                else ""
-            )
-            patronymic_initial = (
-                sender.get("patronymic", "")[0] + "."
-                if sender.get("patronymic")
-                else ""
-            )
+            first_initial = sender.get("first_name", "")[0] + "." if sender.get("first_name") else ""
+            patronymic_initial = sender.get("patronymic", "")[0] + "." if sender.get("patronymic") else ""
             return f"Отправитель: {last_name} {first_initial}{patronymic_initial}"
 
-        elif sender_type == "organization":
+        if sender_type == "organization":
             return f"Отправитель: {sender.get('organization_name', '')}"
 
-        elif sender_type == "department":
+        if sender_type == "department":
             dept_type = sender.get("department_type", "")
             dept_name = sender.get("department_name", "")
             if dept_type and dept_name:

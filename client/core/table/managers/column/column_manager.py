@@ -12,7 +12,7 @@ from client.core.table.managers.column.column_visibility_manager import (
 class ColumnManager:
     """Координатор управления состоянием колонок"""
 
-    def __init__(self, table_widget, columns_config: dict, doc_type: str = None):
+    def __init__(self, table_widget, columns_config: dict, doc_type: str | None = None):
         self.table_widget = table_widget
         self.columns_config = columns_config
         self.doc_type = doc_type or "default"
@@ -23,15 +23,9 @@ class ColumnManager:
         self._save_timer = None
 
         # Инициализация специализированных менеджеров
-        self.visibility_manager = ColumnVisibilityManager(
-            table_widget, self.settings, self.doc_type
-        )
-        self.order_manager = ColumnOrderManager(
-            table_widget, self.settings, self.doc_type, columns_config
-        )
-        self.size_manager = ColumnSizeManager(
-            table_widget, self.settings, self.doc_type, columns_config
-        )
+        self.visibility_manager = ColumnVisibilityManager(table_widget, self.settings, self.doc_type)
+        self.order_manager = ColumnOrderManager(table_widget, self.settings, self.doc_type, columns_config)
+        self.size_manager = ColumnSizeManager(table_widget, self.settings, self.doc_type, columns_config)
 
         self.settings.set_current_document_type(self.doc_type)
         self._enable_column_management()
@@ -49,9 +43,7 @@ class ColumnManager:
         header.sectionMoved.connect(self._on_section_moved)
         header.sectionResized.connect(self._on_section_resized)
 
-    def _on_section_moved(
-        self, logicalIndex: int, oldVisualIndex: int, newVisualIndex: int
-    ):
+    def _on_section_moved(self, logicalIndex: int, oldVisualIndex: int, newVisualIndex: int):
         """Обработчик перемещения секции"""
         if self._is_restoring:
             return

@@ -45,9 +45,7 @@ class CollapsibleGroup(QWidget):
         # Контент
         self.content_area = QWidget()
         self.content_area.setStyleSheet("background-color: transparent;")
-        self.content_area.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
-        )
+        self.content_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.content_area_layout = QVBoxLayout(self.content_area)
         self.content_area_layout.setSpacing(10)
@@ -117,9 +115,7 @@ class CollapsibleGroup(QWidget):
                     widget.updateGeometry()
                     widget_height = widget.sizeHint().height()
                     if widget_height > 0:
-                        total_height += (
-                            widget_height + self.content_area_layout.spacing()
-                        )
+                        total_height += widget_height + self.content_area_layout.spacing()
             height = total_height if total_height > 0 else 100  # Минимальная высота
 
         # Восстанавливаем состояние
@@ -178,11 +174,7 @@ class CollapsibleGroup(QWidget):
                 self.content_area.setMaximumHeight(self._content_height)
                 self.content_area.updateGeometry()
         else:
-            if (
-                animated
-                and self.content_area.isVisible()
-                and self.content_area.height() > 0
-            ):
+            if animated and self.content_area.isVisible() and self.content_area.height() > 0:
                 self._is_animating = True
                 current_height = self.content_area.height()
                 if current_height <= 0:

@@ -54,7 +54,7 @@ class ResetCodeWorker(QObject):
             app_state.auth_service.forgot_password(normalized_phone)
             self.finished.emit(True)
         except Exception as e:
-            logger.error(f"Ошибка отправки кода: {e}")
+            logger.exception(f"Ошибка отправки кода: {e}")
             self.error.emit(str(e))
 
 
@@ -71,13 +71,11 @@ class VerifyCodeWorker(QObject):
         try:
             app_state = AppState()
             normalized_phone = normalize_phone_for_server(self.phone_number)
-            logger.info(
-                f"📤 Проверка кода для номера: {normalized_phone}, код: {self.code}"
-            )
+            logger.info(f"📤 Проверка кода для номера: {normalized_phone}, код: {self.code}")
             app_state.auth_service.verify_reset_code(normalized_phone, self.code)
             self.finished.emit()
         except Exception as e:
-            logger.error(f"Ошибка проверки кода: {e}")
+            logger.exception(f"Ошибка проверки кода: {e}")
             self.error.emit(str(e))
 
 
@@ -91,9 +89,7 @@ class ResetPasswordWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.root_dir = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
+        self.root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         ui_path = os.path.join(self.root_dir, "ui", "login", "reset_password_widget.ui")
         print(f"Загрузка ResetPasswordWidget UI: {ui_path}")
 
@@ -154,16 +150,12 @@ class ResetPasswordWidget(QWidget):
     def _send_reset_code(self):
         if not self.phone_number:
             if self.notification_manager:
-                self.notification_manager.show_notification(
-                    "Номер телефона не указан", duration=3000
-                )
+                self.notification_manager.show_notification("Номер телефона не указан", duration=3000)
             return
 
         if hasattr(self, "infoLabel"):
             self.infoLabel.setText("Отправка кода...")
-            self.infoLabel.setStyleSheet(
-                "color: #555; font-size: 18px; background: transparent;"
-            )
+            self.infoLabel.setStyleSheet("color: #555; font-size: 18px; background: transparent;")
 
         if hasattr(self, "resendCodeButton"):
             self.resendCodeButton.setEnabled(False)
@@ -182,7 +174,7 @@ class ResetPasswordWidget(QWidget):
 
             self.thread.start()
         except Exception as e:
-            logger.error(f"Ошибка при запуске потока: {e}")
+            logger.exception(f"Ошибка при запуске потока: {e}")
             self._on_code_sent_error(str(e))
 
     def _on_code_sent_success(self):
@@ -191,9 +183,7 @@ class ResetPasswordWidget(QWidget):
         if hasattr(self, "infoLabel"):
             self.infoLabel.setText("Код отправлен в Telegram")
         if self.notification_manager:
-            self.notification_manager.show_notification(
-                "Код подтверждения отправлен в Telegram", duration=3000
-            )
+            self.notification_manager.show_notification("Код подтверждения отправлен в Telegram", duration=3000)
 
         self._set_code_inputs_enabled(True)
 
@@ -211,9 +201,7 @@ class ResetPasswordWidget(QWidget):
 
         if hasattr(self, "infoLabel"):
             self.infoLabel.setText("Ошибка отправки")
-            self.infoLabel.setStyleSheet(
-                "color: #D22730; font-size: 18px; background: transparent;"
-            )
+            self.infoLabel.setStyleSheet("color: #D22730; font-size: 18px; background: transparent;")
 
         self._set_code_inputs_enabled(False)
 
@@ -223,17 +211,11 @@ class ResetPasswordWidget(QWidget):
 
         if self.notification_manager:
             if "404" in error_msg:
-                self.notification_manager.show_notification(
-                    "Пользователь с таким номером не найден", duration=3000
-                )
+                self.notification_manager.show_notification("Пользователь с таким номером не найден", duration=3000)
             elif "Connection" in error_msg:
-                self.notification_manager.show_notification(
-                    "Не удалось подключиться к серверу", duration=3000
-                )
+                self.notification_manager.show_notification("Не удалось подключиться к серверу", duration=3000)
             else:
-                self.notification_manager.show_notification(
-                    f"Ошибка: {error_msg[:50]}...", duration=3000
-                )
+                self.notification_manager.show_notification(f"Ошибка: {error_msg[:50]}...", duration=3000)
 
     def _start_resend_timer(self):
         from PyQt6.QtCore import QTimer
@@ -269,18 +251,13 @@ class ResetPasswordWidget(QWidget):
                 input_field = getattr(self, input_name)
                 self.code_inputs.append(input_field)
 
-                input_field.textChanged.connect(
-                    lambda text, idx=i - 1: self._on_code_input_changed(text, idx)
-                )
+                input_field.textChanged.connect(lambda text, idx=i - 1: self._on_code_input_changed(text, idx))
 
                 original_key_press = input_field.keyPressEvent
 
                 def create_key_handler(field, index, original_handler):
                     def key_press_handler(event):
-                        if (
-                            event.modifiers() & Qt.KeyboardModifier.ControlModifier
-                            and event.key() == Qt.Key.Key_V
-                        ):
+                        if event.modifiers() & Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_V:
                             try:
                                 clipboard = QApplication.clipboard()
                                 text = clipboard.text()
@@ -297,24 +274,17 @@ class ResetPasswordWidget(QWidget):
                                     if len(digits) >= 6:
                                         self._on_reset_password_clicked()
                             except Exception as e:
-                                logger.error(f"Ошибка при вставке из буфера: {e}")
+                                logger.exception(f"Ошибка при вставке из буфера: {e}")
                             return
 
-                        if (
-                            event.key() == Qt.Key.Key_Backspace
-                            and field.text() == ""
-                            and index > 1
-                        ):
+                        if event.key() == Qt.Key.Key_Backspace and field.text() == "" and index > 1:
                             prev_field = getattr(self, f"codeDigit{index - 1}", None)
                             if prev_field:
                                 prev_field.setFocus()
                                 prev_field.selectAll()
                             return
 
-                        if (
-                            event.key() == Qt.Key.Key_Return
-                            or event.key() == Qt.Key.Key_Enter
-                        ):
+                        if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
                             self._on_reset_password_clicked()
                             return
 
@@ -325,9 +295,7 @@ class ResetPasswordWidget(QWidget):
 
                     return key_press_handler
 
-                input_field.keyPressEvent = create_key_handler(
-                    input_field, i - 1, original_key_press
-                )
+                input_field.keyPressEvent = create_key_handler(input_field, i - 1, original_key_press)
 
     def _on_code_input_changed(self, text, index):
         if len(text) == 1 and index < len(self.code_inputs) - 1:
@@ -350,9 +318,7 @@ class ResetPasswordWidget(QWidget):
     def _on_reset_password_clicked(self):
         if not self.is_code_sent:
             if self.notification_manager:
-                self.notification_manager.show_notification(
-                    "Сначала запросите код подтверждения", duration=3000
-                )
+                self.notification_manager.show_notification("Сначала запросите код подтверждения", duration=3000)
             return
 
         code = self.get_code()
@@ -366,9 +332,7 @@ class ResetPasswordWidget(QWidget):
     def _verify_code(self, code: str):
         if hasattr(self, "infoLabel"):
             self.infoLabel.setText("Проверка кода...")
-            self.infoLabel.setStyleSheet(
-                "color: #555; font-size: 18px; background: transparent;"
-            )
+            self.infoLabel.setStyleSheet("color: #555; font-size: 18px; background: transparent;")
 
         if hasattr(self, "resetPasswordButton"):
             self.resetPasswordButton.setEnabled(False)
@@ -387,7 +351,7 @@ class ResetPasswordWidget(QWidget):
 
             self.verify_thread.start()
         except Exception as e:
-            logger.error(f"Ошибка при запуске потока верификации: {e}")
+            logger.exception(f"Ошибка при запуске потока верификации: {e}")
             self._on_code_verify_error(str(e))
 
     def _on_code_verified(self):
@@ -395,9 +359,7 @@ class ResetPasswordWidget(QWidget):
             self.infoLabel.setText("Код подтвержден!")
 
         if self.notification_manager:
-            self.notification_manager.show_notification(
-                "Код подтвержден! Придумайте новый пароль.", duration=2000
-            )
+            self.notification_manager.show_notification("Код подтвержден! Придумайте новый пароль.", duration=2000)
 
         # Получаем код
         code = self.get_code()
@@ -406,22 +368,16 @@ class ResetPasswordWidget(QWidget):
         if not self.phone_number:
             logger.error("❌ Номер телефона пустой!")
             if self.notification_manager:
-                self.notification_manager.show_notification(
-                    "Ошибка: номер телефона не указан", duration=3000
-                )
+                self.notification_manager.show_notification("Ошибка: номер телефона не указан", duration=3000)
             return
 
         if not code:
             logger.error("❌ Код пустой!")
             if self.notification_manager:
-                self.notification_manager.show_notification(
-                    "Ошибка: код не указан", duration=3000
-                )
+                self.notification_manager.show_notification("Ошибка: код не указан", duration=3000)
             return
 
-        logger.info(
-            f"📤 Передаем данные через сигнал: phone={self.phone_number}, code={code}"
-        )
+        logger.info(f"📤 Передаем данные через сигнал: phone={self.phone_number}, code={code}")
 
         # Отправляем сигнал с данными
         self.go_to_new_password.emit(self.phone_number, code)
@@ -433,26 +389,18 @@ class ResetPasswordWidget(QWidget):
         if "400" in error_msg or "Неверный код" in error_msg:
             self.set_error_state("Неверный код! Попробуйте еще раз.")
             if self.notification_manager:
-                self.notification_manager.show_notification(
-                    "Неверный код подтверждения", duration=3000
-                )
+                self.notification_manager.show_notification("Неверный код подтверждения", duration=3000)
         else:
             if self.notification_manager:
-                self.notification_manager.show_notification(
-                    f"Ошибка: {error_msg[:50]}...", duration=3000
-                )
+                self.notification_manager.show_notification(f"Ошибка: {error_msg[:50]}...", duration=3000)
             if hasattr(self, "infoLabel"):
                 self.infoLabel.setText("Ошибка проверки")
-                self.infoLabel.setStyleSheet(
-                    "color: #D22730; font-size: 18px; background: transparent;"
-                )
+                self.infoLabel.setStyleSheet("color: #D22730; font-size: 18px; background: transparent;")
 
     def set_error_state(self, message="Неверный код! Попробуйте еще раз."):
         if hasattr(self, "infoLabel"):
             self.infoLabel.setText(message)
-            self.infoLabel.setStyleSheet(
-                "color: #D22730; font-size: 16px;  background: transparent;"
-            )
+            self.infoLabel.setStyleSheet("color: #D22730; font-size: 16px;  background: transparent;")
         self.clear_code()
         if self.code_inputs:
             self.code_inputs[0].setFocus()
@@ -472,7 +420,7 @@ class ResetPasswordWidget(QWidget):
                 self.worker.deleteLater()
                 self.worker = None
         except Exception as e:
-            logger.error(f"Ошибка при очистке потока: {e}")
+            logger.exception(f"Ошибка при очистке потока: {e}")
 
     def _cleanup_verify_thread(self):
         try:
@@ -483,7 +431,7 @@ class ResetPasswordWidget(QWidget):
                 self.verify_worker.deleteLater()
                 self.verify_worker = None
         except Exception as e:
-            logger.error(f"Ошибка при очистке потока верификации: {e}")
+            logger.exception(f"Ошибка при очистке потока верификации: {e}")
 
     def closeEvent(self, event):
         try:
@@ -493,7 +441,7 @@ class ResetPasswordWidget(QWidget):
             self._cleanup_thread()
             self._cleanup_verify_thread()
         except Exception as e:
-            logger.error(f"Ошибка при закрытии: {e}")
+            logger.exception(f"Ошибка при закрытии: {e}")
         super().closeEvent(event)
 
     def paintEvent(self, event):

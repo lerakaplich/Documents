@@ -15,11 +15,7 @@ class TreeFilter:
             if TreeFilter.has_match_in_children(dept_struct, filter_text):
                 return True
 
-        for emp in struct.get("employees", []):
-            if filter_text in emp["name"].lower():
-                return True
-
-        return False
+        return any(filter_text in emp["name"].lower() for emp in struct.get("employees", []))
 
     @staticmethod
     def has_match_in_node(item: QTreeWidgetItem, filter_text: str) -> bool:
@@ -29,8 +25,4 @@ class TreeFilter:
         if filter_text in item.text(0).lower():
             return True
 
-        for i in range(item.childCount()):
-            if TreeFilter.has_match_in_node(item.child(i), filter_text):
-                return True
-
-        return False
+        return any(TreeFilter.has_match_in_node(item.child(i), filter_text) for i in range(item.childCount()))

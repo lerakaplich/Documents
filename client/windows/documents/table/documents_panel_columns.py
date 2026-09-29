@@ -76,9 +76,7 @@ class DocumentsColumnController:
         col = names.index(name)
 
         if not visible:
-            visible_count = sum(
-                1 for c in range(len(names)) if not table.isColumnHidden(c)
-            )
+            visible_count = sum(1 for c in range(len(names)) if not table.isColumnHidden(c))
             if visible_count <= 1:  # последний видимый столбец скрыть нельзя
                 self.menu.set_column_checked_silent(name, True)
                 return

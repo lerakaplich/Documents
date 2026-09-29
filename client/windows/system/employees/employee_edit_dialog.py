@@ -97,9 +97,7 @@ class EmployeeEditDialog(EmployeeDialog):
             self.async_ops.start_async_update(data)
         else:
             # Если вдруг ID нет, создаем нового
-            QMessageBox.warning(
-                self, "Ошибка", "Не удалось определить ID сотрудника для редактирования"
-            )
+            QMessageBox.warning(self, "Ошибка", "Не удалось определить ID сотрудника для редактирования")
             return
 
 
@@ -127,9 +125,7 @@ if __name__ == "__main__":
         "rights": "admin",
     }
 
-    dialog = EmployeeEditDialog(
-        parent_editor=None, employee=test_employee, current_user_rights="admin"
-    )
+    dialog = EmployeeEditDialog(parent_editor=None, employee=test_employee, current_user_rights="admin")
     dialog.show()
 
     sys.exit(app.exec())

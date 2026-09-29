@@ -53,14 +53,10 @@ class SortingManager(QObject):
         self.current_reverse = False
 
         # Создаем обратный маппинг: индекс колонки -> имя колонки
-        self.column_index_to_name = {
-            idx: name for idx, name in enumerate(columns_config.values())
-        }
+        self.column_index_to_name = dict(enumerate(columns_config.values()))
 
         # Подключаем сигнал клика по заголовку
-        self.table_widget.horizontalHeader().sectionClicked.connect(
-            self.on_header_clicked
-        )
+        self.table_widget.horizontalHeader().sectionClicked.connect(self.on_header_clicked)
 
     def on_header_clicked(self, logical_index: int):
         """
@@ -187,7 +183,7 @@ class SortingManager(QObject):
         header = self.table_widget.horizontalHeader()
 
         # Сначала убираем все индикаторы
-        for i in range(header.count()):
+        for _i in range(header.count()):
             header.setSortIndicatorShown(False)
 
         if self.current_column:
@@ -198,9 +194,7 @@ class SortingManager(QObject):
                     header.setSortIndicatorShown(True)
                     header.setSortIndicator(
                         idx,
-                        Qt.SortOrder.DescendingOrder
-                        if self.current_reverse
-                        else Qt.SortOrder.AscendingOrder,
+                        Qt.SortOrder.DescendingOrder if self.current_reverse else Qt.SortOrder.AscendingOrder,
                     )
                     break
 

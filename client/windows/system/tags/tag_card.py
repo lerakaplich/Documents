@@ -42,9 +42,7 @@ class TagCard(QFrame):
     def get_ui_path(self):
         """Возвращает путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(
-            current_dir, "..", "..", "..", "ui", "system", "tags", "tag_card.ui"
-        )
+        ui_path = os.path.join(current_dir, "..", "..", "..", "ui", "system", "tags", "tag_card.ui")
         return os.path.normpath(ui_path)
 
     def setup_connections(self):
@@ -77,9 +75,7 @@ class TagCard(QFrame):
                 word = "документа"
             else:
                 word = "документов"
-            self.countLabel.setText(
-                f"{count} {word}" if count > 0 else "нет документов"
-            )
+            self.countLabel.setText(f"{count} {word}" if count > 0 else "нет документов")
 
         # Устанавливаем цвет кружочка
         if hasattr(self, "colorButton"):

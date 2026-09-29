@@ -16,9 +16,7 @@ class TableController(QObject):
     pin_status_changed = pyqtSignal(int, bool)
     data_loaded = pyqtSignal(int)
 
-    def __init__(
-        self, table_widget, data_manager, row_renderer, updater, http_client=None
-    ):
+    def __init__(self, table_widget, data_manager, row_renderer, updater, http_client=None):
         super().__init__()
         self._table = table_widget
         self._data_manager = data_manager
@@ -47,13 +45,9 @@ class TableController(QObject):
 
     def _build_table(self):
         """Построить таблицу"""
-        columns_config = self._get_columns_config(
-            self._current_doc_type, self._current_view_mode
-        )
+        columns_config = self._get_columns_config(self._current_doc_type, self._current_view_mode)
 
-        builder = TableBuilder(
-            self._table, columns_config, self._current_doc_type, self._current_view_mode
-        )
+        builder = TableBuilder(self._table, columns_config, self._current_doc_type, self._current_view_mode)
 
         self._facade = builder.setup(self._data_manager, self._updater)
         self._row_manager = self._facade.get_row_manager()
@@ -69,9 +63,7 @@ class TableController(QObject):
 
     def _on_pin_changed(self, document_id: int, is_pinned: bool):
         self.pin_status_changed.emit(document_id, is_pinned)
-        self._icon_updater.update_pin_icon(
-            document_id, is_pinned, self._find_reg_number_column()
-        )
+        self._icon_updater.update_pin_icon(document_id, is_pinned, self._find_reg_number_column())
 
     def _get_columns_config(self, doc_type: str, view_mode: str) -> dict:
         base_columns = {
@@ -119,9 +111,7 @@ class TableController(QObject):
                     # на всякий случай — вдруг когда-то станет списком
                     for idx, field in enumerate(fields, start=20):
                         if isinstance(field, dict):
-                            label = (
-                                field.get("label") or field.get("name") or f"Поле_{idx}"
-                            )
+                            label = field.get("label") or field.get("name") or f"Поле_{idx}"
                         else:
                             label = str(field)
                         columns_config[idx] = label
@@ -160,9 +150,7 @@ class TableController(QObject):
 
     # ========== ПУБЛИЧНЫЕ МЕТОДЫ ==========
 
-    def load_documents(
-        self, documents: list, doc_type: str = None, view_mode: str = None
-    ):
+    def load_documents(self, documents: list, doc_type: str | None = None, view_mode: str | None = None):
         """Загрузить документы"""
         doc_type = doc_type or "default"
         view_mode = view_mode or "all"
@@ -173,10 +161,7 @@ class TableController(QObject):
         self._current_doc_type = str(doc_type)
         self._current_view_mode = view_mode
 
-        if (
-            old_doc_type != self._current_doc_type
-            or old_view_mode != self._current_view_mode
-        ):
+        if old_doc_type != self._current_doc_type or old_view_mode != self._current_view_mode:
             # Сохраняем старые настройки (через facade)
             if self._facade:
                 self._facade.save_state()
@@ -189,14 +174,12 @@ class TableController(QObject):
 
         if self._row_manager:
             pinned_ids = self._row_manager.pinned_ids
-            self._icon_updater.update_all_pin_icons(
-                pinned_ids, self._find_reg_number_column()
-            )
+            self._icon_updater.update_all_pin_icons(pinned_ids, self._find_reg_number_column())
 
         QTimer.singleShot(300, self._restore_heights_after_load)
         self.data_loaded.emit(len(documents))
 
-    def switch_doc_type(self, doc_type: str, documents: list, view_mode: str = None):
+    def switch_doc_type(self, doc_type: str, documents: list, view_mode: str | None = None):
         """
         Переключить тип документа с сохранением настроек.
         """
@@ -230,9 +213,7 @@ class TableController(QObject):
 
         if self._row_manager:
             pinned_ids = self._row_manager.pinned_ids
-            self._icon_updater.update_all_pin_icons(
-                pinned_ids, self._find_reg_number_column()
-            )
+            self._icon_updater.update_all_pin_icons(pinned_ids, self._find_reg_number_column())
 
         QTimer.singleShot(300, self._restore_heights_after_load)
         self.data_loaded.emit(len(documents))
@@ -263,9 +244,7 @@ class TableController(QObject):
         return self.get_document_at_row(current_row)
 
     def update_read_status(self, document_id: int, is_read: bool):
-        columns_config = self._get_columns_config(
-            self._current_doc_type, self._current_view_mode
-        )
+        columns_config = self._get_columns_config(self._current_doc_type, self._current_view_mode)
         col_map = {name: idx for idx, name in columns_config.items()}
         read_col = col_map.get("Прочитано")
 

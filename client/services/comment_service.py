@@ -17,7 +17,7 @@ class CommentService:
             logger.info(f"📥 Запрос комментариев документа {document_id}")
             return self.http.get(f"/documents/comments/{document_id}") or []
         except Exception as e:
-            logger.error(f"❌ Ошибка загрузки комментариев: {e}")
+            logger.exception(f"❌ Ошибка загрузки комментариев: {e}")
             return []
 
     def add_comment(self, document_id: int, text: str) -> dict[str, Any]:
@@ -32,5 +32,5 @@ class CommentService:
                 data={"text": text},
             )
         except Exception as e:
-            logger.error(f"❌ Ошибка отправки комментария: {e}")
+            logger.exception(f"❌ Ошибка отправки комментария: {e}")
             return {}

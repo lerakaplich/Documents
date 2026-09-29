@@ -43,9 +43,7 @@ class DocumentService:
 
     # ─────────── ЧТЕНИЕ ───────────
 
-    DEFAULT_PAGE_SIZE = (
-        50  # максимум, который сервер отдаёт за один запрос (limit ≤ 100)
-    )
+    DEFAULT_PAGE_SIZE = 50  # максимум, который сервер отдаёт за один запрос (limit ≤ 100)
 
     def get_documents(
         self,
@@ -153,9 +151,7 @@ class DocumentService:
 
     def mark_as_read(self, document_ids: list[int]) -> dict[str, Any]:
         try:
-            return self.client.post(
-                f"{self.base_path}/mark-read", json={"doc_ids": document_ids}
-            )
+            return self.client.post(f"{self.base_path}/mark-read", json={"doc_ids": document_ids})
         except Exception as e:
             print(f"❌ mark_as_read: {e}")
             return {"marked_count": 0}
@@ -223,9 +219,7 @@ class DocumentService:
             executors_payload = [eid for eid in raw_executors if eid in emps]
             skipped = [eid for eid in raw_executors if eid not in emps]
             if skipped:
-                print(
-                    f"[DocumentService] ⚠️ исполнители пропущены (не сотрудники): {skipped}"
-                )
+                print(f"[DocumentService] ⚠️ исполнители пропущены (не сотрудники): {skipped}")
         else:
             # Справочник сотрудников не передан — доверяем списку как есть.
             executors_payload = raw_executors
@@ -254,8 +248,7 @@ class DocumentService:
             "clearance_id": data.get("clearance_id"),
             "source_employee_id": data.get("source_employee_id"),
             "source_organization_id": data.get("source_organization_id"),
-            "source_official_text": (data.get("source_official_text") or "").strip()
-            or None,
+            "source_official_text": (data.get("source_official_text") or "").strip() or None,
             "sender_id": data.get("sender_id"),
             "executors": executors_payload,
             "receivers": receivers_payload,

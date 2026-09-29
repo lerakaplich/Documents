@@ -82,9 +82,7 @@ class EmployeeDialog(QtWidgets.QDialog):
         if self.http_client:
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(
-                    self.async_ops.load_data_async(self.filter_external_only)
-                )
+                loop.create_task(self.async_ops.load_data_async(self.filter_external_only))
             except RuntimeError:
                 QTimer.singleShot(100, self._load_data_sync)
         else:
@@ -137,10 +135,7 @@ class EmployeeDialog(QtWidgets.QDialog):
 
     def is_edit_mode(self):
         """Возвращает True, если диалог в режиме редактирования"""
-        return (
-            self.data_manager.employee
-            and self.data_manager.employee.get("id") is not None
-        )
+        return self.data_manager.employee and self.data_manager.employee.get("id") is not None
 
 
 # Тестовый запуск
@@ -153,9 +148,7 @@ if __name__ == "__main__":
     print("Тест 1: Создание нового сотрудника")
     print("=" * 50)
 
-    dialog = EmployeeDialog(
-        parent_editor=None, employee=None, current_user_rights="admin"
-    )
+    dialog = EmployeeDialog(parent_editor=None, employee=None, current_user_rights="admin")
     dialog.show()
 
     sys.exit(app.exec())

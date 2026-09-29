@@ -37,12 +37,8 @@ class OrganizationCard(QFrame):
             ]
 
             for lbl in labels:
-                lbl.setSizePolicy(
-                    QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
-                )
-                lbl.setAlignment(
-                    Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-                )
+                lbl.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+                lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         else:
             raise FileNotFoundError(f"UI файл не найден: {ui_path}")
 
@@ -110,9 +106,7 @@ class OrganizationCard(QFrame):
         # Заполняем директора
         if hasattr(self, "directorLabel"):
             director = self.organization_data.get("director", "")
-            self.directorLabel.setText(
-                f"Директор: {director}" if director else "Директор: не назначен"
-            )
+            self.directorLabel.setText(f"Директор: {director}" if director else "Директор: не назначен")
 
     def on_edit_clicked(self):
         """Обработчик кнопки редактирования"""

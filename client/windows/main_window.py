@@ -55,9 +55,7 @@ class MainWindow(QMainWindow):
 
             self.content_stack = QStackedWidget()
             # ← убираем повторный импорт и присваивание _t — уже есть выше
-            self.content_stack.setStyleSheet(
-                f"QStackedWidget {{ background-color: {_t.BG_DIALOG_ALT}; }}"
-            )
+            self.content_stack.setStyleSheet(f"QStackedWidget {{ background-color: {_t.BG_DIALOG_ALT}; }}")
 
             print("Создание DocumentsPanel...")
             self.documents_panel = DocumentsPanel()
@@ -102,9 +100,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"✗ Ошибка при инициализации MainWindow: {e}")
             traceback.print_exc()
-            QMessageBox.critical(
-                self, "Ошибка", f"Не удалось инициализировать приложение:\n{e!s}"
-            )
+            QMessageBox.critical(self, "Ошибка", f"Не удалось инициализировать приложение:\n{e!s}")
             raise
 
     def setup_app_style(self):
@@ -145,9 +141,7 @@ class MainWindow(QMainWindow):
                 print("✓ profile_clicked подключен")
 
             if hasattr(self.left_panel, "all_documents_clicked"):
-                self.left_panel.all_documents_clicked.connect(
-                    self.on_all_documents_clicked
-                )
+                self.left_panel.all_documents_clicked.connect(self.on_all_documents_clicked)
                 print("✓ all_documents_clicked подключен")
 
             if hasattr(self.left_panel, "archive_clicked"):
@@ -164,9 +158,7 @@ class MainWindow(QMainWindow):
             # Статус-бар
             if hasattr(self.documents_panel, "data_loaded"):
                 self.documents_panel.data_loaded.connect(
-                    lambda count: self.statusBar().showMessage(
-                        f"Загружено {count} документов", 3000
-                    )
+                    lambda count: self.statusBar().showMessage(f"Загружено {count} документов", 3000)
                 )
                 print("✓ data_loaded подключен")
 
@@ -190,9 +182,7 @@ class MainWindow(QMainWindow):
         """Переключение на архивные документы"""
         self.content_stack.setCurrentWidget(self.documents_panel)
         self.documents_panel.controller.set_filters(scope="archive")
-        docs, title, view_mode, doc_type = (
-            self.documents_panel.controller._load_current(1)
-        )
+        docs, _title, view_mode, doc_type = self.documents_panel.controller._load_current(1)
         self.documents_panel._update_table(docs, doc_type, "Архив", view_mode)
         self.statusBar().showMessage("Архив", 3000)
 
@@ -228,9 +218,7 @@ class MainWindow(QMainWindow):
         set_theme(theme)
         apply_theme_to_all_windows()
         self.reapply_theme()
-        self.content_stack.setStyleSheet(
-            f"QStackedWidget {{ background-color: {theme.BG_DIALOG_ALT}; }}"
-        )
+        self.content_stack.setStyleSheet(f"QStackedWidget {{ background-color: {theme.BG_DIALOG_ALT}; }}")
         print(f"[MainWindow] Тема применена и сохранена: {palette} / {mode}")
 
     def on_logout_clicked(self):

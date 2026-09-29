@@ -67,9 +67,7 @@ class TagsCellBuilder:
                 layout.addWidget(tag_widget)
                 tag_widget.update_style()
 
-        spacer = QSpacerItem(
-            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
-        )
+        spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout.addItem(spacer)
 
         return container
@@ -118,9 +116,7 @@ class ElidedLabel(QLabel):
         if available_width <= 0:
             available_width = 100
         font_metrics = self.fontMetrics()
-        elided_text = font_metrics.elidedText(
-            self._full_text, Qt.TextElideMode.ElideRight, available_width
-        )
+        elided_text = font_metrics.elidedText(self._full_text, Qt.TextElideMode.ElideRight, available_width)
         self.setText(elided_text)
 
     def resizeEvent(self, event):
@@ -180,9 +176,7 @@ class CommentsCellBuilder:
             btn = QPushButton("Добавить")
             btn.setProperty("_cell_role", "comments_add")
             btn.setStyleSheet(self._button_style())
-            btn.clicked.connect(
-                lambda checked: self.signals.comment_clicked.emit(document)
-            )
+            btn.clicked.connect(lambda checked: self.signals.comment_clicked.emit(document))
             layout.addWidget(btn)
 
         return widget
@@ -221,9 +215,7 @@ class CommentsCellBuilder:
 
 
 class AttachmentCellBuilder:
-    def __init__(
-        self, even_color, odd_color, supported_formats, signals, attachment_service=None
-    ):
+    def __init__(self, even_color, odd_color, supported_formats, signals, attachment_service=None):
         self.even_color = even_color
         self.odd_color = odd_color
         self.supported_formats = supported_formats
@@ -246,9 +238,7 @@ class AttachmentCellBuilder:
         # Реестр документов (GET /documents/documents/) не отдаёт список файлов —
         # только флаг has_attachments. Реальный список подгружаем по клику
         # (см. _show_attachments_menu), а не заранее для каждой строки.
-        has_attachments = document.get(
-            "has_attachments", bool(document.get("attachments"))
-        )
+        has_attachments = document.get("has_attachments", bool(document.get("attachments")))
 
         if has_attachments:
             btn = QPushButton("Вложения")
@@ -326,32 +316,24 @@ class AttachmentCellBuilder:
 
         attachments = self._fetch_attachments(document)
         if not attachments:
-            QMessageBox.information(
-                button, "Вложения", "Не удалось получить список вложений (или их нет)."
-            )
+            QMessageBox.information(button, "Вложения", "Не удалось получить список вложений (или их нет).")
             return
 
         menu = QMenu()
         menu.setStyleSheet(get_menu_style())
 
         for attachment in attachments:
-            file_name = (
-                attachment.get("file_name") or attachment.get("name") or "Без имени"
-            )
+            file_name = attachment.get("file_name") or attachment.get("name") or "Без имени"
             file_icon = "📄" if not file_name.lower().endswith(".pdf") else "📕"
             action = QAction(f"{file_icon} {file_name}", menu)
             action.triggered.connect(
-                lambda checked, a=attachment, d=document: (
-                    self.signals.attachment_clicked.emit(d, a)
-                )
+                lambda checked, a=attachment, d=document: self.signals.attachment_clicked.emit(d, a)
             )
             menu.addAction(action)
 
         menu.addSeparator()
         add_action = QAction("➕ Добавить файл", menu)
-        add_action.triggered.connect(
-            lambda checked: self._upload_attachment_for(document.get("id"))
-        )
+        add_action.triggered.connect(lambda checked: self._upload_attachment_for(document.get("id")))
         menu.addAction(add_action)
 
         menu.exec(button.mapToGlobal(button.rect().bottomLeft()))
@@ -417,9 +399,7 @@ class DelegatesCellBuilder:
                 else:
                     processed_names.append(str(d))
 
-            delegates_text = (
-                ", ".join(filter(None, processed_names)) if processed_names else "-"
-            )
+            delegates_text = ", ".join(filter(None, processed_names)) if processed_names else "-"
 
             label = ElidedLabel()
             label.set_full_text(delegates_text)
@@ -438,9 +418,7 @@ class DelegatesCellBuilder:
         else:
             btn = QPushButton("Добавить")
             btn.setStyleSheet(self._button_style())
-            btn.clicked.connect(
-                lambda checked: self.signals.redirect_requested.emit(doc_id, [])
-            )
+            btn.clicked.connect(lambda checked: self.signals.redirect_requested.emit(doc_id, []))
             layout.addWidget(btn)
 
         return container
@@ -496,15 +474,11 @@ class ReplyCellBuilder:
         if reply_file:
             btn = QPushButton("Открыть")
             btn.setStyleSheet(self._open_style())
-            btn.clicked.connect(
-                lambda checked, rf=reply_file: self.signals.reply_clicked.emit(rf)
-            )
+            btn.clicked.connect(lambda checked, rf=reply_file: self.signals.reply_clicked.emit(rf))
         else:
             btn = QPushButton("Загрузить")
             btn.setStyleSheet(self._upload_style())
-            btn.clicked.connect(
-                lambda checked, did=document.get("id"): self._upload_reply(did)
-            )
+            btn.clicked.connect(lambda checked, did=document.get("id"): self._upload_reply(did))
 
         layout.addWidget(btn)
         return container

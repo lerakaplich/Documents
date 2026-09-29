@@ -51,9 +51,7 @@ class DocumentsFilterController:
 
     def _reload(self):
         f = self.filter_menu.get_active_filters() if self.filter_menu else {}
-        statuses = (
-            self.statuses_menu.get_checked_statuses() if self.statuses_menu else []
-        )
+        statuses = self.statuses_menu.get_checked_statuses() if self.statuses_menu else []
         documents, title, view_mode, doc_type = self.panel.controller.set_filters(
             scope=f.get("scope", "all"),
             is_completed=f.get("is_completed"),
@@ -74,7 +72,5 @@ class DocumentsFilterController:
         dialog.exec()
 
     def _on_period_selected(self, period: dict):
-        self.filter_menu.set_date_range(
-            period["start_date_python"], period["end_date_python"]
-        )
+        self.filter_menu.set_date_range(period["start_date_python"], period["end_date_python"])
         self.schedule_reload()

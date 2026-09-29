@@ -27,9 +27,7 @@ class StatusesMenu(BaseMenu):
 
     def get_checked_statuses(self) -> list[str]:
         """Возвращает КОДЫ выбранных статусов (для параметра status_filters)."""
-        return [
-            code for code, action in self._status_actions.items() if action.isChecked()
-        ]
+        return [code for code, action in self._status_actions.items() if action.isChecked()]
 
     def clear_selection(self):
         """Снимает все галочки; statusesChanged срабатывает один раз."""

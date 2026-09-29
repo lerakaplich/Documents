@@ -83,9 +83,7 @@ class TableState(QObject):
             self._sort_column = value
             self.state_changed.emit()
             if value:
-                self.sort_changed.emit(
-                    value, self._sort_order.value if self._sort_order else "ascending"
-                )
+                self.sort_changed.emit(value, self._sort_order.value if self._sort_order else "ascending")
 
     @property
     def sort_order(self) -> SortOrder | None:

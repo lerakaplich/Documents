@@ -8,6 +8,7 @@
 - Кнопка «Отмена» убрана, «Применить» растянута.
 """
 
+import contextlib
 import os
 import sys
 
@@ -68,10 +69,8 @@ class PeriodDialog(QDialog):
 
     def _setup_spacing(self):
         """Больше места между строками с датами."""
-        try:
+        with contextlib.suppress(Exception):
             self.periodLayout.setSpacing(20)
-        except Exception:
-            pass
         # Между двумя строками дат можно добавить ещё чуть-чуть
         try:
             from PyQt6.QtWidgets import QSpacerItem
@@ -97,10 +96,8 @@ class PeriodDialog(QDialog):
             for name in ("startDateEdit", "endDateEdit"):
                 f = getattr(self, name, None)
                 if f is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         f.setCalendarPopup(True)
-                    except Exception:
-                        pass
             return
 
         for name in ("startDateEdit", "endDateEdit"):
@@ -111,10 +108,8 @@ class PeriodDialog(QDialog):
             # ВАЖНО: True, чтобы Qt отрисовал настоящий ::drop-down
             # (иконка календаря) и она попадала в клик-зону виджета.
             # Системный попап не покажется — eventFilter его съест.
-            try:
+            with contextlib.suppress(Exception):
                 field.setCalendarPopup(True)
-            except Exception:
-                pass
 
             popup = CalendarPopup(field)
             popup.date_selected.connect(field.setDate)
@@ -129,19 +124,22 @@ class PeriodDialog(QDialog):
                 self._field_popup_map[id(le)] = popup
 
     def eventFilter(self, obj, event):
-        if event.type() in (
-            QEvent.Type.MouseButtonPress,
-            QEvent.Type.MouseButtonDblClick,
+        if (
+            event.type()
+            in (
+                QEvent.Type.MouseButtonPress,
+                QEvent.Type.MouseButtonDblClick,
+            )
+            and event.button() == Qt.MouseButton.LeftButton
         ):
-            if event.button() == Qt.MouseButton.LeftButton:
-                popup = self._field_popup_map.get(id(obj))
-                if popup is not None:
-                    field = popup.parent()
-                    if field is not None:
-                        popup.set_date(field.date())
-                        pos = field.mapToGlobal(QPoint(0, field.height() + 2))
-                        popup.popup_at(pos)
-                        return True
+            popup = self._field_popup_map.get(id(obj))
+            if popup is not None:
+                field = popup.parent()
+                if field is not None:
+                    popup.set_date(field.date())
+                    pos = field.mapToGlobal(QPoint(0, field.height() + 2))
+                    popup.popup_at(pos)
+                    return True
         return super().eventFilter(obj, event)
 
     # ─────────── Стили (явно на каждом виджете) ───────────
@@ -159,10 +157,7 @@ class PeriodDialog(QDialog):
         for name in ("startLabel", "endLabel"):
             lbl = getattr(self, name, None)
             if lbl is not None:
-                lbl.setStyleSheet(
-                    f"color: {_t.TEXT_PRIMARY}; background: transparent; "
-                    f"font-size: 13px;"
-                )
+                lbl.setStyleSheet(f"color: {_t.TEXT_PRIMARY}; background: transparent; font-size: 13px;")
 
         cal_icon = icon_path("calendar_date", _t.ICON_COLOR)
         date_style = f"""
@@ -203,10 +198,7 @@ class PeriodDialog(QDialog):
             field.setStyleSheet(date_style)
             le = field.lineEdit()
             if le is not None:
-                le.setStyleSheet(
-                    f"background: transparent; color: {_t.TEXT_PRIMARY}; "
-                    f"border: none; padding: 0;"
-                )
+                le.setStyleSheet(f"background: transparent; color: {_t.TEXT_PRIMARY}; border: none; padding: 0;")
 
         # «Применить»
         self.applyButton.setStyleSheet(f"""
@@ -285,15 +277,9 @@ class PeriodDialog(QDialog):
     def _connect_signals(self):
         self.applyButton.clicked.connect(self._on_apply)
 
-        self.weekButton.clicked.connect(
-            lambda: self._apply_quick("weekButton", self._set_week)
-        )
-        self.monthButton.clicked.connect(
-            lambda: self._apply_quick("monthButton", self._set_month)
-        )
-        self.quarterButton.clicked.connect(
-            lambda: self._apply_quick("quarterButton", self._set_quarter)
-        )
+        self.weekButton.clicked.connect(lambda: self._apply_quick("weekButton", self._set_week))
+        self.monthButton.clicked.connect(lambda: self._apply_quick("monthButton", self._set_month))
+        self.quarterButton.clicked.connect(lambda: self._apply_quick("quarterButton", self._set_quarter))
 
         self.startDateEdit.dateChanged.connect(self._on_date_changed)
         self.endDateEdit.dateChanged.connect(self._on_date_changed)
@@ -330,9 +316,7 @@ class PeriodDialog(QDialog):
     def _set_month(self):
         today = QDate.currentDate()
         self.startDateEdit.setDate(QDate(today.year(), today.month(), 1))
-        self.endDateEdit.setDate(
-            QDate(today.year(), today.month(), today.daysInMonth())
-        )
+        self.endDateEdit.setDate(QDate(today.year(), today.month(), today.daysInMonth()))
 
     def _set_quarter(self):
         today = QDate.currentDate()
@@ -355,9 +339,7 @@ class PeriodDialog(QDialog):
         s = self.startDateEdit.date()
         e = self.endDateEdit.date()
         if s > e:
-            QMessageBox.warning(
-                self, "Ошибка", "Дата начала не может быть позже даты окончания"
-            )
+            QMessageBox.warning(self, "Ошибка", "Дата начала не может быть позже даты окончания")
             return
 
         self.period_selected.emit(
@@ -377,16 +359,12 @@ class PeriodDialog(QDialog):
     def reapply_theme(self):
         self._apply_styles()
         for popup in self._popups.values():
-            try:
+            with contextlib.suppress(Exception):
                 popup.reapply_theme()
-            except Exception:
-                pass
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     dlg = PeriodDialog()
-    dlg.period_selected.connect(
-        lambda d: print(f"Период: {d['start_date_str']} – {d['end_date_str']}")
-    )
+    dlg.period_selected.connect(lambda d: print(f"Период: {d['start_date_str']} – {d['end_date_str']}"))
     sys.exit(dlg.exec())

@@ -43,9 +43,7 @@ class DocumentLoader:
             documents = [d for d in documents if d.get("type_id") == filters["type_id"]]
 
         if "direction" in filters:
-            documents = [
-                d for d in documents if d.get("direction") == filters["direction"]
-            ]
+            documents = [d for d in documents if d.get("direction") == filters["direction"]]
 
         if "read_status" in filters:
             is_read = filters["read_status"]
@@ -56,8 +54,7 @@ class DocumentLoader:
             documents = [
                 d
                 for d in documents
-                if query in str(d.get("subject", "")).lower()
-                or query in str(d.get("document_number", "")).lower()
+                if query in str(d.get("subject", "")).lower() or query in str(d.get("document_number", "")).lower()
             ]
 
         return documents

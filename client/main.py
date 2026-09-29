@@ -15,6 +15,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -28,12 +29,12 @@ def main():
         # LoginWindow сам решит: показать себя или сразу открыть MainWindow
         set_theme(PinkDarkTheme)
         apply_saved_theme()
-        window = LoginWindow()
+        LoginWindow()
         # window.showMaximized()  ← УБРАТЬ! Окно покажет сам LoginWindow
 
         sys.exit(app.exec())
     except Exception as e:
-        logging.error(f"Ошибка при запуске приложения: {e}")
+        logger.exception(f"Ошибка при запуске приложения: {e}")
         import traceback
 
         traceback.print_exc()

@@ -64,9 +64,7 @@ class DocumentsRowActionController:
                 else:
                     QMessageBox.warning(panel, "Ошибка", "Не удалось удалить документ")
             else:
-                QMessageBox.warning(
-                    panel, "Ошибка", "Функция удаления пока не реализована"
-                )
+                QMessageBox.warning(panel, "Ошибка", "Функция удаления пока не реализована")
         except Exception as e:
             print(f"[DocumentsPanel] Ошибка при удалении: {e}")
             QMessageBox.critical(panel, "Ошибка", f"Ошибка удаления: {e!s}")
@@ -97,14 +95,10 @@ class DocumentsRowActionController:
             if success:
                 panel.refresh()
                 status_text = "прочитанным" if is_read else "непрочитанным"
-                QMessageBox.information(
-                    panel, "Успешно", f"Документ отмечен как {status_text}"
-                )
+                QMessageBox.information(panel, "Успешно", f"Документ отмечен как {status_text}")
         else:
             panel.documents_table.update_document_read_status(doc_id, is_read)
-            QMessageBox.information(
-                panel, "Информация", "Статус прочтения обновлен локально"
-            )
+            QMessageBox.information(panel, "Информация", "Статус прочтения обновлен локально")
 
     def _pin_toggle(self, document_data: dict):
         panel = self.panel
@@ -118,26 +112,18 @@ class DocumentsRowActionController:
             current_pin = document_data.get("is_pinned", False)
             new_pin = not current_pin
             panel.documents_table._controller.toggle_pin(doc_id, new_pin)
-            QMessageBox.information(
-                panel, "Информация", "Статус закрепления обновлен локально"
-            )
+            QMessageBox.information(panel, "Информация", "Статус закрепления обновлен локально")
 
     # ---------- история ----------
 
     def _history(self, document_data: dict):
         panel = self.panel
         try:
-            full_document_data = panel.controller.get_full_document_for_history(
-                document_data
-            )
+            full_document_data = panel.controller.get_full_document_for_history(document_data)
             if not full_document_data:
                 full_document_data = self._enrich_with_history(document_data)
 
-            current_user = (
-                panel.controller.get_current_user()
-                if hasattr(panel.controller, "get_current_user")
-                else {}
-            )
+            current_user = panel.controller.get_current_user() if hasattr(panel.controller, "get_current_user") else {}
 
             dialog = HistoryDialog(
                 document_data=full_document_data,
@@ -151,9 +137,7 @@ class DocumentsRowActionController:
             import traceback
 
             traceback.print_exc()
-            QMessageBox.warning(
-                panel, "Ошибка", f"Не удалось открыть историю документа: {e!s}"
-            )
+            QMessageBox.warning(panel, "Ошибка", f"Не удалось открыть историю документа: {e!s}")
 
     def _enrich_with_history(self, document_data: dict) -> dict:
         panel = self.panel
@@ -172,23 +156,15 @@ class DocumentsRowActionController:
 
         created_at = document_data.get("created_at")
         if created_at:
-            creator = document_data.get(
-                "creator", document_data.get("author", "Неизвестный пользователь")
-            )
+            creator = document_data.get("creator", document_data.get("author", "Неизвестный пользователь"))
             if isinstance(creator, dict):
-                creator_name = creator.get(
-                    "full_name", creator.get("name", "Неизвестный пользователь")
-                )
+                creator_name = creator.get("full_name", creator.get("name", "Неизвестный пользователь"))
             else:
                 creator_name = str(creator)
-            history.append(
-                {"type": "created", "user": creator_name, "created_at": created_at}
-            )
+            history.append({"type": "created", "user": creator_name, "created_at": created_at})
 
         for comment in document_data.get("comments", []):
-            author = comment.get(
-                "author_name", comment.get("author", "Неизвестный пользователь")
-            )
+            author = comment.get("author_name", comment.get("author", "Неизвестный пользователь"))
             history.append(
                 {
                     "type": "comment",
@@ -234,9 +210,7 @@ class DocumentsRowActionController:
             all_employees = panel.controller.get_employees_for_redirect()
 
             dialog = RedirectDialog(current_recipients, all_employees, parent=panel)
-            dialog.redirect_confirmed.connect(
-                lambda ids, comment: self._confirm_redirect(doc_id, ids, comment)
-            )
+            dialog.redirect_confirmed.connect(lambda ids, comment: self._confirm_redirect(doc_id, ids, comment))
             dialog.exec()
         except Exception:
             import traceback
@@ -245,9 +219,7 @@ class DocumentsRowActionController:
 
     def _confirm_redirect(self, document_id: int, recipient_ids: list, comment: str):
         panel = self.panel
-        success = panel.controller.redirect_document(
-            document_id, recipient_ids, comment
-        )
+        success = panel.controller.redirect_document(document_id, recipient_ids, comment)
         if success:
             panel.refresh()
 
@@ -258,9 +230,7 @@ class DocumentsRowActionController:
         try:
             from client.windows.documents.comments.comment_dialog import CommentDialog
 
-            document_to_pass = panel.controller.get_full_document_for_comment(
-                document_data
-            )
+            document_to_pass = panel.controller.get_full_document_for_comment(document_data)
             current_user = panel.controller.get_current_user()
 
             dialog = CommentDialog(
@@ -269,9 +239,7 @@ class DocumentsRowActionController:
                 current_user=current_user,
                 http_client=panel.http_client,
             )
-            dialog.comment_added.connect(
-                lambda comment: self._on_comment_added(document_data.get("id"), comment)
-            )
+            dialog.comment_added.connect(lambda comment: self._on_comment_added(document_data.get("id"), comment))
             dialog.exec()
         except Exception as e:
             import traceback
@@ -284,6 +252,4 @@ class DocumentsRowActionController:
         success = panel.controller.add_comment_to_document(document_id, new_comment)
         if success:
             panel.refresh()
-            print(
-                f"[DocumentsPanel] Комментарий сохранен через контроллер для документа {document_id}"
-            )
+            print(f"[DocumentsPanel] Комментарий сохранен через контроллер для документа {document_id}")

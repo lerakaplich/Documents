@@ -17,7 +17,7 @@ class TableIconUpdater(QObject):
         super().__init__()
         self._table = table_widget
 
-    def update_pin_icon(self, document_id: int, is_pinned: bool, reg_col: int = None):
+    def update_pin_icon(self, document_id: int, is_pinned: bool, reg_col: int | None = None):
         """Обновить иконку закрепления для документа"""
         if reg_col is None:
             reg_col = self._find_reg_number_column()
@@ -38,7 +38,7 @@ class TableIconUpdater(QObject):
                         item.setIcon(QIcon())
                     break
 
-    def update_all_pin_icons(self, pinned_ids: list, reg_col: int = None):
+    def update_all_pin_icons(self, pinned_ids: list, reg_col: int | None = None):
         """Обновить все иконки закрепления"""
         if reg_col is None:
             reg_col = self._find_reg_number_column()

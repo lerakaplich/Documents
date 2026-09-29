@@ -44,15 +44,11 @@ class ContextMenu(QObject):
 
         # 1. Перенаправить
         redirect_action = menu.addAction("Перенаправить")
-        redirect_action.triggered.connect(
-            lambda: self.redirect_requested.emit(document_data)
-        )
+        redirect_action.triggered.connect(lambda: self.redirect_requested.emit(document_data))
 
         # 2. Комментировать
         comment_action = menu.addAction("Комментировать")
-        comment_action.triggered.connect(
-            lambda: self.comment_requested.emit(document_data)
-        )
+        comment_action.triggered.connect(lambda: self.comment_requested.emit(document_data))
 
         menu.addSeparator()
 
@@ -60,17 +56,13 @@ class ContextMenu(QObject):
         is_pinned = document_data.get("is_pinned", False)
         pin_text = "Закрепить" if not is_pinned else "Открепить"
         pin_action = menu.addAction(pin_text)
-        pin_action.triggered.connect(
-            lambda: self.pin_toggle_requested.emit(document_data)
-        )
+        pin_action.triggered.connect(lambda: self.pin_toggle_requested.emit(document_data))
 
         menu.addSeparator()
 
         # 4. Посмотреть историю документа
         history_action = menu.addAction("Посмотреть историю документа")
-        history_action.triggered.connect(
-            lambda: self.history_requested.emit(document_data)
-        )
+        history_action.triggered.connect(lambda: self.history_requested.emit(document_data))
 
         # 5. Редактировать документ
         edit_action = menu.addAction("Редактировать документ")
@@ -80,27 +72,19 @@ class ContextMenu(QObject):
 
         # 6. Отметить как прочитанное/непрочитанное
         is_read = document_data.get("is_read", False)
-        read_status_text = (
-            "Отметить как прочитанное" if not is_read else "Отметить как непрочитанное"
-        )
+        read_status_text = "Отметить как прочитанное" if not is_read else "Отметить как непрочитанное"
         read_action = menu.addAction(read_status_text)
-        read_action.triggered.connect(
-            lambda: self.read_status_requested.emit(document_data, not is_read)
-        )
+        read_action.triggered.connect(lambda: self.read_status_requested.emit(document_data, not is_read))
 
         menu.addSeparator()
 
         # 7. Прикрепить вложение
         attachment_action = menu.addAction("Прикрепить вложение")
-        attachment_action.triggered.connect(
-            lambda: self.attachment_requested.emit(document_data)
-        )
+        attachment_action.triggered.connect(lambda: self.attachment_requested.emit(document_data))
 
         # 8. Добавить ответное вложение
         reply_attachment_action = menu.addAction("Добавить ответное вложение")
-        reply_attachment_action.triggered.connect(
-            lambda: self.reply_attachment_requested.emit(document_data)
-        )
+        reply_attachment_action.triggered.connect(lambda: self.reply_attachment_requested.emit(document_data))
 
         # Отключаем ответное вложение, если есть reply
         if has_reply:

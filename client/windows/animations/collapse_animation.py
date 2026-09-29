@@ -71,8 +71,7 @@ class CollapseAnimation(QObject):
             def get_size(self_obj):
                 if self.orientation == "horizontal":
                     return self_obj.width()
-                else:
-                    return self_obj.height()
+                return self_obj.height()
 
             def set_size(self_obj, size):
                 if self.orientation == "horizontal":
@@ -137,9 +136,7 @@ class FadeAnimation(QObject):
     animation_started = pyqtSignal()
     animation_finished = pyqtSignal()
 
-    def __init__(
-        self, target_widget, duration=300, easing_curve=QEasingCurve.Type.InOutQuad
-    ):
+    def __init__(self, target_widget, duration=300, easing_curve=QEasingCurve.Type.InOutQuad):
         super().__init__(target_widget)
 
         self.target = target_widget
@@ -187,9 +184,7 @@ class SlideAnimation(QObject):
     animation_started = pyqtSignal()
     animation_finished = pyqtSignal()
 
-    def __init__(
-        self, target_widget, duration=300, easing_curve=QEasingCurve.Type.OutCubic
-    ):
+    def __init__(self, target_widget, duration=300, easing_curve=QEasingCurve.Type.OutCubic):
         super().__init__(target_widget)
 
         self.target = target_widget

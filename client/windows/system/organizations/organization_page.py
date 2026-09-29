@@ -130,9 +130,8 @@ class OrganizationsPage(QWidget):
         if self.is_loading:
             return
 
-        if org_id:
-            if self._refresh_one(org_id):
-                return
+        if org_id and self._refresh_one(org_id):
+            return
         # fallback — если id=0 или не нашли в локальном списке
         self.load_organizations()
 
@@ -178,15 +177,13 @@ class OrganizationsPage(QWidget):
             self.data_loaded.emit()
 
             if self.organizations:
-                self.show_success_notification(
-                    f"Загружено {len(self.organizations)} организаций"
-                )
+                self.show_success_notification(f"Загружено {len(self.organizations)} организаций")
 
         except Exception as e:
             self.is_loading = False
             import logging
 
-            logging.error(f"Ошибка загрузки организаций: {e}")
+            logging.exception(f"Ошибка загрузки организаций: {e}")
 
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -230,9 +227,7 @@ class OrganizationsPage(QWidget):
 
         for name, func in sort_options.items():
             action = menu.addAction(name)
-            action.triggered.connect(
-                lambda checked, f=func, n=name: self.apply_sort(f, n)
-            )
+            action.triggered.connect(lambda checked, f=func, n=name: self.apply_sort(f, n))
 
         menu.exec(self.btnSort.mapToGlobal(self.btnSort.rect().bottomLeft()))
 
@@ -265,9 +260,7 @@ class OrganizationsPage(QWidget):
     def has_active_filters(self):
         if self.searchEdit.text().strip():
             return True
-        if self.current_sort != "А→Я":
-            return True
-        return False
+        return self.current_sort != "А→Я"
 
     def update_reset_button_visibility(self):
         if self.has_active_filters():
@@ -337,9 +330,7 @@ class OrganizationsPage(QWidget):
         if not self.filtered_orgs:
             empty_label = QLabel("Нет организаций")
             empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_label.setStyleSheet(
-                f"color: {T.TEXT_MUTED_ALT}; font-size: 16px; padding: 40px;"
-            )
+            empty_label.setStyleSheet(f"color: {T.TEXT_MUTED_ALT}; font-size: 16px; padding: 40px;")
             self.orgsLayout.addWidget(empty_label)
             self.position_floating_button()
             return
@@ -414,9 +405,7 @@ class OrganizationsPage(QWidget):
                 new_id = result.get("id")
                 self.organizations.append(self._normalize_org(result))
                 self.update_display()  # без refetch
-                self.show_success_notification(
-                    f"Организация «{result.get('name')}» создана"
-                )
+                self.show_success_notification(f"Организация «{result.get('name')}» создана")
                 self._emit_self_change(new_id)
             else:
                 self.show_error_notification("Не удалось создать организацию")
@@ -424,7 +413,7 @@ class OrganizationsPage(QWidget):
         except Exception as e:
             import logging
 
-            logging.error(f"Ошибка создания организации: {e}")
+            logging.exception(f"Ошибка создания организации: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
@@ -496,9 +485,7 @@ class OrganizationsPage(QWidget):
                         break
 
                 self.update_display()  # без GET /org
-                self.show_success_notification(
-                    f"Организация «{result.get('name')}» обновлена"
-                )
+                self.show_success_notification(f"Организация «{result.get('name')}» обновлена")
                 self._emit_self_change(org_id)
             else:
                 self.show_error_notification("Не удалось обновить организацию")
@@ -506,7 +493,7 @@ class OrganizationsPage(QWidget):
         except Exception as e:
             import logging
 
-            logging.error(f"Ошибка обновления организации: {e}")
+            logging.exception(f"Ошибка обновления организации: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
@@ -567,9 +554,7 @@ class OrganizationsPage(QWidget):
         super().resizeEvent(event)
         self.position_floating_button()
         if hasattr(self, "notification_manager"):
-            self.notification_manager.container.setGeometry(
-                0, 0, self.width(), self.height()
-            )
+            self.notification_manager.container.setGeometry(0, 0, self.width(), self.height())
 
     def get_all_organizations(self):
         return self.organizations.copy()

@@ -25,17 +25,11 @@ class PermissionChecker:
         """Может ли видеть личный номер телефона"""
         if self.role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
             return True
-        if target_user and self._is_subordinate(target_user):
-            return True
-        return False
+        return bool(target_user and self._is_subordinate(target_user))
 
     def can_add_employee(self) -> bool:
         """Может ли добавлять сотрудников"""
-        return (
-            self.role in [UserRole.ADMIN, UserRole.SUPERADMIN]
-            or self.is_division_head
-            or self.is_department_head
-        )
+        return self.role in [UserRole.ADMIN, UserRole.SUPERADMIN] or self.is_division_head or self.is_department_head
 
     def can_edit_employee(self, target_user: dict[str, Any]) -> bool:
         """Может ли редактировать сотрудника"""
@@ -43,9 +37,7 @@ class PermissionChecker:
             return True
 
         if self.role == UserRole.ADMIN:
-            if target_user.get("rights") == "superadmin":
-                return False
-            return True
+            return target_user.get("rights") != "superadmin"
 
         if self.is_department_head:
             return target_user.get("department_id") == self.department_id

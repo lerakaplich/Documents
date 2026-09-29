@@ -21,17 +21,13 @@ class EmployeeDataManager:
             return False
         try:
             orgs = self.org_service.get_all_organizations(limit=500) or []
-            self.organizations = {
-                o["id"]: o for o in orgs if isinstance(o, dict) and o.get("id")
-            }
+            self.organizations = {o["id"]: o for o in orgs if isinstance(o, dict) and o.get("id")}
 
             self.departments_tree = {}
             for org_id in self.organizations:
                 try:
                     struct = self.org_service.get_org_structure(org_id) or []
-                    self._flatten_departments(
-                        struct, default_org_id=org_id
-                    )  # ← org_id!
+                    self._flatten_departments(struct, default_org_id=org_id)  # ← org_id!
                 except Exception as e:
                     print(f"[WARN] structure org {org_id}: {e}")
 
@@ -87,11 +83,7 @@ class EmployeeDataManager:
                 "name": n.get("name", ""),
                 "parent_id": n.get("parent_id", parent_id),
                 "organization_id": org_id,
-                "children": [
-                    c.get("id")
-                    for c in (n.get("children") or [])
-                    if isinstance(c, dict)
-                ],
+                "children": [c.get("id") for c in (n.get("children") or []) if isinstance(c, dict)],
             }
             children = n.get("children") or n.get("subdepartments") or []
             self._flatten_departments(children, parent_id=did, default_org_id=org_id)
@@ -137,22 +129,16 @@ class EmployeeDataManager:
                 org_id = dept.get("organization_id")
                 enriched["organization_id"] = org_id
                 if org_id and org_id in self.organizations:
-                    enriched["organization_name"] = self.organizations[org_id].get(
-                        "name", ""
-                    )
+                    enriched["organization_name"] = self.organizations[org_id].get("name", "")
 
             # 4. Если organization_id так и не нашли — берём из top_department_id
-            if not enriched.get("organization_id") and enriched.get(
-                "top_department_id"
-            ):
+            if not enriched.get("organization_id") and enriched.get("top_department_id"):
                 top_id = enriched["top_department_id"]
                 if top_id in self.departments_tree:
                     org_id = self.departments_tree[top_id].get("organization_id")
                     enriched["organization_id"] = org_id
                     if org_id and org_id in self.organizations:
-                        enriched["organization_name"] = self.organizations[org_id].get(
-                            "name", ""
-                        )
+                        enriched["organization_name"] = self.organizations[org_id].get("name", "")
 
             result.append(enriched)
         return result
@@ -641,11 +627,7 @@ class EmployeeDataManager:
 
     def get_children_departments(self, dept_id):
         """Возвращает список дочерних подразделений"""
-        return [
-            dept
-            for dept in self.departments_tree.values()
-            if dept.get("parent_id") == dept_id
-        ]
+        return [dept for dept in self.departments_tree.values() if dept.get("parent_id") == dept_id]
 
     def get_department_path(self, department_id):
         """Получить путь подразделения"""
@@ -669,9 +651,7 @@ class EmployeeDataManager:
                 children.extend(self.get_children_departments_all(dept_id))
         return children
 
-    def filter_employees(
-        self, current_org_id, current_department_id, search_text, current_sort
-    ):
+    def filter_employees(self, current_org_id, current_department_id, search_text, current_sort):
         """Фильтрация сотрудников"""
         all_employees = self.get_employees_with_positions()
         filtered = []
@@ -682,25 +662,20 @@ class EmployeeDataManager:
 
             if current_department_id:
                 dept_id = emp.get("department_id")
-                if (
-                    dept_id != current_department_id
-                    and dept_id
-                    not in self.get_children_departments_all(current_department_id)
+                if dept_id != current_department_id and dept_id not in self.get_children_departments_all(
+                    current_department_id
                 ):
                     continue
 
             search = search_text.strip().lower()
             if search:
-                full_name = f"{emp.get('last_name', '')} {emp.get('first_name', '')} {emp.get('patronymic', '')}".lower()
+                full_name = (
+                    f"{emp.get('last_name', '')} {emp.get('first_name', '')} {emp.get('patronymic', '')}".lower()
+                )
                 position = emp.get("position_name", "").lower()
                 phone = emp.get("phone_number", "").lower()
                 work_phone = emp.get("work_number", "").lower()
-                if not (
-                    search in full_name
-                    or search in position
-                    or search in phone
-                    or search in work_phone
-                ):
+                if not (search in full_name or search in position or search in phone or search in work_phone):
                     continue
 
             filtered.append(emp)

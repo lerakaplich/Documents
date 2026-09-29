@@ -102,13 +102,11 @@ class HierarchicalDepartmentFilter(QWidget):
 
             # Определяем последний выбранный ID
             last_selected_id = None
-            last_selected_level = -1
 
             for i, combo in enumerate(self._comboboxes):
                 dept_id = combo.currentData()
                 if dept_id is not None:
                     last_selected_id = dept_id
-                    last_selected_level = i
                 else:
                     # Если на каком-то уровне выбрано "Все", удаляем все последующие
                     self._remove_filters_from_level(i)

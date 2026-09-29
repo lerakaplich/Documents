@@ -56,13 +56,11 @@ class AttachmentService:
                 item.setdefault("name", item.get("file_name", "Файл"))
             return items
         except Exception as e:
-            logger.error(f"❌ get_attachments(document_id={document_id}): {e}")
+            logger.exception(f"❌ get_attachments(document_id={document_id}): {e}")
             print(f"❌ get_attachments(document_id={document_id}): {e}")
             return []
 
-    def upload_attachment(
-        self, document_id: int, file_path: str
-    ) -> dict[str, Any] | None:
+    def upload_attachment(self, document_id: int, file_path: str) -> dict[str, Any] | None:
         """POST /documents/attachments/{doc_id}/attachments — загрузить файл как вложение."""
         try:
             return self.client.post_file(
@@ -71,21 +69,17 @@ class AttachmentService:
                 field_name="file",
             )
         except Exception as e:
-            logger.error(f"❌ upload_attachment(document_id={document_id}): {e}")
+            logger.exception(f"❌ upload_attachment(document_id={document_id}): {e}")
             print(f"❌ upload_attachment(document_id={document_id}): {e}")
             return None
 
     def delete_attachment(self, document_id: int, attachment_id: int) -> bool:
         """DELETE /documents/attachments/{doc_id}/attachments/{attach_id}."""
         try:
-            self.client.delete(
-                f"{self.base_path}/{document_id}/attachments/{attachment_id}"
-            )
+            self.client.delete(f"{self.base_path}/{document_id}/attachments/{attachment_id}")
             return True
         except Exception as e:
-            logger.error(
-                f"❌ delete_attachment(document_id={document_id}, attachment_id={attachment_id}): {e}"
-            )
+            logger.exception(f"❌ delete_attachment(document_id={document_id}, attachment_id={attachment_id}): {e}")
             print(f"❌ delete_attachment: {e}")
             return False
 
@@ -99,7 +93,7 @@ class AttachmentService:
             r = self.client.get(f"{self.base_path}/{attachment_id}/info")
             return r.get("total_pages") if isinstance(r, dict) else None
         except Exception as e:
-            logger.error(f"❌ get_page_count(attachment_id={attachment_id}): {e}")
+            logger.exception(f"❌ get_page_count(attachment_id={attachment_id}): {e}")
             return None
 
 

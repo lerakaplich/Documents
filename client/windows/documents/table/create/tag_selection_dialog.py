@@ -111,9 +111,7 @@ class TagItemDelegate(QStyledItemDelegate):
 
         # 3. Название тега — ЦВЕТ ИЗ ТЕМЫ
         name_x = circle_x + circle_size + 12
-        name_rect = QRect(
-            name_x, option.rect.y(), option.rect.width() - name_x - 130, item_height
-        )
+        name_rect = QRect(name_x, option.rect.y(), option.rect.width() - name_x - 130, item_height)
         font = painter.font()
         font.setPointSize(10)
         painter.setFont(font)
@@ -209,11 +207,7 @@ class TagTreeWidget(QTreeWidget):
         super().mouseMoveEvent(event)
 
     def leaveEvent(self, event):
-        if (
-            self.delegate
-            and self.delegate.hovered_index is not None
-            and self.delegate.hovered_index.isValid()
-        ):
+        if self.delegate and self.delegate.hovered_index is not None and self.delegate.hovered_index.isValid():
             self.delegate.hovered_index = None
             self.viewport().update()
         super().leaveEvent(event)
@@ -364,9 +358,7 @@ class TagSelectionDialog(QDialog):
         for _ in range(4):
             root_dir = os.path.dirname(root_dir)
 
-        ui_path = os.path.join(
-            root_dir, "ui", "documents", "create", "tag_selection_dialog.ui"
-        )
+        ui_path = os.path.join(root_dir, "ui", "documents", "create", "tag_selection_dialog.ui")
 
         if not os.path.exists(ui_path):
             print(f"UI файл не найден: {ui_path}")
@@ -414,12 +406,8 @@ class TagSelectionDialog(QDialog):
         self.treeWidget.setHeaderLabel("Теги")
         self.treeWidget.setIndentation(10)
 
-        if os.path.exists(self.checked_icon_path) and os.path.exists(
-            self.unchecked_icon_path
-        ):
-            self.delegate = TagItemDelegate(
-                self.checked_icon_path, self.unchecked_icon_path, self.treeWidget
-            )
+        if os.path.exists(self.checked_icon_path) and os.path.exists(self.unchecked_icon_path):
+            self.delegate = TagItemDelegate(self.checked_icon_path, self.unchecked_icon_path, self.treeWidget)
             self.treeWidget.setItemDelegate(self.delegate)
             print("Делегат успешно установлен")
         else:
@@ -445,9 +433,7 @@ class TagSelectionDialog(QDialog):
             item = QTreeWidgetItem()
 
             tag_data = tag.copy()
-            tag_data["checked"] = any(
-                t.get("id") == tag.get("id") for t in self.selected_tags
-            )
+            tag_data["checked"] = any(t.get("id") == tag.get("id") for t in self.selected_tags)
 
             item.setData(0, Qt.ItemDataRole.UserRole, tag_data)
             item.setSizeHint(0, QSize(0, 40))
@@ -463,9 +449,7 @@ class TagSelectionDialog(QDialog):
         if not search_text:
             self.filtered_tags = self.tags.copy()
         else:
-            self.filtered_tags = [
-                tag for tag in self.tags if search_text in tag.get("name", "").lower()
-            ]
+            self.filtered_tags = [tag for tag in self.tags if search_text in tag.get("name", "").lower()]
 
         self.load_tags()
 
@@ -481,15 +465,11 @@ class TagSelectionDialog(QDialog):
         item.setData(0, Qt.ItemDataRole.UserRole, tag_data)
 
         if is_checked:
-            original_tag = next(
-                (t for t in self.tags if t.get("id") == tag_data.get("id")), None
-            )
+            original_tag = next((t for t in self.tags if t.get("id") == tag_data.get("id")), None)
             if original_tag and original_tag not in self.selected_tags:
                 self.selected_tags.append(original_tag)
         else:
-            self.selected_tags = [
-                t for t in self.selected_tags if t.get("id") != tag_data.get("id")
-            ]
+            self.selected_tags = [t for t in self.selected_tags if t.get("id") != tag_data.get("id")]
 
         self.update_selection_info()
         self.treeWidget.viewport().update()

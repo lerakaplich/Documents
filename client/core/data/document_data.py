@@ -22,9 +22,7 @@ class DocumentDataConfig:
         {
             "id": 2,
             "name": "Приказ генерального директора",
-            "fields": [
-                {"name": "control_date", "type": "date", "label": "Срок контроля"}
-            ],
+            "fields": [{"name": "control_date", "type": "date", "label": "Срок контроля"}],
             "user_fields": ["senders", "receivers", "executors"],
             "auto_num": True,
             "smdo_code_type": None,
@@ -120,11 +118,7 @@ class DocumentDataConfig:
 
     # ============ ФОРМАТЫ ФАЙЛОВ ============
     SUPPORTED_FORMATS = (
-        "Документы (*.pdf *.docx *.doc *.txt *.tif);;"
-        "PDF (*.pdf);;"
-        "Word (*.docx *.doc);;"
-        "Текст (*.txt);;"
-        "TIFF (*.tif)"
+        "Документы (*.pdf *.docx *.doc *.txt *.tif);;PDF (*.pdf);;Word (*.docx *.doc);;Текст (*.txt);;TIFF (*.tif)"
     )
 
     # ============ ТЕСТОВЫЕ ДАННЫЕ (БАЗОВЫЕ ШАБЛОНЫ) ============
@@ -215,9 +209,7 @@ class DocumentDataConfig:
             "executors_ids": [[5, 6], [7], [6], [5]],
             "delegates": [],  # У приказов нет делегатов в этом примере
             "delegates_ids": [],
-            "extra_fields": {
-                "control_date": ["2026-07-10", "2026-06-30", "2026-08-15", "2026-07-20"]
-            },
+            "extra_fields": {"control_date": ["2026-07-10", "2026-06-30", "2026-08-15", "2026-07-20"]},
         },
         3: {  # Официальное письмо
             "type_name": "Официальное письмо (Входящее СМДО)",
@@ -335,19 +327,19 @@ class DocumentDataConfig:
         sequence_number: int,
         sent_date: str,
         deadline: str,
-        incoming_number: str = None,
-        incoming_date: str = None,
-        parent_document_id: int = None,
+        incoming_number: str | None = None,
+        incoming_date: str | None = None,
+        parent_document_id: int | None = None,
         confident_flag: int = 0,
-        clearance_id: int = None,
-        clearance_name: str = None,
-        attachments: list = None,
-        reply_file: dict = None,
+        clearance_id: int | None = None,
+        clearance_name: str | None = None,
+        attachments: list | None = None,
+        reply_file: dict | None = None,
         has_reply: bool = False,
-        source_employee_id: int = None,
+        source_employee_id: int | None = None,
         source_organization_id: int = 1,
         source_official_text: str = "",
-        extra_values: dict = None,
+        extra_values: dict | None = None,
     ) -> dict:
         """Генерирует документ на основе шаблона типа"""
 
@@ -397,40 +389,26 @@ class DocumentDataConfig:
         if "receivers" in user_fields:
             receivers_list = base["receivers"][index % len(base["receivers"])]
             doc["receivers"] = receivers_list
-            doc["receivers_ids"] = base["receivers_ids"][
-                index % len(base["receivers_ids"])
-            ]
+            doc["receivers_ids"] = base["receivers_ids"][index % len(base["receivers_ids"])]
         else:
             doc["receivers"] = []
             doc["receivers_ids"] = []
 
         if "executors" in user_fields:
-            executors_list = (
-                base["executors"][index % len(base["executors"])]
-                if base["executors"]
-                else []
-            )
+            executors_list = base["executors"][index % len(base["executors"])] if base["executors"] else []
             doc["executors"] = executors_list
             doc["executors_ids"] = (
-                base["executors_ids"][index % len(base["executors_ids"])]
-                if base["executors_ids"]
-                else []
+                base["executors_ids"][index % len(base["executors_ids"])] if base["executors_ids"] else []
             )
         else:
             doc["executors"] = []
             doc["executors_ids"] = []
 
         if "delegates" in user_fields:
-            delegates_list = (
-                base["delegates"][index % len(base["delegates"])]
-                if base["delegates"]
-                else []
-            )
+            delegates_list = base["delegates"][index % len(base["delegates"])] if base["delegates"] else []
             doc["delegates"] = delegates_list
             doc["delegates_ids"] = (
-                base["delegates_ids"][index % len(base["delegates_ids"])]
-                if base["delegates_ids"]
-                else []
+                base["delegates_ids"][index % len(base["delegates_ids"])] if base["delegates_ids"] else []
             )
         else:
             doc["delegates"] = []
@@ -441,9 +419,7 @@ class DocumentDataConfig:
 
         # Добавляем комментарии
         doc["comments"] = cls._generate_comments(index, status)
-        doc["last_comment_text"] = (
-            doc["comments"][-1]["text"] if doc["comments"] else ""
-        )
+        doc["last_comment_text"] = doc["comments"][-1]["text"] if doc["comments"] else ""
 
         # Добавляем вложения
         doc["attachments"] = attachments or cls._generate_attachments(index, type_id)
@@ -479,12 +455,8 @@ class DocumentDataConfig:
                 {"id": 3, "name": "Закупки", "color": "#50C878", "priority": "normal"},
                 {"id": 4, "name": "Важно", "color": "#FF8C00", "priority": "important"},
             ],
-            2: [
-                {"id": 5, "name": "Партнеры", "color": "#9B59B6", "priority": "normal"}
-            ],
-            3: [
-                {"id": 6, "name": "Системные", "color": "#3498DB", "priority": "urgent"}
-            ],
+            2: [{"id": 5, "name": "Партнеры", "color": "#9B59B6", "priority": "normal"}],
+            3: [{"id": 6, "name": "Системные", "color": "#3498DB", "priority": "urgent"}],
             4: [
                 {
                     "id": 7,
@@ -784,70 +756,69 @@ class DocumentDataConfig:
         try:
             if hasattr(self.controller, "get_tags"):
                 return self.controller.get_tags()
-            else:
-                # Возвращаем те самые тестовые данные, которые были в DocumentDialog
-                return [
-                    {
-                        "id": 1,
-                        "name": "Срочно",
-                        "priority": "urgent",
-                        "color": "#FF0000",
-                    },
-                    {
-                        "id": 2,
-                        "name": "Важно",
-                        "priority": "important",
-                        "color": "#FFA500",
-                    },
-                    {
-                        "id": 3,
-                        "name": "Обычный",
-                        "priority": "normal",
-                        "color": "#808080",
-                    },
-                    {
-                        "id": 4,
-                        "name": "Финансы",
-                        "priority": "important",
-                        "color": "#008000",
-                    },
-                    {
-                        "id": 5,
-                        "name": "Кадры",
-                        "priority": "normal",
-                        "color": "#0000FF",
-                    },
-                    {
-                        "id": 6,
-                        "name": "Юридический",
-                        "priority": "normal",
-                        "color": "#800080",
-                    },
-                    {
-                        "id": 7,
-                        "name": "Договор",
-                        "priority": "urgent",
-                        "color": "#FF4500",
-                    },
-                    {
-                        "id": 8,
-                        "name": "Отчет",
-                        "priority": "important",
-                        "color": "#2E8B57",
-                    },
-                    {
-                        "id": 9,
-                        "name": "Технический",
-                        "priority": "normal",
-                        "color": "#4169E1",
-                    },
-                    {
-                        "id": 10,
-                        "name": "Маркетинг",
-                        "priority": "normal",
-                        "color": "#FF1493",
-                    },
-                ]
+            # Возвращаем те самые тестовые данные, которые были в DocumentDialog
+            return [
+                {
+                    "id": 1,
+                    "name": "Срочно",
+                    "priority": "urgent",
+                    "color": "#FF0000",
+                },
+                {
+                    "id": 2,
+                    "name": "Важно",
+                    "priority": "important",
+                    "color": "#FFA500",
+                },
+                {
+                    "id": 3,
+                    "name": "Обычный",
+                    "priority": "normal",
+                    "color": "#808080",
+                },
+                {
+                    "id": 4,
+                    "name": "Финансы",
+                    "priority": "important",
+                    "color": "#008000",
+                },
+                {
+                    "id": 5,
+                    "name": "Кадры",
+                    "priority": "normal",
+                    "color": "#0000FF",
+                },
+                {
+                    "id": 6,
+                    "name": "Юридический",
+                    "priority": "normal",
+                    "color": "#800080",
+                },
+                {
+                    "id": 7,
+                    "name": "Договор",
+                    "priority": "urgent",
+                    "color": "#FF4500",
+                },
+                {
+                    "id": 8,
+                    "name": "Отчет",
+                    "priority": "important",
+                    "color": "#2E8B57",
+                },
+                {
+                    "id": 9,
+                    "name": "Технический",
+                    "priority": "normal",
+                    "color": "#4169E1",
+                },
+                {
+                    "id": 10,
+                    "name": "Маркетинг",
+                    "priority": "normal",
+                    "color": "#FF1493",
+                },
+            ]
         except Exception as e:
             print(f"[DocumentsPanel] Ошибка получения тегов: {e}")
             return []
@@ -998,7 +969,7 @@ class DocumentDataConfig:
         return dict(sorted(base_columns.items()))
 
     @classmethod
-    def get_documents_response(cls, type_id: int = None, direction: str = None) -> dict:
+    def get_documents_response(cls, type_id: int | None = None, direction: str | None = None) -> dict:
         """Получить ответ в формате API с пагинацией."""
         cls._initialize_test_data()
         items = cls.TEST_DATA.copy()

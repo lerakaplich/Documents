@@ -29,9 +29,7 @@ class DepartmentPage(QWidget):
 
     data_loaded = pyqtSignal()
 
-    def __init__(
-        self, parent=None, http_client: HttpClient | None = None, structure_data=None
-    ):
+    def __init__(self, parent=None, http_client: HttpClient | None = None, structure_data=None):
         super().__init__(parent)
 
         if http_client is None:
@@ -87,11 +85,7 @@ class DepartmentPage(QWidget):
 
     def get_ui_path(self):
         d = os.path.dirname(os.path.abspath(__file__))
-        return os.path.normpath(
-            os.path.join(
-                d, "..", "..", "..", "ui", "system", "departments", "department_page.ui"
-            )
-        )
+        return os.path.normpath(os.path.join(d, "..", "..", "..", "ui", "system", "departments", "department_page.ui"))
 
     def setup_connections(self):
         if hasattr(self, "btnSort"):
@@ -238,9 +232,7 @@ class DepartmentPage(QWidget):
             return
 
         header = QLabel(f"Результаты поиска: {len(self._search_results)}")
-        header.setStyleSheet(
-            f"font-size: 14px; font-weight: bold; color: {T.TEXT_PRIMARY}; padding: 6px 2px;"
-        )
+        header.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {T.TEXT_PRIMARY}; padding: 6px 2px;")
         self.scrollAreaLayout.addWidget(header)
 
         for item in self._search_results:
@@ -253,13 +245,9 @@ class DepartmentPage(QWidget):
         if not isinstance(item, dict):
             return None
 
-        entity_type = (
-            item.get("type") or item.get("entity_type") or item.get("kind") or ""
-        ).lower()
+        entity_type = (item.get("type") or item.get("entity_type") or item.get("kind") or "").lower()
         entity_id = item.get("id") or item.get("entity_id")
-        name = (
-            item.get("name") or item.get("full_name") or item.get("title") or ""
-        ).strip()
+        name = (item.get("name") or item.get("full_name") or item.get("title") or "").strip()
 
         path = item.get("path") or item.get("department_path") or ""
         if isinstance(path, list):
@@ -410,16 +398,12 @@ class DepartmentPage(QWidget):
             self.show_error_notification("Не удалось обновить организацию")
 
     def _on_org_card_delete(self, org_id):
-        self.show_info_notification(
-            "Удаление организации доступно во вкладке «Организации»"
-        )
+        self.show_info_notification("Удаление организации доступно во вкладке «Организации»")
 
     def _add_empty(self, text):
         empty = QLabel(text)
         empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        empty.setStyleSheet(
-            f"color: {T.TEXT_TERTIARY}; font-size: 16px; padding: 40px;"
-        )
+        empty.setStyleSheet(f"color: {T.TEXT_TERTIARY}; font-size: 16px; padding: 40px;")
         self.scrollAreaLayout.addWidget(empty)
 
     def clear_layout(self, layout):
@@ -616,9 +600,7 @@ class DepartmentPage(QWidget):
 
     def _on_employee_delete_clicked(self, emp_id: int):
         print(f"🗑️ Клик «удалить» у сотрудника id={emp_id}")
-        self.show_info_notification(
-            "Удаление сотрудника из этой вкладки не поддерживается"
-        )
+        self.show_info_notification("Удаление сотрудника из этой вкладки не поддерживается")
 
     # ==================== FLOATING BUTTON ====================
 
@@ -640,9 +622,7 @@ class DepartmentPage(QWidget):
         super().resizeEvent(event)
         self.position_floating_button()
         if hasattr(self, "notification_manager"):
-            self.notification_manager.container.setGeometry(
-                0, 0, self.width(), self.height()
-            )
+            self.notification_manager.container.setGeometry(0, 0, self.width(), self.height())
 
 
 def main():

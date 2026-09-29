@@ -48,8 +48,7 @@ def build_employee_group(title: str, is_expanded: bool = True) -> QWidget:
 
     lbl = QLabel(title)
     lbl.setStyleSheet(
-        f"font-weight: bold; font-size: 14px; color: {_t.TEXT_BLACK}; "
-        f"background: transparent; border: none;"
+        f"font-weight: bold; font-size: 14px; color: {_t.TEXT_BLACK}; background: transparent; border: none;"
     )
 
     hl.addWidget(btn)

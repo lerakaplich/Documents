@@ -58,9 +58,7 @@ class DepartmentLazyLoader:
                         "director": org_raw.get("director", ""),
                     }
                 )
-                org_card.setSizePolicy(
-                    QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-                )
+                org_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
                 # редактирование / удаление организации (см. патч 3)
                 org_card.edit_clicked.connect(self.page._on_org_card_edit)
@@ -70,9 +68,7 @@ class DepartmentLazyLoader:
                 node._org_card_added = True
 
         # ─── Дочерние отделы (как было) ───
-        children = [
-            build_child_node(d, org_name=org_name, page=self.page) for d in structure
-        ]
+        children = [build_child_node(d, org_name=org_name, page=self.page) for d in structure]
         self.loader.cache.children_nodes[org_id] = children
         node.set_children_nodes(children)
 
@@ -83,9 +79,7 @@ class DepartmentLazyLoader:
         org_name = node.department_data.get("name", "")
 
         task = ApiTask(self.loader.fetch_org_bundle, org_id)
-        task.signals.done.connect(
-            lambda bundle: self._on_org_loaded(node, org_id, org_name, bundle)
-        )
+        task.signals.done.connect(lambda bundle: self._on_org_loaded(node, org_id, org_name, bundle))
         task.signals.error.connect(node.set_load_error)
         self.tasks.submit(task)
 
@@ -97,10 +91,7 @@ class DepartmentLazyLoader:
 
         # Сотрудники
         employees = self.loader.employees_for_department(dept_id)
-        print(
-            f"[DEBUG] Раскрываем отдел {dept_id} "
-            f"({node.department_data.get('name')}): сотрудников={len(employees)}"
-        )
+        print(f"[DEBUG] Раскрываем отдел {dept_id} ({node.department_data.get('name')}): сотрудников={len(employees)}")
 
         if employees:
             group = build_employee_group(f"Сотрудники ({len(employees)})")
@@ -110,9 +101,6 @@ class DepartmentLazyLoader:
 
         # Дочерние отделы
         children_data = self.loader.children_data_for_department(dept_id)
-        children = [
-            build_child_node(cd, org_name=org_name, page=self.page)
-            for cd in children_data
-        ]
+        children = [build_child_node(cd, org_name=org_name, page=self.page) for cd in children_data]
         self.loader.cache.children_nodes[dept_id] = children
         node.set_children_nodes(children)

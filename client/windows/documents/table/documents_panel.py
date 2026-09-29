@@ -41,9 +41,7 @@ from client.windows.documents.table.documents_panel_row_actions import (
 from client.windows.documents.table.documents_table import DocumentsTable
 
 ROOT_DIR = os.path.dirname(
-    os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    )
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 )
 
 
@@ -105,9 +103,7 @@ class DocumentsPanel(QWidget):
     # ========== UI ==========
 
     def _init_ui(self):
-        ui_path = os.path.join(
-            ROOT_DIR, "client", "ui", "documents", "table", "documents_panel.ui"
-        )
+        ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "table", "documents_panel.ui")
         loadUi(ui_path, self)
         apply_theme_to_widget(self)
 
@@ -150,9 +146,7 @@ class DocumentsPanel(QWidget):
             QMessageBox.warning(self, "Ошибка", f"Не удалось загрузить статистику: {e}")
 
     def _connect_signals(self):
-        self.documents_table.document_action_triggered.connect(
-            self.document_action_triggered.emit
-        )
+        self.documents_table.document_action_triggered.connect(self.document_action_triggered.emit)
         self.documents_table.read_status_changed.connect(
             lambda doc_id, is_read: print(f"Document {doc_id} read: {is_read}")
         )
@@ -195,20 +189,14 @@ class DocumentsPanel(QWidget):
         self._update_table(documents, doc_type, title, view_mode)
         self.data_loaded.emit(len(documents))
 
-    def load_documents_by_type(
-        self, type_id: int, type_name: str = None, direction: str = None
-    ):
-        documents, title, view_mode, doc_type = self.controller.load_documents_by_type(
-            type_id, type_name, direction
-        )
+    def load_documents_by_type(self, type_id: int, type_name: str | None = None, direction: str | None = None):
+        documents, title, view_mode, doc_type = self.controller.load_documents_by_type(type_id, type_name, direction)
         self._update_table(documents, doc_type, title, view_mode)
         self.type_changed.emit(type_id)
         self.data_loaded.emit(len(documents))
 
-    def load_documents_by_direction(self, direction: str, title: str = None):
-        documents, title, view_mode, doc_type = (
-            self.controller.load_documents_by_direction(direction, title)
-        )
+    def load_documents_by_direction(self, direction: str, title: str | None = None):
+        documents, title, view_mode, doc_type = self.controller.load_documents_by_direction(direction, title)
         self._update_table(documents, doc_type, title, view_mode)
         self.direction_changed.emit(direction)
         self.data_loaded.emit(len(documents))
@@ -216,16 +204,16 @@ class DocumentsPanel(QWidget):
     def load_archived_documents(self):
         """Загружает архивные документы текущего пользователя (scope='archive')."""
         self.controller.set_filters(scope="archive")
-        documents, title, view_mode, doc_type = self.controller._load_current(1)
+        documents, _title, view_mode, doc_type = self.controller._load_current(1)
         self._update_table(documents, doc_type, "Архив", view_mode)
         self.data_loaded.emit(len(documents))
 
     def _update_table(
         self,
         documents: list,
-        doc_type: str = None,
-        title: str = None,
-        view_mode: str = None,
+        doc_type: str | None = None,
+        title: str | None = None,
+        view_mode: str | None = None,
     ):
         """Обновить UI-компонент таблицы. Вызывается и помощниками
         (columns/filters), поэтому остаётся в самой панели, а не переезжает
@@ -235,9 +223,7 @@ class DocumentsPanel(QWidget):
             doc_type = doc_type or "default"
             view_mode = view_mode or self.controller.current_view_mode or "all"
 
-            self.documents_table._controller.switch_doc_type(
-                doc_type, documents, view_mode
-            )
+            self.documents_table._controller.switch_doc_type(doc_type, documents, view_mode)
 
             if title and hasattr(self, "labelTitle"):
                 self.labelTitle.setText(title)
@@ -273,9 +259,7 @@ class DocumentsPanel(QWidget):
         self._search_timer.start()  # перезапуск: запрос уйдёт после паузы в наборе
 
     def _run_search(self):
-        documents, title, view_mode, doc_type = self.controller.search_documents(
-            self._pending_search
-        )
+        documents, title, view_mode, doc_type = self.controller.search_documents(self._pending_search)
         self._update_table(documents, doc_type, title, view_mode)
 
     # ========== ТЕМА / ПРОЧЕЕ ==========

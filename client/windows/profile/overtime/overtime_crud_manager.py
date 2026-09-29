@@ -22,9 +22,7 @@ class OvertimeCrudManager:
 
     def _notify(self, message, duration=3000):
         if hasattr(self._parent, "notification_manager"):
-            self._parent.notification_manager.show_notification(
-                message, duration=duration
-            )
+            self._parent.notification_manager.show_notification(message, duration=duration)
 
     # ==================== СОЗДАНИЕ ====================
 

@@ -84,9 +84,7 @@ class TagsPage(QWidget):
     def get_ui_path(self):
         """Возвращает путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(
-            current_dir, "..", "..", "..", "ui", "system", "tags", "tag_page.ui"
-        )
+        ui_path = os.path.join(current_dir, "..", "..", "..", "ui", "system", "tags", "tag_page.ui")
         return os.path.normpath(ui_path)
 
     def setup_connections(self):
@@ -140,7 +138,7 @@ class TagsPage(QWidget):
             self.is_loading = False
             import logging
 
-            logging.error(f"Ошибка загрузки тегов: {e}")
+            logging.exception(f"Ошибка загрузки тегов: {e}")
 
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -165,9 +163,7 @@ class TagsPage(QWidget):
 
         for name, func in sort_options.items():
             action = menu.addAction(name)
-            action.triggered.connect(
-                lambda checked, f=func, n=name: self.apply_sort(f, n)
-            )
+            action.triggered.connect(lambda checked, f=func, n=name: self.apply_sort(f, n))
 
         menu.exec(self.btnSort.mapToGlobal(self.btnSort.rect().bottomLeft()))
 
@@ -222,9 +218,7 @@ class TagsPage(QWidget):
     def has_active_filters(self):
         if self.searchEdit.text().strip():
             return True
-        if self.current_sort != "По приоритету (важные сверху)":
-            return True
-        return False
+        return self.current_sort != "По приоритету (важные сверху)"
 
     def update_reset_button_visibility(self):
         if self.has_active_filters():
@@ -246,9 +240,7 @@ class TagsPage(QWidget):
         # Поиск
         search_text = self.searchEdit.text().strip().lower()
         if search_text:
-            filtered = [
-                tag for tag in filtered if search_text in tag.get("name", "").lower()
-            ]
+            filtered = [tag for tag in filtered if search_text in tag.get("name", "").lower()]
 
         # Сортировка
         sort_methods = {
@@ -338,7 +330,7 @@ class TagsPage(QWidget):
         except Exception as e:
             import logging
 
-            logging.error(f"Ошибка создания тега: {e}")
+            logging.exception(f"Ошибка создания тега: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
@@ -388,7 +380,7 @@ class TagsPage(QWidget):
         except Exception as e:
             import logging
 
-            logging.error(f"Ошибка обновления тега: {e}")
+            logging.exception(f"Ошибка обновления тега: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
@@ -421,7 +413,7 @@ class TagsPage(QWidget):
         except Exception as e:
             import logging
 
-            logging.error(f"Ошибка удаления тега: {e}")
+            logging.exception(f"Ошибка удаления тега: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
@@ -437,14 +429,12 @@ class TagsPage(QWidget):
                         tag["color"] = new_color
                         break
                 # Показываем уведомление об изменении цвета
-                tag_name = next(
-                    (t.get("name") for t in self.tags if t.get("id") == tag_id), "Тег"
-                )
+                tag_name = next((t.get("name") for t in self.tags if t.get("id") == tag_id), "Тег")
                 self.show_info_notification(f"Цвет тега «{tag_name}» обновлен")
         except Exception as e:
             import logging
 
-            logging.error(f"Ошибка обновления цвета тега {tag_id}: {e}")
+            logging.exception(f"Ошибка обновления цвета тега {tag_id}: {e}")
 
     # ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 
@@ -467,9 +457,7 @@ class TagsPage(QWidget):
 
         # Обновляем размер контейнера уведомлений
         if hasattr(self, "notification_manager"):
-            self.notification_manager.container.setGeometry(
-                0, 0, self.width(), self.height()
-            )
+            self.notification_manager.container.setGeometry(0, 0, self.width(), self.height())
 
     def get_all_tags(self):
         return self.tags.copy()

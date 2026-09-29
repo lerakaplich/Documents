@@ -56,31 +56,17 @@ class UnansweredStatsDialog(QDialog):
         # Таблица
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(
-            ["№", "Документ", "Тема", "Срок", "Просрочка (дн.)", "Штраф"]
-        )
+        self.table.setHorizontalHeaderLabels(["№", "Документ", "Тема", "Срок", "Просрочка (дн.)", "Штраф"])
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.ResizeToContents
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.ResizeToContents
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            2, QHeaderView.ResizeMode.Stretch
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            3, QHeaderView.ResizeMode.ResizeToContents
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            4, QHeaderView.ResizeMode.ResizeToContents
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            5, QHeaderView.ResizeMode.ResizeToContents
-        )
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
         # Заполнение
         for i, s in enumerate(self.stats):

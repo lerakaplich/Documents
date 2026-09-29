@@ -23,9 +23,7 @@ class ColumnOrderManager:
             column_order = []
             for visual_idx in range(header.count()):
                 logical_idx = header.logicalIndex(visual_idx)
-                column_name = self.columns_config.get(
-                    logical_idx, f"Column_{logical_idx}"
-                )
+                column_name = self.columns_config.get(logical_idx, f"Column_{logical_idx}")
                 column_order.append({"logical_index": logical_idx, "name": column_name})
             self.settings.set_column_order(column_order, self.doc_type)
         except Exception as e:

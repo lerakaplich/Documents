@@ -25,21 +25,15 @@ class OvertimeDialog(QDialog):
         self._employee_id_by_name = {}
         self._employee_id_to_name = {}
 
-        root_dir = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        )
-        ui_path = os.path.join(
-            root_dir, "ui", "profile", "overtime", "overtime_dialog.ui"
-        )
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        ui_path = os.path.join(root_dir, "ui", "profile", "overtime", "overtime_dialog.ui")
 
         # Если UI файл не найден, создаем диалог программно
 
         uic.loadUi(ui_path, self)
         apply_theme_to_widget(self)
         self.setModal(True)
-        self.setWindowTitle(
-            "Оформление переработки" if not readonly else "Просмотр переработки"
-        )
+        self.setWindowTitle("Оформление переработки" if not readonly else "Просмотр переработки")
         self._setup_time_edits()
         # Подключаем сигналы
         self.btnSave.clicked.connect(self.accept)
@@ -264,7 +258,9 @@ class OvertimeDialog(QDialog):
                 # Пробуем full_name, потом last_name+first_name+patronymic, потом fallback
                 full_name = (emp.get("full_name") or "").strip()
                 if not full_name:
-                    full_name = f"{emp.get('last_name', '')} {emp.get('first_name', '')} {emp.get('patronymic', '')}".strip()
+                    full_name = (
+                        f"{emp.get('last_name', '')} {emp.get('first_name', '')} {emp.get('patronymic', '')}".strip()
+                    )
                 if not full_name:
                     full_name = f"ID {emp.get('id')}"
 
@@ -275,9 +271,7 @@ class OvertimeDialog(QDialog):
                     self._employee_id_to_name[emp_id] = full_name
 
             if self.current_employee_id in self._employee_id_to_name:
-                self.comboEmployee.setCurrentText(
-                    self._employee_id_to_name[self.current_employee_id]
-                )
+                self.comboEmployee.setCurrentText(self._employee_id_to_name[self.current_employee_id])
 
             print(f"🔍 Загружено в combo: {self.comboEmployee.count()} элементов")
         except Exception as e:
@@ -338,7 +332,7 @@ class OvertimeDialog(QDialog):
             date = QDate.fromString(date_str, "dd.MM.yyyy")
             if date.isValid():
                 self.dateEdit.setDate(date)
-        except:
+        except (ValueError, TypeError):
             pass
 
         # Время начала
@@ -347,7 +341,7 @@ class OvertimeDialog(QDialog):
             time_start = QTime.fromString(time_start_str, "HH:mm")
             if time_start.isValid():
                 self.timeStart.setTime(time_start)
-        except:
+        except (ValueError, TypeError):
             pass
 
         # Время окончания
@@ -356,7 +350,7 @@ class OvertimeDialog(QDialog):
             time_end = QTime.fromString(time_end_str, "HH:mm")
             if time_end.isValid():
                 self.timeEnd.setTime(time_end)
-        except:
+        except (ValueError, TypeError):
             pass
 
         # Описание
@@ -382,9 +376,7 @@ class OvertimeDialog(QDialog):
             return False
 
         if not data["start_time"] or not data["end_time"]:
-            QMessageBox.warning(
-                self, "Ошибка", "Пожалуйста, укажите время начала и окончания"
-            )
+            QMessageBox.warning(self, "Ошибка", "Пожалуйста, укажите время начала и окончания")
             return False
 
         start = QTime.fromString(data["start_time"], "HH:mm")
@@ -395,9 +387,7 @@ class OvertimeDialog(QDialog):
             return False
 
         if start >= end:
-            QMessageBox.warning(
-                self, "Ошибка", "Время начала должно быть меньше времени окончания"
-            )
+            QMessageBox.warning(self, "Ошибка", "Время начала должно быть меньше времени окончания")
             return False
 
         diff_minutes = start.secsTo(end) // 60

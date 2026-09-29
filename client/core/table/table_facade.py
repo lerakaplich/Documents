@@ -34,25 +34,17 @@ class TableFacade(QObject):
         self.row_manager = None
         self._initialized = False
 
-    def build(
-        self, data_manager: TableDataManager = None, updater=None
-    ) -> "TableFacade":
+    def build(self, data_manager: TableDataManager = None, updater=None) -> "TableFacade":
         """Собрать таблицу со всеми менеджерами"""
         self.data_manager = data_manager
-        self.row_manager = RowManager(
-            self._table_widget, data_manager, updater, self._doc_type
-        )
+        self.row_manager = RowManager(self._table_widget, data_manager, updater, self._doc_type)
         self._initialized = True
         return self
 
-    def load_documents(
-        self, documents: list, doc_type: str = None, view_mode: str = None
-    ):
+    def load_documents(self, documents: list, doc_type: str | None = None, view_mode: str | None = None):
         """Загрузить документы с обновлением типа если нужно"""
         if not self._initialized:
-            raise RuntimeError(
-                "TableFacade не инициализирован. Вызовите build() сначала."
-            )
+            raise RuntimeError("TableFacade не инициализирован. Вызовите build() сначала.")
 
         doc_type = doc_type or self._doc_type
         view_mode = view_mode or self._view_mode

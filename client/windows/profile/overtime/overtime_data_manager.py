@@ -45,12 +45,8 @@ class OvertimeDataManager:
         api_all_end = self._to_iso(all_end) or "2100-01-01"
 
         try:
-            my_resp = self.overtime_service.get_my_overtime(
-                api_my_start, api_my_end, page=my_page, size=page_size
-            )
-            all_resp = self.overtime_service.get_all_overtime(
-                api_all_start, api_all_end, page=all_page, size=page_size
-            )
+            my_resp = self.overtime_service.get_my_overtime(api_my_start, api_my_end, page=my_page, size=page_size)
+            all_resp = self.overtime_service.get_all_overtime(api_all_start, api_all_end, page=all_page, size=page_size)
 
             # ─── Сохраняем метаданные пагинации ───
             self._my_pagination = {
@@ -107,9 +103,7 @@ class OvertimeDataManager:
             date_str = ""
             if overtime_date:
                 try:
-                    dt = datetime.fromisoformat(
-                        str(overtime_date).replace("Z", "+00:00")
-                    )
+                    dt = datetime.fromisoformat(str(overtime_date).replace("Z", "+00:00"))
                     date_str = dt.strftime("%d.%m.%Y")
                 except Exception:
                     date_str = str(overtime_date)
@@ -138,9 +132,7 @@ class OvertimeDataManager:
                     "id": item.get("id"),
                     "employee_id": item.get("employee_id"),
                     "employee_name": full_name,
-                    "department_id": item.get(
-                        "department_id"
-                    ),  # в ответе может не быть
+                    "department_id": item.get("department_id"),  # в ответе может не быть
                     "department_name": item.get("department_name", ""),
                     "created_at": date_str,
                     "description": item.get("note_text", "") or "",
@@ -153,9 +145,7 @@ class OvertimeDataManager:
             )
         return formatted
 
-    def get_children_departments(
-        self, department_id: int | None = None
-    ) -> list[dict[str, Any]]:
+    def get_children_departments(self, department_id: int | None = None) -> list[dict[str, Any]]:
         """
         Возвращает список дочерних отделов для иерархического фильтра
         Заглушка - в реальном приложении нужно загружать с сервера
@@ -169,18 +159,9 @@ class OvertimeDataManager:
         # Возвращаем дочерние отделы
         if department_id is None:
             # Корневые отделы
-            return [
-                dept
-                for dept in self._departments_cache.values()
-                if dept.get("parent_id") is None
-            ]
-        else:
-            # Дочерние отделы
-            return [
-                dept
-                for dept in self._departments_cache.values()
-                if dept.get("parent_id") == department_id
-            ]
+            return [dept for dept in self._departments_cache.values() if dept.get("parent_id") is None]
+        # Дочерние отделы
+        return [dept for dept in self._departments_cache.values() if dept.get("parent_id") == department_id]
 
     def _load_departments_structure(self):
         """Загружает структуру отделов (заглушка)"""
@@ -207,9 +188,7 @@ class OvertimeDataManager:
             ids.extend(self.get_all_child_ids(child["id"]))
         return ids
 
-    def filter_by_date(
-        self, data_list: list[dict], start_date: datetime, end_date: datetime
-    ) -> list[dict]:
+    def filter_by_date(self, data_list: list[dict], start_date: datetime, end_date: datetime) -> list[dict]:
         """Фильтрует список по диапазону дат."""
         filtered = []
         for item in data_list:
@@ -313,9 +292,7 @@ class OvertimeDataManager:
         if filter_department_id is not None:
             print(f"Применяем фильтр по отделу ID: {filter_department_id}")
             all_ids = self.get_all_child_ids(filter_department_id)
-            all_data = [
-                item for item in all_data if item.get("department_id") in all_ids
-            ]
+            all_data = [item for item in all_data if item.get("department_id") in all_ids]
             my_data = [item for item in my_data if item.get("department_id") in all_ids]
 
         return my_data, all_data

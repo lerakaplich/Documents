@@ -50,9 +50,7 @@ class DirectionGroup(QWidget):
 
         # Контейнер для кнопок направлений (с анимацией)
         self.content_widget = QWidget()
-        self.content_widget.setStyleSheet(
-            f"QWidget {{ background-color: {_t.SIDEBAR_BG}; }}"
-        )
+        self.content_widget.setStyleSheet(f"QWidget {{ background-color: {_t.SIDEBAR_BG}; }}")
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_layout.setSpacing(5)
         self.content_layout.setContentsMargins(10, 5, 0, 5)
@@ -277,9 +275,7 @@ class DirectionGroup(QWidget):
 
         self.setStyleSheet(f"background-color: {_t.SIDEBAR_BG};")
         self.toggle_btn.setStyleSheet(self._toggle_button_style())
-        self.content_widget.setStyleSheet(
-            f"QWidget {{ background-color: {_t.SIDEBAR_BG}; }}"
-        )
+        self.content_widget.setStyleSheet(f"QWidget {{ background-color: {_t.SIDEBAR_BG}; }}")
 
         for btn in self.direction_buttons:
             btn.setStyleSheet(self._direction_button_style())

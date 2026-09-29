@@ -64,12 +64,8 @@ class EmployeeSelectionDialog(QDialog):
                 )
                 if employees:
                     emp0 = employees[0]
-                    print(
-                        f"[EmployeeSelectionDialog] первый сотрудник: keys={sorted(emp0.keys())}"
-                    )
-                    print(
-                        f"[EmployeeSelectionDialog] первый сотрудник: positions={emp0.get('positions')}"
-                    )
+                    print(f"[EmployeeSelectionDialog] первый сотрудник: keys={sorted(emp0.keys())}")
+                    print(f"[EmployeeSelectionDialog] первый сотрудник: positions={emp0.get('positions')}")
             except Exception as e:
                 print(f"[EmployeeSelectionDialog] Ошибка автозагрузки: {e}")
                 import traceback
@@ -213,9 +209,7 @@ class EmployeeSelectionDialog(QDialog):
                 if child_data and child_data.get("id") and child_data.get("id") > 0:
                     child_item.setCheckState(
                         0,
-                        Qt.CheckState.Checked
-                        if is_checked
-                        else Qt.CheckState.Unchecked,
+                        Qt.CheckState.Checked if is_checked else Qt.CheckState.Unchecked,
                     )
 
             if item.parent():
@@ -238,11 +232,7 @@ class EmployeeSelectionDialog(QDialog):
                     checked_count += 1
         if total_count == 0:
             return
-        new_state = (
-            Qt.CheckState.Checked
-            if checked_count == total_count
-            else Qt.CheckState.Unchecked
-        )
+        new_state = Qt.CheckState.Checked if checked_count == total_count else Qt.CheckState.Unchecked
         item.setCheckState(0, new_state)
         if item.parent():
             self._update_parent_checks_only(item.parent())
@@ -287,9 +277,7 @@ class EmployeeSelectionDialog(QDialog):
                 node_id = child_data["id"]
                 child.setCheckState(
                     0,
-                    Qt.CheckState.Checked
-                    if self.selection_manager.is_selected(node_id)
-                    else Qt.CheckState.Unchecked,
+                    Qt.CheckState.Checked if self.selection_manager.is_selected(node_id) else Qt.CheckState.Unchecked,
                 )
             self._set_checkboxes_recursive(child)
 

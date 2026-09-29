@@ -35,9 +35,7 @@ class DocumentsPanelController:
 
     def __init__(self, http_client):
         self.service = DocumentService(http_client)
-        self.repository = (
-            document_repository  # только для метаданных типов, см. докстринг
-        )
+        self.repository = document_repository  # только для метаданных типов, см. докстринг
 
         # Единственный источник правды для состояния панели
         self.current_type_id = None
@@ -134,19 +132,13 @@ class DocumentsPanelController:
             return documents, f"Поиск: {self.current_query}", "search", "default"
 
         if self.current_type_id is not None:
-            documents = self._fetch(
-                page, type_id=self.current_type_id, direction=self.current_direction
-            )
+            documents = self._fetch(page, type_id=self.current_type_id, direction=self.current_direction)
             return documents, self.current_title, "type", str(self.current_type_id)
 
         if self.current_direction is not None:
             documents = self._fetch(page, direction=self.current_direction)
             direction = self.current_direction
-            doc_type = (
-                direction
-                if direction in ["incoming", "outgoing", "internal"]
-                else "default"
-            )
+            doc_type = direction if direction in ["incoming", "outgoing", "internal"] else "default"
             return documents, self.current_title, "direction", doc_type
 
         documents = self._fetch(page)
@@ -161,9 +153,7 @@ class DocumentsPanelController:
         self.current_view_mode = "all"
         return self._load_current(1)
 
-    def load_documents_by_type(
-        self, type_id: int, title: str = None, direction: str = None
-    ):
+    def load_documents_by_type(self, type_id: int, title: str | None = None, direction: str | None = None):
         """Загружает документы по типу (страница 1).
 
         `title` — имя типа, если оно уже известно вызывающей стороне (LeftPanel
@@ -179,7 +169,7 @@ class DocumentsPanelController:
         self.current_title = title or f"Тип {type_id}"
         return self._load_current(1)
 
-    def load_documents_by_direction(self, direction: str, title: str = None):
+    def load_documents_by_direction(self, direction: str, title: str | None = None):
         """Загружает документы по направлению (internal/external), страница 1."""
         self.current_direction = direction
         self.current_type_id = None
@@ -262,13 +252,9 @@ class DocumentsPanelController:
             {"id": 4, "name": "Сидоров С.С."},
         ]
 
-    def redirect_document(
-        self, document_id: int, recipient_ids: list, comment: str
-    ) -> bool:
+    def redirect_document(self, document_id: int, recipient_ids: list, comment: str) -> bool:
         """Бизнес-логика выполнения перенаправления документа"""
-        print(
-            f"[Controller] Redirecting doc {document_id} to {recipient_ids} with comment: {comment}"
-        )
+        print(f"[Controller] Redirecting doc {document_id} to {recipient_ids} with comment: {comment}")
         return True
 
     def get_full_document_for_comment(self, document_data: dict) -> dict:
@@ -276,10 +262,7 @@ class DocumentsPanelController:
         doc_id = document_data.get("id")
         full_doc = DocumentDataConfig.get_document_by_id(doc_id)
 
-        if full_doc:
-            document_to_pass = full_doc.copy()
-        else:
-            document_to_pass = document_data.copy()
+        document_to_pass = full_doc.copy() if full_doc else document_data.copy()
 
         if "reg_number" in document_to_pass and "number" not in document_to_pass:
             document_to_pass["number"] = document_to_pass.get("reg_number", "")
@@ -350,9 +333,7 @@ class DocumentsPanelController:
         try:
             doc = self.repository.get_document_by_id(document_id)
             if doc:
-                self.repository._documents = [
-                    d for d in self.repository._documents if d.get("id") != document_id
-                ]
+                self.repository._documents = [d for d in self.repository._documents if d.get("id") != document_id]
                 return True
             return False
         except Exception as e:

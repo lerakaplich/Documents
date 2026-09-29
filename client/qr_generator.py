@@ -52,9 +52,7 @@ def create_styled_qr(
     logo_bg = Image.new("RGBA", (bg_size, bg_size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(logo_bg)
 
-    draw.rounded_rectangle(
-        (0, 0, bg_size, bg_size), radius=radius, fill=(255, 255, 255, 255)
-    )
+    draw.rounded_rectangle((0, 0, bg_size, bg_size), radius=radius, fill=(255, 255, 255, 255))
 
     bg_x = (qr_width - bg_size) // 2
     bg_y = (qr_height - bg_size) // 2

@@ -43,8 +43,7 @@ class PhoneEditWindow(QtWidgets.QDialog):
         self.setStyleSheet(f"QDialog {{ background-color: {t.BG_DIALOG}; }}")
 
         self.titleLabel.setStyleSheet(
-            f"color: {t.TEXT_PRIMARY}; font-size: 20px; font-weight: bold; "
-            f"background: transparent; padding: 0 0 4px 0;"
+            f"color: {t.TEXT_PRIMARY}; font-size: 20px; font-weight: bold; background: transparent; padding: 0 0 4px 0;"
         )
 
         self.phoneInput.setStyleSheet(f"""

@@ -3,6 +3,7 @@
 Универсальный диалог для создания и редактирования документа
 """
 
+import contextlib
 import os
 import uuid
 from datetime import datetime
@@ -54,10 +55,10 @@ class DocumentDialog(QWidget):
         mode: str = "create",
         document_data: dict[str, Any] | None = None,
         current_user: dict[str, Any] | None = None,
-        organizations: list[dict] = None,
-        departments: list[dict] = None,
-        employees: list[dict] = None,
-        tags: list[dict] = None,
+        organizations: list[dict] | None = None,
+        departments: list[dict] | None = None,
+        employees: list[dict] | None = None,
+        tags: list[dict] | None = None,
         document_types: list[dict[str, Any]] | None = None,
         http_client=None,
         document_service=None,
@@ -84,9 +85,7 @@ class DocumentDialog(QWidget):
         # receiver_ids/executor_ids по типу узла при сборке payload
         # (иначе _orgs/_depts/_emps будут пустыми и получатели/исполнители
         # не найдутся, даже если реально были выбраны в пикере).
-        if self.http_client and (
-            not self.organizations or not self.departments or not self.employees
-        ):
+        if self.http_client and (not self.organizations or not self.departments or not self.employees):
             self._load_org_structure_if_needed()
 
         # Состояние формы
@@ -131,13 +130,9 @@ class DocumentDialog(QWidget):
         """Загрузка UI из .ui файла"""
         try:
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            client_dir = os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
-            )
+            client_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
             ui_path = os.path.normpath(
-                os.path.join(
-                    client_dir, "ui", "documents", "create", "document_create_dialog.ui"
-                )
+                os.path.join(client_dir, "ui", "documents", "create", "document_create_dialog.ui")
             )
 
             if os.path.exists(ui_path):
@@ -160,9 +155,7 @@ class DocumentDialog(QWidget):
         CustomCalendarDateEdit — тот же QDateEdit, но с нашим попапом.
         """
         if not _HAS_CUSTOM_DATE:
-            print(
-                "[DocumentDialog] Пропускаем замену календарей — CustomCalendarDateEdit нет"
-            )
+            print("[DocumentDialog] Пропускаем замену календарей — CustomCalendarDateEdit нет")
             return
 
         replacements = [
@@ -175,9 +168,7 @@ class DocumentDialog(QWidget):
             layout = getattr(self, layout_name, None)
 
             if old_widget is None or layout is None:
-                print(
-                    f"[DocumentDialog] {attr_name}: не найден widget или layout {layout_name}"
-                )
+                print(f"[DocumentDialog] {attr_name}: не найден widget или layout {layout_name}")
                 continue
 
             new_widget = CustomCalendarDateEdit(parent=self)
@@ -264,24 +255,16 @@ class DocumentDialog(QWidget):
 
         # Настройка дат — если у нас ещё QDateEdit (не заменён)
         if hasattr(self, "date_edit"):
-            try:
+            with contextlib.suppress(AttributeError):
                 self.date_edit.setCalendarPopup(True)
-            except AttributeError:
-                pass
-            try:
+            with contextlib.suppress(AttributeError):
                 self.date_edit.setDisplayFormat("dd.MM.yyyy")
-            except AttributeError:
-                pass
 
         if hasattr(self, "date_deadline"):
-            try:
+            with contextlib.suppress(AttributeError):
                 self.date_deadline.setCalendarPopup(True)
-            except AttributeError:
-                pass
-            try:
+            with contextlib.suppress(AttributeError):
                 self.date_deadline.setDisplayFormat("dd.MM.yyyy")
-            except AttributeError:
-                pass
 
         self._setup_selection_buttons()
 
@@ -395,9 +378,7 @@ class DocumentDialog(QWidget):
             created_at = data.get("created_at")
             if created_at:
                 if isinstance(created_at, datetime):
-                    self.date_edit.setDate(
-                        QDate(created_at.year, created_at.month, created_at.day)
-                    )
+                    self.date_edit.setDate(QDate(created_at.year, created_at.month, created_at.day))
                 elif isinstance(created_at, str):
                     try:
                         dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
@@ -431,9 +412,7 @@ class DocumentDialog(QWidget):
         tags_data = data.get("tags", [])
         if tags_data:
             if isinstance(tags_data[0], (int, str)):
-                self.selected_tags = [
-                    tag for tag in self.available_tags if tag.get("id") in tags_data
-                ]
+                self.selected_tags = [tag for tag in self.available_tags if tag.get("id") in tags_data]
             else:
                 self.selected_tags = tags_data
             self._update_tag_button_text()
@@ -517,9 +496,7 @@ class DocumentDialog(QWidget):
         self.btn_sender.setToolTip(name)
 
     def add_sender(self):
-        QMessageBox.information(
-            self, "Поиск", "Используйте кнопку «Выберите отправителя» для выбора."
-        )
+        QMessageBox.information(self, "Поиск", "Используйте кнопку «Выберите отправителя» для выбора.")
 
     # ─────────────────── ПОЛУЧАТЕЛИ ───────────────────
     @staticmethod
@@ -595,9 +572,7 @@ class DocumentDialog(QWidget):
                 f"сотр={len(self.employees)}"
             )
         except Exception as e:
-            print(
-                f"[DocumentDialog] Не удалось загрузить справочники орг.структуры: {e}"
-            )
+            print(f"[DocumentDialog] Не удалось загрузить справочники орг.структуры: {e}")
             import traceback
 
             traceback.print_exc()
@@ -747,18 +722,13 @@ class DocumentDialog(QWidget):
         if len(self.selected_tags) > 3:
             text += f" +{len(self.selected_tags) - 3}..."
         self.btn_tag.setText(text)
-        self.btn_tag.setToolTip(
-            ", ".join(tag.get("name", "") for tag in self.selected_tags)
-        )
+        self.btn_tag.setToolTip(", ".join(tag.get("name", "") for tag in self.selected_tags))
 
     # ─────────────────── ПРОЧИЕ ОБРАБОТЧИКИ ───────────────────
 
     def _on_direction_changed(self, index):
         if index >= 0 and hasattr(self, "direction_box"):
-            print(
-                f"[UI] Выбрано направление: {self.direction_box.currentData()} "
-                f"({self.direction_box.currentText()})"
-            )
+            print(f"[UI] Выбрано направление: {self.direction_box.currentData()} ({self.direction_box.currentText()})")
 
     def _on_create_method_changed(self, index):
         if index < 0:
@@ -806,24 +776,18 @@ class DocumentDialog(QWidget):
                 shown = True
                 break
         if not shown:
-            QMessageBox.information(
-                self, "Файл выбран", f"Выбран файл:\n{os.path.basename(file_path)}"
-            )
+            QMessageBox.information(self, "Файл выбран", f"Выбран файл:\n{os.path.basename(file_path)}")
 
     # ─────────────────── СОХРАНЕНИЕ ───────────────────
 
     def save_document(self):
         print("🚨 save_document вызван!")
         print(f"   mode={self.mode}")
-        print(
-            f"   type_box currentIndex={getattr(self, 'type_box', None) and self.type_box.currentIndex()}"
-        )
+        print(f"   type_box currentIndex={getattr(self, 'type_box', None) and self.type_box.currentIndex()}")
         print(
             f"   direction_box currentIndex={getattr(self, 'direction_box', None) and self.direction_box.currentIndex()}"
         )
-        print(
-            f"   topic='{getattr(self, 'topic_edit', None) and self.topic_edit.toPlainText()}'"
-        )
+        print(f"   topic='{getattr(self, 'topic_edit', None) and self.topic_edit.toPlainText()}'")
         print(f"   receivers={self.selected_receivers}")
         print(f"   document_service={self.document_service}")
         print(f"   http_client={self.http_client}")
@@ -876,26 +840,18 @@ class DocumentDialog(QWidget):
                 "type_id": type_id,
                 "direction": direction,
                 "title": self.topic_edit.toPlainText().strip(),
-                "about": self.regarding_edit.toPlainText().strip()
-                if hasattr(self, "regarding_edit")
-                else "",
-                "reg_number": self.number_edit.toPlainText().strip()
-                if hasattr(self, "number_edit")
-                else "",
+                "about": self.regarding_edit.toPlainText().strip() if hasattr(self, "regarding_edit") else "",
+                "reg_number": self.number_edit.toPlainText().strip() if hasattr(self, "number_edit") else "",
                 "sender_id": sender_id,
                 "receiver_ids": self.selected_receivers,
                 "executor_ids": self.selected_executors,
                 "tags": self.selected_tags,
                 "global_msg_id": global_msg_id,
                 "needs_response": bool(
-                    getattr(self, "needs_response_check", None)
-                    and self.needs_response_check.isChecked()
+                    getattr(self, "needs_response_check", None) and self.needs_response_check.isChecked()
                 ),
                 "confident_flag": int(
-                    bool(
-                        getattr(self, "confident_check", None)
-                        and self.confident_check.isChecked()
-                    )
+                    bool(getattr(self, "confident_check", None) and self.confident_check.isChecked())
                 ),
                 # Справочники — нужны DocumentService, чтобы разложить
                 # receiver_ids/executor_ids по target_department_id /
@@ -953,9 +909,7 @@ class DocumentDialog(QWidget):
         if self.selected_file_path:
             new_id = created.get("id") if isinstance(created, dict) else None
             if new_id and self.attachment_service:
-                attachment = self.attachment_service.upload_attachment(
-                    new_id, self.selected_file_path
-                )
+                attachment = self.attachment_service.upload_attachment(new_id, self.selected_file_path)
                 if not attachment:
                     QMessageBox.warning(
                         self,
@@ -967,8 +921,7 @@ class DocumentDialog(QWidget):
                 QMessageBox.warning(
                     self,
                     "Внимание",
-                    "Документ создан, но сервис загрузки вложений недоступен — "
-                    "файл не прикреплён.",
+                    "Документ создан, но сервис загрузки вложений недоступен — файл не прикреплён.",
                 )
 
         self.document_created.emit(created)
@@ -995,7 +948,5 @@ class DocumentDialog(QWidget):
         apply_theme_to_widget(self)
         if hasattr(self, "date_edit") and hasattr(self.date_edit, "reapply_theme"):
             self.date_edit.reapply_theme()
-        if hasattr(self, "date_deadline") and hasattr(
-            self.date_deadline, "reapply_theme"
-        ):
+        if hasattr(self, "date_deadline") and hasattr(self.date_deadline, "reapply_theme"):
             self.date_deadline.reapply_theme()

@@ -19,23 +19,19 @@ class OrgService:
         self.http = http_client
         self.base_path = "/org"
 
-    def get_all_organizations(
-        self, limit: int = 100, offset: int = 0
-    ) -> list[dict[str, Any]]:
+    def get_all_organizations(self, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
         """Получить все организации"""
         try:
             logger.info("📥 Запрос на получение организаций...")
 
-            response = self.http.get(
-                f"{self.base_path}", params={"limit": limit, "offset": offset}
-            )
+            response = self.http.get(f"{self.base_path}", params={"limit": limit, "offset": offset})
 
             logger.info(f"📥 Получен ответ: {response}")
             if isinstance(response, list):
                 return response
             return []
         except Exception as e:
-            logger.error(f"❌ Ошибка получения организаций: {e}")
+            logger.exception(f"❌ Ошибка получения организаций: {e}")
             import traceback
 
             traceback.print_exc()
@@ -44,10 +40,9 @@ class OrgService:
     def get_organization(self, org_id: int) -> dict[str, Any] | None:
         """Получить организацию по ID"""
         try:
-            response = self.http.get(f"{self.base_path}/{org_id}")
-            return response
+            return self.http.get(f"{self.base_path}/{org_id}")
         except Exception as e:
-            logger.error(f"Ошибка получения организации {org_id}: {e}")
+            logger.exception(f"Ошибка получения организации {org_id}: {e}")
             return None
 
     def get_org_structure(self, org_id: int) -> list[dict[str, Any]]:
@@ -58,7 +53,7 @@ class OrgService:
                 return response
             return []
         except Exception as e:
-            logger.error(f"Ошибка получения структуры организации {org_id}: {e}")
+            logger.exception(f"Ошибка получения структуры организации {org_id}: {e}")
             return []
 
     # client/services/org_service.py
@@ -73,9 +68,7 @@ class OrgService:
                 "short_name": org_data.get("short_name", ""),
                 "unp": org_data.get("unp", ""),
                 "address": org_data.get("address", ""),
-                "phone_number": org_data.get(
-                    "phone_number", org_data.get("phone", "")
-                ),  # Приоритет phone_number
+                "phone_number": org_data.get("phone_number", org_data.get("phone", "")),  # Приоритет phone_number
                 "email": org_data.get("email", ""),
                 "director": org_data.get("director", ""),
                 "smdo_code": org_data.get("smdo_code", ""),
@@ -86,12 +79,10 @@ class OrgService:
             logger.info(f"✅ Организация создана: {response}")
             return response
         except Exception as e:
-            logger.error(f"❌ Ошибка создания организации: {e}")
+            logger.exception(f"❌ Ошибка создания организации: {e}")
             return None
 
-    def update_organization(
-        self, org_id: int, org_data: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    def update_organization(self, org_id: int, org_data: dict[str, Any]) -> dict[str, Any] | None:
         """Обновить организацию"""
         try:
             # Формируем данные для сервера
@@ -101,9 +92,7 @@ class OrgService:
                 "short_name": org_data.get("short_name", ""),
                 "unp": org_data.get("unp", ""),
                 "address": org_data.get("address", ""),
-                "phone_number": org_data.get(
-                    "phone_number", org_data.get("phone", "")
-                ),  # Приоритет phone_number
+                "phone_number": org_data.get("phone_number", org_data.get("phone", "")),  # Приоритет phone_number
                 "email": org_data.get("email", ""),
                 "director": org_data.get("director", ""),
                 "smdo_code": org_data.get("smdo_code", ""),
@@ -114,7 +103,7 @@ class OrgService:
             logger.info(f"✅ Организация обновлена: {response}")
             return response
         except Exception as e:
-            logger.error(f"❌ Ошибка обновления организации {org_id}: {e}")
+            logger.exception(f"❌ Ошибка обновления организации {org_id}: {e}")
             return None
 
     def delete_organization(self, org_id: int) -> bool:
@@ -124,7 +113,7 @@ class OrgService:
             logger.info(f"✅ Организация {org_id} удалена")
             return True
         except Exception as e:
-            logger.error(f"❌ Ошибка удаления организации {org_id}: {e}")
+            logger.exception(f"❌ Ошибка удаления организации {org_id}: {e}")
             return False
 
     def get_org_employees(self, org_id: int):
@@ -133,7 +122,7 @@ class OrgService:
             response = self.http.get(f"{self.base_path}/{org_id}/employees")
             return response if isinstance(response, list) else []
         except Exception as e:
-            logger.error(f"Ошибка получения сотрудников орг {org_id}: {e}")
+            logger.exception(f"Ошибка получения сотрудников орг {org_id}: {e}")
             return []
 
 

@@ -31,9 +31,7 @@ class CellData:
     tooltip: str = ""
     background_color: QColor | None = None
     foreground_color: QColor | None = None
-    alignment: Qt.AlignmentFlag = (
-        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-    )
+    alignment: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
     editable: bool = False
     icon: Any | None = None
     user_data: Any = None
@@ -118,9 +116,7 @@ class TableCellItem(QTableWidgetItem):
                         **self._cell_data.widget_kwargs,
                     )
                 else:
-                    self._widget = self._cell_data.widget_builder(
-                        self._row, self._document
-                    )
+                    self._widget = self._cell_data.widget_builder(self._row, self._document)
             except Exception as e:
                 error_widget = QLabel(f"Ошибка: {e!s}")
                 error_widget.setStyleSheet("color: red; background-color: transparent;")
@@ -130,7 +126,4 @@ class TableCellItem(QTableWidgetItem):
 
     def has_widget(self) -> bool:
         """Есть ли у ячейки виджет"""
-        return (
-            self._cell_data.widget is not None
-            or self._cell_data.widget_builder is not None
-        )
+        return self._cell_data.widget is not None or self._cell_data.widget_builder is not None

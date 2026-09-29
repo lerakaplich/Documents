@@ -43,7 +43,7 @@ class DocTypeService:
                 return response
             return []
         except Exception as e:
-            logger.error(f"❌ Ошибка получения типов документов: {e}")
+            logger.exception(f"❌ Ошибка получения типов документов: {e}")
             import traceback
 
             traceback.print_exc()
@@ -52,10 +52,9 @@ class DocTypeService:
     def get_type(self, type_id: int) -> dict[str, Any] | None:
         """Получить тип документа по ID"""
         try:
-            response = self.http.get(f"{self.base_path}/{type_id}")
-            return response
+            return self.http.get(f"{self.base_path}/{type_id}")
         except Exception as e:
-            logger.error(f"Ошибка получения типа {type_id}: {e}")
+            logger.exception(f"Ошибка получения типа {type_id}: {e}")
             return None
 
     # client/services/doc_type_service.py
@@ -75,12 +74,10 @@ class DocTypeService:
             logger.info(f"✅ Тип документа создан: {response}")
             return response
         except Exception as e:
-            logger.error(f"❌ Ошибка создания типа документа: {e}")
+            logger.exception(f"❌ Ошибка создания типа документа: {e}")
             return None
 
-    def update_type(
-        self, type_id: int, type_data: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    def update_type(self, type_id: int, type_data: dict[str, Any]) -> dict[str, Any] | None:
         """Обновить тип документа"""
         try:
             # Убедимся, что отправляем правильные поля
@@ -95,7 +92,7 @@ class DocTypeService:
             logger.info(f"✅ Тип документа обновлен: {response}")
             return response
         except Exception as e:
-            logger.error(f"❌ Ошибка обновления типа {type_id}: {e}")
+            logger.exception(f"❌ Ошибка обновления типа {type_id}: {e}")
             return None
 
     def delete_type(self, type_id: int) -> bool:
@@ -105,7 +102,7 @@ class DocTypeService:
             logger.info(f"✅ Тип документа {type_id} удален")
             return True
         except Exception as e:
-            logger.error(f"❌ Ошибка удаления типа {type_id}: {e}")
+            logger.exception(f"❌ Ошибка удаления типа {type_id}: {e}")
             return False
 
 

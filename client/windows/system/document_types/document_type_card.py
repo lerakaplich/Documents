@@ -80,23 +80,17 @@ class DocumentTypeCard(QFrame):
         # Заполняем количество дополнительных полей
         if hasattr(self, "fieldsCountLabel"):
             fields_count = self.doc_type_data.get("fields_count", 0)
-            self.fieldsCountLabel.setText(
-                f"{fields_count} доп. полей" if fields_count != 1 else "1 доп. поле"
-            )
+            self.fieldsCountLabel.setText(f"{fields_count} доп. полей" if fields_count != 1 else "1 доп. поле")
 
         # Заполняем статус автонумерации
         if hasattr(self, "autoNumLabel"):
             auto_num = self.doc_type_data.get("auto_numbering", False)
             if auto_num:
                 self.autoNumLabel.setText("✓ Автонумерация включена")
-                self.autoNumLabel.setStyleSheet(
-                    f"border: none; font-size: 11px; color: {T.TEXT_SUCCESS};"
-                )
+                self.autoNumLabel.setStyleSheet(f"border: none; font-size: 11px; color: {T.TEXT_SUCCESS};")
             else:
                 self.autoNumLabel.setText("✗ Автонумерация отключена")
-                self.autoNumLabel.setStyleSheet(
-                    f"border: none; font-size: 11px; color: {T.TEXT_DANGER};"
-                )
+                self.autoNumLabel.setStyleSheet(f"border: none; font-size: 11px; color: {T.TEXT_DANGER};")
 
         # Заполняем количество документов
         if hasattr(self, "docsCountLabel"):
@@ -104,9 +98,7 @@ class DocumentTypeCard(QFrame):
             # Склонение слова "документ"
             if docs_count % 10 == 1 and docs_count % 100 != 11:
                 word = "документ"
-            elif 2 <= docs_count % 10 <= 4 and (
-                docs_count % 100 < 10 or docs_count % 100 >= 20
-            ):
+            elif 2 <= docs_count % 10 <= 4 and (docs_count % 100 < 10 or docs_count % 100 >= 20):
                 word = "документа"
             else:
                 word = "документов"

@@ -12,7 +12,7 @@ class ColumnsMenu(BaseMenu):
     columnToggled = pyqtSignal(str, bool)  # (название колонки, показана ли)
     resetRequested = pyqtSignal()  # «Показать все столбцы»
 
-    def __init__(self, columns: list[str] = None, parent=None):
+    def __init__(self, columns: list[str] | None = None, parent=None):
         super().__init__(parent)
         self._actions = {}
         self.populate(columns or [], set())
@@ -35,9 +35,7 @@ class ColumnsMenu(BaseMenu):
             action = self.addAction(name)
             action.setCheckable(True)
             action.setChecked(name not in hidden)
-            action.toggled.connect(
-                lambda checked, n=name: self.columnToggled.emit(n, checked)
-            )
+            action.toggled.connect(lambda checked, n=name: self.columnToggled.emit(n, checked))
             self._actions[name] = action
 
     def get_checked_columns(self) -> list[str]:

@@ -23,9 +23,7 @@ from PyQt6.uic import loadUi
 from client.core.themes import apply_theme_to_widget, get_manager
 
 ROOT_DIR = os.path.dirname(
-    os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    )
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 )
 
 
@@ -48,7 +46,7 @@ def parse_datetime(value) -> datetime:
         try:
             dt = datetime.fromisoformat(s)
             return _to_naive_utc(dt)
-        except (ValueError, TypeError):
+        except Exception:
             pass
 
         formats = [
@@ -62,7 +60,7 @@ def parse_datetime(value) -> datetime:
         for fmt in formats:
             try:
                 return datetime.strptime(value, fmt)
-            except (ValueError, TypeError):
+            except Exception:
                 continue
 
         print(f"[parse_datetime] Не удалось распарсить: {value}")
@@ -170,31 +168,28 @@ class HistoryItemWidget(QWidget):
         if event_type == "redirect":
             from_user = event.get("from_user", "Неизвестный пользователь")
             to_user = event.get("to_user", "Неизвестный пользователь")
-            return (
-                f"Пользователь {from_user} перенаправил документ пользователю {to_user}"
-            )
+            return f"Пользователь {from_user} перенаправил документ пользователю {to_user}"
 
-        elif event_type == "comment":
+        if event_type == "comment":
             user = event.get("user", "Неизвестный пользователь")
             text = (event.get("text") or "").strip()
             if text:
                 return f"Пользователь {user} оставил комментарий «{text}»"
             return f"Пользователь {user} оставил комментарий"
 
-        elif event_type == "status_change":
+        if event_type == "status_change":
             user = event.get("user", "Неизвестный пользователь")
             old_status = event.get("old_status", "Неизвестный статус")
             new_status = event.get("new_status", "Неизвестный статус")
             return f'Пользователь {user} изменил статус документа с "{old_status}" на "{new_status}"'
 
-        elif event_type == "read":
+        if event_type == "read":
             user = event.get("user", "Неизвестный пользователь")
             return f"Пользователь {user} прочитал документ"
 
-        else:
-            user = event.get("user", "Неизвестный пользователь")
-            text = event.get("text", "")
-            return f"Пользователь {user} {text}"
+        user = event.get("user", "Неизвестный пользователь")
+        text = event.get("text", "")
+        return f"Пользователь {user} {text}"
 
     def reapply_theme(self):
         """Перекрасить стили под текущую тему."""
@@ -246,9 +241,7 @@ class HistoryDialog(QDialog):
         self.document_service = DocumentService(self.http_client)
 
         # Загружаем UI
-        ui_path = os.path.join(
-            ROOT_DIR, "client", "ui", "documents", "history_dialog.ui"
-        )
+        ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "history_dialog.ui")
 
         if not os.path.exists(ui_path):
             print(f"Ошибка: UI файл не найден по пути: {ui_path}")
@@ -290,14 +283,10 @@ class HistoryDialog(QDialog):
         layout.setSpacing(10)
 
         title_label = QLabel("История документа")
-        title_label.setStyleSheet(
-            f"font-size: 20px; font-weight: bold; color: {_t.TEXT_PRIMARY};"
-        )
+        title_label.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {_t.TEXT_PRIMARY};")
         layout.addWidget(title_label)
 
-        doc_number = self.document_data.get(
-            "reg_number", self.document_data.get("number", "Без номера")
-        )
+        doc_number = self.document_data.get("reg_number", self.document_data.get("number", "Без номера"))
         doc_info = QLabel(f"Документ: №{doc_number}")
         doc_info.setStyleSheet(f"color: {_t.TEXT_MUTED};")
         layout.addWidget(doc_info)
@@ -350,9 +339,7 @@ class HistoryDialog(QDialog):
 
     def _setup_ui(self):
         """Настройка UI элементов"""
-        doc_number = self.document_data.get(
-            "reg_number", self.document_data.get("number", "Без номера")
-        )
+        doc_number = self.document_data.get("reg_number", self.document_data.get("number", "Без номера"))
         if hasattr(self, "docInfoLabel"):
             self.docInfoLabel.setText(f"Документ №{doc_number}")
 
@@ -430,9 +417,7 @@ class HistoryDialog(QDialog):
         if created_at:
             creator = self.document_data.get("creator", self._get_default_user())
             if isinstance(creator, dict):
-                creator_name = creator.get(
-                    "full_name", creator.get("name", "Неизвестный пользователь")
-                )
+                creator_name = creator.get("full_name", creator.get("name", "Неизвестный пользователь"))
             else:
                 creator_name = str(creator)
 
@@ -444,9 +429,7 @@ class HistoryDialog(QDialog):
             elif not isinstance(created_at, datetime):
                 created_at = datetime.now()
 
-            history.append(
-                {"type": "created", "user": creator_name, "created_at": created_at}
-            )
+            history.append({"type": "created", "user": creator_name, "created_at": created_at})
 
         redirects = self.document_data.get("redirects", [])
         for redirect in redirects:
@@ -478,9 +461,7 @@ class HistoryDialog(QDialog):
             history.append(
                 {
                     "type": "comment",
-                    "user": comment.get(
-                        "author_name", comment.get("author", "Неизвестный пользователь")
-                    ),
+                    "user": comment.get("author_name", comment.get("author", "Неизвестный пользователь")),
                     "text": comment.get("text", ""),
                     "created_at": comment_time,
                 }
@@ -539,12 +520,8 @@ class HistoryDialog(QDialog):
 
         if et == "redirected":
             base["type"] = "redirect"
-            base["from_user"] = (
-                ev.get("employee_full_name") or "Неизвестный пользователь"
-            )
-            base["to_user"] = (
-                ev.get("target_employee_full_name") or "Неизвестный пользователь"
-            )
+            base["from_user"] = ev.get("employee_full_name") or "Неизвестный пользователь"
+            base["to_user"] = ev.get("target_employee_full_name") or "Неизвестный пользователь"
             return base
 
         if et == "read":
@@ -577,7 +554,7 @@ class HistoryDialog(QDialog):
             try:
                 item = QListWidgetItem(str(event))
                 self.historyListWidget.addItem(item)
-            except:
+            except Exception as e:
                 pass
 
     def _connect_signals(self):

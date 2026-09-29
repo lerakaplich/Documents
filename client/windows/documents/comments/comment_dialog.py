@@ -21,9 +21,7 @@ from PyQt6.uic import loadUi
 from client.core.themes import T, apply_theme_to_widget
 
 ROOT_DIR = os.path.dirname(
-    os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    )
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 )
 
 
@@ -46,12 +44,7 @@ class CommentItemWidget(QWidget):
 
         # Имя автора (жирный)
         author_label = QLabel()
-        author_name = (
-            comment.get("author_fio")
-            or comment.get("author_name")
-            or comment.get("author")
-            or "Неизвестный"
-        )
+        author_name = comment.get("author_fio") or comment.get("author_name") or comment.get("author") or "Неизвестный"
         author_label.setText(author_name)
         author_label.setStyleSheet(f"""
             QLabel {{
@@ -65,19 +58,14 @@ class CommentItemWidget(QWidget):
 
         # Разделитель
         sep_label = QLabel("•")
-        sep_label.setStyleSheet(
-            f"color: {T.TEXT_TERTIARY}; background-color: transparent;"
-        )
+        sep_label.setStyleSheet(f"color: {T.TEXT_TERTIARY}; background-color: transparent;")
         header_layout.addWidget(sep_label)
 
         # Время
         time_label = QLabel()
         created_at = comment.get("created_at")
         if created_at:
-            if isinstance(created_at, datetime):
-                time_str = created_at.strftime("%d.%m.%Y %H:%M")
-            else:
-                time_str = str(created_at)
+            time_str = created_at.strftime("%d.%m.%Y %H:%M") if isinstance(created_at, datetime) else str(created_at)
         else:
             time_str = "Только что"
         time_label.setText(time_str)
@@ -148,9 +136,7 @@ class CommentDialog(QDialog):
         self.http_client = http_client or AppState().http_client
         self.comment_service = CommentService(self.http_client)
 
-        ui_path = os.path.join(
-            ROOT_DIR, "client", "ui", "documents", "comments_dialog.ui"
-        )
+        ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "comments_dialog.ui")
         loadUi(ui_path, self)
         apply_theme_to_widget(self)
 
@@ -171,12 +157,8 @@ class CommentDialog(QDialog):
     def _setup_ui(self):
         """Настройка UI элементов"""
         # Устанавливаем заголовок
-        doc_number = self.document_data.get(
-            "reg_number", self.document_data.get("number", "Без номера")
-        )
-        doc_title = self.document_data.get(
-            "title", self.document_data.get("subject", "Без темы")
-        )
+        doc_number = self.document_data.get("reg_number", self.document_data.get("number", "Без номера"))
+        self.document_data.get("title", self.document_data.get("subject", "Без темы"))
 
         self.docInfoLabel.setText(f"Документ №{doc_number}")
         self.commentsListWidget.setStyleSheet(f"""
@@ -214,9 +196,7 @@ class CommentDialog(QDialog):
         # Локальные (добавленные в этой сессии) — оставляем тоже
         local = self.document_data.get("comments", []) or []
         server_ids = {c.get("id") for c in server_comments}
-        merged = list(server_comments) + [
-            c for c in local if c.get("id") not in server_ids
-        ]
+        merged = list(server_comments) + [c for c in local if c.get("id") not in server_ids]
 
         self.document_data["comments"] = merged
         self._load_comments()
@@ -270,8 +250,7 @@ class CommentDialog(QDialog):
                         "%Y-%m-%d",
                     ]:
                         try:
-                            dt = datetime.strptime(created_at, fmt)
-                            return dt
+                            return datetime.strptime(created_at, fmt)
                         except ValueError:
                             continue
                     return datetime.min
@@ -314,10 +293,7 @@ class CommentDialog(QDialog):
 
         if obj == self.commentTextEdit and event.type() == QEvent.Type.KeyPress:
             key_event = event
-            if (
-                key_event.key() == Qt.Key.Key_Return
-                and key_event.modifiers() == Qt.KeyboardModifier.ControlModifier
-            ):
+            if key_event.key() == Qt.Key.Key_Return and key_event.modifiers() == Qt.KeyboardModifier.ControlModifier:
                 self._on_send_clicked()
                 return True
         return super().eventFilter(obj, event)
@@ -367,9 +343,7 @@ class CommentDialog(QDialog):
                 old_widget = self.commentsListWidget.itemWidget(last_item)
                 if old_widget and hasattr(old_widget, "comment"):
                     # Создаем новый виджет с разделителем
-                    new_widget = CommentItemWidget(
-                        old_widget.comment, show_separator=True
-                    )
+                    new_widget = CommentItemWidget(old_widget.comment, show_separator=True)
                     last_item.setSizeHint(new_widget.sizeHint())
                     self.commentsListWidget.setItemWidget(last_item, new_widget)
 

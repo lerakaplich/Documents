@@ -4,9 +4,7 @@ from typing import Any
 class HierarchyBuilder:
     """Строитель иерархической структуры организаций"""
 
-    def __init__(
-        self, organizations: list[dict], departments: list[dict], employees: list[dict]
-    ):
+    def __init__(self, organizations: list[dict], departments: list[dict], employees: list[dict]):
         self.organizations = {org["id"]: org for org in organizations}
         self.departments = {dept["id"]: dept for dept in departments}
         self.employees = {emp["id"]: emp for emp in employees}
@@ -19,13 +17,9 @@ class HierarchyBuilder:
         for org_id, org in self.organizations.items():
             org_struct = {"organization": org, "departments": [], "employees": []}
 
-            root_depts = [
-                d for d in org_departments.get(org_id, []) if d.get("parent_id") is None
-            ]
+            root_depts = [d for d in org_departments.get(org_id, []) if d.get("parent_id") is None]
             for dept in root_depts:
-                dept_tree = self._build_department_tree(
-                    dept, org_departments.get(org_id, [])
-                )
+                dept_tree = self._build_department_tree(dept, org_departments.get(org_id, []))
                 org_struct["departments"].append(dept_tree)
 
             org_struct["employees"] = self._get_organization_employees(org_id)
@@ -73,10 +67,7 @@ class HierarchyBuilder:
         org_employees = []
         for emp in self.employees.values():
             if emp.get("organization_id") == organization_id:
-                has_position = any(
-                    pos.get("department_id") in self.departments
-                    for pos in emp.get("positions", [])
-                )
+                has_position = any(pos.get("department_id") in self.departments for pos in emp.get("positions", []))
                 if not has_position:
                     org_employees.append(emp)
         return org_employees

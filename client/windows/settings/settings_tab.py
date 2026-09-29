@@ -63,9 +63,7 @@ class SettingsTab(QWidget):
         try:
             me = EmployeeService(self.http_client).get_my_profile()
         except Exception as e:
-            self.notification_manager.show_notification(
-                f"Не удалось загрузить контакты: {e}", duration=4000
-            )
+            self.notification_manager.show_notification(f"Не удалось загрузить контакты: {e}", duration=4000)
             return
         self.set_phone(me.get("phone_number") or "")
         self.set_email(me.get("email") or "")
@@ -155,22 +153,16 @@ class SettingsTab(QWidget):
 
     def _apply_phone_change(self, new_phone: str):
         if not self.http_client:
-            self.notification_manager.show_notification(
-                "HTTP-клиент не установлен", duration=4000
-            )
+            self.notification_manager.show_notification("HTTP-клиент не установлен", duration=4000)
             return
 
         from client.core.state.data_events import get_data_events
         from client.services.employee_service import EmployeeService
 
         try:
-            EmployeeService(self.http_client).update_my_profile(
-                {"phone_number": new_phone}
-            )
+            EmployeeService(self.http_client).update_my_profile({"phone_number": new_phone})
         except Exception as e:
-            self.notification_manager.show_notification(
-                f"Не удалось обновить телефон: {e}", duration=4000
-            )
+            self.notification_manager.show_notification(f"Не удалось обновить телефон: {e}", duration=4000)
             return
 
         self.set_phone(new_phone)
@@ -178,15 +170,11 @@ class SettingsTab(QWidget):
         # Оповещаем остальные части приложения
         get_data_events().profile_changed.emit({"phone_number": new_phone})
 
-        self.notification_manager.show_notification(
-            "Номер телефона обновлён", duration=3000
-        )
+        self.notification_manager.show_notification("Номер телефона обновлён", duration=3000)
 
     def _apply_email_change(self, new_email: str):
         if not self.http_client:
-            self.notification_manager.show_notification(
-                "HTTP-клиент не установлен", duration=4000
-            )
+            self.notification_manager.show_notification("HTTP-клиент не установлен", duration=4000)
             return
 
         from client.core.state.data_events import get_data_events
@@ -195,9 +183,7 @@ class SettingsTab(QWidget):
         try:
             EmployeeService(self.http_client).update_my_profile({"email": new_email})
         except Exception as e:
-            self.notification_manager.show_notification(
-                f"Не удалось обновить email: {e}", duration=4000
-            )
+            self.notification_manager.show_notification(f"Не удалось обновить email: {e}", duration=4000)
             return
 
         self.set_email(new_email)
@@ -226,6 +212,4 @@ class SettingsTab(QWidget):
     # Смена пароля (заглушка)
 
     def on_change_password(self):
-        self.notification_manager.show_notification(
-            "Смена пароля будет добавлена позже", duration=3000
-        )
+        self.notification_manager.show_notification("Смена пароля будет добавлена позже", duration=3000)

@@ -81,13 +81,12 @@ class HierarchyManager:
                 for dept_id in self.root_departments.get(organization_id, [])
                 if dept_id in self.departments_tree
             ]
-        else:
-            parent = self.departments_tree.get(parent_id, {})
-            return [
-                (child_id, self.departments_tree[child_id]["name"])
-                for child_id in parent.get("children", [])
-                if child_id in self.departments_tree
-            ]
+        parent = self.departments_tree.get(parent_id, {})
+        return [
+            (child_id, self.departments_tree[child_id]["name"])
+            for child_id in parent.get("children", [])
+            if child_id in self.departments_tree
+        ]
 
     def get_level_name(self, level):
         """Возвращает название уровня"""
@@ -97,16 +96,14 @@ class HierarchyManager:
         """Возвращает название элемента по его ID"""
         if item_id in self.organizations:
             return self.organizations[item_id]
-        elif item_id in self.all_departments:
+        if item_id in self.all_departments:
             return self.all_departments[item_id]
         return None
 
     def clear_hierarchy_layout(self):
         """Очищает динамические комбобоксы и их лейблы"""
         print("[DEBUG] clear_hierarchy_layout() вызван")
-        print(
-            f"[DEBUG] Количество элементов в hierarchyLayout до очистки: {self.parent.hierarchyLayout.count()}"
-        )
+        print(f"[DEBUG] Количество элементов в hierarchyLayout до очистки: {self.parent.hierarchyLayout.count()}")
 
         while self.parent.hierarchyLayout.count():
             item = self.parent.hierarchyLayout.takeAt(0)
@@ -124,9 +121,7 @@ class HierarchyManager:
         self.leader_checkbox = None
         self.leader_checkbox_layout = None
 
-        print(
-            f"[DEBUG] hierarchyLayout очищен, элементов: {self.parent.hierarchyLayout.count()}"
-        )
+        print(f"[DEBUG] hierarchyLayout очищен, элементов: {self.parent.hierarchyLayout.count()}")
 
     def build_initial_hierarchy(self, filter_external_only=False, employee=None):
         """Строит начальную иерархию: Организация -> ... -> Руководитель в конце"""
@@ -136,13 +131,9 @@ class HierarchyManager:
         self.clear_hierarchy_layout()
 
         # Добавляем организации
-        org_items = [
-            (org_id, org_name) for org_id, org_name in self.organizations.items()
-        ]
+        org_items = [(org_id, org_name) for org_id, org_name in self.organizations.items()]
         if filter_external_only:
-            org_items = [
-                (org_id, org_name) for org_id, org_name in org_items if org_id != 1
-            ]
+            org_items = [(org_id, org_name) for org_id, org_name in org_items if org_id != 1]
 
         if org_items:
             print("[DEBUG] Добавляем уровень 0 (Организация)")
@@ -226,9 +217,7 @@ class HierarchyManager:
         label = QLabel(f"{level_name}:")
         label.setMinimumSize(120, 0)
         label.setMaximumSize(120, 16777215)
-        label.setStyleSheet(
-            f"color: {_t.TEXT_PRIMARY}; font-weight: 500; background: transparent;"
-        )
+        label.setStyleSheet(f"color: {_t.TEXT_PRIMARY}; font-weight: 500; background: transparent;")
         label.setProperty("base_text", f"{level_name}:")
 
         combo = QComboBox()
@@ -300,9 +289,7 @@ class HierarchyManager:
 
         insert_index = self.parent.hierarchyLayout.count()
         if self.leader_checkbox_layout:
-            leader_idx = self.parent.hierarchyLayout.indexOf(
-                self.leader_checkbox_layout
-            )
+            leader_idx = self.parent.hierarchyLayout.indexOf(self.leader_checkbox_layout)
             if leader_idx != -1:
                 insert_index = leader_idx
 
@@ -328,7 +315,7 @@ class HierarchyManager:
         print(f"[DEBUG] remove_levels_after(level={level})")
 
         while len(self.hierarchy_combos) > level + 1:
-            combo, label, lvl = self.hierarchy_combos.pop()
+            combo, _label, _lvl = self.hierarchy_combos.pop()
             for i in range(self.parent.hierarchyLayout.count()):
                 item = self.parent.hierarchyLayout.itemAt(i)
                 if item and item.layout():
@@ -368,9 +355,7 @@ class HierarchyManager:
         if selected_id:
             if level == 0:
                 # Уровень организации → берём КОРНЕВЫЕ отделы этой организации
-                children = self.get_children_for_parent(
-                    None, organization_id=selected_id
-                )
+                children = self.get_children_for_parent(None, organization_id=selected_id)
             else:
                 # Уровень отдела → берём его дочерние
                 children = self.get_children_for_parent(selected_id)
@@ -387,7 +372,7 @@ class HierarchyManager:
         print(f"[DEBUG] update_label_text(level={level}, selected_id={selected_id})")
 
         if level < len(self.hierarchy_combos):
-            combo, label, lvl = self.hierarchy_combos[level]
+            _combo, label, _lvl = self.hierarchy_combos[level]
             base_text = label.property("base_text") or self.get_level_name(level) + ":"
             clean_base = base_text.rstrip(":")
             new_text = f"{clean_base}:"
@@ -418,9 +403,7 @@ class HierarchyManager:
                 level_name = self.get_level_name(last_level).lower()
                 item_name = self.get_item_name(last_selected)
                 if item_name:
-                    self.leader_checkbox.setText(
-                        f"Является руководителем «{item_name}»"
-                    )
+                    self.leader_checkbox.setText(f"Является руководителем «{item_name}»")
                 else:
                     self.leader_checkbox.setText(f"Является руководителем {level_name}")
             else:
@@ -431,26 +414,18 @@ class HierarchyManager:
                         prev_id = self.current_hierarchy_path[prev_level]
                         item_name = self.get_item_name(prev_id)
                         if item_name:
-                            self.leader_checkbox.setText(
-                                f"Является руководителем «{item_name}»"
-                            )
+                            self.leader_checkbox.setText(f"Является руководителем «{item_name}»")
                         else:
-                            self.leader_checkbox.setText(
-                                f"Является руководителем {level_name}"
-                            )
+                            self.leader_checkbox.setText(f"Является руководителем {level_name}")
                     else:
-                        self.leader_checkbox.setText(
-                            f"Является руководителем {level_name}"
-                        )
+                        self.leader_checkbox.setText(f"Является руководителем {level_name}")
                 else:
                     self.leader_checkbox.setText("Является руководителем организации")
         else:
             org_id = self.current_hierarchy_path[0]
             org_name = self.get_item_name(org_id)
             if org_name:
-                self.leader_checkbox.setText(
-                    f"Является руководителем организации «{org_name}»"
-                )
+                self.leader_checkbox.setText(f"Является руководителем организации «{org_name}»")
             else:
                 self.leader_checkbox.setText("Является руководителем организации")
 
@@ -485,7 +460,7 @@ class HierarchyManager:
         """Скрывает последний уровень иерархии при отметке руководителя"""
         print("[DEBUG] hide_last_level() вызван")
         if len(self.hierarchy_combos) > 1:
-            last_combo, last_label, last_level = self.hierarchy_combos[-1]
+            last_combo, _last_label, _last_level = self.hierarchy_combos[-1]
 
             for i in range(self.parent.hierarchyLayout.count()):
                 item = self.parent.hierarchyLayout.itemAt(i)
@@ -505,7 +480,7 @@ class HierarchyManager:
         """Показывает последний уровень иерархии при снятии отметки руководителя"""
         print("[DEBUG] show_last_level() вызван")
         if len(self.hierarchy_combos) > 1:
-            last_combo, last_label, last_level = self.hierarchy_combos[-1]
+            last_combo, _last_label, _last_level = self.hierarchy_combos[-1]
 
             for i in range(self.parent.hierarchyLayout.count()):
                 item = self.parent.hierarchyLayout.itemAt(i)
@@ -524,7 +499,7 @@ class HierarchyManager:
     def get_current_hierarchy_path(self):
         """Возвращает текущий путь иерархии [org_id, dep1_id, dep2_id, ...]"""
         path = []
-        for combo, label, level in self.hierarchy_combos:
+        for combo, _label, _level in self.hierarchy_combos:
             selected_id = combo.currentData()
             if selected_id:
                 path.append(selected_id)
@@ -604,10 +579,8 @@ class HierarchyManager:
 
         arrow = icon_path("down_arrow", _t.ICON_COLOR)
 
-        for combo, label, level in self.hierarchy_combos:
-            label.setStyleSheet(
-                f"color: {_t.TEXT_PRIMARY}; font-weight: 500; background: transparent;"
-            )
+        for combo, label, _level in self.hierarchy_combos:
+            label.setStyleSheet(f"color: {_t.TEXT_PRIMARY}; font-weight: 500; background: transparent;")
             combo.setStyleSheet(f"""
                 QComboBox {{
                     border: 1px solid {_t.BORDER_DEFAULT};

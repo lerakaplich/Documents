@@ -44,9 +44,7 @@ class ProfileInfo:
             phone = data["phone_number"] or ""
             self.current_phone_raw = phone
             if self.label_phone_value:
-                self.label_phone_value.setText(
-                    self.format_phone_display(phone) if phone else "Не указан"
-                )
+                self.label_phone_value.setText(self.format_phone_display(phone) if phone else "Не указан")
         if "email" in data:
             email = data["email"] or ""
             self.current_email_raw = email
@@ -81,9 +79,7 @@ class ProfileInfo:
     # ─────────────────────────────────────────────
     # Обновление данных
 
-    def update_profile(
-        self, full_name, position, department_chain, phone, email, birth_date
-    ):
+    def update_profile(self, full_name, position, department_chain, phone, email, birth_date):
         print("update_profile вызван")
         self._last_department_chain = department_chain
 
@@ -109,9 +105,7 @@ class ProfileInfo:
 
         # ── Телефон ──
         if self.label_phone_value:
-            self.label_phone_value.setText(
-                self.format_phone_display(phone) if phone else "Не указан"
-            )
+            self.label_phone_value.setText(self.format_phone_display(phone) if phone else "Не указан")
 
         # ── Email ──
         if self.label_email_value:
@@ -119,9 +113,7 @@ class ProfileInfo:
 
         # ── Дата рождения ──
         if self.label_birth_date_value:
-            self.label_birth_date_value.setText(
-                birth_date if birth_date else "Не указана"
-            )
+            self.label_birth_date_value.setText(birth_date if birth_date else "Не указана")
 
         from client.core.state.data_events import get_data_events
 
@@ -228,12 +220,8 @@ class ProfileInfo:
             try:
                 from client.services.employee_service import EmployeeService
 
-                EmployeeService(self.http_client).update_my_profile(
-                    {"phone_number": new_phone}
-                )
-                QMessageBox.information(
-                    self.parent, "Успешно", "Номер телефона обновлён"
-                )
+                EmployeeService(self.http_client).update_my_profile({"phone_number": new_phone})
+                QMessageBox.information(self.parent, "Успешно", "Номер телефона обновлён")
             except Exception as e:
                 QMessageBox.warning(
                     self.parent,
@@ -241,9 +229,7 @@ class ProfileInfo:
                     f"Не удалось обновить телефон на сервере:\n{e!s}",
                 )
         else:
-            QMessageBox.information(
-                self.parent, "Успешно", "Номер телефона обновлён (локально)"
-            )
+            QMessageBox.information(self.parent, "Успешно", "Номер телефона обновлён (локально)")
 
     def on_email_updated(self, new_email: str):
         self.current_email_raw = new_email
@@ -254,9 +240,7 @@ class ProfileInfo:
             try:
                 from client.services.employee_service import EmployeeService
 
-                EmployeeService(self.http_client).update_my_profile(
-                    {"email": new_email}
-                )
+                EmployeeService(self.http_client).update_my_profile({"email": new_email})
                 QMessageBox.information(self.parent, "Успешно", "Email обновлён")
             except Exception as e:
                 QMessageBox.warning(

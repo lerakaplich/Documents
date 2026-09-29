@@ -315,22 +315,21 @@ class SystemTab(QWidget):
 
         if any(word in all_names for word in ["цех", "цеха"]):
             return "workshops"
-        elif any(word in all_names for word in ["отдел", "отделы"]):
+        if any(word in all_names for word in ["отдел", "отделы"]):
             return "departments"
-        elif any(word in all_names for word in ["управление", "управления"]):
+        if any(word in all_names for word in ["управление", "управления"]):
             return "divisions"
-        elif any(word in all_names for word in ["бюро"]):
+        if any(word in all_names for word in ["бюро"]):
             return "bureaus"
-        elif any(word in all_names for word in ["сектор", "сектора"]):
+        if any(word in all_names for word in ["сектор", "сектора"]):
             return "sections"
-        elif any(word in all_names for word in ["филиал", "филиалы"]):
+        if any(word in all_names for word in ["филиал", "филиалы"]):
             return "branches"
-        elif any(word in all_names for word in ["дирекция", "дирекции"]):
+        if any(word in all_names for word in ["дирекция", "дирекции"]):
             return "directorates"
-        elif any(word in all_names for word in ["департамент", "департаменты"]):
+        if any(word in all_names for word in ["департамент", "департаменты"]):
             return "departments"
-        else:
-            return "departments"
+        return "departments"
 
     def get_type_display_name(self, type_key):
         """Возвращает русское название для типа структуры"""

@@ -36,16 +36,10 @@ class OvertimePeriodManager:
         today = date.today()
         if today.day >= 25:
             start = date(today.year, today.month, 25)
-            if today.month == 12:
-                end = date(today.year + 1, 1, 24)
-            else:
-                end = date(today.year, today.month + 1, 24)
+            end = date(today.year + 1, 1, 24) if today.month == 12 else date(today.year, today.month + 1, 24)
         else:
             end = date(today.year, today.month, 24)
-            if today.month == 1:
-                start = date(today.year - 1, 12, 25)
-            else:
-                start = date(today.year, today.month - 1, 25)
+            start = date(today.year - 1, 12, 25) if today.month == 1 else date(today.year, today.month - 1, 25)
         return {"start": start.strftime("%d.%m.%Y"), "end": end.strftime("%d.%m.%Y")}
 
     @staticmethod
@@ -120,13 +114,9 @@ class OvertimePeriodManager:
             traceback.print_exc()
 
             # Показываем уведомление об ошибке
-            self.notification_manager.show_notification(
-                f"Не удалось открыть окно выбора периода: {e!s}", duration=4000
-            )
+            self.notification_manager.show_notification(f"Не удалось открыть окно выбора периода: {e!s}", duration=4000)
 
-            QMessageBox.warning(
-                self.parent, "Ошибка", f"Не удалось открыть окно выбора периода\n{e!s}"
-            )
+            QMessageBox.warning(self.parent, "Ошибка", f"Не удалось открыть окно выбора периода\n{e!s}")
 
     def on_period_selected(self, period_data, is_my=False, load_callback=None):
         """Обработчик выбора периода."""
@@ -145,9 +135,7 @@ class OvertimePeriodManager:
                 self.all_has_filter = True
 
             # Показываем уведомление об успешном применении фильтра
-            self.notification_manager.show_notification(
-                f"Фильтр применен: {start_date} - {end_date}", duration=3000
-            )
+            self.notification_manager.show_notification(f"Фильтр применен: {start_date} - {end_date}", duration=3000)
 
             if load_callback:
                 load_callback(is_my, start_date, end_date)
@@ -159,13 +147,9 @@ class OvertimePeriodManager:
             traceback.print_exc()
 
             # Показываем уведомление об ошибке
-            self.notification_manager.show_notification(
-                f"Ошибка применения фильтра: {e!s}", duration=4000
-            )
+            self.notification_manager.show_notification(f"Ошибка применения фильтра: {e!s}", duration=4000)
 
-            QMessageBox.warning(
-                self.parent, "Ошибка", f"Не удалось применить фильтр: {e!s}"
-            )
+            QMessageBox.warning(self.parent, "Ошибка", f"Не удалось применить фильтр: {e!s}")
 
     def reset_period(self, is_my=False, load_callback=None):
         """Сбрасывает период."""
@@ -179,9 +163,7 @@ class OvertimePeriodManager:
             tab_name = "Всех переработок"
 
         # Показываем уведомление о сбросе фильтра
-        self.notification_manager.show_notification(
-            f"Фильтр для '{tab_name}' сброшен", duration=2500
-        )
+        self.notification_manager.show_notification(f"Фильтр для '{tab_name}' сброшен", duration=2500)
 
         if load_callback:
             load_callback(is_my, None, None)

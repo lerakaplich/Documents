@@ -73,27 +73,19 @@ class DepartmentCard(QFrame):
 
         # Заполняем все поля из UI
         if hasattr(self, "nameLabel"):
-            self.nameLabel.setText(
-                self.department_data.get("name", "Название не указано")
-            )
+            self.nameLabel.setText(self.department_data.get("name", "Название не указано"))
 
         if hasattr(self, "typeLabel"):
             department_type = self.department_data.get("type", "")
-            self.typeLabel.setText(
-                f"Тип: {department_type}" if department_type else "Тип: Не указан"
-            )
+            self.typeLabel.setText(f"Тип: {department_type}" if department_type else "Тип: Не указан")
 
         if hasattr(self, "leaderLabel"):
             leader = self.department_data.get("leader", "")
-            self.leaderLabel.setText(
-                f"Руководитель: {leader}" if leader else "Руководитель: Не назначен"
-            )
+            self.leaderLabel.setText(f"Руководитель: {leader}" if leader else "Руководитель: Не назначен")
 
         if hasattr(self, "descriptionLabel"):
             description = self.department_data.get("description", "")
-            self.descriptionLabel.setText(
-                description if description else "Описание отсутствует"
-            )
+            self.descriptionLabel.setText(description if description else "Описание отсутствует")
 
         if hasattr(self, "phoneLabel"):
             phone = self.department_data.get("phone", "")
@@ -101,9 +93,7 @@ class DepartmentCard(QFrame):
 
         if hasattr(self, "numberLabel"):
             code = self.department_data.get("code", "")
-            self.numberLabel.setText(
-                f"Код подразделения: {code}" if code else "Код подразделения: ---"
-            )
+            self.numberLabel.setText(f"Код подразделения: {code}" if code else "Код подразделения: ---")
 
     def on_edit_clicked(self):
         """Обработчик кнопки редактирования"""

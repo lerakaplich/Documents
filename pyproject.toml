@@ -1,0 +1,62 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",
+    "F",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "C4",
+    "SIM",
+    "RET",
+    "PIE",
+    "RUF",
+    "LOG",
+    "DTZ",
+    "TRY",
+    "PERF",
+    "S",
+    "BLE",
+]
+ignore = [
+    "E501",       # line-length
+    "BLE001",     # blind-except (легитимно в PyQt/HTTP-слое)
+    "RUF012",     # mutable-class-default (классовые атрибуты PyQt)
+    "S110",       # try-except-pass
+    "S101",       # assert
+    "S105", "S106",  # hardcoded-password (тестовые данные)
+    "DTZ005", "DTZ007", "DTZ011", "DTZ901",  # datetime без tzinfo — легитимно
+    "TRY002",     # raise vanilla class
+    "TRY003",     # длинные сообщения в exceptions
+    "B008",       # function-call-in-default (FastAPI Depends)
+    "N802",       # Qt camelCase (resizeEvent, mousePressEvent, ...)
+    "RUF001", "RUF002", "RUF003",  # кириллица в str/comment/docstring — это фича, не баг
+    "N803",   # Qt camelCase в аргументах (event, painter, parent)
+    "N806",   # Qt классы как локальные переменные (QDialog, QMessageBox)
+    "N815",   # Qt mixedCase атрибуты в class scope (searchEdit, btnSort)
+    "E402",   # import после sys.path-манипуляций — осознанно
+    "S324",   # md5/sha1 — контрольные суммы, не для паролей
+    "RUF006", # asyncio.create_task без ссылки — fire-and-forget воркеры
+    "TRY301", # raise внутри try — осознанно для перехвата в этом же try
+]
+
+[tool.ruff.lint.per-file-ignores]
+"client/main.py" = ["LOG015"]
+"server/**" = ["S105", "S106"]   # hardcoded password в конфиге
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

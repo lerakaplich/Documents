@@ -28,9 +28,7 @@ class DocumentsCrudController:
                 data = get_tag_service(panel.http_client).get_all_tags()
                 if data:
                     return data
-            print(
-                "[DocumentsPanel] Теги не получены — отдаём пустой список (диалог загрузит с сервера)"
-            )
+            print("[DocumentsPanel] Теги не получены — отдаём пустой список (диалог загрузит с сервера)")
             return []
         except Exception as e:
             print(f"[DocumentsPanel] Ошибка получения тегов: {e}")
@@ -47,9 +45,7 @@ class DocumentsCrudController:
                 data = controller.organization_repo.get_all()
                 if data:
                     return data
-            print(
-                "[DocumentsPanel] Организации не получены — отдаём пустой список (диалог загрузит с сервера)"
-            )
+            print("[DocumentsPanel] Организации не получены — отдаём пустой список (диалог загрузит с сервера)")
             return []
         except Exception as e:
             print(f"[DocumentsPanel] Ошибка получения организаций: {e}")
@@ -66,9 +62,7 @@ class DocumentsCrudController:
                 data = controller.department_repo.get_all()
                 if data:
                     return data
-            print(
-                "[DocumentsPanel] Отделы не получены — отдаём пустой список (диалог загрузит с сервера)"
-            )
+            print("[DocumentsPanel] Отделы не получены — отдаём пустой список (диалог загрузит с сервера)")
             return []
         except Exception as e:
             print(f"[DocumentsPanel] Ошибка получения отделов: {e}")
@@ -85,9 +79,7 @@ class DocumentsCrudController:
                 data = controller.employee_repo.get_all()
                 if data:
                     return data
-            print(
-                "[DocumentsPanel] Сотрудники не получены — отдаём пустой список (диалог загрузит с сервера)"
-            )
+            print("[DocumentsPanel] Сотрудники не получены — отдаём пустой список (диалог загрузит с сервера)")
             return []
         except Exception as e:
             print(f"[DocumentsPanel] Ошибка получения сотрудников: {e}")
@@ -135,9 +127,7 @@ class DocumentsCrudController:
         try:
             success = panel.controller.create_document(document_data)
             if success:
-                QMessageBox.information(
-                    panel, "Успешно", "Документ успешно создан и добавлен в список!"
-                )
+                QMessageBox.information(panel, "Успешно", "Документ успешно создан и добавлен в список!")
                 panel.refresh()
             else:
                 QMessageBox.warning(panel, "Ошибка", "Не удалось сохранить документ.")
@@ -152,9 +142,7 @@ class DocumentsCrudController:
         try:
             full_document = panel.controller.get_full_document_for_edit(document_data)
             if not full_document:
-                QMessageBox.warning(
-                    panel, "Ошибка", "Не удалось загрузить данные документа"
-                )
+                QMessageBox.warning(panel, "Ошибка", "Не удалось загрузить данные документа")
                 return
 
             dialog = DocumentDialog(
@@ -196,6 +184,4 @@ class DocumentsCrudController:
             import traceback
 
             traceback.print_exc()
-            QMessageBox.critical(
-                panel, "Ошибка", f"Произошла ошибка при обновлении: {e!s}"
-            )
+            QMessageBox.critical(panel, "Ошибка", f"Произошла ошибка при обновлении: {e!s}")

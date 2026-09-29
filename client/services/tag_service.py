@@ -27,36 +27,31 @@ class TagService:
                 return response
             return []
         except Exception as e:
-            logger.error(f"Ошибка получения тегов: {e}")
+            logger.exception(f"Ошибка получения тегов: {e}")
             return []
 
     def get_tag(self, tag_id: int) -> dict[str, Any] | None:
         """Получить тег по ID"""
         try:
-            response = self.http.get(f"{self.base_path}/{tag_id}")
-            return response
+            return self.http.get(f"{self.base_path}/{tag_id}")
         except Exception as e:
-            logger.error(f"Ошибка получения тега {tag_id}: {e}")
+            logger.exception(f"Ошибка получения тега {tag_id}: {e}")
             return None
 
     def create_tag(self, tag_data: dict[str, Any]) -> dict[str, Any] | None:
         """Создать новый тег"""
         try:
-            response = self.http.post(f"{self.base_path}", json=tag_data)
-            return response
+            return self.http.post(f"{self.base_path}", json=tag_data)
         except Exception as e:
-            logger.error(f"Ошибка создания тега: {e}")
+            logger.exception(f"Ошибка создания тега: {e}")
             return None
 
-    def update_tag(
-        self, tag_id: int, tag_data: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    def update_tag(self, tag_id: int, tag_data: dict[str, Any]) -> dict[str, Any] | None:
         """Обновить тег"""
         try:
-            response = self.http.patch(f"{self.base_path}/{tag_id}", json=tag_data)
-            return response
+            return self.http.patch(f"{self.base_path}/{tag_id}", json=tag_data)
         except Exception as e:
-            logger.error(f"Ошибка обновления тега {tag_id}: {e}")
+            logger.exception(f"Ошибка обновления тега {tag_id}: {e}")
             return None
 
     def delete_tag(self, tag_id: int) -> bool:
@@ -65,7 +60,7 @@ class TagService:
             self.http.delete(f"{self.base_path}/{tag_id}")
             return True
         except Exception as e:
-            logger.error(f"Ошибка удаления тега {tag_id}: {e}")
+            logger.exception(f"Ошибка удаления тега {tag_id}: {e}")
             return False
 
 

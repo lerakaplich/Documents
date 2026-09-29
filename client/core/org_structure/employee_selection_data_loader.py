@@ -41,9 +41,7 @@ class EmployeeSelectionDataLoader:
 
     def load_organizations(self) -> list[dict[str, Any]]:
         if EmployeeSelectionDataLoader._cache_orgs is not None:
-            print(
-                f"[Loader] организации из кэша: {len(EmployeeSelectionDataLoader._cache_orgs)}"
-            )
+            print(f"[Loader] организации из кэша: {len(EmployeeSelectionDataLoader._cache_orgs)}")
             return EmployeeSelectionDataLoader._cache_orgs
         try:
             result = self.http.get("/org", params={"limit": 500, "offset": 0})
@@ -60,9 +58,7 @@ class EmployeeSelectionDataLoader:
 
     def load_departments_flat(self) -> list[dict[str, Any]]:
         if EmployeeSelectionDataLoader._cache_departments is not None:
-            print(
-                f"[Loader] отделы из кэша: {len(EmployeeSelectionDataLoader._cache_departments)}"
-            )
+            print(f"[Loader] отделы из кэша: {len(EmployeeSelectionDataLoader._cache_departments)}")
             return EmployeeSelectionDataLoader._cache_departments
 
         orgs = self.load_organizations()
@@ -81,7 +77,7 @@ class EmployeeSelectionDataLoader:
 
         # ── параллельно по всем организациям ──
         with concurrent.futures.ThreadPoolExecutor(max_workers=self._MAX_WORKERS) as ex:
-            for org, tree in zip(orgs, ex.map(fetch_structure, orgs)):
+            for org, tree in zip(orgs, ex.map(fetch_structure, orgs), strict=False):
                 if tree:
                     self._flatten_tree(tree, org.get("id"), result, parent_id=None)
 
@@ -116,9 +112,7 @@ class EmployeeSelectionDataLoader:
 
     def load_employees(self) -> list[dict[str, Any]]:
         if EmployeeSelectionDataLoader._cache_employees is not None:
-            print(
-                f"[Loader] сотрудники из кэша: {len(EmployeeSelectionDataLoader._cache_employees)}"
-            )
+            print(f"[Loader] сотрудники из кэша: {len(EmployeeSelectionDataLoader._cache_employees)}")
             return EmployeeSelectionDataLoader._cache_employees
 
         orgs = self.load_organizations()
@@ -159,9 +153,7 @@ class EmployeeSelectionDataLoader:
                     result.append(emp)
 
         EmployeeSelectionDataLoader._cache_employees = result
-        print(
-            f"[Loader] сотрудники загружены: {len(result)} (из {len(orgs)} организаций)"
-        )
+        print(f"[Loader] сотрудники загружены: {len(result)} (из {len(orgs)} организаций)")
         return result
 
     @staticmethod

@@ -13,9 +13,7 @@ _SHAPE_TAGS = ("path", "rect", "circle", "ellipse", "polygon", "polyline", "line
 _CACHE_DIR = os.path.join(tempfile.gettempdir(), "maz_icons")
 os.makedirs(_CACHE_DIR, exist_ok=True)
 
-_ICON_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "icons")
-)
+_ICON_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "icons"))
 
 
 _FILL_RE = re.compile(r'fill="[^"]*"')
@@ -36,7 +34,7 @@ def _recolored_svg_path(name: str, color: str) -> str:
         src = os.path.join(_ICON_DIR, fname)
         if not os.path.exists(src):
             return src.replace("\\", "/")
-        with open(src, "r", encoding="utf-8") as f:
+        with open(src, encoding="utf-8") as f:
             data = f.read()
         data = _recolor_regular(data, color)
 
@@ -84,8 +82,7 @@ def _recolor_regular(data: str, color: str) -> str:
         return m.group(0) if "none" in m.group(0) else f'stroke="{color}"'
 
     data = _FILL_RE.sub(_fill, data)
-    data = _STROKE_RE.sub(_stroke, data)
-    return data
+    return _STROKE_RE.sub(_stroke, data)
 
 
 def icon_path(name: str, color: str) -> str:

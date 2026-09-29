@@ -1,5 +1,6 @@
 # client/windows/system/departments/department_node.py
 
+import contextlib
 import os
 
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, QTimer, pyqtSignal
@@ -154,10 +155,8 @@ class DepartmentNode(QWidget):
         for child in self.findChildren(QWidget):
             r = getattr(child, "reapply_theme", None)
             if callable(r) and child is not self:
-                try:
+                with contextlib.suppress(Exception):
                     r()
-                except Exception:
-                    pass
 
     def _setup_animation(self):
         self.animation = QPropertyAnimation(self.contentWidget, b"maximumHeight")
@@ -192,12 +191,7 @@ class DepartmentNode(QWidget):
         if self._loading:
             return  # уже грузимся
 
-        if (
-            not self._children_loaded
-            and self.lazy_enabled
-            and not self._expanded
-            and self.has_children
-        ):
+        if not self._children_loaded and self.lazy_enabled and not self._expanded and self.has_children:
             self._start_lazy_load()
             return
 

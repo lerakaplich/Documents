@@ -20,7 +20,7 @@ class SelectionManager:
             if self._is_valid_item(type_id, node_id):
                 self.selected_items.add((type_id, node_id))
 
-    def set_selected_by_ids(self, ids: list[int], node_type: int = None):
+    def set_selected_by_ids(self, ids: list[int], node_type: int | None = None):
         """Устанавливает выбранные элементы по списку ID (с определением типа)"""
         self.selected_items.clear()
         for node_id in ids:
@@ -34,40 +34,34 @@ class SelectionManager:
                 if detected_type is not None:
                     self.selected_items.add((detected_type, node_id))
 
-    def add(self, node_id: int, node_type: int = None):
+    def add(self, node_id: int, node_type: int | None = None):
         """Добавляет элемент в выбранные"""
         if node_type is None:
             node_type = self._get_node_type(node_id)
         if node_type is not None and self._is_valid_item(node_type, node_id):
             self.selected_items.add((node_type, node_id))
 
-    def remove(self, node_id: int, node_type: int = None):
+    def remove(self, node_id: int, node_type: int | None = None):
         """Удаляет элемент из выбранных"""
         if node_type is None:
             node_type = self._get_node_type(node_id)
         if node_type is not None:
             self.selected_items.discard((node_type, node_id))
 
-    def toggle(self, node_id: int, selected: bool, node_type: int = None):
+    def toggle(self, node_id: int, selected: bool, node_type: int | None = None):
         """Устанавливает состояние выбора для узла"""
         if node_type is None:
             node_type = self._get_node_type(node_id)
 
         if node_type is None:
-            print(
-                f"[SelectionManager] Ошибка: не удалось определить тип для id={node_id}"
-            )
+            print(f"[SelectionManager] Ошибка: не удалось определить тип для id={node_id}")
             return
 
         if not self._is_valid_item(node_type, node_id):
-            print(
-                f"[SelectionManager] Ошибка: элемент не найден type={node_type}, id={node_id}"
-            )
+            print(f"[SelectionManager] Ошибка: элемент не найден type={node_type}, id={node_id}")
             return
 
-        print(
-            f"[SelectionManager] toggle: type={node_type}, id={node_id}, selected={selected}"
-        )
+        print(f"[SelectionManager] toggle: type={node_type}, id={node_id}, selected={selected}")
 
         if selected:
             self.selected_items.add((node_type, node_id))
@@ -86,7 +80,7 @@ class SelectionManager:
         """Возвращает набор выбранных элементов (type, id)"""
         return self.selected_items
 
-    def is_selected(self, node_id: int, node_type: int = None) -> bool:
+    def is_selected(self, node_id: int, node_type: int | None = None) -> bool:
         """Проверяет, выбран ли узел"""
         if node_type is None:
             node_type = self._get_node_type(node_id)
@@ -162,8 +156,8 @@ class SelectionManager:
         """Проверяет, существует ли элемент с данным типом и ID"""
         if node_type == 1:
             return node_id in self.organizations
-        elif node_type == 2:
+        if node_type == 2:
             return node_id in self.departments
-        elif node_type == 3:
+        if node_type == 3:
             return node_id in self.employees
         return False

@@ -44,4 +44,4 @@ class BaseSorter(ABC):
                 if value is None:
                     break
             return value
-        return item.get(key, None)
+        return item.get(key)

@@ -39,9 +39,7 @@ class TagDialog(QDialog):
 
     PRIORITY_REVERSE_MAP = {v: k for k, v in PRIORITY_MAP.items()}
 
-    def __init__(
-        self, parent=None, tag_id: int | None = None, tag_data: dict | None = None
-    ):
+    def __init__(self, parent=None, tag_id: int | None = None, tag_data: dict | None = None):
         """
         Инициализация диалога
 
@@ -67,9 +65,7 @@ class TagDialog(QDialog):
     def _load_ui(self):
         """Загружает UI из .ui файла"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(
-            current_dir, "..", "..", "..", "ui", "system", "tags", "tag_dialog.ui"
-        )
+        ui_path = os.path.join(current_dir, "..", "..", "..", "ui", "system", "tags", "tag_dialog.ui")
         ui_path = os.path.normpath(ui_path)
 
         if not os.path.exists(ui_path):
@@ -104,8 +100,7 @@ class TagDialog(QDialog):
 
         style = self.colorIndicator.styleSheet()
         if "background-color:" in style:
-            color_part = style.split("background-color:")[1].split(";")[0].strip()
-            return color_part
+            return style.split("background-color:")[1].split(";")[0].strip()
 
         return "#ccab6e"
 
@@ -163,9 +158,7 @@ class TagDialog(QDialog):
         name = self.lineEditName.text().strip()
 
         if not name:
-            QMessageBox.warning(
-                self, "Ошибка валидации", "Название хэштега обязательно для заполнения"
-            )
+            QMessageBox.warning(self, "Ошибка валидации", "Название хэштега обязательно для заполнения")
             self.lineEditName.setFocus()
             return False
 

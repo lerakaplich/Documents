@@ -67,9 +67,7 @@ class OvertimeService:
                 params["end_date"] = end_date
             params["page"] = 1
             params["size"] = 100
-            result = self.client.get(
-                f"/overtime/department/{department_id}", params=params
-            )
+            result = self.client.get(f"/overtime/department/{department_id}", params=params)
             items = result.get("items", []) if isinstance(result, dict) else []
             print(f"📥 Получено {len(items)} переработок для отдела")
             return items
@@ -112,9 +110,7 @@ class OvertimeService:
         """
         try:
             print(f"📤 Обновление заметки переработки {overtime_id}")
-            result = self.client.patch(
-                f"/overtime/{overtime_id}/description", params={"note": note}
-            )
+            result = self.client.patch(f"/overtime/{overtime_id}/description", params={"note": note})
             print(f"✅ Заметка переработки {overtime_id} обновлена")
             return result
         except Exception as e:
@@ -218,23 +214,18 @@ class OvertimeService:
             headers = self.client._get_headers()
             url = f"{self.client.base_url}/overtime/export-excel"
 
-            response = self.client.session.get(
-                url, headers=headers, params=params, timeout=60
-            )
+            response = self.client.session.get(url, headers=headers, params=params, timeout=60)
 
             print(f"📥 Статус ответа: {response.status_code}")
 
             if response.status_code == 200:
                 print(f"✅ Экспорт выполнен, размер: {len(response.content)} байт")
                 return response.content
-            else:
-                # Пытаемся получить тело ошибки
-                error_body = response.text
-                print(f"❌ Ошибка экспорта: {response.status_code}")
-                print(f"❌ Тело ошибки: {error_body[:500]}")
-                raise Exception(
-                    f"Ошибка экспорта: {response.status_code}\n{error_body}"
-                )
+            # Пытаемся получить тело ошибки
+            error_body = response.text
+            print(f"❌ Ошибка экспорта: {response.status_code}")
+            print(f"❌ Тело ошибки: {error_body[:500]}")
+            raise Exception(f"Ошибка экспорта: {response.status_code}\n{error_body}")
         except Exception as e:
             print(f"❌ Ошибка экспорта: {e}")
             raise

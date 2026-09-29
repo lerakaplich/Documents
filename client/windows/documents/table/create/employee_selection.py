@@ -53,6 +53,4 @@ class EmployeeSelection:
         root_dir = base_dir
         for _ in range(4):
             root_dir = os.path.dirname(root_dir)
-        return os.path.join(
-            root_dir, "ui", "documents", "create", "employee_selection_dialog.ui"
-        )
+        return os.path.join(root_dir, "ui", "documents", "create", "employee_selection_dialog.ui")

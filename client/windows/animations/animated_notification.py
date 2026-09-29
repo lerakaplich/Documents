@@ -256,11 +256,7 @@ class NotificationManager:
         # Отступ от нижнего края
         bottom_margin = 30
         # Вычисляем позицию для текущего уведомления
-        y = (
-            parent_height
-            - bottom_margin
-            - (index + 1) * (notification_height + self.notification_spacing)
-        )
+        y = parent_height - bottom_margin - (index + 1) * (notification_height + self.notification_spacing)
 
         return x, y
 
@@ -300,9 +296,7 @@ if __name__ == "__main__":
                 "Нажмите сюда, чтобы проверить, что уведомления не блокируют клики.\n\nВы можете взаимодействовать с этим полем, пока видны уведомления."
                 "\n\nУведомления теперь:\n• По центру экрана\n• Ближе друг к другу\n• Крупный шрифт 18px"
             )
-            text.setStyleSheet(
-                "border: 2px solid #ccc; border-radius: 8px; padding: 10px; font-size: 14px;"
-            )
+            text.setStyleSheet("border: 2px solid #ccc; border-radius: 8px; padding: 10px; font-size: 14px;")
             layout.addWidget(text)
 
             # Кнопка для показа уведомлений
