@@ -186,10 +186,13 @@ class RowManager(QObject):
         QTimer.singleShot(200, self._height_manager.restore_heights)
     # ========== HELPERS ==========
 
-    def find_reg_number_column(self) -> int | None:
-        """Найти колонку 'Номер документа'"""
-        for col in range(self._table.columnCount()):
-            header_item = self._table.horizontalHeaderItem(col)
-            if header_item and header_item.text() == "Номер документа":
+    def find_reg_number_column(self) -> int:
+        table = getattr(self, "_table", None) or getattr(self, "_table_widget", None)
+        if table is None:
+            return 1
+        header = table.horizontalHeader()
+        for col in range(header.count()):
+            item = table.horizontalHeaderItem(col)
+            if item and item.text() == "Номер документа":
                 return col
-        return None
+        return 1

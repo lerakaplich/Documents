@@ -45,6 +45,16 @@ class DocumentsPanelController:
         self.current_title = "Все документы"
         self.current_view_mode = "all"
 
+        # Фильтры из меню «Фильтр»/«Статусы» — применяются на сервере и
+        # сохраняются при переходе между типами/направлениями.
+        self.filters = {
+            "scope": "all",          # "all" — все документы в БД, "my" — где я участник
+            "is_completed": None,    # True — только прочитанные, False — только непрочитанные
+            "status_filters": [],    # коды DocStatus
+            "date_from": None,       # ISO-строки yyyy-MM-dd
+            "date_to": None,
+        }
+
         # Пагинация: сервер отдаёт total/limit/offset, лимит ≤ 100
         self.page_size = PAGE_SIZE
         self.current_page = 1
@@ -56,12 +66,14 @@ class DocumentsPanelController:
         """Запрашивает одну страницу, обновляет self.pagination / self.current_page."""
         page = max(1, page)
 
+        params = dict(filters)
+        params.update(self._filter_params())
+
         def _request(p):
             return self.service.get_documents(
-                scope="all",
                 limit=self.page_size,
                 offset=(p - 1) * self.page_size,
-                **filters,
+                **params,
             )
 
         response = _request(page)
@@ -78,6 +90,32 @@ class DocumentsPanelController:
         self.pagination = {"page": page, "pages": pages, "total": total}
         return map_documents_response(response)
 
+    def _filter_params(self) -> dict:
+        """Параметры GET /documents/documents/ из текущих фильтров меню."""
+        f = self.filters
+        params = {"scope": f["scope"]}
+        if f["is_completed"] is not None:
+            params["is_completed"] = f["is_completed"]
+        if f["status_filters"]:
+            params["status_filters"] = list(f["status_filters"])
+        if f["date_from"]:
+            params["date_from"] = f["date_from"]
+        if f["date_to"]:
+            params["date_to"] = f["date_to"]
+        return params
+
+    def set_filters(self, scope: str = "all", is_completed=None, status_filters=None,
+                    date_from=None, date_to=None):
+        """Применяет фильтры и загружает страницу 1 текущего режима."""
+        self.filters = {
+            "scope": scope or "all",
+            "is_completed": is_completed,
+            "status_filters": list(status_filters or []),
+            "date_from": date_from,
+            "date_to": date_to,
+        }
+        return self._load_current(1)
+
     def _search_active(self) -> bool:
         return bool(self.current_query) and len(self.current_query) >= 3
 
@@ -89,7 +127,8 @@ class DocumentsPanelController:
             return documents, f"Поиск: {self.current_query}", "search", "default"
 
         if self.current_type_id is not None:
-            documents = self._fetch(page, type_id=self.current_type_id)
+            documents = self._fetch(page, type_id=self.current_type_id,
+                                    direction=self.current_direction)
             return documents, self.current_title, "type", str(self.current_type_id)
 
         if self.current_direction is not None:
@@ -110,14 +149,17 @@ class DocumentsPanelController:
         self.current_view_mode = "all"
         return self._load_current(1)
 
-    def load_documents_by_type(self, type_id: int, title: str = None):
+    def load_documents_by_type(self, type_id: int, title: str = None, direction: str = None):
         """Загружает документы по типу (страница 1).
 
         `title` — имя типа, если оно уже известно вызывающей стороне (LeftPanel
         передаёт его вместе с type_id). Иначе f"Тип {type_id}".
+        `direction` — "internal"/"external", если тип выбран внутри группы
+        направления: тогда показываются только документы этого направления,
+        а набор столбцов запоминается отдельно для пары «тип + направление».
         """
         self.current_type_id = type_id
-        self.current_direction = None
+        self.current_direction = direction
         self.current_query = ""
         self.current_view_mode = "type"
         self.current_title = title or f"Тип {type_id}"

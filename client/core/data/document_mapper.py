@@ -65,6 +65,7 @@ def map_document_list_item(item: Dict[str, Any]) -> Dict[str, Any]:
     mapped["comments"] = []
     mapped["attachments"] = []
     mapped["reply_file"] = None
+    mapped["is_completed"] = bool(item.get("is_completed", False))
     return mapped
 
 

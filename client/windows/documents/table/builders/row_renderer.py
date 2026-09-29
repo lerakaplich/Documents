@@ -92,28 +92,14 @@ class RowRenderer:
         self._columns = columns_config
 
     def render_row(self, row: int, document: dict):
-        """
-        Преобразовать документ в UI элементы строки.
-        """
         bg_color = self._config.get_even_row_color() if row % 2 == 0 else self._config.get_odd_row_color()
         col_map = self._get_col_map()
 
-        # Скрываем ID если есть
         self._hide_id_column(col_map)
-
-        # Номер документа с иконкой закрепления
         self._render_reg_number(row, document, bg_color, col_map)
-
-        # Чекбокс прочтения
-        self._render_read_checkbox(row, document, bg_color, col_map)
-
-        # Текстовые колонки
+        # self._render_read_checkbox(row, document, bg_color, col_map)   ← УДАЛЕНО
         self._render_text_columns(row, document, bg_color, col_map)
-
-        # Списковые колонки
         self._render_list_columns(row, document, bg_color, col_map)
-
-        # Специальные виджеты - ЗДЕСЬ МЫ ВНЕДРЯЕМ НОВЫЙ ПОДХОД
         self._render_special_widgets_hybrid(row, document, col_map, bg_color)
 
     def _get_col_map(self) -> dict:
@@ -148,21 +134,6 @@ class RowRenderer:
             item.setIcon(pin_icon)
 
         self._table.setItem(row, col, item)
-
-    def _render_read_checkbox(self, row: int, document: dict, bg_color, col_map: dict):
-        """Рендеринг чекбокса прочтения"""
-        col = col_map.get("Прочитано")
-        if col is None:
-            return
-
-        from client.windows.documents.table.widgets.read_checkbox import ReadCheckBox
-        read_widget = ReadCheckBox(document.get("id", 0), document.get("is_read", False))
-        self._table.setCellWidget(row, col, read_widget)
-
-        # Устанавливаем фон
-        widget = self._table.cellWidget(row, col)
-        if widget:
-            widget.setStyleSheet(f"QWidget {{ background-color: {bg_color.name()}; }}")
 
     def _render_text_columns(self, row: int, document: dict, bg_color, col_map: dict):
         """Рендеринг текстовых колонок"""

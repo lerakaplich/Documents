@@ -137,6 +137,9 @@ class MainWindow(QMainWindow):
                 self.left_panel.all_documents_clicked.connect(self.on_all_documents_clicked)
                 print("✓ all_documents_clicked подключен")
 
+            if hasattr(self.left_panel, 'archive_clicked'):
+                self.left_panel.archive_clicked.connect(self.on_archive_clicked)
+
             if hasattr(self.left_panel, 'system_clicked'):
                 self.left_panel.system_clicked.connect(self.on_system_clicked)
                 print("✓ system_clicked подключен")
@@ -167,6 +170,14 @@ class MainWindow(QMainWindow):
             traceback.print_exc()
 
     # ========== НАВИГАЦИЯ ==========
+
+    def on_archive_clicked(self):
+        """Переключение на архивные документы"""
+        self.content_stack.setCurrentWidget(self.documents_panel)
+        self.documents_panel.controller.set_filters(scope="archive")
+        docs, title, view_mode, doc_type = self.documents_panel.controller._load_current(1)
+        self.documents_panel._update_table(docs, doc_type, "Архив", view_mode)
+        self.statusBar().showMessage("Архив", 3000)
 
     def on_settings_clicked(self):
         """Переключение на настройки"""
@@ -259,6 +270,8 @@ class MainWindow(QMainWindow):
         self.content_stack.setCurrentWidget(self.documents_panel)
         direction_key = "internal" if "внутр" in group_name.lower() else "external"
         self.documents_panel.load_documents_by_direction(direction_key, direction_name)
+
+
 
     def closeEvent(self, event):
         """Закрытие приложения без подтверждения."""

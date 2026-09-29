@@ -110,6 +110,8 @@ class DocumentsTable(QWidget):
             lambda doc: self._controller.toggle_pin(doc.get('id'))
         )
 
+        self.read_status_changed.connect(self._controller.change_read_status)
+
         self.tableWidget.doubleClicked.connect(self._on_double_click)
 
         # Подписываемся на сигналы контроллера

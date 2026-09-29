@@ -79,26 +79,56 @@ class TableController(QObject):
 
     def _get_columns_config(self, doc_type: str, view_mode: str) -> dict:
         base_columns = {
-            0: "ID", 1: "Прочитано", 2: "Номер документа", 3: "Тема",
-            5: "Дата создания", 6: "Статус", 8: "Отправители", 9: "Получатели",
-            10: "Исполнители", 11: "Делегаты", 12: "Хэштеги", 13: "Комментарии",
-            14: "Вложение", 15: "Ответ", 16: "Краткое содержание", 17: "Срок исполнения"
+            0: "ID",
+            # 1: "Прочитано",   ← УДАЛЕНО
+            2: "Номер документа",
+            3: "Тема",
+            5: "Дата создания",
+            6: "Статус",
+            8: "Отправители",
+            9: "Получатели",
+            10: "Исполнители",
+            11: "Делегаты",
+            12: "Хэштеги",
+            13: "Комментарии",
+            14: "Вложение",
+            15: "Ответ",
+            16: "Краткое содержание",
+            17: "Срок исполнения",
         }
-
-        if view_mode == "all":
-            base_columns[4] = "Тип"
-            base_columns[7] = "Направление"
+        FIELD_LABELS = {
+            "about": "Краткое содержание",
+            "title": "Тема",
+            "tag_ids": "Хэштеги",
+            "deadline": "Срок исполнения",
+            "executors": "Исполнители",
+            "sender_id": "Отправитель",
+            "sent_date": "Дата отправки",
+            "recipients": "Получатели",
+        }
 
         columns_config = dict(sorted(base_columns.items()))
 
         try:
             type_id = int(doc_type) if doc_type != "default" else None
             if type_id:
-                for idx, field in enumerate(self._get_type_fields(type_id), start=20):
-                    field_name = field.get("label", field.get("name", f"Поле_{idx}"))
-                    columns_config[idx] = field_name
-        except (ValueError, TypeError):
-            pass
+                fields = self._get_type_fields(type_id)  # ← уже dict, не list
+                if isinstance(fields, dict):
+                    for idx, (key, enabled) in enumerate(fields.items(), start=20):
+                        if not enabled:
+                            continue
+                        label = FIELD_LABELS.get(key, key)
+                        columns_config[idx] = label
+                elif isinstance(fields, list):
+                    # на всякий случай — вдруг когда-то станет списком
+                    for idx, field in enumerate(fields, start=20):
+                        if isinstance(field, dict):
+                            label = field.get("label") or field.get("name") or f"Поле_{idx}"
+                        else:
+                            label = str(field)
+                        columns_config[idx] = label
+        except (ValueError, TypeError) as e:
+            print(f"[TableController] _get_columns_config error: {e}")
 
         return columns_config
 
@@ -264,3 +294,17 @@ class TableController(QObject):
             self._column_manager.restore_column_sizes()
         if self._row_manager:
             self._row_manager.restore_heights()
+
+    def change_read_status(self, document_id: int, is_completed: bool):
+        from client.services.document_service import DocumentService
+        if self._http_client is None:
+            return False
+        service = DocumentService(self._http_client)
+        try:
+            service.toggle_completion(document_id, is_completed)
+            return True
+        except Exception as e:
+            print(f"[TableController] change_read_status error: {e}")
+            # откатываем чекбокс обратно
+            self.update_read_status(document_id, not is_completed)
+            return False

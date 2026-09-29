@@ -40,6 +40,7 @@ class ThemeManager:
         # ── Чекбоксы (новое) ──
         d["ICON_CHECKBOX_CHECKED_PATH"]   = icon_path("cb_checked",   icon_color)
         d["ICON_CHECKBOX_UNCHECKED_PATH"] = icon_path("cb_unchecked", icon_color)
+        d["ICON_CLOCK_PATH"] = icon_path("clock", icon_color)
 
         return d
 

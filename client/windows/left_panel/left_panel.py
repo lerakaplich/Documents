@@ -28,6 +28,8 @@ class LeftPanel(QWidget):
     all_documents_clicked = pyqtSignal()
     system_clicked = pyqtSignal()
     settings_clicked = pyqtSignal()
+    # в классе
+    archive_clicked = pyqtSignal()
 
     GROUP_EXTERNAL = "Внешние документы"
     GROUP_INTERNAL = "Внутренние документы"
@@ -91,6 +93,7 @@ class LeftPanel(QWidget):
         icon_mapping = {
             'profileBtn': 'profile_white.svg',
             'allDocsBtn': 'folder.svg',
+            'archiveBtn': 'archive.svg',
             'settingsBtn': 'settings.svg',  # ← было gear.svg
             'systemBtn': 'office.svg',
             'hidePanelBtn': 'hide.svg'  # Добавляем иконку для скрытия панели
@@ -109,7 +112,8 @@ class LeftPanel(QWidget):
 
     def _apply_button_styles(self):
         """Единый стиль всех кнопок панели — как у кнопок направлений."""
-        for name in ('profileBtn', 'allDocsBtn', 'settingsBtn', 'systemBtn', 'hidePanelBtn'):
+        for name in ('profileBtn', 'allDocsBtn', 'archiveBtn',
+                     'settingsBtn', 'systemBtn', 'hidePanelBtn'):
             btn = getattr(self, name, None)
             if btn is None:
                 continue
@@ -262,6 +266,15 @@ class LeftPanel(QWidget):
         if hasattr(self, 'hidePanelBtn'):
             self.hidePanelBtn.clicked.connect(self.toggle_panel)
 
+    # в setup_buttons
+        if hasattr(self, 'archiveBtn'):
+            self.archiveBtn.clicked.connect(self.on_archive_clicked)
+
+    # обработчик
+    def on_archive_clicked(self):
+        print("Нажата кнопка архива")
+        self.archive_clicked.emit()
+
     def setup_groups_container(self):
         """Создает контейнер для групп направлений в scrollArea"""
         try:
@@ -314,6 +327,13 @@ class LeftPanel(QWidget):
                 self.allDocsBtn.setIconSize(QSize(24, 24))
             else:
                 self.allDocsBtn.setIconSize(QSize(20, 20))
+
+        if hasattr(self, 'archiveBtn'):
+            self.archiveBtn.setText("Архив" if visible else "")
+            self.archiveBtn.setStyleSheet(
+                self._get_button_style() if visible else self._get_compact_button_style()
+            )
+            self.archiveBtn.setIconSize(QSize(24, 24) if not visible else QSize(20, 20))
 
         # Нижние кнопки
         if hasattr(self, 'systemBtn'):

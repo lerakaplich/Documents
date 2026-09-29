@@ -2,19 +2,25 @@
 
 import os
 from PyQt6.QtWidgets import QFrame, QPushButton, QLabel, QMessageBox
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import pyqtSignal, Qt, QSize
+from PyQt6.QtGui import QIcon
 from PyQt6.uic import loadUi
 
 from client.core.themes import apply_theme_to_widget, T
 from client.windows.delete_dialog import DeleteDialog
 
 
+# Пути к иконкам — как в left_panel.py / direction_group.py
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ICONS_PATH = "D:/Documents/client/icons"
+
+
 class OvertimeCard(QFrame):
     """Карточка сверхурочной работы"""
 
     # Сигналы для взаимодействия с родительским окном
-    edit_clicked = pyqtSignal(int)  # передаём id записи
-    delete_clicked = pyqtSignal(int)  # передаём id записи
+    edit_clicked = pyqtSignal(int)   # передаём id записи
+    delete_clicked = pyqtSignal(int) # передаём id записи
 
     def __init__(self, overtime_id: int, data: dict, parent=None):
         """
@@ -22,7 +28,6 @@ class OvertimeCard(QFrame):
 
         Args:
             overtime_id: ID записи о сверхурочной работе
-            data: Словарь с данными:
             data: Словарь с данными:
                 - employee_name: str - ФИО сотрудника
                 - created_at: str - дата создания
@@ -49,9 +54,10 @@ class OvertimeCard(QFrame):
         # Подключаем сигналы
         self._connect_signals()
 
+    # ========== UI ==========
+
     def _load_ui(self):
         """Загрузка UI из файла"""
-        # Определяем путь к UI файлу
         current_dir = os.path.dirname(os.path.abspath(__file__))
         ui_path = os.path.join(
             current_dir,
@@ -60,16 +66,17 @@ class OvertimeCard(QFrame):
         ui_path = os.path.normpath(ui_path)
 
         if not os.path.exists(ui_path):
-            # Если файл не найден, создаём карточку программно
+            # Если файл не найден — создаём карточку программно
             self._create_ui_programmatically()
         else:
             loadUi(ui_path, self)
             apply_theme_to_widget(self)
+            # Подстраховка: если iconset из .qrc не подтянулся — ставим SVG вручную
+
 
     def _create_ui_programmatically(self):
         """Создание UI программно (если файл .ui не найден)"""
         from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QSpacerItem
-        from PyQt6.QtCore import QSize
 
         # Основной layout
         main_layout = QHBoxLayout(self)
@@ -150,8 +157,13 @@ class OvertimeCard(QFrame):
         info_layout = QHBoxLayout()
         info_layout.setSpacing(15)
 
-        self.labelDateIcon = QLabel("📅")
-        self.labelDateIcon.setStyleSheet("border: none; font-size: 13px; background-color: transparent;")
+        # Иконка календаря — теперь QPushButton с SVG
+        self.labelDateIcon = QPushButton()
+        self.labelDateIcon.setMinimumSize(16, 16)
+        self.labelDateIcon.setMaximumSize(16, 16)
+        self.labelDateIcon.setCursor(Qt.CursorShape.ArrowCursor)
+        self.labelDateIcon.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.labelDateIcon.setStyleSheet("border: none; background-color: transparent; padding: 0px;")
         info_layout.addWidget(self.labelDateIcon)
 
         self.labelDate = QLabel()
@@ -160,8 +172,13 @@ class OvertimeCard(QFrame):
         )
         info_layout.addWidget(self.labelDate)
 
-        self.labelTimeIcon = QLabel("⏰")
-        self.labelTimeIcon.setStyleSheet("border: none; font-size: 13px; background-color: transparent;")
+        # Иконка часов — теперь QPushButton с SVG
+        self.labelTimeIcon = QPushButton()
+        self.labelTimeIcon.setMinimumSize(16, 16)
+        self.labelTimeIcon.setMaximumSize(16, 16)
+        self.labelTimeIcon.setCursor(Qt.CursorShape.ArrowCursor)
+        self.labelTimeIcon.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.labelTimeIcon.setStyleSheet("border: none; background-color: transparent; padding: 0px;")
         info_layout.addWidget(self.labelTimeIcon)
 
         self.labelTime = QLabel()
@@ -170,10 +187,8 @@ class OvertimeCard(QFrame):
         )
         info_layout.addWidget(self.labelTime)
 
-        self.labelDurationIcon = QLabel("⏱️")
-        self.labelDurationIcon.setStyleSheet("border: none; font-size: 13px; background-color: transparent;")
-        info_layout.addWidget(self.labelDurationIcon)
-
+        # labelDurationIcon — УБРАН
+        # labelDuration остаётся просто текстом
         self.labelDuration = QLabel()
         self.labelDuration.setStyleSheet(
             f"border: none; font-size: 13px; color: {T.ACCENT_PRIMARY}; font-weight: bold; background-color: transparent;"
@@ -230,6 +245,8 @@ class OvertimeCard(QFrame):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setFrameShape(QFrame.Shape.NoFrame)
 
+    # ========== ДАННЫЕ ==========
+
     def _populate_data(self):
         """Заполнение карточки данными"""
         # ФИО сотрудника
@@ -268,9 +285,11 @@ class OvertimeCard(QFrame):
         else:
             self.labelTime.setText("Время не указано")
 
-        # Продолжительность
+        # Продолжительность — просто текст, без иконки
         duration = self.data.get('duration', 0)
-        self.labelDuration.setText(f"{duration:.2f} ч.")
+        self.labelDuration.setText(f"({duration:.2f} ч.)")
+
+    # ========== СИГНАЛЫ ==========
 
     def _connect_signals(self):
         """Подключение сигналов кнопок"""
@@ -282,17 +301,14 @@ class OvertimeCard(QFrame):
         self.edit_clicked.emit(self.overtime_id)
 
     def _on_delete_clicked(self):
-        # Используем кастомный диалог удаления
+        """Обработчик нажатия кнопки удаления"""
         if DeleteDialog.show_confirmation(self):
             self.delete_clicked.emit(self.overtime_id)
 
-    def update_data(self, new_data: dict):
-        """
-        Обновление данных карточки
+    # ========== API ==========
 
-        Args:
-            new_data: Новые данные карточки
-        """
+    def update_data(self, new_data: dict):
+        """Обновление данных карточки"""
         self.data.update(new_data)
         self._populate_data()
 
@@ -303,91 +319,3 @@ class OvertimeCard(QFrame):
     def get_data(self) -> dict:
         """Получение данных карточки"""
         return self.data.copy()
-
-
-# Пример использования карточки в родительском виджете
-if __name__ == "__main__":
-    import sys
-    from PyQt6.QtWidgets import QApplication, QScrollArea, QVBoxLayout, QWidget
-
-
-    class TestWindow(QWidget):
-        def __init__(self):
-            super().__init__()
-            self.setWindowTitle("Тест карточки сверхурочной работы")
-            self.setGeometry(100, 100, 650, 500)
-
-            # Создаём скролл-область
-            scroll = QScrollArea()
-            scroll.setWidgetResizable(True)
-            scroll.setStyleSheet("QScrollArea { border: none; background-color: #F5F5F5; }")
-
-            # Контейнер для карточек
-            container = QWidget()
-            layout = QVBoxLayout(container)
-            layout.setSpacing(15)
-            layout.setContentsMargins(20, 20, 20, 20)
-
-            # Тестовые данные
-            test_data = [
-                {
-                    'employee_name': 'Иванов Иван Иванович',
-                    'created_at': '01.06.2026',
-                    'description': 'Срочный проект - подготовка отчётности для налоговой инспекции',
-                    'date': '15.06.2026',
-                    'start_time': '18:00',
-                    'end_time': '20:00',
-                    'duration': 2.0
-                },
-                {
-                    'employee_name': 'Петрова Анна Сергеевна',
-                    'created_at': '02.06.2026',
-                    'description': 'Разработка презентации для заказчика',
-                    'date': '16.06.2026',
-                    'start_time': '19:00',
-                    'end_time': '21:30',
-                    'duration': 2.5
-                },
-                {
-                    'employee_name': 'Сидоров Алексей Владимирович',
-                    'created_at': '03.06.2026',
-                    'description': '',
-                    'date': '17.06.2026',
-                    'start_time': '17:30',
-                    'end_time': '19:00',
-                    'duration': 1.5
-                }
-            ]
-
-            # Создаём карточки
-            self.cards = []
-            for i, data in enumerate(test_data):
-                card = OvertimeCard(i + 1, data)
-                card.edit_clicked.connect(self.on_edit)
-                card.delete_clicked.connect(self.on_delete)
-                layout.addWidget(card)
-                self.cards.append(card)
-
-            # Добавляем растяжку в конец
-            layout.addStretch()
-
-            scroll.setWidget(container)
-
-            # Основной layout
-            main_layout = QVBoxLayout(self)
-            main_layout.setContentsMargins(0, 0, 0, 0)
-            main_layout.addWidget(scroll)
-
-        def on_edit(self, overtime_id):
-            print(f"Редактирование записи ID: {overtime_id}")
-            QMessageBox.information(self, "Редактирование", f"Редактирование записи #{overtime_id}")
-
-        def on_delete(self, overtime_id):
-            print(f"Удаление записи ID: {overtime_id}")
-            QMessageBox.information(self, "Удаление", f"Запись #{overtime_id} удалена")
-
-
-    app = QApplication(sys.argv)
-    window = TestWindow()
-    window.show()
-    sys.exit(app.exec())

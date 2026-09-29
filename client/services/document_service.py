@@ -270,6 +270,13 @@ class DocumentService:
             print(f"❌ get_unanswered_stats: {e}")
             return []
 
+    def toggle_completion(self, document_id: int, is_completed: bool) -> dict:
+        """POST /documents/workflow/{id}/toggle-completion."""
+        return self.client.post(
+            f"/documents/workflow/{document_id}/toggle-completion",
+            json={"is_completed": is_completed},
+        )
+
     def get_document_history(self, document_id: int) -> list:
         """GET /documents/{document_id}/history — сквозная история документа."""
         try:
