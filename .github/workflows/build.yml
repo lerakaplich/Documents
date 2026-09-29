@@ -1,0 +1,19 @@
+name: SonarCloud Analysis
+on:
+  push:
+    branches:
+      - main          # Анализ основной ветки
+      - merge2       # Анализ ветки разработки
+      - 'feature/**'  # Анализ всех веток, начинающихся с feature/
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  sonarcloud:
+    runs-on: ubuntu-latest
+    steps:
+      # ... шаги для установки Python и зависимостей ...
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

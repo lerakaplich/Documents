@@ -76,20 +76,29 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         else:
             self.auto_number = True
 
-        print(f"[DEBUG] DocumentTypeDialog __init__: auto_number = {self.auto_number} (из item={item})")
+        print(
+            f"[DEBUG] DocumentTypeDialog __init__: auto_number = {self.auto_number} (из item={item})"
+        )
 
         # Теперь обрабатываем параметры
         # 1. Сначала пробуем взять из fields (новый формат)
         if isinstance(self.item.get("fields"), dict):
             fields_dict = self.item.get("fields", {})
             # Берем только те поля, у которых значение True
-            self.selected_parameters = [key for key, value in fields_dict.items() if value]
+            self.selected_parameters = [
+                key for key, value in fields_dict.items() if value
+            ]
             print(f"[DEBUG] Взяли данные из fields: {self.selected_parameters}")
 
         # 2. Если fields нет, смотрим в columns (строка из БД "send_date,subject")
-        elif isinstance(self.item.get("columns"), str) and self.item.get("columns", "").strip():
+        elif (
+            isinstance(self.item.get("columns"), str)
+            and self.item.get("columns", "").strip()
+        ):
             raw_columns = self.item.get("columns", "")
-            self.selected_parameters = [f.strip() for f in raw_columns.split(",") if f.strip()]
+            self.selected_parameters = [
+                f.strip() for f in raw_columns.split(",") if f.strip()
+            ]
             print(f"[DEBUG] Взяли данные из строки columns: {self.selected_parameters}")
 
         # 3. Если в columns пусто, но в parameters лежит список
@@ -97,7 +106,9 @@ class DocumentTypeDialog(QtWidgets.QDialog):
             p_list = self.item.get("parameters", [])
             if len(p_list) > 0:
                 self.selected_parameters = [str(p).strip() for p in p_list]
-                print(f"[DEBUG] Взяли данные из списка parameters: {self.selected_parameters}")
+                print(
+                    f"[DEBUG] Взяли данные из списка parameters: {self.selected_parameters}"
+                )
 
         # 4. Если это НОВЫЙ документ (нет id) И selected_parameters пуст, включаем всё
         if not self.item.get("id") and not self.selected_parameters:
@@ -114,11 +125,15 @@ class DocumentTypeDialog(QtWidgets.QDialog):
 
         # Настройка окна
         is_edit = self.item.get("id") is not None
-        self.setWindowTitle("Редактировать тип документа" if is_edit else "Добавить тип документа")
+        self.setWindowTitle(
+            "Редактировать тип документа" if is_edit else "Добавить тип документа"
+        )
 
         # Устанавливаем заголовок в UI (если есть)
         if hasattr(self, "titleLabel"):
-            self.titleLabel.setText("Редактировать тип документа" if is_edit else "Новый тип документа")
+            self.titleLabel.setText(
+                "Редактировать тип документа" if is_edit else "Новый тип документа"
+            )
 
         # Устанавливаем размер окна
         self.resize(600, 850)
@@ -170,7 +185,9 @@ class DocumentTypeDialog(QtWidgets.QDialog):
             self.auto_number = value
             print(f"[DEBUG] Установлен чекбокс autoNumberCheckbox = {value}")
         else:
-            print("[WARNING] autoNumberCheckbox не найден, сохраняем значение в self.auto_number")
+            print(
+                "[WARNING] autoNumberCheckbox не найден, сохраняем значение в self.auto_number"
+            )
             self.auto_number = value
 
     def setup_ui_fallback(self):
@@ -180,7 +197,9 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         main_layout.setSpacing(10)
 
         self.titleLabel = QtWidgets.QLabel("Новый тип документа")
-        self.titleLabel.setStyleSheet("font-size: 18px; font-weight: bold; color: black;")
+        self.titleLabel.setStyleSheet(
+            "font-size: 18px; font-weight: bold; color: black;"
+        )
         main_layout.addWidget(self.titleLabel)
 
         name_label = QtWidgets.QLabel("Название типа*:")
@@ -188,14 +207,18 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         main_layout.addWidget(name_label)
 
         self.nameInput = QtWidgets.QLineEdit()
-        self.nameInput.setStyleSheet("border-radius: 8px; border: 1px solid #ccab6e; padding: 8px; color: black;")
+        self.nameInput.setStyleSheet(
+            "border-radius: 8px; border: 1px solid #ccab6e; padding: 8px; color: black;"
+        )
         main_layout.addWidget(self.nameInput)
 
         auto_number_label = QtWidgets.QLabel("Настройки номера:")
         auto_number_label.setStyleSheet("color: black;")
         main_layout.addWidget(auto_number_label)
 
-        self.autoNumberCheckbox = QtWidgets.QCheckBox("Автоматически формировать номер документа")
+        self.autoNumberCheckbox = QtWidgets.QCheckBox(
+            "Автоматически формировать номер документа"
+        )
         self.autoNumberCheckbox.setStyleSheet("""
             QCheckBox {
                 spacing: 10px;
@@ -211,7 +234,9 @@ class DocumentTypeDialog(QtWidgets.QDialog):
 
         # Поле для шаблона
         template_label = QtWidgets.QLabel("Шаблон документа:")
-        template_label.setStyleSheet("color: black; font-weight: bold; margin-top: 10px;")
+        template_label.setStyleSheet(
+            "color: black; font-weight: bold; margin-top: 10px;"
+        )
         main_layout.addWidget(template_label)
 
         template_layout = QtWidgets.QHBoxLayout()
@@ -441,7 +466,11 @@ class DocumentTypeDialog(QtWidgets.QDialog):
 
         # 2. Получаем auto_num
         auto_num = False
-        auto_num = self.autoNumberCheckbox.isChecked() if hasattr(self, "autoNumberCheckbox") else self.auto_number
+        auto_num = (
+            self.autoNumberCheckbox.isChecked()
+            if hasattr(self, "autoNumberCheckbox")
+            else self.auto_number
+        )
 
         # 3. Формируем данные для сервера
         self.item["name"] = name
@@ -476,7 +505,9 @@ class DocumentTypeDialog(QtWidgets.QDialog):
         print(
             f"[DEBUG] Диалог закрыт. Данные для сервера: fields={self.item['fields']}, auto_num={self.item['auto_num']}"
         )
-        print(f"[DEBUG] Направление включено: {'direction_name' in self.selected_parameters}")
+        print(
+            f"[DEBUG] Направление включено: {'direction_name' in self.selected_parameters}"
+        )
         print(f"[DEBUG] Выбрано направлений: {self.item.get('direction_ids')}")
         self.accept()
 
@@ -496,7 +527,11 @@ class DocumentTypeDialog(QtWidgets.QDialog):
 
         # Получаем auto_num
         auto_num = False
-        auto_num = self.autoNumberCheckbox.isChecked() if hasattr(self, "autoNumberCheckbox") else self.auto_number
+        auto_num = (
+            self.autoNumberCheckbox.isChecked()
+            if hasattr(self, "autoNumberCheckbox")
+            else self.auto_number
+        )
 
         # Формируем результат
         result = {
@@ -506,7 +541,9 @@ class DocumentTypeDialog(QtWidgets.QDialog):
             # Сохраняем также старые поля для совместимости
             "columns": ",".join(self.selected_parameters),
             "parameters": self.selected_parameters,
-            "parameter_names": {p: self.parameter_names[p] for p in self.selected_parameters},
+            "parameter_names": {
+                p: self.parameter_names[p] for p in self.selected_parameters
+            },
         }
 
         # Добавляем шаблон
@@ -634,7 +671,7 @@ class DocumentTypeDialog(QtWidgets.QDialog):
     def reapply_theme(self):
         from client.core.themes import get_manager
 
-        _t = get_manager().current
+        get_manager().current
         for btn in getattr(self, "toggle_buttons", {}).values():
             self.update_toggle_style(btn)
 
