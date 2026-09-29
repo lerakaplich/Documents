@@ -1,162 +1,609 @@
 import os
 import sys
-from PyQt6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QApplication
-from PyQt6.QtCore import Qt
+from typing import Any
+
+from PyQt6.QtCore import (
+    QEasingCurve,
+    QPropertyAnimation,
+    QSize,
+    Qt,
+    pyqtProperty,
+    pyqtSignal,
+)
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import (
+    QApplication,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 from PyQt6.uic import loadUi
 
-# Определяем ROOT_DIR (как в вашем проекте)
+from client.core.state.app_state import AppState
+from client.core.themes import apply_theme_to_widget, get_manager
+from client.services.doc_type_service import DocTypeService
+from client.windows.left_panel.direction_group import DirectionGroup
+
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class LeftPanel(QWidget):
+    """Левая панель с динамическими группами направлений и анимацией сворачивания"""
+
+    # Сигналы
+    direction_clicked = pyqtSignal(str, str)  # (direction_name, group_name)
+    type_clicked = pyqtSignal(int, str)  # (type_id, type_name)
+    profile_clicked = pyqtSignal()
+    all_documents_clicked = pyqtSignal()
+    system_clicked = pyqtSignal()
+    settings_clicked = pyqtSignal()
+    # в классе
+    archive_clicked = pyqtSignal()
+
+    GROUP_EXTERNAL = "Внешние документы"
+    GROUP_INTERNAL = "Внутренние документы"
+    ALL_TYPES_LABEL = "Все типы"
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # Путь к UI файлу
-        ui_path = os.path.join(ROOT_DIR, "ui", "left_panel.ui")
+        # Константы для размеров панели
+        self.COLLAPSED_WIDTH = 80
+        self.EXPANDED_WIDTH = 280
+
+        self.setMinimumWidth(self.COLLAPSED_WIDTH)
+        self.setMaximumWidth(self.EXPANDED_WIDTH)
+        self.is_expanded = True
 
         # Загружаем UI
-        loadUi(ui_path, self)
+        ui_path = os.path.join(ROOT_DIR, "ui", "left_panel.ui")
+        if os.path.exists(ui_path):
+            self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # ← ДО loadUi
+            loadUi(ui_path, self)
+            apply_theme_to_widget(self)
+            from client.core.themes import get_manager
 
-        # Тестовые данные (заменят запрос к БД)
-        # Здесь хранятся направления с полем enam
-        self.directions = [
-            {"enam": "Входящие документы", "type": "external"},
-            {"enam": "Исходящие документы", "type": "external"},
-            {"enam": "Договоры", "type": "external"},
-            {"enam": "Приказы", "type": "internal"},
-            {"enam": "Распоряжения", "type": "internal"},
-            {"enam": "Акты", "type": "internal"},
-            {"enam": "Протоколы", "type": "internal"},
-            {"enam": "Служебные записки", "type": "internal"},
-        ]
+            _t = get_manager().current
+            self.setStyleSheet(f"QWidget#LeftPanel {{ background-color: {_t.SIDEBAR_BG}; }}")
 
-        # Настройка начальных состояний
-        self.externalContent.setVisible(True)
-        self.internalContent.setVisible(True)
+        # Настройка иконок для всех кнопок (унифицированный размер 20x20)
+        self.setup_icons()
+        self._apply_button_styles()
 
-        # Заполнение направлений из тестовых данных
-        self.load_directions()
+        # Скрываем старые виджеты
+        for widget_name in ["externalWidget", "internalWidget"]:
+            if hasattr(self, widget_name):
+                widget = getattr(self, widget_name)
+                widget.hide()
+                widget.deleteLater()
 
-        # Подключение кнопок-переключателей
-        self.externalToggleBtn.clicked.connect(self.toggle_external)
-        self.internalToggleBtn.clicked.connect(self.toggle_internal)
+        self.groups: dict[str, DirectionGroup] = {}
 
-        # Пример подключения других кнопок (по желанию)
-        # self.profileBtn.clicked.connect(self.on_profile_clicked)
-        # self.allDocsBtn.clicked.connect(self.on_alldocs_clicked)
-        # self.systemBtn.clicked.connect(self.on_system_clicked)
-        # self.hidePanelBtn.clicked.connect(self.on_hide_panel_clicked)
+        self.setup_groups_container()
 
-    def load_directions(self):
-        """Загружает направления из тестовых данных в соответствующие контейнеры"""
-        # Очищаем существующие кнопки
-        self.clear_direction_buttons()
+        self.setup_buttons()
 
-        # Фильтруем и добавляем кнопки для внешних направлений
-        external_directions = [d for d in self.directions if d["type"] == "external"]
-        for direction in external_directions:
-            btn = self.create_direction_button(direction["enam"])
-            self.externalContentLayout.addWidget(btn)
+        # Анимация
+        self.collapse_animation = QPropertyAnimation(self, b"panelWidth")
+        self.collapse_animation.setDuration(300)
+        self.collapse_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        self.collapse_animation.finished.connect(self.on_animation_finished)
 
-        # Фильтруем и добавляем кнопки для внутренних направлений
-        internal_directions = [d for d in self.directions if d["type"] == "internal"]
-        for direction in internal_directions:
-            btn = self.create_direction_button(direction["enam"])
-            self.internalContentLayout.addWidget(btn)
+        # Загружаем типы документов с сервера
+        self.load_doc_types()
 
-    def create_direction_button(self, text):
-        """Создает кнопку для направления"""
-        btn = QPushButton(text)
-        btn.setStyleSheet("""
-            QPushButton {
+    def setup_icons(self):
+        """Настраивает иконки для всех кнопок с единым размером"""
+        icons_path = "D:/Documents/client/icons"
+        icon_size = QSize(20, 20)  # Унифицированный размер для всех иконок
+
+        icon_mapping = {
+            "profileBtn": "profile_white.svg",
+            "allDocsBtn": "folder.svg",
+            "archiveBtn": "archive.svg",
+            "settingsBtn": "settings.svg",  # ← было gear.svg
+            "systemBtn": "office.svg",
+            "hidePanelBtn": "hide.svg",  # Добавляем иконку для скрытия панели
+        }
+
+        for btn_name, icon_file in icon_mapping.items():
+            if hasattr(self, btn_name):
+                btn = getattr(self, btn_name)
+                icon_path = os.path.join(icons_path, icon_file)
+                if os.path.exists(icon_path):
+                    icon = QIcon(icon_path)
+                    btn.setIcon(icon)
+                    btn.setIconSize(icon_size)
+                else:
+                    print(f"Предупреждение: иконка не найдена - {icon_path}")
+
+    def _apply_button_styles(self):
+        """Единый стиль всех кнопок панели — как у кнопок направлений."""
+        for name in (
+            "profileBtn",
+            "allDocsBtn",
+            "archiveBtn",
+            "settingsBtn",
+            "systemBtn",
+            "hidePanelBtn",
+        ):
+            btn = getattr(self, name, None)
+            if btn is None:
+                continue
+            btn.setStyleSheet(self._get_button_style() if self.is_expanded else self._get_compact_button_style())
+
+    def reapply_theme(self):
+        """Вызывается при смене темы."""
+        apply_theme_to_widget(self)
+        self.setStyleSheet(f"QWidget#LeftPanel {{ background-color: {get_manager().current.SIDEBAR_BG}; }}")
+        self._apply_button_styles()
+
+    def create_fallback_ui(self):
+        """Создает UI с разделением на верхнюю и нижнюю части"""
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # ВЕРХНЯЯ ЧАСТЬ
+        self.top_widget = QWidget()
+        top_layout = QVBoxLayout(self.top_widget)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(6)
+
+        self.profileBtn = QPushButton("Мой профиль")
+        self.profileBtn.setStyleSheet(self._get_button_style())
+        self.profileBtn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.set_button_icon(self.profileBtn, "profile_white.svg", QSize(20, 20))
+        top_layout.addWidget(self.profileBtn)
+
+        self.allDocsBtn = QPushButton("Все документы")
+        self.allDocsBtn.setStyleSheet(self._get_button_style())
+        self.allDocsBtn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.set_button_icon(self.allDocsBtn, "folder.svg", QSize(20, 20))
+        top_layout.addWidget(self.allDocsBtn)
+
+        # ScrollArea
+        self.scrollArea = QScrollArea()
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setStyleSheet("border: none; background-color: transparent;")
+
+        scroll_content = QWidget()
+        scroll_content.setObjectName("scrollContent")
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setSpacing(10)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
+        self.scrollArea.setWidget(scroll_content)
+
+        top_layout.addWidget(self.scrollArea)
+        top_layout.addStretch(1)
+
+        main_layout.addWidget(self.top_widget)
+
+        # НИЖНЯЯ ЧАСТЬ
+        self.bottom_widget = QWidget()
+        bottom_layout = QVBoxLayout(self.bottom_widget)
+        bottom_layout.setContentsMargins(8, 8, 8, 12)
+        bottom_layout.setSpacing(6)
+
+        self.systemBtn = QPushButton("Система")
+        self.systemBtn.setStyleSheet(self._get_button_style())
+        self.systemBtn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.set_button_icon(self.systemBtn, "gear.svg", QSize(20, 20))
+        bottom_layout.addWidget(self.systemBtn)
+
+        self.hidePanelBtn = QPushButton("Скрыть панель")
+        self.hidePanelBtn.setStyleSheet(self._get_collapse_button_style())
+        self.hidePanelBtn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.set_button_icon(self.hidePanelBtn, "hide.svg", QSize(20, 20))
+        bottom_layout.addWidget(self.hidePanelBtn)
+
+        main_layout.addWidget(self.bottom_widget)
+
+    def set_button_icon(self, button, icon_name, icon_size):
+        """Устанавливает иконку для кнопки с указанным размером"""
+        icons_path = "D:/Documents/client/icons"
+        icon_path = os.path.join(icons_path, icon_name)
+        if os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+            button.setIcon(icon)
+            button.setIconSize(icon_size)
+
+    def _get_button_style(self):
+        """Стиль как у кнопок направлений (DirectionGroup._direction_button_style)."""
+        t = get_manager().current
+        return f"""
+            QPushButton {{
                 background-color: transparent;
-                color: #B8C5D1;
+                color: {t.SIDEBAR_TEXT};
                 border: none;
                 border-radius: 5px;
                 padding: 8px 12px;
-                font-size: 13px;
+                font-size: 14px;
+                font-weight: bold;
                 text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #2A3A44;
-                color: #DDB87A;
-            }
-            QPushButton:pressed {
-                background-color: #1B232A;
-            }
-        """)
-        btn.clicked.connect(lambda checked, t=text: self.on_direction_clicked(t))
-        return btn
+            }}
+            QPushButton:hover {{
+                background-color: {t.SIDEBAR_HOVER_BG};
+                color: {t.SIDEBAR_HOVER_TEXT};
+            }}
+            QPushButton:pressed {{
+                background-color: {t.SIDEBAR_BG};
+            }}
+            QPushButton::icon {{
+                width: 20px;
+                height: 20px;
+            }}
+        """
 
-    def clear_direction_buttons(self):
-        """Очищает все кнопки направлений из контейнеров"""
-        # Очищаем externalContentLayout
-        while self.externalContentLayout.count():
-            item = self.externalContentLayout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+    def _get_collapse_button_style(self):
+        # «Скрыть панель» теперь выглядит как остальные кнопки
+        return self._get_button_style()
 
-        # Очищаем internalContentLayout
-        while self.internalContentLayout.count():
-            item = self.internalContentLayout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+    def _get_compact_button_style(self):
+        t = get_manager().current
+        return f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {t.SIDEBAR_HOVER_TEXT};
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 20px;
+                text-align: center;
+                min-height: 42px;
+            }}
+            QPushButton:hover {{
+                background-color: {t.SIDEBAR_HOVER_BG};
+            }}
+            QPushButton::icon {{
+                width: 24px;
+                height: 24px;
+            }}
+        """
 
-    def toggle_external(self):
-        """Показывает/скрывает внешние направления"""
-        is_visible = self.externalContent.isVisible()
-        self.externalContent.setVisible(not is_visible)
+    def setup_buttons(self):
+        if hasattr(self, "profileBtn"):
+            self.profileBtn.clicked.connect(self.on_profile_clicked)
+        if hasattr(self, "allDocsBtn"):
+            self.allDocsBtn.clicked.connect(self.on_all_documents_clicked)
+        if hasattr(self, "settingsBtn"):
+            self.settingsBtn.clicked.connect(self.on_settings_clicked)
+        if hasattr(self, "systemBtn"):
+            self.systemBtn.clicked.connect(self.on_system_clicked)
+        if hasattr(self, "hidePanelBtn"):
+            self.hidePanelBtn.clicked.connect(self.toggle_panel)
 
-        # Меняем иконку/текст кнопки
-        if not is_visible:
-            self.externalToggleBtn.setText("▼ Внешние")
-        else:
-            self.externalToggleBtn.setText("▶ Внешные")
+        # в setup_buttons
+        if hasattr(self, "archiveBtn"):
+            self.archiveBtn.clicked.connect(self.on_archive_clicked)
 
-    def toggle_internal(self):
-        """Показывает/скрывает внутренние направления"""
-        is_visible = self.internalContent.isVisible()
-        self.internalContent.setVisible(not is_visible)
+    # обработчик
+    def on_archive_clicked(self):
+        print("Нажата кнопка архива")
+        self.archive_clicked.emit()
 
-        # Меняем иконку/текст кнопки
-        if not is_visible:
-            self.internalToggleBtn.setText("▼ Внутренние")
-        else:
-            self.internalToggleBtn.setText("▶ Внутренние")
+    def setup_groups_container(self):
+        """Создает контейнер для групп направлений в scrollArea"""
+        try:
+            if not hasattr(self, "scrollArea"):
+                print("Ошибка: в UI нет scrollArea")
+                return
 
-    def on_direction_clicked(self, direction_name):
-        """Обработчик клика по направлению"""
-        print(f"Выбрано направление: {direction_name}")
-        # Здесь можно добавить логику загрузки документов по направлению
-        # Например: self.parent().load_documents_by_direction(direction_name)
+            scroll_content = self.scrollArea.widget()
+            if not scroll_content:
+                scroll_content = QWidget()
+                scroll_content.setObjectName("scrollContent")
+                self.scrollArea.setWidget(scroll_content)
 
-    # Примеры обработчиков для других кнопок (раскомментируйте при необходимости)
-    """
+            scroll_layout = scroll_content.layout()
+            if not scroll_layout:
+                scroll_layout = QVBoxLayout(scroll_content)
+                scroll_layout.setSpacing(10)
+                scroll_layout.setContentsMargins(0, 0, 0, 0)
+
+            # Создаем контейнер для групп
+            self.groups_container = QWidget()
+            self.groups_container.setObjectName("groupsContainer")
+            self.groups_layout = QVBoxLayout(self.groups_container)
+            self.groups_layout.setSpacing(10)
+            self.groups_layout.setContentsMargins(0, 0, 0, 0)
+            # Добавляем в начало scroll_layout
+            scroll_layout.insertWidget(0, self.groups_container)
+
+            print("LeftPanel: контейнер для групп создан")
+
+        except Exception as e:
+            print(f"LeftPanel: ошибка при создании контейнера групп - {e}")
+
+    def toggle_buttons_visibility(self, visible: bool):
+        """Только скрываем/показываем контент, не трогаем структуру layout"""
+        t = get_manager().current
+        # Верхние кнопки
+        if hasattr(self, "profileBtn"):
+            self.profileBtn.setText("Мой профиль" if visible else "")
+            self.profileBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+            if not visible:
+                self.profileBtn.setIconSize(QSize(24, 24))
+            else:
+                self.profileBtn.setIconSize(QSize(20, 20))
+
+        if hasattr(self, "allDocsBtn"):
+            self.allDocsBtn.setText("Все документы" if visible else "")
+            self.allDocsBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+            if not visible:
+                self.allDocsBtn.setIconSize(QSize(24, 24))
+            else:
+                self.allDocsBtn.setIconSize(QSize(20, 20))
+
+        if hasattr(self, "archiveBtn"):
+            self.archiveBtn.setText("Архив" if visible else "")
+            self.archiveBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+            self.archiveBtn.setIconSize(QSize(24, 24) if not visible else QSize(20, 20))
+
+        # Нижние кнопки
+        if hasattr(self, "systemBtn"):
+            self.systemBtn.setText("Система" if visible else "")
+            self.systemBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+            if not visible:
+                self.systemBtn.setIconSize(QSize(24, 24))
+            else:
+                self.systemBtn.setIconSize(QSize(20, 20))
+
+        if hasattr(self, "settingsBtn"):
+            self.settingsBtn.setText("Настройки" if visible else "")
+            self.settingsBtn.setStyleSheet(self._get_button_style() if visible else self._get_compact_button_style())
+            self.settingsBtn.setIconSize(QSize(24, 24) if not visible else QSize(20, 20))
+
+        if hasattr(self, "hidePanelBtn"):
+            if visible:
+                self.hidePanelBtn.setText("Скрыть панель")
+                self.hidePanelBtn.setStyleSheet(self._get_collapse_button_style())
+                self.hidePanelBtn.setIconSize(QSize(20, 20))
+            else:
+                self.hidePanelBtn.setText("")
+                self.hidePanelBtn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: transparent;
+                        color: {t.SIDEBAR_HOVER_TEXT};
+                        border: none;
+                        border-radius: 5px;
+                        padding: 10px;
+                        text-align: center;
+                        min-height: 42px;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {t.SIDEBAR_HOVER_BG};
+                    }}
+                    QPushButton::icon {{
+                        width: 24px;
+                        height: 24px;
+                    }}
+                """)
+                self.hidePanelBtn.setIconSize(QSize(24, 24))
+
+        # Главное — скрываем только содержимое групп
+        if hasattr(self, "scrollArea"):
+            self.scrollArea.setVisible(visible)
+
+        self.updateGeometry()
+        if self.parent():
+            self.parent().updateGeometry()
+
+    # ========== ОБРАБОТЧИКИ КНОПОК ==========
+
+    def on_settings_clicked(self):
+        print("Нажата кнопка настроек")
+        self.settings_clicked.emit()
+
     def on_profile_clicked(self):
-        print("Мой профиль")
+        """Обработчик клика по кнопке профиля"""
+        print("Нажата кнопка профиля")
+        self.profile_clicked.emit()
 
-    def on_alldocs_clicked(self):
-        print("Все документы")
+    def on_all_documents_clicked(self):
+        """Обработчик клика по кнопке всех документов"""
+        print("Нажата кнопка всех документов")
+        self.all_documents_clicked.emit()
 
     def on_system_clicked(self):
-        print("Система")
+        """Обработчик клика по кнопке системы"""
+        print("Нажата кнопка системы")
+        self.system_clicked.emit()
 
-    def on_hide_panel_clicked(self):
-        print("Скрыть панель")
-    """
+    def add_group(self, group_name: str) -> DirectionGroup:
+        """Добавляет новую группу направлений"""
+        if group_name in self.groups:
+            return self.groups[group_name]
+
+        group = DirectionGroup(group_name)
+        self.groups[group_name] = group
+        self.groups_layout.addWidget(group)
+        return group
+
+    def add_direction(self, group_name: str, direction_name: str, metadata: dict[str, Any] | None = None):
+        """Добавляет направление (тип документа) в указанную группу"""
+        group = self.add_group(group_name)
+
+        # Сохраняем type_id в метаданных для передачи при клике
+        type_id = metadata.get("type_id") if metadata else None
+
+        def on_click(name):
+            self.on_direction_clicked(name, group_name, type_id)
+
+        group.add_direction(direction_name, on_click)
+
+    def clear_all_directions(self):
+        """Очищает все направления и группы"""
+        for group in self.groups.values():
+            group.clear_directions()
+        self.groups.clear()
+
+        while self.groups_layout.count():
+            item = self.groups_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+    def load_doc_types(self):
+        """
+        Загружает типы документов с сервера и раскладывает их
+        в две группы: «Внешние документы» и «Внутренние документы».
+        В каждой группе — пункт «Все типы».
+        """
+        self.clear_all_directions()
+
+        # Заглушка на время загрузки
+        self.add_direction(
+            self.GROUP_EXTERNAL,
+            self.ALL_TYPES_LABEL,
+            {"type_id": None, "group": self.GROUP_EXTERNAL},
+        )
+        self.add_direction(
+            self.GROUP_INTERNAL,
+            self.ALL_TYPES_LABEL,
+            {"type_id": None, "group": self.GROUP_INTERNAL},
+        )
+
+        try:
+            http_client = AppState().http_client
+            service = DocTypeService(http_client)
+            types = service.get_all_types() or []
+        except Exception as e:
+            print(f"LeftPanel: не удалось загрузить типы документов — {e}")
+            return
+
+        # Первый проход — «Все типы» уже добавлены, теперь реальные типы
+        for doc_type in types:
+            type_id = doc_type.get("id")
+            name = doc_type.get("name")
+            if not name:
+                continue
+
+            # В каждой группе — свой пункт «Все типы» (уже добавлен).
+            # Все реальные типы кладём в обе группы, чтобы пользователь
+            # мог фильтровать по типу в любом разделе.
+            self.add_direction(
+                self.GROUP_EXTERNAL,
+                name,
+                {"type_id": type_id, "group": self.GROUP_EXTERNAL},
+            )
+            self.add_direction(
+                self.GROUP_INTERNAL,
+                name,
+                {"type_id": type_id, "group": self.GROUP_INTERNAL},
+            )
+
+        print(f"LeftPanel: загружено {len(types)} типов документов в 2 группы")
+
+    def load_test_data(self):
+        """Загружает тестовые данные из DocumentDataConfig"""
+        self.load_from_data()
+
+    # ========== АНИМАЦИЯ ==========
+
+    @pyqtProperty(int)
+    def panelWidth(self):
+        """Свойство для анимации ширины панели"""
+        return self.width()
+
+    @panelWidth.setter
+    def panelWidth(self, width):
+        """Установщик ширины для анимации"""
+        self.setFixedWidth(width)
+
+    def toggle_panel(self):
+        """Сворачивает/разворачивает панель с анимацией"""
+        print(f"LeftPanel: toggle_panel, текущее состояние: {self.is_expanded}")
+
+        self.collapse_animation.stop()
+
+        if self.is_expanded:
+            self.collapse_animation.setStartValue(self.EXPANDED_WIDTH)
+            self.collapse_animation.setEndValue(self.COLLAPSED_WIDTH)
+            self.is_expanded = False
+            self.toggle_buttons_visibility(False)
+            self.update_hide_button_icon()
+        else:
+            self.collapse_animation.setStartValue(self.COLLAPSED_WIDTH)
+            self.collapse_animation.setEndValue(self.EXPANDED_WIDTH)
+            self.is_expanded = True
+            self.toggle_buttons_visibility(True)
+            self.update_hide_button_icon()
+
+        self.collapse_animation.start()
+
+    def on_animation_finished(self):
+        """Обработчик завершения анимации"""
+        print(f"LeftPanel: анимация завершена, ширина: {self.width()}")
+
+        self.updateGeometry()
+        if self.parent():
+            self.parent().update()
+
+    def on_direction_clicked(self, direction_name: str, group_name: str, type_id: int | None = None):
+        """Обработчик клика по направлению (типу документа)"""
+        print(f"Выбрано направление: {direction_name} (группа: {group_name}, type_id: {type_id})")
+
+        if type_id is not None:
+            self.type_clicked.emit(type_id, direction_name)
+        else:
+            self.direction_clicked.emit(direction_name, group_name)
+
+    # ========== УПРАВЛЕНИЕ ГРУППАМИ ==========
+
+    def expand_all_groups(self):
+        """Разворачивает все группы"""
+        for group in self.groups.values():
+            if not group.is_expanded:
+                group.toggle_content()
+
+    def collapse_all_groups(self):
+        """Сворачивает все группы"""
+        for group in self.groups.values():
+            if group.is_expanded:
+                group.toggle_content()
+
+    def expand(self):
+        """Развернуть панель программно"""
+        if not self.is_expanded:
+            self.toggle_panel()
+
+    def collapse(self):
+        """Свернуть панель программно"""
+        if self.is_expanded:
+            self.toggle_panel()
+
+    def get_group_by_name(self, group_name: str) -> DirectionGroup:
+        """Получить группу по имени"""
+        return self.groups.get(group_name)
+
+    def update_hide_button_icon(self):
+        """Обновляет иконку кнопки скрытия панели в зависимости от состояния"""
+        if hasattr(self, "hidePanelBtn"):
+            icons_path = "D:/Documents/client/icons"
+
+            if self.is_expanded:
+                # Панель развернута - показываем стрелку влево (свернуть)
+                icon_file = "hide.svg"  # Стрелка влево
+            else:
+                # Панель свернута - показываем стрелку вправо (развернуть)
+                icon_file = "show.svg"  # Стрелка вправо
+
+            icon_path = os.path.join(icons_path, icon_file)
+            if os.path.exists(icon_path):
+                icon = QIcon(icon_path)
+                self.hidePanelBtn.setIcon(icon)
+                self.hidePanelBtn.setIconSize(QSize(20, 20) if self.is_expanded else QSize(24, 24))
 
 
-# Пример запуска для тестирования (раскомментируйте для отладки)
-"""
+# Для тестирования
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
-    # Создаем временную структуру папок для теста
-    if not os.path.exists(os.path.join(ROOT_DIR, "ui")):
-        os.makedirs(os.path.join(ROOT_DIR, "ui"))
+    app.setStyle("Fusion")
 
     window = LeftPanel()
+    window.setWindowTitle("Left Panel Test")
+    window.setStyleSheet("background-color: #2A3A44;")
     window.show()
+
     sys.exit(app.exec())
-"""

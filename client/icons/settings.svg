@@ -1,0 +1,19 @@
+<svg width="130" height="130" viewBox="0 0 130 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Верхняя линия -->
+  <rect x="15" y="30" width="100" height="6" rx="3" fill="white"/>
+  <!-- Ползунок на верхней линии (справа) -->
+  <circle cx="95" cy="33" r="12" fill="white"/>
+  <circle cx="95" cy="33" r="6" fill="#1a1a1a"/>
+
+  <!-- Средняя линия -->
+  <rect x="15" y="62" width="100" height="6" rx="3" fill="white"/>
+  <!-- Ползунок на средней линии (по центру) -->
+  <circle cx="65" cy="65" r="12" fill="white"/>
+  <circle cx="65" cy="65" r="6" fill="#1a1a1a"/>
+
+  <!-- Нижняя линия -->
+  <rect x="15" y="94" width="100" height="6" rx="3" fill="white"/>
+  <!-- Ползунок на нижней линии (слева) -->
+  <circle cx="35" cy="97" r="12" fill="white"/>
+  <circle cx="35" cy="97" r="6" fill="#1a1a1a"/>
+</svg>

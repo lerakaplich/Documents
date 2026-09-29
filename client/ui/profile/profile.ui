@@ -1,0 +1,897 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ProfileForm</class>
+ <widget class="QWidget" name="ProfileForm">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>920</width>
+    <height>956</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Профиль сотрудника</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+QWidget {
+    background-color: {BG_DIALOG_ALT};
+    font-family: 'Segoe UI', Arial;
+}
+
+QFrame#infoFrame {
+    background-color: {BG_CARD};
+    border-radius: 16px;
+    border: 1px solid {BORDER_LIGHT};
+}
+
+QTabWidget::pane {
+    border: 1px solid {BORDER_DEFAULT};
+    border-radius: 8px;
+    background-color: {BG_CARD};
+}
+QTabBar::tab {
+    background-color: {BG_SURFACE_HEADER};
+    border: 1px solid {BORDER_DEFAULT};
+    border-bottom: none;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding: 10px 20px;
+    margin-right: 5px;
+    font-size: 13px;
+    font-weight: bold;
+    color: {TEXT_BLACK};
+}
+QTabBar::tab:selected {
+    background-color: {BG_CARD};
+    border-bottom: 2px solid {ACCENT_PRIMARY};
+    color: {TEXT_BLACK};
+}
+QTabBar::tab:hover {
+    background-color: {BG_HOVER_ALT};
+    color: {TEXT_BLACK};
+}
+
+/* Кнопки */
+
+QPushButton#btnAddOvertime {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+    padding: 0px 16px;
+}
+QPushButton#btnAddOvertime:hover {
+    background-color: {ACCENT_HOVER_SOFT};
+}
+QPushButton#btnAddOvertime:pressed {
+    background-color: {ACCENT_PRESSED_DEEP};
+}
+
+QPushButton#btnAddOvertimeAll {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+    padding: 0px 16px;
+}
+QPushButton#btnAddOvertimeAll:hover {
+    background-color: {ACCENT_HOVER_SOFT};
+}
+QPushButton#btnAddOvertimeAll:pressed {
+    background-color: {ACCENT_PRESSED_DEEP};
+}
+
+QPushButton#btnSelectPeriod,
+QPushButton#btnSelectPeriodAll,
+QPushButton#btnApplyFilters,
+QPushButton#btnClearFilters,
+QPushButton#btnImport {
+    background-color: {BTN_DARK_BG};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+    padding: 0px 16px;
+}
+QPushButton#btnSelectPeriod:hover,
+QPushButton#btnSelectPeriodAll:hover,
+QPushButton#btnApplyFilters:hover,
+QPushButton#btnClearFilters:hover,
+QPushButton#btnImport:hover {
+    background-color: {BTN_DARK_HOVER_BG};
+    color: {TEXT_BLACK};
+}
+QPushButton#btnSelectPeriod:pressed,
+QPushButton#btnSelectPeriodAll:pressed,
+QPushButton#btnApplyFilters:pressed,
+QPushButton#btnClearFilters:pressed,
+QPushButton#btnImport:pressed {
+    background-color: {BTN_DARK_PRESSED_BG};
+}
+
+QPushButton#btnExport {
+    background-color: {ACCENT_DANGER};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+    padding: 0px 16px;
+}
+QPushButton#btnExport:hover {
+    background-color: {ACCENT_DANGER_HOVER};
+}
+QPushButton#btnExport:pressed {
+    background-color: {ACCENT_DANGER_PRESSED};
+}
+
+QPushButton#btnResetFilters,
+QPushButton#btnResetFiltersAll {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+    padding: 0px 16px;
+}
+QPushButton#btnResetFilters:hover,
+QPushButton#btnResetFiltersAll:hover {
+    background-color: {ACCENT_HOVER_SOFT};
+}
+QPushButton#btnResetFilters:pressed,
+QPushButton#btnResetFiltersAll:pressed {
+    background-color: {ACCENT_PRESSED_DEEP};
+}
+
+QComboBox {
+    border: 1px solid {BORDER_DEFAULT};
+    border-radius: 6px;
+    padding: 8px;
+    padding-right: 25px;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
+    font-size: 13px;
+    outline: none;
+}
+QComboBox:hover {
+    border-color: {ACCENT_PRIMARY};
+}
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+QComboBox::down-arrow {
+    image: none;
+    border: none;
+    width: 0px;
+    height: 0px;
+}
+QComboBox QAbstractItemView {
+    border-radius: 6px;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+    padding: 4px;
+    outline: none;
+}
+QComboBox QAbstractItemView::item {
+    padding: 8px;
+    color: {TEXT_PRIMARY};
+    border: none;
+    outline: none;
+}
+QComboBox QAbstractItemView::item:hover {
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
+}
+QComboBox QAbstractItemView::item:selected {
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
+}
+QComboBox QAbstractItemView::item:focus {
+    outline: none;
+    border: none;
+}
+
+QCheckBox {
+    spacing: 8px;
+    font-size: 13px;
+}
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+}
+QCheckBox::indicator:unchecked {
+    border: 2px solid {BORDER_LIGHT};
+    border-radius: 4px;
+    background-color: {BG_CARD};
+}
+QCheckBox::indicator:checked {
+    border: 2px solid {ACCENT_PRIMARY};
+    border-radius: 4px;
+    background-color: {ACCENT_PRIMARY};
+}
+
+QFrame#filtersFrame {
+    background-color: {BG_CARD};
+    border-radius: 10px;
+    border: 1px solid {BORDER_LIGHT};
+    padding: 15px;
+}
+
+QTableWidget {
+    border: 1px solid {BORDER_LIGHT};
+    border-radius: 8px;
+    background-color: {BG_CARD};
+    gridline-color: {BORDER_LIGHT};
+}
+QHeaderView::section {
+    background-color: {BG_DIALOG_ALT};
+    padding: 8px;
+    border: none;
+    border-bottom: 1px solid {BORDER_LIGHT};
+    font-weight: bold;
+}
+
+QLabel#titleLabel {
+    font-size: 20px;
+    font-weight: bold;
+    color: {TEXT_PRIMARY};
+    padding: 3px 0;
+}
+
+/* Заголовки-подписи и значения в infoFrame — на токенах */
+QLabel#label_position_title,
+QLabel#label_phone_title,
+QLabel#label_email_title,
+QLabel#label_birth_date_title,
+QLabel#label_dept_type_title {
+    font-size: 24px;
+    color: {TEXT_MUTED_ALT};
+    background-color: transparent;
+    font-weight: 500;
+}
+QLabel#label_position_value,
+QLabel#label_phone_value,
+QLabel#label_email_value,
+QLabel#label_birth_date_value,
+QLabel#label_dept_name_value {
+    font-size: 24px;
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+}
+
+QToolButton#btnEditPhone,
+QToolButton#btnEditEmail {
+    background-color: transparent;
+    color: {ACCENT_PRIMARY};
+    font-size: 20px;
+    border: none;
+    border-radius: 8px;
+    padding: 4px 12px;
+}
+QToolButton#btnEditPhone:hover,
+QToolButton#btnEditEmail:hover {
+    color: {ACCENT_HOVER};
+    background-color: {ACCENT_PRIMARY_ALPHA_10};
+}
+QToolButton#btnEditPhone:pressed,
+QToolButton#btnEditEmail:pressed {
+    color: {ACCENT_PRESSED_DEEP};
+    background-color: {ACCENT_PRIMARY_ALPHA_20};
+}
+
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+QScrollBar:vertical {
+    background: {SCROLLBAR_BG};
+    width: 8px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical {
+    background: {SCROLLBAR_HANDLE};
+    border-radius: 4px;
+    min-height: 20px;
+}
+QScrollBar:horizontal {
+    border: none;
+    background: {SCROLLBAR_BG};
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal {
+    background: {SCROLLBAR_HANDLE};
+    border-radius: 4px;
+    min-width: 20px;
+}
+QScrollBar::add-line, QScrollBar::sub-line {
+    border: none;
+    background: none;
+}
+
+QLabel#labelTotalHoursMy, QLabel#labelTotalHoursAll {
+    font-size: 12px;
+    font-style: italic;
+    color: {TEXT_TERTIARY};
+    background-color: transparent;
+    padding: 2px 0;
+    font-weight: normal;
+}
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="headerFrame">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>140</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">#headerFrame { background-color: {HEADER_BG}; margin: 0px; padding: 0px; }</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::NoFrame</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Plain</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayoutHeader">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <property name="leftMargin">
+       <number>20</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>20</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="labelTitle">
+        <property name="styleSheet">
+         <string notr="true">color: {TEXT_ON_ACCENT}; font-size: 32px; font-weight: bold; background-color: transparent;</string>
+        </property>
+        <property name="text">
+         <string>Фамилия Имя Отчество</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_3">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QScrollArea" name="scrollArea">
+     <property name="verticalScrollBarPolicy">
+      <enum>Qt::ScrollBarPolicy::ScrollBarAsNeeded</enum>
+     </property>
+     <property name="horizontalScrollBarPolicy">
+      <enum>Qt::ScrollBarPolicy::ScrollBarAsNeeded</enum>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="scrollAreaWidgetContents">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>918</width>
+        <height>804</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="scrollAreaLayout">
+       <property name="spacing">
+        <number>20</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>20</number>
+       </property>
+       <item>
+        <widget class="QFrame" name="infoFrame">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">padding: 20px;</string>
+         </property>
+         <layout class="QFormLayout" name="formLayout">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+          </property>
+          <property name="labelAlignment">
+           <set>Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+          </property>
+          <property name="formAlignment">
+           <set>Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
+          </property>
+          <property name="horizontalSpacing">
+           <number>30</number>
+          </property>
+          <property name="verticalSpacing">
+           <number>14</number>
+          </property>
+
+          <!-- Должность -->
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_position_title">
+            <property name="text">
+             <string>Должность:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_position_value">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+
+          <!--
+            Строки подразделений (Сектор / Отдел / Подразделение и т.д.)
+            добавляются динамически в ProfileInfo.update_profile().
+            Их в .ui нет — они разные по количеству и зависят от department_chain.
+            Стили описаны выше через objectName
+            label_dept_type_title / label_dept_name_value.
+          -->
+
+          <!-- Телефон -->
+          <item row="100" column="0">
+           <widget class="QLabel" name="label_phone_title">
+            <property name="text">
+             <string>Номер телефона:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="100" column="1">
+             <widget class="QLabel" name="label_phone_value">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+
+            <!-- Email -->
+            <item row="101" column="0">
+             <widget class="QLabel" name="label_email_title">
+              <property name="text">
+               <string>Электронная почта:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="101" column="1">
+             <widget class="QLabel" name="label_email_value">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+
+          <!-- Дата рождения -->
+          <item row="102" column="0">
+           <widget class="QLabel" name="label_birth_date_title">
+            <property name="text">
+             <string>Дата рождения:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="102" column="1">
+           <widget class="QLabel" name="label_birth_date_value">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTabWidget" name="tabWidget">
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <widget class="QWidget" name="tabMyOvertime">
+          <attribute name="title">
+           <string>Мои переработки</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="myOvertimeLayout">
+           <property name="spacing">
+            <number>10</number>
+           </property>
+           <property name="leftMargin">
+            <number>15</number>
+           </property>
+           <property name="topMargin">
+            <number>15</number>
+           </property>
+           <property name="rightMargin">
+            <number>15</number>
+           </property>
+           <property name="bottomMargin">
+            <number>15</number>
+           </property>
+           <item>
+            <layout class="QHBoxLayout" name="myOvertimeButtonsLayout">
+             <item>
+              <widget class="QPushButton" name="btnSelectPeriod">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+               <property name="text">
+                <string>Выбрать период</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="btnResetFilters">
+               <property name="minimumSize">
+                <size>
+                 <width>150</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>150</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>Сбросить все фильтры и поиск</string>
+               </property>
+               <property name="text">
+                <string>↺ Сбросить фильтр</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="myOvertimeSpacer">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="totalHoursLayoutMy">
+             <item>
+              <widget class="QLabel" name="labelTotalHoursMy">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Итого часов: 0.0</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="totalHoursSpacerMy">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QTableWidget" name="myOvertimeTable">
+             <property name="editTriggers">
+              <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tabAllOvertime">
+          <attribute name="title">
+           <string>Все переработки</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="allOvertimeLayout">
+           <property name="spacing">
+            <number>10</number>
+           </property>
+           <property name="leftMargin">
+            <number>15</number>
+           </property>
+           <property name="topMargin">
+            <number>15</number>
+           </property>
+           <property name="rightMargin">
+            <number>15</number>
+           </property>
+           <property name="bottomMargin">
+            <number>15</number>
+           </property>
+           <item>
+            <layout class="QHBoxLayout" name="allOvertimeFiltersLayout">
+             <item>
+              <widget class="QPushButton" name="btnSelectPeriodAll">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+               <property name="text">
+                <string>Выбрать период</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="btnResetFiltersAll">
+               <property name="minimumSize">
+                <size>
+                 <width>150</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>150</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>Сбросить все фильтры и поиск</string>
+               </property>
+               <property name="text">
+                <string>↺ Сбросить фильтр</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="allOvertimeSpacer">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QPushButton" name="btnExport">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+               <property name="text">
+                <string>Экспорт</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="btnAddOvertimeAll">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+               <property name="text">
+                <string>Добавить переработку</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="btnImport">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+               <property name="text">
+                <string>Импорт переработок с КПП</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="totalHoursLayoutAll">
+             <item>
+              <widget class="QLabel" name="labelTotalHoursAll">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Итого часов: 0.0</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="totalHoursSpacerAll">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QTableWidget" name="allOvertimeTable">
+             <property name="editTriggers">
+              <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+       <item>
+        <spacer name="scrollAreaBottomSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

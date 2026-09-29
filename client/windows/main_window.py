@@ -1,65 +1,303 @@
-import os
 import sys
+import traceback
 
-from PyQt6.QtWidgets import QWidget, QApplication
-from PySide6.QtWidgets import QMainWindow, QHBoxLayout
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QMainWindow,
+    QMessageBox,
+    QStackedWidget,
+    QWidget,
+)
 
-from windows.left_panel.left_panel import LeftPanel
+from client.core.state.app_state import AppState
+from client.windows.documents.table.documents_panel import DocumentsPanel
+from client.windows.left_panel.left_panel import LeftPanel
+from client.windows.profile.profile_window import ProfileForm
+from client.windows.settings.settings_tab import SettingsTab
+from client.windows.system.tab_system import SystemTab
 
-# Определяем корневую директорию проекта
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-
-# Импортируем наш класс (если он в отдельном файле)
-# from left_panel import LeftPanel
 
 class MainWindow(QMainWindow):
+    """Главное окно приложения - ТОЛЬКО НАВИГАЦИЯ"""
+
+    logout_requested = pyqtSignal()
+
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Документооборот МАЗ")
-        self.setGeometry(100, 100, 1200, 800)
 
-        # Центральный виджет
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
+        try:
+            print("Инициализация MainWindow...")
+            self.http_client = AppState().http_client
 
-        # Layout
-        main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
+            self.setWindowTitle("Система документооборота МАЗ")
+            self.setGeometry(100, 100, 1200, 800)
 
-        # Создаем левую панель (передаем ROOT_DIR глобально)
-        global ROOT_DIR
-        self.left_panel = LeftPanel()
+            self.setup_app_style()
 
-        # Правый контент (пока пустой, можно добавить что-то)
-        self.content_widget = QWidget()
-        self.content_widget.setStyleSheet("background-color: #F5F5F5;")
+            # ── Тема (нужна и ниже) ──
+            from client.core.themes import get_manager
 
-        # Добавляем виджеты в layout
-        main_layout.addWidget(self.left_panel)
-        main_layout.addWidget(self.content_widget, 1)
+            _t = get_manager().current
 
-        # Подключаем кнопку скрытия панели
-        self.left_panel.hidePanelBtn.clicked.connect(self.toggle_left_panel)
+            # Центральный виджет
+            central_widget = QWidget()
+            self.setCentralWidget(central_widget)
 
-        # Подключаем другие кнопки (пример)
-        self.left_panel.profileBtn.clicked.connect(lambda: print("Мой профиль"))
-        self.left_panel.allDocsBtn.clicked.connect(lambda: print("Все документы"))
-        self.left_panel.systemBtn.clicked.connect(lambda: print("Система"))
+            layout = QHBoxLayout(central_widget)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(0)
 
-    def toggle_left_panel(self):
-        """Скрывает/показывает левую панель"""
-        if self.left_panel.isVisible():
-            self.left_panel.hide()
-            self.left_panel.hidePanelBtn.setText("▶ Показать панель")
-        else:
-            self.left_panel.show()
-            self.left_panel.hidePanelBtn.setText("◀ Скрыть панель")
+            print("Создание LeftPanel...")
+            self.left_panel = LeftPanel()
+            print("✓ LeftPanel создан успешно")
+
+            self.content_stack = QStackedWidget()
+            # ← убираем повторный импорт и присваивание _t — уже есть выше
+            self.content_stack.setStyleSheet(f"QStackedWidget {{ background-color: {_t.BG_DIALOG_ALT}; }}")
+
+            print("Создание DocumentsPanel...")
+            self.documents_panel = DocumentsPanel()
+            print("✓ DocumentsPanel создан успешно")
+
+            print("Создание ProfileForm...")
+            self.profile_form = ProfileForm()
+            print("✓ ProfileForm создан успешно")
+
+            print("Создание SystemTab...")
+            self.system_tab = SystemTab()
+            print("✓ SystemTab создан успешно")
+
+            print("Создание SettingsTab...")
+            self.settings_tab = SettingsTab(http_client=self.http_client)
+            print("✓ SettingsTab создан успешно")
+
+            # Добавляем панели
+            self.content_stack.addWidget(self.documents_panel)  # index 0
+            self.content_stack.addWidget(self.profile_form)  # index 1
+            self.content_stack.addWidget(self.system_tab)  # index 2
+            self.content_stack.addWidget(self.settings_tab)  # index 3
+
+            layout.addWidget(self.left_panel)
+            layout.addWidget(self.content_stack)
+
+            layout.setStretch(0, 0)
+            layout.setStretch(1, 1)
+
+            # Подключаем сигналы
+            self.setup_connections()
+
+            # По умолчанию - документы
+            self.content_stack.setCurrentWidget(self.documents_panel)
+
+            self.statusBar().showMessage("Готов к работе")
+
+            print("=" * 50)
+            print("✓ MainWindow инициализирован успешно")
+            print("=" * 50)
+
+        except Exception as e:
+            print(f"✗ Ошибка при инициализации MainWindow: {e}")
+            traceback.print_exc()
+            QMessageBox.critical(self, "Ошибка", f"Не удалось инициализировать приложение:\n{e!s}")
+            raise
+
+    def setup_app_style(self):
+        from client.core.themes import get_manager
+
+        t = get_manager().current
+        self.setStyleSheet(f"""
+            QMainWindow {{
+                background-color: {t.BG_DIALOG_ALT};
+            }}
+            QStatusBar {{
+                background-color: {t.SIDEBAR_BG};
+                color: {t.SIDEBAR_TEXT};
+            }}
+
+        """)
+
+    def reapply_theme(self):
+        """Переприменить стили MainWindow к актуальной теме."""
+        self.setup_app_style()
+
+    def setup_connections(self):
+        """Настройка связей между панелями"""
+        try:
+            print("Настройка сигналов...")
+
+            # Левая панель -> навигация
+            if hasattr(self.left_panel, "type_clicked"):
+                self.left_panel.type_clicked.connect(self.on_type_selected)
+                print("✓ type_clicked подключен")
+
+            if hasattr(self.left_panel, "direction_clicked"):
+                self.left_panel.direction_clicked.connect(self.on_direction_selected)
+                print("✓ direction_clicked подключен")
+
+            if hasattr(self.left_panel, "profile_clicked"):
+                self.left_panel.profile_clicked.connect(self.on_profile_clicked)
+                print("✓ profile_clicked подключен")
+
+            if hasattr(self.left_panel, "all_documents_clicked"):
+                self.left_panel.all_documents_clicked.connect(self.on_all_documents_clicked)
+                print("✓ all_documents_clicked подключен")
+
+            if hasattr(self.left_panel, "archive_clicked"):
+                self.left_panel.archive_clicked.connect(self.on_archive_clicked)
+
+            if hasattr(self.left_panel, "system_clicked"):
+                self.left_panel.system_clicked.connect(self.on_system_clicked)
+                print("✓ system_clicked подключен")
+
+            if hasattr(self.left_panel, "settings_clicked"):
+                self.left_panel.settings_clicked.connect(self.on_settings_clicked)
+                print("✓ settings_clicked подключен")
+
+            # Статус-бар
+            if hasattr(self.documents_panel, "data_loaded"):
+                self.documents_panel.data_loaded.connect(
+                    lambda count: self.statusBar().showMessage(f"Загружено {count} документов", 3000)
+                )
+                print("✓ data_loaded подключен")
+
+            if hasattr(self.settings_tab, "theme_change_requested"):
+                self.settings_tab.theme_change_requested.connect(self.on_theme_changed)
+                print("✓ theme_change_requested подключен")
+
+            if hasattr(self.settings_tab, "logout_requested"):
+                self.settings_tab.logout_requested.connect(self.on_logout_clicked)
+                print("✓ settings logout_requested подключен")
+
+            print("✓ Все сигналы настроены успешно")
+
+        except Exception as e:
+            print(f"✗ Ошибка при настройке сигналов: {e}")
+            traceback.print_exc()
+
+    # ========== НАВИГАЦИЯ ==========
+
+    def on_archive_clicked(self):
+        """Переключение на архивные документы"""
+        self.content_stack.setCurrentWidget(self.documents_panel)
+        self.documents_panel.controller.set_filters(scope="archive")
+        docs, _title, view_mode, doc_type = self.documents_panel.controller._load_current(1)
+        self.documents_panel._update_table(docs, doc_type, "Архив", view_mode)
+        self.statusBar().showMessage("Архив", 3000)
+
+    def on_settings_clicked(self):
+        """Переключение на настройки"""
+        from client.core.settings.settings_manager import SettingsManager
+        from client.core.themes import resolve_theme_key
+
+        palette, mode = SettingsManager().get_theme()
+        self.settings_tab.set_current_theme(resolve_theme_key(palette, mode))
+
+        self.settings_tab.refresh_contacts()
+        self.content_stack.setCurrentWidget(self.settings_tab)
+        self.statusBar().showMessage("Настройки", 3000)
+
+    def on_theme_changed(self, key: str):
+        """Применить выбранную тему, сохранить её локально."""
+        from client.core.settings.settings_manager import SettingsManager
+        from client.core.themes import (
+            apply_theme_to_all_windows,
+            get_palette_and_mode,
+            get_theme,
+            set_theme,
+        )
+
+        palette, mode = get_palette_and_mode(key)
+        theme = get_theme(palette, mode)
+
+        # 1. Сохранить локально
+        SettingsManager().set_theme(palette, mode)
+
+        # 2. Применить
+        set_theme(theme)
+        apply_theme_to_all_windows()
+        self.reapply_theme()
+        self.content_stack.setStyleSheet(f"QStackedWidget {{ background-color: {theme.BG_DIALOG_ALT}; }}")
+        print(f"[MainWindow] Тема применена и сохранена: {palette} / {mode}")
+
+    def on_logout_clicked(self):
+        """Обработка выхода из аккаунта."""
+        from PyQt6.QtWidgets import QMessageBox
+
+        reply = QMessageBox.question(
+            self,
+            "Выход из аккаунта",
+            "Вы уверены, что хотите выйти из аккаунта?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        # ─── Серверный logout + очистка токенов и сохранённой сессии ───
+        try:
+            from client.core.state.app_state import AppState
+            from client.services.auth_service import AuthService
+
+            auth = AuthService(AppState().http_client)
+            auth.logout()
+        except Exception as e:
+            print(f"⚠️ Ошибка при выходе из аккаунта: {e}")
+
+        # ─── Оповещаем LoginWindow ───
+        self.logout_requested.emit()
+
+        # ─── Прячем окно (НЕ close(), иначе closeEvent завершит всё приложение) ───
+        self.hide()
+
+    def on_profile_clicked(self):
+        """Переключение на профиль"""
+        self.content_stack.setCurrentWidget(self.profile_form)
+        self.statusBar().showMessage("Профиль пользователя", 3000)
+
+    def on_all_documents_clicked(self):
+        """Переключение на все документы"""
+        self.content_stack.setCurrentWidget(self.documents_panel)
+        self.documents_panel.load_all_documents()
+        self.statusBar().showMessage("Все документы", 3000)
+
+    def on_system_clicked(self):
+        """Переключение на систему"""
+        self.content_stack.setCurrentWidget(self.system_tab)
+        self.statusBar().showMessage("Системные настройки", 3000)
+
+    def on_type_selected(self, type_id: int, type_name: str):
+        """Выбор типа документа"""
+        self.content_stack.setCurrentWidget(self.documents_panel)
+        self.documents_panel.load_documents_by_type(type_id, type_name)
+
+    def on_direction_selected(self, direction_name: str, group_name: str = ""):
+        """Выбор направления"""
+        self.content_stack.setCurrentWidget(self.documents_panel)
+        direction_key = "internal" if "внутр" in group_name.lower() else "external"
+        self.documents_panel.load_documents_by_direction(direction_key, direction_name)
+
+    def closeEvent(self, event):
+        """Закрытие приложения без подтверждения."""
+        event.accept()
+        QApplication.instance().quit()
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec_())
+    try:
+        print("Запуск приложения...")
+
+        app = QApplication(sys.argv)
+        window = MainWindow()
+        window.show()
+
+        print("Вход в цикл обработки событий...")
+        print("=" * 50 + "\n")
+
+        sys.exit(app.exec())
+
+    except Exception as e:
+        print(f"\n✗ Критическая ошибка: {e}")
+        traceback.print_exc()
+        input("\nНажмите Enter для выхода...")

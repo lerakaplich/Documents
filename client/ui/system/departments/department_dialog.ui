@@ -1,0 +1,896 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DepartmentDialog</class>
+ <widget class="QDialog" name="DepartmentDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>571</width>
+    <height>547</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>0</width>
+    <height>525</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>571</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Отдел</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QScrollArea {
+ border: none;
+ background-color: transparent;
+}
+QDialog {
+    background-color: {BG_DIALOG};
+}
+QCheckBox {
+    color: {TEXT_PRIMARY};
+    spacing: 0px;
+    font-size: 12px;
+    background: transparent;
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    image: url({ICON_CHECKBOX_UNCHECKED_PATH});
+}
+
+QCheckBox::indicator:checked {
+    image: url({ICON_CHECKBOX_CHECKED_PATH});
+}
+
+QScrollBar::vertical {
+    background: {SCROLLBAR_BG};
+    width: 8px;
+    border-radius: 4px;
+    margin: 0px;
+    border: none;
+}
+
+QScrollBar::handle:vertical {
+    background: {SCROLLBAR_HANDLE};
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: {SCROLLBAR_HANDLE_HOVER};
+}
+
+QScrollBar::handle:vertical:pressed {
+    background: {SCROLLBAR_HANDLE_PRESSED};
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: {SCROLLBAR_BG};
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background: {SCROLLBAR_HANDLE};
+    border-radius: 4px;
+    min-width: 20px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: {SCROLLBAR_HANDLE_HOVER};
+}
+
+QScrollBar::handle:horizontal:pressed {
+    background: {SCROLLBAR_HANDLE_PRESSED};
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
+/* ===== СТИЛИ ДЛЯ QComboBox ===== */
+QComboBox {
+    border: 1px solid {BORDER_DEFAULT};
+    border-radius: 6px;
+    padding: 6px;
+    padding-right: 30px;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
+    font-size: 13px;
+    outline: none;
+    min-height: 22px;
+}
+
+QComboBox:hover {
+    border-color: {ACCENT_PRIMARY};
+}
+
+QComboBox:focus {
+    border: 2px solid {ACCENT_PRIMARY};
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+}
+
+QComboBox::down-arrow {
+    image: url({ICON_ARROW_DOWN_PATH});
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+}
+
+QComboBox QAbstractItemView {
+    border-radius: 6px;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+    padding: 4px;
+    outline: none;
+    border: 1px solid {ACCENT_PRIMARY};
+}
+
+QComboBox QAbstractItemView::item {
+    padding: 8px;
+    color: {TEXT_PRIMARY};
+    border: none;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
+}
+
+/* ===== СТИЛИ ДЛЯ QDateEdit ===== */
+QDateEdit {
+    border: 1px solid {BORDER_DEFAULT};
+    border-radius: 6px;
+    padding: 6px;
+    padding-right: 30px;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
+    font-size: 13px;
+    outline: none;
+    min-height: 22px;
+}
+
+QDateEdit:hover {
+    border-color: {ACCENT_PRIMARY};
+}
+
+QDateEdit:focus {
+    border: 2px solid {ACCENT_PRIMARY};
+}
+
+QDateEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+}
+
+QDateEdit::down-arrow {
+    image: url({ICON_CALENDAR_PATH});
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+}
+
+/* ===== СТИЛИ ДЛЯ QLineEdit ===== */
+QLineEdit {
+    border: 1px solid {BORDER_DEFAULT};
+    border-radius: 6px;
+    padding: 6px;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
+    font-size: 13px;
+    outline: none;
+    min-height: 22px;
+}
+
+QLineEdit:hover {
+    border-color: {ACCENT_PRIMARY};
+}
+
+QLineEdit:focus {
+    border: 2px solid {ACCENT_PRIMARY};
+}
+
+QLineEdit:disabled {
+    background-color: {BG_DIALOG};
+    color: {TEXT_SECONDARY};
+    border-color: {BORDER_DEFAULT};
+}
+
+QLineEdit[readOnly=&quot;true&quot;] {
+    background-color: {BG_DIALOG};
+    color: {TEXT_SECONDARY};
+}
+
+/* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ QCalendarWidget ===== */
+QCalendarWidget {
+    background-color: {BG_CARD};
+    border-radius: 8px;
+    border: 1px solid {ACCENT_PRIMARY};
+}
+
+QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+    border-radius: 8px 8px 0 0;
+}
+
+QCalendarWidget QWidget {
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+}
+
+QCalendarWidget QToolButton#qt_calendar_prevmonth,
+QCalendarWidget QToolButton#qt_calendar_nextmonth {
+    background-color: transparent;
+    color: {TEXT_PRIMARY};
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
+QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
+    background-color: {ACCENT_SELECTION_BG};
+}
+
+QCalendarWidget QToolButton#qt_calendar_monthbutton,
+QCalendarWidget QToolButton#qt_calendar_yearbutton {
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QCalendarWidget QToolButton#qt_calendar_monthbutton:hover,
+QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
+    background-color: {ACCENT_SELECTION_BG};
+}
+
+QCalendarWidget QMenu {
+    background-color: {BG_CARD};
+    border: 1px solid {ACCENT_PRIMARY};
+    border-radius: 6px;
+    color: {TEXT_PRIMARY};
+}
+
+QCalendarWidget QMenu::item {
+    padding: 6px 20px;
+    border-radius: 4px;
+}
+
+QCalendarWidget QMenu::item:selected {
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
+}
+
+QCalendarWidget QWidget#qt_calendar_weekday {
+    color: {TEXT_ON_ACCENT};
+    font-weight: bold;
+    background-color: {ACCENT_PRIMARY};
+    padding: 4px;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day {
+    border: none;
+    border-radius: 4px;
+    padding: 4px;
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:hover {
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:checked {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 4px;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
+    background-color: {ACCENT_HOVER};
+}
+
+QCalendarWidget QToolButton#qt_calendar_day:disabled {
+    color: {TEXT_DISABLED};
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;] {
+    background-color: {ACCENT_DANGER};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 4px;
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:hover {
+    background-color: {ACCENT_DANGER_HOVER};
+}
+
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+}
+
+/* ===== СТИЛИ ДЛЯ КАЛЕНДАРЯ В ПОПАПЕ QDateEdit ===== */
+QDateEdit QCalendarWidget {
+    background-color: {BG_CARD};
+    border-radius: 8px;
+    border: 1px solid {ACCENT_PRIMARY};
+}
+
+QDateEdit QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+    border-radius: 8px 8px 0 0;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth {
+    background-color: transparent;
+    color: {TEXT_PRIMARY};
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_prevmonth:hover,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_nextmonth:hover {
+    background-color: {ACCENT_SELECTION_BG};
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton {
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_monthbutton:hover,
+QDateEdit QCalendarWidget QToolButton#qt_calendar_yearbutton:hover {
+    background-color: {ACCENT_SELECTION_BG};
+}
+
+QDateEdit QCalendarWidget QWidget#qt_calendar_weekday {
+    color: {TEXT_ON_ACCENT};
+    font-weight: bold;
+    background-color: {ACCENT_PRIMARY};
+    padding: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day {
+    border: none;
+    border-radius: 4px;
+    padding: 4px;
+    color: {TEXT_PRIMARY};
+    background-color: transparent;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:hover {
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:checked:hover {
+    background-color: {ACCENT_HOVER};
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day:disabled {
+    color: {TEXT_DISABLED};
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;] {
+    background-color: {ACCENT_DANGER};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:hover {
+    background-color: {ACCENT_DANGER_HOVER};
+}
+
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+}
+
+/* ===== СТИЛИ ДЛЯ QGroupBox ===== */
+QGroupBox {
+    font-weight: bold;
+    font-size: 14px;
+    border: 1px solid {BORDER_DEFAULT};
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    background-color: {BG_CARD};
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+    color: {TEXT_PRIMARY};
+}
+
+/* ===== СТИЛИ ДЛЯ QPushButton (Сохранить) ===== */
+QPushButton#saveButton {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    border: none;
+}
+QPushButton#saveButton:hover {
+    background-color: {ACCENT_HOVER};
+}
+QPushButton#saveButton:pressed {
+    background-color: {ACCENT_PRESSED};
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="titleLabel">
+     <property name="minimumSize">
+      <size>
+       <width>530</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>530</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string>font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px;</string>
+     </property>
+     <property name="text">
+      <string>Новый отдел</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QScrollArea" name="scrollArea">
+     <property name="styleSheet">
+      <string notr="true">QScrollBar::vertical {
+    background: {SCROLLBAR_BG};
+    width: 8px;
+    border-radius: 4px;
+    margin: 0px;
+    border: none;
+}
+
+QScrollBar::handle:vertical {
+    background: {SCROLLBAR_HANDLE};
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: {SCROLLBAR_HANDLE_HOVER};
+}
+
+QScrollBar::handle:vertical:pressed {
+    background: {SCROLLBAR_HANDLE_PRESSED};
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: {SCROLLBAR_BG};
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background: {SCROLLBAR_HANDLE};
+    border-radius: 4px;
+    min-width: 20px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: {SCROLLBAR_HANDLE_HOVER};
+}
+
+QScrollBar::handle:horizontal:pressed {
+    background: {SCROLLBAR_HANDLE_PRESSED};
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: none;
+}</string>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="scrollContent">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>531</width>
+        <height>397</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="scrollLayout">
+       <property name="spacing">
+        <number>20</number>
+       </property>
+       <property name="leftMargin">
+        <number>5</number>
+       </property>
+       <property name="topMargin">
+        <number>5</number>
+       </property>
+       <property name="rightMargin">
+        <number>15</number>
+       </property>
+       <property name="bottomMargin">
+        <number>5</number>
+       </property>
+       <item>
+        <widget class="QGroupBox" name="departmentInfoGroup">
+         <property name="maximumSize">
+          <size>
+           <width>511</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="title">
+          <string>Информация об отделе</string>
+         </property>
+         <layout class="QGridLayout" name="departmentInfoLayout">
+          <property name="leftMargin">
+           <number>15</number>
+          </property>
+          <property name="topMargin">
+           <number>15</number>
+          </property>
+          <property name="rightMargin">
+           <number>15</number>
+          </property>
+          <property name="bottomMargin">
+           <number>15</number>
+          </property>
+          <property name="spacing">
+           <number>10</number>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="nameLabel">
+            <property name="styleSheet">
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Название *:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="nameEdit">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>36</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Введите название отдела</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="organizationLabel">
+            <property name="styleSheet">
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Организация *:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="organizationCombo">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>36</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Выберите организацию</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="parentDepartmentLabel">
+            <property name="styleSheet">
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Родительский отдел:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="parentDepartmentCombo">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>36</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Выберите родительский отдел</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="typeLabel">
+            <property name="styleSheet">
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Тип отдела *:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QComboBox" name="typeCombo">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>36</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Выберите тип отдела</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="departmentNumberLabel">
+            <property name="styleSheet">
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Номер отдела:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="departmentNumberEdit">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>36</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Введите номер отдела</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="phoneLabel">
+            <property name="styleSheet">
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Телефон:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLineEdit" name="phoneEdit">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>36</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>+375 XX XXX-XX-XX</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="headLabel">
+            <property name="styleSheet">
+             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+            </property>
+            <property name="text">
+             <string>Руководитель:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QComboBox" name="headCombo">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>36</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Выберите руководителя</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="saveButton">
+     <property name="minimumSize">
+      <size>
+       <width>120</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="text">
+      <string>Сохранить</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

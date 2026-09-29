@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Иконка карандаша">
+  <g transform="rotate(-45, 32, 32)">
+    <!-- Грифель (чёрный) -->
+    <polygon points="0,32 4,29 4,35" fill="#000000" />
+
+    <!-- Деревянная часть (золотисто-песочный) -->
+    <polygon points="4,29 12,25 12,39 4,35" fill="#ccab6e" />
+
+    <!-- Корпус карандаша (тёмно-синий) -->
+    <rect x="12" y="25" width="32" height="14" fill="#1B232A" />
+
+    <!-- Ободок (светло-серый) -->
+    <rect x="44" y="25" width="6" height="14" fill="#D9D9D6" />
+
+    <!-- Ластик (красный) -->
+    <rect x="50" y="25" width="10" height="14" fill="#D22730" />
+  </g>
+</svg>

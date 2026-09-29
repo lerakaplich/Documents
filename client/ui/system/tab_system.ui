@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SystemTab</class>
+ <widget class="QWidget" name="SystemTab">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>900</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Система</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget {
+    background-color: {BG_DIALOG_ALT};
+}
+QTabWidget::pane {
+    border: 1px solid {BORDER_DEFAULT};
+    border-radius: 8px;
+    background-color: {BG_CARD};
+}
+QTabBar::tab {
+    background-color: {BG_SURFACE_HEADER};
+    border: 1px solid {BORDER_DEFAULT};
+    border-bottom: none;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding: 10px 20px;
+    margin-right: 5px;
+    font-size: 14px;
+    font-weight: bold;
+    color: {TEXT_BLACK};
+}
+QTabBar::tab:selected {
+    background-color: {BG_CARD};
+    border-bottom: 2px solid {ACCENT_PRIMARY};
+    color: {TEXT_BLACK};
+}
+QTabBar::tab:hover {
+    background-color: {BG_HOVER_ALT};
+    color: {TEXT_BLACK};
+}
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+QScrollBar:vertical {
+    border: none;
+    background: {SCROLLBAR_BG};
+    width: 10px;
+    border-radius: 5px;
+}
+QScrollBar::handle:vertical {
+    background: {SCROLLBAR_HANDLE};
+    border-radius: 5px;
+    min-height: 20px;
+}
+QScrollBar::handle:vertical:hover {
+    background: {SCROLLBAR_HANDLE_HOVER};
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="headerFrame">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>140</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>140</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QFrame {
+    background-color: {HEADER_BG};
+    border: none;
+}</string>
+     </property>
+     <property name="fixedHeight" stdset="0">
+      <number>140</number>
+     </property>
+     <layout class="QHBoxLayout" name="headerLayout">
+      <property name="leftMargin">
+       <number>20</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>20</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="titleLabel">
+        <property name="styleSheet">
+         <string notr="true">color: {TEXT_ON_ACCENT}; font-size: 32px; font-weight: bold; background-color: transparent;</string>
+        </property>
+        <property name="text">
+         <string>Система</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="headerSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="contentWidget" native="true">
+     <layout class="QVBoxLayout" name="contentLayout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>20</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QTabWidget" name="tabWidget">
+        <property name="currentIndex">
+         <number>-1</number>
+        </property>
+        <property name="tabsClosable">
+         <bool>false</bool>
+        </property>
+        <property name="movable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

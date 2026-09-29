@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EmployeeCard</class>
+ <widget class="QFrame" name="EmployeeCard">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>883</width>
+    <height>150</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>350</width>
+    <height>150</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>200</height>
+   </size>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+QFrame#EmployeeCard {
+    background-color: {BG_CARD_ELEVATED};
+    border: 1px solid {BORDER_DEFAULT};
+    border-radius: 10px;
+}
+QFrame#EmployeeCard:hover {
+    border: 2px solid {ACCENT_PRIMARY};
+    background-color: {BG_HOVER_ACCENT_SOFT};
+}
+   </string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>15</number>
+   </property>
+   <property name="topMargin">
+    <number>8</number>
+   </property>
+   <property name="rightMargin">
+    <number>15</number>
+   </property>
+   <property name="bottomMargin">
+    <number>8</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="buttonsLayout">
+     <property name="spacing">
+      <number>10</number>
+     </property>
+     <item>
+      <layout class="QVBoxLayout" name="infoLayout">
+       <property name="spacing">
+        <number>4</number>
+       </property>
+       <property name="topMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
+        <number>10</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="nameLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 16px; font-weight: bold; color: {TEXT_ACCENT_DARK_STRONG}; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>1. Иванов Иван Иванович</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="positionLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 14px; font-weight: 500; color: {TEXT_ACCENT_SOFT}; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>Генеральный директор</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="departmentLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 14px; color: {TEXT_ACCENT_DARK}; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>ОАО МАЗ, Управление персоналом, Отдел кадров</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <!-- Телефон: иконка + значение -->
+       <item>
+        <layout class="QHBoxLayout" name="phoneLayout">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="phoneIconLabel">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>12</width>
+             <height>12</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>12</width>
+             <height>12</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">border: none; background-color: transparent;</string>
+           </property>
+           <property name="pixmap">
+            <pixmap>D:/Documents/client/icons/phone.svg</pixmap>
+           </property>
+           <property name="scaledContents">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="phoneValueLabel">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">border: none; font-size: 14px; color: {TEXT_ACCENT_DARK}; background-color: transparent;</string>
+           </property>
+           <property name="text">
+            <string>101</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="phoneSpacer">
+           <property name="orientation">
+            <enum>Qt::Orientation::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <!-- Почта: иконка + значение -->
+       <item>
+        <layout class="QHBoxLayout" name="emailLayout">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="emailIconLabel">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>12</width>
+             <height>12</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>12</width>
+             <height>12</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">border: none; background-color: transparent;</string>
+           </property>
+           <property name="pixmap">
+            <pixmap>D:/Documents/client/icons/emal.svg</pixmap>
+           </property>
+           <property name="scaledContents">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="emailValueLabel">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">border: none; font-size: 14px; color: {TEXT_ACCENT_DARK}; background-color: transparent;</string>
+           </property>
+           <property name="text">
+            <string>i.ivanov@maz.by</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="emailSpacer">
+           <property name="orientation">
+            <enum>Qt::Orientation::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QLabel" name="rightsLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border: none; font-size: 12px; font-weight: bold; color: {ACCENT_PRIMARY}; background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string>Администратор</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="editBtn">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+         QPushButton {
+    background-color: {BTN_EDIT_BG};
+    color: {ACCENT_PRIMARY};
+    border: 1px solid {BTN_EDIT_BORDER};
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 500;
+}
+QPushButton:hover {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+}
+QPushButton:pressed {
+    background-color: {BTN_EDIT_PRESSED_BG};
+}
+        </string>
+       </property>
+       <property name="text">
+        <string>Редактировать</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="deleteBtn">
+       <property name="minimumSize">
+        <size>
+         <width>80</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>80</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+         QPushButton {
+    background-color: {BTN_DELETE_BG};
+    color: {BTN_DELETE_TEXT};
+    border: 1px solid {BTN_DELETE_BORDER};
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 500;
+}
+QPushButton:hover {
+    background-color: {BTN_DELETE_HOVER_BG};
+    color: {TEXT_ON_ACCENT};
+}
+QPushButton:pressed {
+    background-color: {BTN_DELETE_PRESSED_BG};
+}
+        </string>
+       </property>
+       <property name="text">
+        <string>Удалить</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

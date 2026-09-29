@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Building icon -->
+  <path d="M20 85 L20 25 Q20 20 25 20 L55 20 Q60 20 60 25 L60 85"
+        fill="none" stroke="white" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M60 45 L78 45 Q83 45 83 50 L83 85"
+        fill="none" stroke="white" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <line x1="12" y1="85" x2="90" y2="85"
+        stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <!-- Окна -->
+  <rect x="30" y="32" width="8" height="8" rx="1.5"
+        fill="none" stroke="white" stroke-width="2.5"/>
+  <rect x="44" y="32" width="8" height="8" rx="1.5"
+        fill="none" stroke="white" stroke-width="2.5"/>
+  <rect x="30" y="48" width="8" height="8" rx="1.5"
+        fill="none" stroke="white" stroke-width="2.5"/>
+  <rect x="44" y="48" width="8" height="8" rx="1.5"
+        fill="none" stroke="white" stroke-width="2.5"/>
+  <rect x="30" y="64" width="8" height="8" rx="1.5"
+        fill="none" stroke="white" stroke-width="2.5"/>
+  <rect x="44" y="64" width="8" height="8" rx="1.5"
+        fill="none" stroke="white" stroke-width="2.5"/>
+  <!-- Дверь -->
+  <rect x="50" y="73" width="10" height="12" rx="1.5"
+        fill="none" stroke="white" stroke-width="2.5"/>
+  <!-- Окна пристройки -->
+  <rect x="68" y="55" width="7" height="7" rx="1.5"
+        fill="none" stroke="white" stroke-width="2.5"/>
+  <rect x="68" y="68" width="7" height="7" rx="1.5"
+        fill="none" stroke="white" stroke-width="2.5"/>
+</svg>

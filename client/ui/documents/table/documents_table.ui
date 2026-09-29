@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DocumentsPanel</class>
+ <widget class="QWidget" name="DocumentsPanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+    QWidget#DocumentsPanel {
+        background-color: #1B232A;
+    }
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="panelLayout">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>10</number>
+   </property>
+   <property name="topMargin">
+    <number>10</number>
+   </property>
+   <property name="rightMargin">
+    <number>10</number>
+   </property>
+   <property name="bottomMargin">
+    <number>10</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="labelTitle">
+     <property name="text">
+      <string>Документы</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">
+       QLabel {
+           color: white;
+           font-size: 24px;
+           font-weight: bold;
+           padding: 10px;
+           background: transparent;
+       }
+      </string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="toolbarWidget" native="true">
+     <property name="styleSheet">
+      <string notr="true">
+       QWidget#toolbarWidget {
+           background-color: #243040;
+           border-radius: 10px;
+           padding: 5px;
+       }
+      </string>
+     </property>
+     <layout class="QHBoxLayout" name="toolbarLayout">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <property name="leftMargin">
+       <number>8</number>
+      </property>
+      <property name="topMargin">
+       <number>8</number>
+      </property>
+      <property name="rightMargin">
+       <number>8</number>
+      </property>
+      <property name="bottomMargin">
+       <number>8</number>
+      </property>
+      <item>
+       <widget class="QPushButton" name="columnsBtn">
+        <property name="text">
+         <string>📊 Столбцы</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">
+          QPushButton {
+              background-color: #1B232A;
+              color: white;
+              border: none;
+              border-radius: 10px;
+              padding: 8px 12px;
+              font-size: 13px;
+              font-weight: bold;
+          }
+          QPushButton:hover {
+              background-color: #D9D9D6;
+              color: black;
+          }
+          QPushButton:pressed {
+              background-color: #B8B8B5;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="filterBtn">
+        <property name="text">
+         <string>🔍 Фильтры</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">
+          QPushButton {
+              background-color: #1B232A;
+              color: white;
+              border: none;
+              border-radius: 10px;
+              padding: 8px 12px;
+              font-size: 13px;
+              font-weight: bold;
+          }
+          QPushButton:hover {
+              background-color: #D9D9D6;
+              color: black;
+          }
+          QPushButton:pressed {
+              background-color: #B8B8B5;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="statusesBtn">
+        <property name="text">
+         <string>📋 Статусы</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">
+          QPushButton {
+              background-color: #1B232A;
+              color: white;
+              border: none;
+              border-radius: 10px;
+              padding: 8px 12px;
+              font-size: 13px;
+              font-weight: bold;
+          }
+          QPushButton:hover {
+              background-color: #D9D9D6;
+              color: black;
+          }
+          QPushButton:pressed {
+              background-color: #B8B8B5;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="searchEdit">
+        <property name="placeholderText">
+         <string>🔍 Поиск по документам...</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">
+          QLineEdit {
+              background-color: white;
+              border: 1px solid #dee2e6;
+              border-radius: 6px;
+              padding: 8px 12px;
+              color: #1B232A;
+              font-size: 13px;
+          }
+          QLineEdit:focus {
+              border-color: #ccab6e;
+          }
+         </string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="tableViewContainer" native="true">
+     <layout class="QVBoxLayout" name="tableViewLayout">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,323 @@
+from datetime import date, time
+from typing import Optional
+
+from sqlalchemy import select, delete, update, func, and_, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from server.app.database.employee_models import Overtime, EmployeePosition, Department, Employee
+
+
+class OvertimeRepository:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def add(self, data):
+        new_record = Overtime(**data.model_dump())
+        self.db.add(new_record)
+        await self.db.commit()
+        await self.db.refresh(new_record)
+        return new_record
+
+    async def get_by_id(self, ot_id: int):
+        result = await self.db.execute(select(Overtime).where(Overtime.id == ot_id))
+        return result.scalar_one_or_none()
+
+    async def get_by_ids(self, ot_ids: list[int]):
+        if not ot_ids:
+            return []
+        result = await self.db.execute(select(Overtime).where(Overtime.id.in_(ot_ids)))
+        return result.scalars().all()
+
+    async def update_note(self, ot_id: int, note: str):
+        stmt = (
+            update(Overtime)
+            .where(Overtime.id == ot_id)
+            .values(note_text=note)
+            .returning(Overtime)
+        )
+        result = await self.db.execute(stmt)
+        await self.db.commit()
+        return result.scalar_one_or_none()
+
+    async def update_all(self, ot_id: int, update_dict: dict):
+        stmt = update(Overtime).where(Overtime.id == ot_id).values(**update_dict).returning(Overtime)
+        result = await self.db.execute(stmt)
+        await self.db.commit()
+        return result.scalar_one_or_none()
+
+    async def get_by_employee_id_paginated(
+            self,
+            employee_id: int,
+            start_date: date,
+            end_date: date,
+            page: int = 1,
+            size: int = 20,
+    ):
+        full_name_expr = func.concat(
+            Employee.last_name, ' ',
+            Employee.first_name, ' ',
+            func.coalesce(Employee.patronymic, '')
+        ).label("full_name")
+
+        where_clause = (
+                (Overtime.employee_id == employee_id) &
+                (Overtime.overtime_date.between(start_date, end_date))
+        )
+
+        # 1. Подсчет общего количества
+        count_stmt = select(func.count()).select_from(Overtime).where(where_clause)
+        total = await self.db.scalar(count_stmt) or 0
+
+        # 2. Получение страницы данных
+        offset = (page - 1) * size
+        stmt = (
+            select(Overtime, full_name_expr)
+            .join(Employee, Overtime.employee_id == Employee.id)
+            .where(where_clause)
+            .order_by(Overtime.overtime_date.desc())
+            .offset(offset)
+            .limit(size)
+        )
+
+        result = await self.db.execute(stmt)
+
+        items = []
+        for ot_obj, full_name in result.all():
+            items.append({
+                "id": ot_obj.id,
+                "employee_id": ot_obj.employee_id,
+                "overtime_date": ot_obj.overtime_date,
+                "overtime_start": ot_obj.overtime_start,
+                "overtime_end": ot_obj.overtime_end,
+                "note_text": ot_obj.note_text,
+                "full_name": full_name.strip(),
+            })
+
+        return items, total
+
+    async def get_by_dept_id(
+        self,
+        dept_id: int,
+        start_date: date,
+        end_date: date,
+        page: int = 1,
+        size: int = 20,
+    ):
+        full_name_expr = func.concat(
+            Employee.last_name, ' ',
+            Employee.first_name, ' ',
+            func.coalesce(Employee.patronymic, '')
+        ).label("full_name")
+
+        # 1. Получаем hierarchy_path целевого отдела
+        target_dept_path = await self.db.scalar(
+            select(Department.hierarchy_path).where(Department.id == dept_id)
+        )
+
+        # Базовые условия объединений и фильтров
+        date_condition = Overtime.overtime_date.between(start_date, end_date)
+
+        if target_dept_path:
+            dept_condition = Department.hierarchy_path.like(f"{target_dept_path}%")
+        else:
+            dept_condition = (EmployeePosition.department_id == dept_id)
+
+        # 2. Подсчитываем общее количество уникальных переработок за период в этом отделе
+        count_stmt = (
+            select(func.count(func.distinct(Overtime.id)))
+            .join(Employee, Overtime.employee_id == Employee.id)
+            .join(EmployeePosition, Overtime.employee_id == EmployeePosition.employee_id)
+            .join(Department, EmployeePosition.department_id == Department.id)
+            .where(dept_condition, date_condition)
+        )
+        total = await self.db.scalar(count_stmt) or 0
+
+        # 3. Достаем страницу записей с присоединенным ФИО
+        offset = (page - 1) * size
+        stmt = (
+            select(Overtime, full_name_expr)
+            .join(Employee, Overtime.employee_id == Employee.id)
+            .join(EmployeePosition, Overtime.employee_id == EmployeePosition.employee_id)
+            .join(Department, EmployeePosition.department_id == Department.id)
+            .where(dept_condition, date_condition)
+            .order_by(Overtime.overtime_date.desc())
+            .distinct()
+            .offset(offset)
+            .limit(size)
+        )
+
+        result = await self.db.execute(stmt)
+
+        items = []
+        for ot_obj, full_name in result.all():
+            items.append({
+                "id": ot_obj.id,
+                "employee_id": ot_obj.employee_id,
+                "overtime_date": ot_obj.overtime_date,
+                "overtime_start": ot_obj.overtime_start,
+                "overtime_end": ot_obj.overtime_end,
+                "note_text": ot_obj.note_text,
+                "full_name": full_name.strip(),
+            })
+
+        return items, total
+
+    async def get_all(
+            self,
+            start_date: date,
+            end_date: date,
+            page: int = 1,
+            size: int = 20
+    ):
+        full_name_expr = func.concat(
+            Employee.last_name, ' ',
+            Employee.first_name, ' ',
+            func.coalesce(Employee.patronymic, '')
+        ).label("full_name")
+
+        # Базовый фильтр по диапазону дат
+        where_clause = Overtime.overtime_date.between(start_date, end_date)
+
+        # 1. Считаем общее количество подходящих записей
+        count_stmt = select(func.count()).select_from(Overtime).where(where_clause)
+        total = await self.db.scalar(count_stmt) or 0
+
+        # 2. Выбираем пагинированную страницу с JOIN ФИО
+        offset = (page - 1) * size
+        stmt = (
+            select(Overtime, full_name_expr)
+            .join(Employee, Overtime.employee_id == Employee.id)
+            .where(where_clause)
+            .order_by(Overtime.overtime_date.desc())
+            .offset(offset)
+            .limit(size)
+        )
+
+        result = await self.db.execute(stmt)
+
+        items = []
+        for ot_obj, full_name in result.all():
+            items.append({
+                "id": ot_obj.id,
+                "employee_id": ot_obj.employee_id,
+                "overtime_date": ot_obj.overtime_date,
+                "overtime_start": ot_obj.overtime_start,
+                "overtime_end": ot_obj.overtime_end,
+                "note_text": ot_obj.note_text,
+                "full_name": full_name.strip()
+            })
+
+        return items, total
+
+    async def delete(self, ot_id: int):
+        result = await self.db.execute(
+            delete(Overtime).where(Overtime.id == ot_id).returning(Overtime.id)
+        )
+        await self.db.commit()
+        return result.scalar_one_or_none()
+
+    async def check_exists(self, employee_id: int, overtime_date: date, start_time: time, end_time: time) -> bool:
+        """Проверяет, существует ли уже переработка у сотрудника на эту дату и время"""
+        stmt = (
+            select(Overtime)
+            .where(
+                Overtime.employee_id == employee_id,
+                Overtime.overtime_date == overtime_date,
+                Overtime.overtime_start == start_time,
+                Overtime.overtime_end == end_time
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
+    async def create_overtime_direct(self, employee_id: int, overtime_date: date, start_time: time, end_time: time,
+                                     description: str):
+        """Прямая запись переработки (используется при автоимпорте)"""
+        new_record = Overtime(
+            employee_id=employee_id,
+            overtime_date=overtime_date,
+            overtime_start=start_time,
+            overtime_end=end_time,
+            note_text=description
+        )
+        self.db.add(new_record)
+        # commit() здесь делать НЕ НАДО, сервис импорта сделает один общий commit в конце файла
+        return new_record
+
+    async def update_bulk_notes_for_employee(self, overtime_ids: list[int], employee_id: int, note: str):
+        stmt = (
+            update(Overtime)
+            .where(
+                Overtime.id.in_(overtime_ids),
+                Overtime.employee_id == employee_id
+            )
+            .values(note_text=note)
+        )
+        await self.db.execute(stmt)
+        await self.db.commit()
+        return {"updated_count": len(overtime_ids)}
+
+    async def get_overtimes_for_export(
+            self,
+            dept_id: Optional[int] = None,
+            start_date: Optional[date] = None,
+            end_date: Optional[date] = None
+    ):
+        """
+        Выбирает переработки, попадающие в выбранный период,
+        и связывает их с отделом и должностью, которые были у сотрудника НА МОМЕНТ переработки.
+        """
+        # Базовый select нужных полей
+        stmt = (
+            select(
+                Overtime,
+                Employee.last_name,
+                Employee.first_name,
+                Employee.patronymic,
+                EmployeePosition.position_name,
+                Department.id.label("dept_id"),
+                Department.name.label("dept_name")
+            )
+            .join(Employee, Overtime.employee_id == Employee.id)
+            # Связываем с должностью, действующей на дату переработки
+            .join(
+                EmployeePosition,
+                and_(
+                    EmployeePosition.employee_id == Overtime.employee_id,
+                    EmployeePosition.start_date <= Overtime.overtime_date,
+                    or_(
+                        EmployeePosition.end_date >= Overtime.overtime_date,
+                        EmployeePosition.end_date.is_(None)
+                    )
+                )
+            )
+            .join(Department, EmployeePosition.department_id == Department.id)
+        )
+
+        # 1. Фильтрация по отделу и его вложенным поддеревьям
+        if dept_id:
+            # Получаем hierarchy_path выбранного отдела
+            target_path = await self.db.scalar(
+                select(Department.hierarchy_path).where(Department.id == dept_id)
+            )
+            if target_path:
+                stmt = stmt.where(Department.hierarchy_path.like(f"{target_path}%"))
+            else:
+                stmt = stmt.where(Department.id == dept_id)
+
+        # 2. Фильтрация по диапазону дат переработок
+        if start_date:
+            stmt = stmt.where(Overtime.overtime_date >= start_date)
+        if end_date:
+            stmt = stmt.where(Overtime.overtime_date <= end_date)
+
+        # Сортировка: Отдел -> ФИО -> Дата переработки
+        stmt = stmt.order_by(
+            Department.name,
+            Employee.last_name,
+            Employee.first_name,
+            Overtime.overtime_date
+        )
+
+        result = await self.db.execute(stmt)
+        return result.all()
