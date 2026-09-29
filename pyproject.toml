@@ -51,6 +51,12 @@ ignore = [
     "RUF006", # asyncio.create_task без ссылки — fire-and-forget воркеры
     "TRY301", # raise внутри try — осознанно для перехвата в этом же try
     "S112",   # try-except-continue — цикл перебора форматов даты, логировать нечего
+    "TRY300",   # try-consider-else — стилистика
+    "TRY401",   # verbose-log-message — f"{e}" в exception() — норм практика
+    "PERF401",  # manual-list-comprehension — стилистика
+    "SIM102",   # collapsible-if — стилистика
+    "SIM108",   # if-else-block-instead-of-if-exp — стилистика
+    "S112",     # try-except-continue — цикл перебора форматов даты
 ]
 
 [tool.ruff.lint.per-file-ignores]

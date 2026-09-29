@@ -1,5 +1,6 @@
 # client/windows/system/tags/tags_page.py
 
+import logging
 import os
 import sys
 from typing import Any
@@ -24,8 +25,6 @@ from client.windows.animations.floating_action_button import FloatingActionButto
 from client.windows.system.delete_dialog import DeleteDialog
 from client.windows.system.tags.tag_card import TagCard
 from client.windows.system.tags.tag_dialog import TagDialog
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -331,7 +330,6 @@ class TagsPage(QWidget):
                 self.show_error_notification("Не удалось создать тег")
 
         except Exception as e:
-
             logger.exception(f"Ошибка создания тега: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -380,7 +378,6 @@ class TagsPage(QWidget):
                 self.show_error_notification("Не удалось обновить тег")
 
         except Exception as e:
-
             logger.exception(f"Ошибка обновления тега: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -412,7 +409,6 @@ class TagsPage(QWidget):
                 self.show_error_notification("Не удалось удалить тег")
 
         except Exception as e:
-
             logger.exception(f"Ошибка удаления тега: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -432,7 +428,6 @@ class TagsPage(QWidget):
                 tag_name = next((t.get("name") for t in self.tags if t.get("id") == tag_id), "Тег")
                 self.show_info_notification(f"Цвет тега «{tag_name}» обновлен")
         except Exception as e:
-
             logger.exception(f"Ошибка обновления цвета тега {tag_id}: {e}")
 
     # ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================

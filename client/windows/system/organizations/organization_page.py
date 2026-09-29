@@ -28,10 +28,6 @@ from client.windows.system.departments.api_task import TaskKeeper
 from client.windows.system.organizations.organization_card import OrganizationCard
 from client.windows.system.organizations.organization_dialog import OrganizationDialog
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 class OrganizationsPage(QWidget):
     """Страница организаций с поиском, сортировкой и отображением в 2 колонки"""
@@ -161,7 +157,7 @@ class OrganizationsPage(QWidget):
             response = self.http.get(f"{self.base_path}/{dept_id}/staff")
             return response if isinstance(response, list) else []
         except Exception as e:
-            logger.error(f"Ошибка получения сотрудников отдела {dept_id}: {e}")
+            logger.exception(f"Ошибка получения сотрудников отдела {dept_id}: {e}")
             return []
 
     # ==================== ЗАГРУЗКА ДАННЫХ ====================
@@ -414,7 +410,6 @@ class OrganizationsPage(QWidget):
                 self.show_error_notification("Не удалось создать организацию")
 
         except Exception as e:
-
             logger.exception(f"Ошибка создания организации: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -493,7 +488,6 @@ class OrganizationsPage(QWidget):
                 self.show_error_notification("Не удалось обновить организацию")
 
         except Exception as e:
-
             logger.exception(f"Ошибка обновления организации: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")

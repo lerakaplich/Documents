@@ -1,5 +1,6 @@
 # client/windows/system/document_types/document_type_page.py
 
+import logging
 import os
 import sys
 from typing import Any
@@ -26,8 +27,6 @@ from client.windows.animations.floating_action_button import FloatingActionButto
 from client.windows.system.delete_dialog import DeleteDialog
 from client.windows.system.document_types.document_type_card import DocumentTypeCard
 from client.windows.system.document_types.document_type_dialog import DocumentTypeDialog
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -466,7 +465,6 @@ class DocumentTypesPage(QWidget):
                 self.show_error_notification("Не удалось создать тип")
 
         except Exception as e:
-
             logger.exception(f"Ошибка создания типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -533,7 +531,6 @@ class DocumentTypesPage(QWidget):
                 self.show_error_notification("Не удалось обновить тип")
 
         except Exception as e:
-
             logger.exception(f"Ошибка обновления типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -622,7 +619,6 @@ class DocumentTypesPage(QWidget):
                 self.show_error_notification("Не удалось удалить тип")
 
         except Exception as e:
-
             logger.exception(f"Ошибка удаления типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
