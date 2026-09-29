@@ -2,11 +2,10 @@
 
 import math
 
-from client.core.data.document_repository import document_repository
 from client.core.data.document_data import DocumentDataConfig
 from client.core.data.document_mapper import map_documents_response
+from client.core.data.document_repository import document_repository
 from client.services.document_service import DocumentService
-
 
 PAGE_SIZE = 50
 
@@ -36,7 +35,9 @@ class DocumentsPanelController:
 
     def __init__(self, http_client):
         self.service = DocumentService(http_client)
-        self.repository = document_repository  # только для метаданных типов, см. докстринг
+        self.repository = (
+            document_repository  # только для метаданных типов, см. докстринг
+        )
 
         # Единственный источник правды для состояния панели
         self.current_type_id = None
@@ -48,10 +49,10 @@ class DocumentsPanelController:
         # Фильтры из меню «Фильтр»/«Статусы» — применяются на сервере и
         # сохраняются при переходе между типами/направлениями.
         self.filters = {
-            "scope": "all",          # "all" — все документы в БД, "my" — где я участник
-            "is_completed": None,    # True — только прочитанные, False — только непрочитанные
-            "status_filters": [],    # коды DocStatus
-            "date_from": None,       # ISO-строки yyyy-MM-dd
+            "scope": "all",  # "all" — все документы в БД, "my" — где я участник
+            "is_completed": None,  # True — только прочитанные, False — только непрочитанные
+            "status_filters": [],  # коды DocStatus
+            "date_from": None,  # ISO-строки yyyy-MM-dd
             "date_to": None,
         }
 
@@ -104,8 +105,14 @@ class DocumentsPanelController:
             params["date_to"] = f["date_to"]
         return params
 
-    def set_filters(self, scope: str = "all", is_completed=None, status_filters=None,
-                    date_from=None, date_to=None):
+    def set_filters(
+        self,
+        scope: str = "all",
+        is_completed=None,
+        status_filters=None,
+        date_from=None,
+        date_to=None,
+    ):
         """Применяет фильтры и загружает страницу 1 текущего режима."""
         self.filters = {
             "scope": scope or "all",
@@ -127,14 +134,19 @@ class DocumentsPanelController:
             return documents, f"Поиск: {self.current_query}", "search", "default"
 
         if self.current_type_id is not None:
-            documents = self._fetch(page, type_id=self.current_type_id,
-                                    direction=self.current_direction)
+            documents = self._fetch(
+                page, type_id=self.current_type_id, direction=self.current_direction
+            )
             return documents, self.current_title, "type", str(self.current_type_id)
 
         if self.current_direction is not None:
             documents = self._fetch(page, direction=self.current_direction)
             direction = self.current_direction
-            doc_type = direction if direction in ["incoming", "outgoing", "internal"] else "default"
+            doc_type = (
+                direction
+                if direction in ["incoming", "outgoing", "internal"]
+                else "default"
+            )
             return documents, self.current_title, "direction", doc_type
 
         documents = self._fetch(page)
@@ -149,7 +161,9 @@ class DocumentsPanelController:
         self.current_view_mode = "all"
         return self._load_current(1)
 
-    def load_documents_by_type(self, type_id: int, title: str = None, direction: str = None):
+    def load_documents_by_type(
+        self, type_id: int, title: str = None, direction: str = None
+    ):
         """Загружает документы по типу (страница 1).
 
         `title` — имя типа, если оно уже известно вызывающей стороне (LeftPanel
@@ -204,13 +218,13 @@ class DocumentsPanelController:
             dict: обогащенные данные
         """
         try:
-            doc_id = document_data.get('id')
+            doc_id = document_data.get("id")
             if not doc_id:
                 return document_data
 
             full_doc = self.repository.get_document_by_id(doc_id)
             if full_doc:
-                full_doc['history'] = self.get_document_history(doc_id)
+                full_doc["history"] = self.get_document_history(doc_id)
                 return full_doc
         except Exception as e:
             print(f"[Controller] Error getting full document for history: {e}")
@@ -237,10 +251,7 @@ class DocumentsPanelController:
     def get_current_user(self) -> dict:
         """Возвращает текущего пользователя"""
         # TODO: брать из AppState().current_user вместо заглушки
-        return {
-            'id': 1,
-            'full_name': 'Иванов И.И.'
-        }
+        return {"id": 1, "full_name": "Иванов И.И."}
 
     def get_employees_for_redirect(self) -> list:
         """Возвращает список сотрудников для перенаправления (логика контроллера)"""
@@ -248,12 +259,16 @@ class DocumentsPanelController:
             {"id": 1, "name": "Иванов И.И."},
             {"id": 2, "name": "Петров П.П."},
             {"id": 3, "name": "Морозов М.М."},
-            {"id": 4, "name": "Сидоров С.С."}
+            {"id": 4, "name": "Сидоров С.С."},
         ]
 
-    def redirect_document(self, document_id: int, recipient_ids: list, comment: str) -> bool:
+    def redirect_document(
+        self, document_id: int, recipient_ids: list, comment: str
+    ) -> bool:
         """Бизнес-логика выполнения перенаправления документа"""
-        print(f"[Controller] Redirecting doc {document_id} to {recipient_ids} with comment: {comment}")
+        print(
+            f"[Controller] Redirecting doc {document_id} to {recipient_ids} with comment: {comment}"
+        )
         return True
 
     def get_full_document_for_comment(self, document_data: dict) -> dict:
@@ -278,10 +293,10 @@ class DocumentsPanelController:
         try:
             doc = DocumentDataConfig.get_document_by_id(document_id)
             if doc:
-                if 'comments' not in doc:
-                    doc['comments'] = []
-                doc['comments'].append(new_comment)
-                doc['last_comment_text'] = new_comment.get('text', '')
+                if "comments" not in doc:
+                    doc["comments"] = []
+                doc["comments"].append(new_comment)
+                doc["last_comment_text"] = new_comment.get("text", "")
                 return True
         except Exception as e:
             print(f"[Controller] Error saving comment: {e}")
@@ -298,7 +313,7 @@ class DocumentsPanelController:
             dict: обогащенные данные
         """
         try:
-            doc_id = document_data.get('id')
+            doc_id = document_data.get("id")
             if not doc_id:
                 return document_data
 
@@ -321,7 +336,7 @@ class DocumentsPanelController:
             bool: успех операции
         """
         try:
-            doc_id = document_data.get('id')
+            doc_id = document_data.get("id")
             if not doc_id:
                 return False
 
@@ -335,7 +350,9 @@ class DocumentsPanelController:
         try:
             doc = self.repository.get_document_by_id(document_id)
             if doc:
-                self.repository._documents = [d for d in self.repository._documents if d.get('id') != document_id]
+                self.repository._documents = [
+                    d for d in self.repository._documents if d.get("id") != document_id
+                ]
                 return True
             return False
         except Exception as e:

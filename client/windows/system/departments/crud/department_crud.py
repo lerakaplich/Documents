@@ -7,12 +7,14 @@ from client.windows.system.departments.department_dialog import DepartmentDialog
 class DepartmentCrud:
     """Создание / редактирование / удаление отделов."""
 
-    def __init__(self, page, service, organizations_provider, items_provider, employees_provider):
+    def __init__(
+        self, page, service, organizations_provider, items_provider, employees_provider
+    ):
         self.page = page
         self.service = service
         self.get_orgs = organizations_provider
         self.get_items = items_provider
-        self.get_employees = employees_provider    # оставлен для совместимости
+        self.get_employees = employees_provider  # оставлен для совместимости
 
     # ─── публичные ───
 
@@ -21,7 +23,7 @@ class DepartmentCrud:
             self.page,
             organizations=self.get_orgs(),
             departments=self.get_items(),
-            employees=[],                                    # у нового отдела ещё нет сотрудников
+            employees=[],  # у нового отдела ещё нет сотрудников
             department_types=self._load_types(),
         )
         if dialog.exec():
@@ -30,7 +32,7 @@ class DepartmentCrud:
                 self._create(data)
 
     def edit(self, data: dict):
-        dept_id = data.get('id')
+        dept_id = data.get("id")
         if not dept_id:
             self.page.show_error_notification("ID отдела не найден")
             return
@@ -45,7 +47,7 @@ class DepartmentCrud:
                 department_data=server_dept,
                 organizations=self.get_orgs(),
                 departments=self.get_items(),
-                employees=staff,                             # ← реальные сотрудники отдела
+                employees=staff,  # ← реальные сотрудники отдела
                 department_types=self._load_types(),
             )
             if dialog.exec():
@@ -57,11 +59,12 @@ class DepartmentCrud:
     def delete(self, dept_id: int):
         name = "Неизвестный отдел"
         for it in self.get_items():
-            if it.get('id') == dept_id:
-                name = it.get('name', name)
+            if it.get("id") == dept_id:
+                name = it.get("name", name)
                 break
         reply = QMessageBox.question(
-            self.page, "Подтверждение удаления",
+            self.page,
+            "Подтверждение удаления",
             f"Удалить отдел «{name}»?\nЭто действие нельзя отменить.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
@@ -74,7 +77,7 @@ class DepartmentCrud:
     def _load_types(self):
         """Пытаемся взять реальные типы с сервера, иначе — fallback."""
         try:
-            if hasattr(self.service, 'get_department_types'):
+            if hasattr(self.service, "get_department_types"):
                 types = self.service.get_department_types()
                 if types:
                     return types
@@ -85,7 +88,7 @@ class DepartmentCrud:
     def _create(self, data):
         try:
             res = self.service.create_department(data)
-            new_id = res.get('id') if res else 0
+            new_id = res.get("id") if res else 0
             if res:
                 self.page.show_success_notification(f"Отдел «{res.get('name')}» создан")
                 self.page.load_data()
@@ -100,7 +103,9 @@ class DepartmentCrud:
         try:
             res = self.service.update_department(dept_id, data)
             if res:
-                self.page.show_success_notification(f"Отдел «{res.get('name')}» обновлен")
+                self.page.show_success_notification(
+                    f"Отдел «{res.get('name')}» обновлен"
+                )
                 self.page.load_data()
             else:
                 self.page.show_error_notification("Не удалось обновить отдел")

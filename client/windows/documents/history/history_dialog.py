@@ -2,21 +2,30 @@
 """
 Диалог для просмотра истории документа
 """
+
 import os
-import sys
 from datetime import datetime
-from typing import List, Dict, Optional
+
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import (
-    QDialog, QListWidgetItem, QWidget, QHBoxLayout,
-    QLabel, QVBoxLayout, QFrame, QApplication, QPushButton, QListWidget
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QSize
 from PyQt6.uic import loadUi
 
 from client.core.themes import apply_theme_to_widget, get_manager
 
 ROOT_DIR = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
 )
 
 
@@ -90,7 +99,7 @@ class HistoryItemWidget(QWidget):
 
         # Время события
         time_label = QLabel()
-        created_at = event.get('created_at')
+        created_at = event.get("created_at")
         if created_at:
             if isinstance(created_at, datetime):
                 time_str = created_at.strftime("%d.%m.%Y %H:%M")
@@ -156,36 +165,36 @@ class HistoryItemWidget(QWidget):
 
     def _format_event_text(self, event: dict) -> str:
         """Форматирует текст события в зависимости от типа"""
-        event_type = event.get('type', 'unknown')
+        event_type = event.get("type", "unknown")
 
-        if event_type == 'redirect':
-            from_user = event.get('from_user', 'Неизвестный пользователь')
-            to_user = event.get('to_user', 'Неизвестный пользователь')
-            return f'Пользователь {from_user} перенаправил документ пользователю {to_user}'
+        if event_type == "redirect":
+            from_user = event.get("from_user", "Неизвестный пользователь")
+            to_user = event.get("to_user", "Неизвестный пользователь")
+            return (
+                f"Пользователь {from_user} перенаправил документ пользователю {to_user}"
+            )
 
-
-        elif event_type == 'comment':
-            user = event.get('user', 'Неизвестный пользователь')
-            text = (event.get('text') or '').strip()
+        elif event_type == "comment":
+            user = event.get("user", "Неизвестный пользователь")
+            text = (event.get("text") or "").strip()
             if text:
-                return f'Пользователь {user} оставил комментарий «{text}»'
-            return f'Пользователь {user} оставил комментарий'
+                return f"Пользователь {user} оставил комментарий «{text}»"
+            return f"Пользователь {user} оставил комментарий"
 
-        elif event_type == 'status_change':
-            user = event.get('user', 'Неизвестный пользователь')
-            old_status = event.get('old_status', 'Неизвестный статус')
-            new_status = event.get('new_status', 'Неизвестный статус')
+        elif event_type == "status_change":
+            user = event.get("user", "Неизвестный пользователь")
+            old_status = event.get("old_status", "Неизвестный статус")
+            new_status = event.get("new_status", "Неизвестный статус")
             return f'Пользователь {user} изменил статус документа с "{old_status}" на "{new_status}"'
 
-
-        elif event_type == 'read':
-            user = event.get('user', 'Неизвестный пользователь')
-            return f'Пользователь {user} прочитал документ'
+        elif event_type == "read":
+            user = event.get("user", "Неизвестный пользователь")
+            return f"Пользователь {user} прочитал документ"
 
         else:
-            user = event.get('user', 'Неизвестный пользователь')
-            text = event.get('text', '')
-            return f'Пользователь {user} {text}'
+            user = event.get("user", "Неизвестный пользователь")
+            text = event.get("text", "")
+            return f"Пользователь {user} {text}"
 
     def reapply_theme(self):
         """Перекрасить стили под текущую тему."""
@@ -227,6 +236,7 @@ class HistoryItemWidget(QWidget):
 from client.core.state.app_state import AppState
 from client.services.document_service import DocumentService
 
+
 class HistoryDialog(QDialog):
     def __init__(self, document_data, parent=None, current_user=None, http_client=None):
         super().__init__(parent)
@@ -235,9 +245,10 @@ class HistoryDialog(QDialog):
         self.http_client = http_client or AppState().http_client
         self.document_service = DocumentService(self.http_client)
 
-
         # Загружаем UI
-        ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "history_dialog.ui")
+        ui_path = os.path.join(
+            ROOT_DIR, "client", "ui", "documents", "history_dialog.ui"
+        )
 
         if not os.path.exists(ui_path):
             print(f"Ошибка: UI файл не найден по пути: {ui_path}")
@@ -252,17 +263,18 @@ class HistoryDialog(QDialog):
             except Exception as e:
                 print(f"Ошибка загрузки UI: {e}")
                 import traceback
+
                 traceback.print_exc()
                 self._setup_fallback_ui()
 
     def _get_default_user(self) -> dict:
         """Возвращает тестового пользователя"""
         return {
-            'id': 1,
-            'full_name': 'Иванов И.И.',
-            'last_name': 'Иванов',
-            'first_name': 'Иван',
-            'middle_name': 'Иванович'
+            "id": 1,
+            "full_name": "Иванов И.И.",
+            "last_name": "Иванов",
+            "first_name": "Иван",
+            "middle_name": "Иванович",
         }
 
     def _setup_fallback_ui(self):
@@ -283,7 +295,9 @@ class HistoryDialog(QDialog):
         )
         layout.addWidget(title_label)
 
-        doc_number = self.document_data.get('reg_number', self.document_data.get('number', 'Без номера'))
+        doc_number = self.document_data.get(
+            "reg_number", self.document_data.get("number", "Без номера")
+        )
         doc_info = QLabel(f"Документ: №{doc_number}")
         doc_info.setStyleSheet(f"color: {_t.TEXT_MUTED};")
         layout.addWidget(doc_info)
@@ -336,15 +350,17 @@ class HistoryDialog(QDialog):
 
     def _setup_ui(self):
         """Настройка UI элементов"""
-        doc_number = self.document_data.get('reg_number', self.document_data.get('number', 'Без номера'))
-        if hasattr(self, 'docInfoLabel'):
+        doc_number = self.document_data.get(
+            "reg_number", self.document_data.get("number", "Без номера")
+        )
+        if hasattr(self, "docInfoLabel"):
             self.docInfoLabel.setText(f"Документ №{doc_number}")
 
         self.setMinimumWidth(700)
         self.setMinimumHeight(600)
 
     def _load_history(self):
-        if not hasattr(self, 'historyListWidget'):
+        if not hasattr(self, "historyListWidget"):
             print("Ошибка: historyListWidget не найден")
             return
 
@@ -364,7 +380,7 @@ class HistoryDialog(QDialog):
         if server_history:
             server_history = [self._map_server_event(ev) for ev in server_history]
 
-        history = server_history or self.document_data.get('history', [])
+        history = server_history or self.document_data.get("history", [])
         history = [ev for ev in history if ev.get("type") not in ("created", "read")]
 
         if not history:
@@ -378,9 +394,8 @@ class HistoryDialog(QDialog):
             self.historyListWidget.addItem(item)
             return
 
-
         def get_sort_key(event):
-            created_at = event.get('created_at')
+            created_at = event.get("created_at")
             if created_at is None:
                 return datetime.min
 
@@ -402,20 +417,22 @@ class HistoryDialog(QDialog):
             sorted_history = history
 
         for i, event in enumerate(sorted_history):
-            show_separator = (i < len(sorted_history) - 1)
+            show_separator = i < len(sorted_history) - 1
             self._add_event_to_list(event, show_separator)
 
         self.historyListWidget.scrollToBottom()
 
-    def _generate_history_from_data(self) -> List[Dict]:
+    def _generate_history_from_data(self) -> list[dict]:
         """Генерирует историю из имеющихся данных документа"""
         history = []
 
-        created_at = self.document_data.get('created_at')
+        created_at = self.document_data.get("created_at")
         if created_at:
-            creator = self.document_data.get('creator', self._get_default_user())
+            creator = self.document_data.get("creator", self._get_default_user())
             if isinstance(creator, dict):
-                creator_name = creator.get('full_name', creator.get('name', 'Неизвестный пользователь'))
+                creator_name = creator.get(
+                    "full_name", creator.get("name", "Неизвестный пользователь")
+                )
             else:
                 creator_name = str(creator)
 
@@ -427,63 +444,69 @@ class HistoryDialog(QDialog):
             elif not isinstance(created_at, datetime):
                 created_at = datetime.now()
 
-            history.append({
-                'type': 'created',
-                'user': creator_name,
-                'created_at': created_at
-            })
+            history.append(
+                {"type": "created", "user": creator_name, "created_at": created_at}
+            )
 
-        redirects = self.document_data.get('redirects', [])
+        redirects = self.document_data.get("redirects", [])
         for redirect in redirects:
-            redirected_at = redirect.get('redirected_at', datetime.now())
+            redirected_at = redirect.get("redirected_at", datetime.now())
             if isinstance(redirected_at, str):
                 try:
                     redirected_at = parse_datetime(redirected_at)
                 except Exception:
                     redirected_at = datetime.now()
 
-            history.append({
-                'type': 'redirect',
-                'from_user': redirect.get('from_user', 'Неизвестный пользователь'),
-                'to_user': redirect.get('to_user', 'Неизвестный пользователь'),
-                'created_at': redirected_at
-            })
+            history.append(
+                {
+                    "type": "redirect",
+                    "from_user": redirect.get("from_user", "Неизвестный пользователь"),
+                    "to_user": redirect.get("to_user", "Неизвестный пользователь"),
+                    "created_at": redirected_at,
+                }
+            )
 
-        comments = self.document_data.get('comments', [])
+        comments = self.document_data.get("comments", [])
         for comment in comments:
-            comment_time = comment.get('created_at', datetime.now())
+            comment_time = comment.get("created_at", datetime.now())
             if isinstance(comment_time, str):
                 try:
                     comment_time = parse_datetime(comment_time)
                 except Exception:
                     comment_time = datetime.now()
 
-            history.append({
-                'type': 'comment',
-                'user': comment.get('author_name', comment.get('author', 'Неизвестный пользователь')),
-                'text': comment.get('text', ''),
-                'created_at': comment_time
-            })
+            history.append(
+                {
+                    "type": "comment",
+                    "user": comment.get(
+                        "author_name", comment.get("author", "Неизвестный пользователь")
+                    ),
+                    "text": comment.get("text", ""),
+                    "created_at": comment_time,
+                }
+            )
 
-        status_changes = self.document_data.get('status_changes', [])
+        status_changes = self.document_data.get("status_changes", [])
         for change in status_changes:
-            changed_at = change.get('changed_at', datetime.now())
+            changed_at = change.get("changed_at", datetime.now())
             if isinstance(changed_at, str):
                 try:
                     changed_at = parse_datetime(changed_at)
                 except Exception:
                     changed_at = datetime.now()
 
-            history.append({
-                'type': 'status_change',
-                'user': change.get('user', 'Неизвестный пользователь'),
-                'old_status': change.get('old_status', ''),
-                'new_status': change.get('new_status', ''),
-                'created_at': changed_at
-            })
+            history.append(
+                {
+                    "type": "status_change",
+                    "user": change.get("user", "Неизвестный пользователь"),
+                    "old_status": change.get("old_status", ""),
+                    "new_status": change.get("new_status", ""),
+                    "created_at": changed_at,
+                }
+            )
 
         try:
-            history.sort(key=lambda x: x.get('created_at', datetime.now()))
+            history.sort(key=lambda x: x.get("created_at", datetime.now()))
         except Exception as e:
             print(f"[HistoryDialog] Error sorting generated history: {e}")
 
@@ -516,8 +539,12 @@ class HistoryDialog(QDialog):
 
         if et == "redirected":
             base["type"] = "redirect"
-            base["from_user"] = ev.get("employee_full_name") or "Неизвестный пользователь"
-            base["to_user"] = ev.get("target_employee_full_name") or "Неизвестный пользователь"
+            base["from_user"] = (
+                ev.get("employee_full_name") or "Неизвестный пользователь"
+            )
+            base["to_user"] = (
+                ev.get("target_employee_full_name") or "Неизвестный пользователь"
+            )
             return base
 
         if et == "read":
@@ -555,18 +582,18 @@ class HistoryDialog(QDialog):
 
     def _connect_signals(self):
         """Подключение сигналов"""
-        if hasattr(self, 'closeButton'):
+        if hasattr(self, "closeButton"):
             self.closeButton.clicked.connect(self.accept)
 
     def get_history(self) -> list:
         """Получить всю историю"""
-        return self.document_data.get('history', [])
+        return self.document_data.get("history", [])
 
     def reapply_theme(self):
         """Переприменить тему после set_theme()."""
         apply_theme_to_widget(self)
 
-        if hasattr(self, 'historyListWidget'):
+        if hasattr(self, "historyListWidget"):
             for i in range(self.historyListWidget.count()):
                 item = self.historyListWidget.item(i)
                 widget = self.historyListWidget.itemWidget(item)

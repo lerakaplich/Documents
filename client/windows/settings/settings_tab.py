@@ -1,16 +1,17 @@
 # client/windows/settings/settings_tab.py
 
 import os
-from PyQt6.QtWidgets import QWidget
+
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QWidget
 from PyQt6.uic import loadUi
 
 from client.core.themes import (
-    apply_theme_to_widget,
-    AVAILABLE_PALETTES,
     AVAILABLE_MODES,
-    resolve_theme_key,
+    AVAILABLE_PALETTES,
+    apply_theme_to_widget,
     get_palette_and_mode,
+    resolve_theme_key,
 )
 from client.windows.animations.animated_notification import NotificationManager
 
@@ -20,7 +21,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 class SettingsTab(QWidget):
     """Вкладка «Настройки»: контакты, безопасность, оформление, аккаунт."""
 
-    theme_change_requested = pyqtSignal(str)   # ключ темы, напр. "pink_dark"
+    theme_change_requested = pyqtSignal(str)  # ключ темы, напр. "pink_dark"
     logout_requested = pyqtSignal()
     phone_updated = pyqtSignal(str)  # ← новое
     email_updated = pyqtSignal(str)
@@ -58,6 +59,7 @@ class SettingsTab(QWidget):
         if not self.http_client:
             return
         from client.services.employee_service import EmployeeService
+
         try:
             me = EmployeeService(self.http_client).get_my_profile()
         except Exception as e:
@@ -145,9 +147,7 @@ class SettingsTab(QWidget):
         """Открывает диалог смены телефона."""
         from client.windows.settings.user_data.phone_edit_window import PhoneEditWindow
 
-        current_digits = "".join(
-            filter(str.isdigit, self.phoneValue.text())
-        ) or ""
+        current_digits = "".join(filter(str.isdigit, self.phoneValue.text())) or ""
 
         dialog = PhoneEditWindow(current_digits, parent=self)
         dialog.phone_updated.connect(self._apply_phone_change)
@@ -160,8 +160,8 @@ class SettingsTab(QWidget):
             )
             return
 
-        from client.services.employee_service import EmployeeService
         from client.core.state.data_events import get_data_events
+        from client.services.employee_service import EmployeeService
 
         try:
             EmployeeService(self.http_client).update_my_profile(
@@ -169,8 +169,7 @@ class SettingsTab(QWidget):
             )
         except Exception as e:
             self.notification_manager.show_notification(
-                f"Не удалось обновить телефон: {e}",
-                duration=4000
+                f"Не удалось обновить телефон: {e}", duration=4000
             )
             return
 
@@ -190,15 +189,14 @@ class SettingsTab(QWidget):
             )
             return
 
-        from client.services.employee_service import EmployeeService
         from client.core.state.data_events import get_data_events
+        from client.services.employee_service import EmployeeService
 
         try:
             EmployeeService(self.http_client).update_my_profile({"email": new_email})
         except Exception as e:
             self.notification_manager.show_notification(
-                f"Не удалось обновить email: {e}",
-                duration=4000
+                f"Не удалось обновить email: {e}", duration=4000
             )
             return
 
@@ -207,9 +205,7 @@ class SettingsTab(QWidget):
         # Оповещаем остальные части приложения
         get_data_events().profile_changed.emit({"email": new_email})
 
-        self.notification_manager.show_notification(
-            "Email обновлён", duration=3000
-        )
+        self.notification_manager.show_notification("Email обновлён", duration=3000)
 
     # ─────────────────────────────────────────────
     # Смена email
@@ -231,6 +227,5 @@ class SettingsTab(QWidget):
 
     def on_change_password(self):
         self.notification_manager.show_notification(
-            "Смена пароля будет добавлена позже",
-            duration=3000
+            "Смена пароля будет добавлена позже", duration=3000
         )

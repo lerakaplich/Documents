@@ -1,8 +1,11 @@
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QBrush, QColor
 from PyQt6.QtWidgets import QTableWidgetItem
 
-from client.windows.documents.table.builders.table_cell_item import CellData, TableCellItem
+from client.windows.documents.table.builders.table_cell_item import (
+    CellData,
+    TableCellItem,
+)
 
 
 class RowRenderer:
@@ -11,7 +14,9 @@ class RowRenderer:
     Поддерживает как стандартные QTableWidgetItem, так и кастомные TableCellItem
     """
 
-    def __init__(self, table_widget, config, signals, columns_config=None, http_client=None):
+    def __init__(
+        self, table_widget, config, signals, columns_config=None, http_client=None
+    ):
         self._table = table_widget
         self._config = config
         self._signals = signals
@@ -23,10 +28,14 @@ class RowRenderer:
         self._attachment_service = None
         if http_client is not None:
             from client.services.attachment_service import AttachmentService
+
             self._attachment_service = AttachmentService(http_client)
 
         # Создаем ОДИН общий экземпляр сигналов для всех билдеров ячеек
-        from client.windows.documents.table.builders.cell_builders import CellBuilderSignals
+        from client.windows.documents.table.builders.cell_builders import (
+            CellBuilderSignals,
+        )
+
         self.cell_signals = CellBuilderSignals()
         self.cell_signals.attachment_clicked.connect(self._on_attachment_clicked)
         self.cell_signals.attachment_upload.connect(self._on_attachment_upload)
@@ -38,23 +47,32 @@ class RowRenderer:
 
         # Создаем все билдеры как обычно
         from client.windows.documents.table.builders.cell_builders import (
-            TagsCellBuilder, AttachmentCellBuilder, ReplyCellBuilder
+            AttachmentCellBuilder,
+            ReplyCellBuilder,
+            TagsCellBuilder,
         )
 
-        self._tags_builder = TagsCellBuilder(config.get_even_row_color, config.get_odd_row_color)
+        self._tags_builder = TagsCellBuilder(
+            config.get_even_row_color, config.get_odd_row_color
+        )
         self._attachment_builder = AttachmentCellBuilder(
-            config.get_even_row_color, config.get_odd_row_color,
-            config.SUPPORTED_FORMATS, self.cell_signals,
-            attachment_service=self._attachment_service
+            config.get_even_row_color,
+            config.get_odd_row_color,
+            config.SUPPORTED_FORMATS,
+            self.cell_signals,
+            attachment_service=self._attachment_service,
         )
         self._reply_builder = ReplyCellBuilder(
-            config.get_even_row_color, config.get_odd_row_color,
-            config.SUPPORTED_FORMATS, self.cell_signals
+            config.get_even_row_color,
+            config.get_odd_row_color,
+            config.SUPPORTED_FORMATS,
+            self.cell_signals,
         )
 
         # Импортируем ваши билдеры
         from client.windows.documents.table.builders.cell_builders import (
-            CommentsCellBuilder, DelegatesCellBuilder
+            CommentsCellBuilder,
+            DelegatesCellBuilder,
         )
 
         # Создаем экземпляры билдеров
@@ -64,7 +82,7 @@ class RowRenderer:
         self._delegates_builder = DelegatesCellBuilder(
             even_color=config.get_even_row_color,
             odd_color=config.get_odd_row_color,
-            signals=self.cell_signals
+            signals=self.cell_signals,
         )
 
         # Кеш для TableCellItem
@@ -75,10 +93,7 @@ class RowRenderer:
 
     def _on_redirect_requested(self, doc_id: int, delegates: list):
         """Срабатывает при клике на делегатов в ячейке"""
-        document_data = {
-            "id": doc_id,
-            "delegates": delegates
-        }
+        document_data = {"id": doc_id, "delegates": delegates}
         if hasattr(self._signals, "document_action_triggered"):
             self._signals.document_action_triggered.emit("redirect", document_data)
 
@@ -92,7 +107,11 @@ class RowRenderer:
         self._columns = columns_config
 
     def render_row(self, row: int, document: dict):
-        bg_color = self._config.get_even_row_color() if row % 2 == 0 else self._config.get_odd_row_color()
+        bg_color = (
+            self._config.get_even_row_color()
+            if row % 2 == 0
+            else self._config.get_odd_row_color()
+        )
         col_map = self._get_col_map()
 
         self._hide_id_column(col_map)
@@ -122,7 +141,9 @@ class RowRenderer:
         is_pinned = document.get("is_pinned", False)
 
         item = QTableWidgetItem(str(reg_number) if reg_number else "")
-        item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        item.setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
         item.setBackground(QBrush(bg_color))
         item.setForeground(QBrush(self._config.get_text_color()))
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -130,7 +151,8 @@ class RowRenderer:
 
         if is_pinned:
             from client.core.utils.icon_manager import icon_manager
-            pin_icon = icon_manager.get_icon('pin', QSize(22, 22))
+
+            pin_icon = icon_manager.get_icon("pin", QSize(22, 22))
             item.setIcon(pin_icon)
 
         self._table.setItem(row, col, item)
@@ -156,12 +178,14 @@ class RowRenderer:
 
             if key == "status":
                 from client.core.data.document_data import DocumentDataConfig
+
                 value = DocumentDataConfig.get_status_text(value) if value else ""
             elif key == "direction":
                 from client.core.data.document_data import DocumentDataConfig
+
                 value = DocumentDataConfig.get_direction_text(value) if value else ""
             elif key == "created_at" or key == "deadline":
-                if value and hasattr(value, 'strftime'):
+                if value and hasattr(value, "strftime"):
                     value = value.strftime("%d.%m.%Y")
 
             item = self._create_text_item(str(value), bg_color)
@@ -172,7 +196,7 @@ class RowRenderer:
         list_columns = {
             "Отправители": "senders",
             "Получатели": "receivers",
-            "Исполнители": "executors"
+            "Исполнители": "executors",
         }
 
         for col_name, key in list_columns.items():
@@ -183,7 +207,11 @@ class RowRenderer:
             values = document.get(key, [])
             if isinstance(values, list):
                 if values and isinstance(values[0], dict):
-                    text = ", ".join(v.get("name", str(v)) for v in values) if values else "-"
+                    text = (
+                        ", ".join(v.get("name", str(v)) for v in values)
+                        if values
+                        else "-"
+                    )
                 else:
                     text = ", ".join(str(v) for v in values) if values else "-"
             else:
@@ -195,7 +223,9 @@ class RowRenderer:
 
     # ============== НОВЫЙ МЕТОД - ГИБРИДНЫЙ РЕНДЕРИНГ ==============
 
-    def _render_special_widgets_hybrid(self, row: int, document: dict, col_map: dict, bg_color):
+    def _render_special_widgets_hybrid(
+        self, row: int, document: dict, col_map: dict, bg_color
+    ):
         """
         ГИБРИДНЫЙ подход: используем TableCellItem для комментариев и делегатов,
         а для остальных - стандартные виджеты
@@ -253,7 +283,9 @@ class RowRenderer:
             widget = self._reply_builder.build(row, document)
             self._table.setCellWidget(row, col, widget)
 
-    def _create_comments_cell_item(self, row: int, document: dict, bg_color) -> TableCellItem:
+    def _create_comments_cell_item(
+        self, row: int, document: dict, bg_color
+    ) -> TableCellItem:
         """Создать TableCellItem для комментариев"""
         cell_data = CellData(
             value="",
@@ -263,14 +295,16 @@ class RowRenderer:
             foreground_color=QColor("#1B232A"),
             widget_builder=lambda r, d: self._comments_builder.build(r, d),
             editable=False,
-            user_data=document
+            user_data=document,
         )
 
         item = TableCellItem(cell_data)
         item.set_row_data(row, document)
         return item
 
-    def _create_delegates_cell_item(self, row: int, document: dict, bg_color) -> TableCellItem:
+    def _create_delegates_cell_item(
+        self, row: int, document: dict, bg_color
+    ) -> TableCellItem:
         """Создать TableCellItem для делегатов"""
         cell_data = CellData(
             value="",
@@ -280,7 +314,7 @@ class RowRenderer:
             foreground_color=QColor("#1B232A"),
             widget_builder=lambda r, d: self._delegates_builder.build(r, d),
             editable=False,
-            user_data=document
+            user_data=document,
         )
 
         item = TableCellItem(cell_data)
@@ -290,7 +324,9 @@ class RowRenderer:
     def _create_text_item(self, text: str, bg_color) -> QTableWidgetItem:
         """Создать стандартный текстовый элемент"""
         item = QTableWidgetItem(text)
-        item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        item.setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
         item.setBackground(QBrush(bg_color))
         item.setForeground(QBrush(self._config.get_text_color()))
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -308,17 +344,24 @@ class RowRenderer:
             pages = self._attachment_service.get_page_count(attachment_id)
 
         from PyQt6.QtWidgets import QMessageBox
+
         if pages is not None:
             QMessageBox.information(
-                None, "Вложение",
-                f"{name}\nСтраниц: {pages}\n\nПостраничный просмотр пока не реализован."
+                None,
+                "Вложение",
+                f"{name}\nСтраниц: {pages}\n\nПостраничный просмотр пока не реализован.",
             )
         else:
-            QMessageBox.information(None, "Вложение", f"{name}\n\nПросмотр пока не реализован.")
+            QMessageBox.information(
+                None, "Вложение", f"{name}\n\nПросмотр пока не реализован."
+            )
 
         self._signals.attachment_opened.emit(
             document.get("id"),
-            attachment.get('path') or attachment.get('storage_path') or attachment.get('preview_url') or ""
+            attachment.get("path")
+            or attachment.get("storage_path")
+            or attachment.get("preview_url")
+            or "",
         )
 
     def _on_attachment_upload(self, document_id, file_path):
@@ -326,9 +369,18 @@ class RowRenderer:
 
     def _on_reply_clicked(self, reply_file):
         from PyQt6.QtWidgets import QMessageBox
-        QMessageBox.information(None, "Открытие ответа", f"Открывается: {reply_file.get('name')}")
+
+        QMessageBox.information(
+            None, "Открытие ответа", f"Открывается: {reply_file.get('name')}"
+        )
 
     def _on_reply_upload(self, document_id, file_path):
-        from PyQt6.QtWidgets import QMessageBox
         import os
-        QMessageBox.information(None, "Загрузка ответа", f"Файл ответа загружен: {os.path.basename(file_path)}")
+
+        from PyQt6.QtWidgets import QMessageBox
+
+        QMessageBox.information(
+            None,
+            "Загрузка ответа",
+            f"Файл ответа загружен: {os.path.basename(file_path)}",
+        )

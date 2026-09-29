@@ -2,8 +2,10 @@
 Модуль управления иерархической структурой организаций и подразделений
 """
 
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QComboBox, QCheckBox
+from PyQt6.QtWidgets import QCheckBox, QComboBox, QHBoxLayout, QLabel
+
 from client.core.themes import get_manager
+
 
 class HierarchyManager:
     """Управляет динамической иерархией организаций и подразделений"""
@@ -38,20 +40,20 @@ class HierarchyManager:
         self.all_departments = {}
 
         for dept in departments:
-            dept_id = dept['id']
+            dept_id = dept["id"]
             self.departments_tree[dept_id] = {
-                'id': dept_id,
-                'name': dept['name'],
-                'parent_id': dept.get('parent_id'),
-                'organization_id': dept.get('organization_id'),
-                'children': []
+                "id": dept_id,
+                "name": dept["name"],
+                "parent_id": dept.get("parent_id"),
+                "organization_id": dept.get("organization_id"),
+                "children": [],
             }
-            self.all_departments[dept_id] = dept['name']
+            self.all_departments[dept_id] = dept["name"]
 
         for dept_id, dept_data in self.departments_tree.items():
-            parent_id = dept_data['parent_id']
+            parent_id = dept_data["parent_id"]
             if parent_id and parent_id in self.departments_tree:
-                self.departments_tree[parent_id]['children'].append(dept_id)
+                self.departments_tree[parent_id]["children"].append(dept_id)
 
     def group_departments_by_organization(self):
         """Группирует подразделения по организациям и находит корневые"""
@@ -60,13 +62,13 @@ class HierarchyManager:
         self.root_departments = {}
 
         for dept_id, dept_data in self.departments_tree.items():
-            org_id = dept_data['organization_id']
+            org_id = dept_data["organization_id"]
 
             if org_id not in self.departments_by_org:
                 self.departments_by_org[org_id] = []
             self.departments_by_org[org_id].append(dept_id)
 
-            if dept_data['parent_id'] is None:
+            if dept_data["parent_id"] is None:
                 if org_id not in self.root_departments:
                     self.root_departments[org_id] = []
                 self.root_departments[org_id].append(dept_id)
@@ -74,14 +76,18 @@ class HierarchyManager:
     def get_children_for_parent(self, parent_id, organization_id=None):
         """Получает дочерние подразделения для указанного родителя"""
         if parent_id is None:
-            return [(dept_id, self.departments_tree[dept_id]['name'])
-                    for dept_id in self.root_departments.get(organization_id, [])
-                    if dept_id in self.departments_tree]
+            return [
+                (dept_id, self.departments_tree[dept_id]["name"])
+                for dept_id in self.root_departments.get(organization_id, [])
+                if dept_id in self.departments_tree
+            ]
         else:
             parent = self.departments_tree.get(parent_id, {})
-            return [(child_id, self.departments_tree[child_id]['name'])
-                    for child_id in parent.get('children', [])
-                    if child_id in self.departments_tree]
+            return [
+                (child_id, self.departments_tree[child_id]["name"])
+                for child_id in parent.get("children", [])
+                if child_id in self.departments_tree
+            ]
 
     def get_level_name(self, level):
         """Возвращает название уровня"""
@@ -98,7 +104,9 @@ class HierarchyManager:
     def clear_hierarchy_layout(self):
         """Очищает динамические комбобоксы и их лейблы"""
         print("[DEBUG] clear_hierarchy_layout() вызван")
-        print(f"[DEBUG] Количество элементов в hierarchyLayout до очистки: {self.parent.hierarchyLayout.count()}")
+        print(
+            f"[DEBUG] Количество элементов в hierarchyLayout до очистки: {self.parent.hierarchyLayout.count()}"
+        )
 
         while self.parent.hierarchyLayout.count():
             item = self.parent.hierarchyLayout.takeAt(0)
@@ -116,7 +124,9 @@ class HierarchyManager:
         self.leader_checkbox = None
         self.leader_checkbox_layout = None
 
-        print(f"[DEBUG] hierarchyLayout очищен, элементов: {self.parent.hierarchyLayout.count()}")
+        print(
+            f"[DEBUG] hierarchyLayout очищен, элементов: {self.parent.hierarchyLayout.count()}"
+        )
 
     def build_initial_hierarchy(self, filter_external_only=False, employee=None):
         """Строит начальную иерархию: Организация -> ... -> Руководитель в конце"""
@@ -126,9 +136,13 @@ class HierarchyManager:
         self.clear_hierarchy_layout()
 
         # Добавляем организации
-        org_items = [(org_id, org_name) for org_id, org_name in self.organizations.items()]
+        org_items = [
+            (org_id, org_name) for org_id, org_name in self.organizations.items()
+        ]
         if filter_external_only:
-            org_items = [(org_id, org_name) for org_id, org_name in org_items if org_id != 1]
+            org_items = [
+                (org_id, org_name) for org_id, org_name in org_items if org_id != 1
+            ]
 
         if org_items:
             print("[DEBUG] Добавляем уровень 0 (Организация)")
@@ -137,8 +151,8 @@ class HierarchyManager:
             print("[WARNING] Список организаций пуст! Уровень 0 не добавлен")
 
         # Если редактируем сотрудника, устанавливаем выбранную организацию
-        if employee and employee.get('organization_id'):
-            org_id = employee.get('organization_id')
+        if employee and employee.get("organization_id"):
+            org_id = employee.get("organization_id")
             if self.hierarchy_combos:
                 combo = self.hierarchy_combos[0][0]
                 index = combo.findData(org_id)
@@ -179,9 +193,10 @@ class HierarchyManager:
     def _apply_leader_checkbox_style(self):
         """Стиль чекбокса руководителя с иконками темы."""
         from client.core.themes.icon_utils import icon_path
+
         _t = get_manager().current
 
-        checked   = icon_path("cb_checked",   _t.ICON_COLOR)
+        checked = icon_path("cb_checked", _t.ICON_COLOR)
         unchecked = icon_path("cb_unchecked", _t.ICON_COLOR)
 
         self.leader_checkbox.setStyleSheet(f"""
@@ -285,7 +300,9 @@ class HierarchyManager:
 
         insert_index = self.parent.hierarchyLayout.count()
         if self.leader_checkbox_layout:
-            leader_idx = self.parent.hierarchyLayout.indexOf(self.leader_checkbox_layout)
+            leader_idx = self.parent.hierarchyLayout.indexOf(
+                self.leader_checkbox_layout
+            )
             if leader_idx != -1:
                 insert_index = leader_idx
 
@@ -294,7 +311,11 @@ class HierarchyManager:
         self.hierarchy_combos.insert(level, (combo, label, level))
 
         for i in range(level + 1, len(self.hierarchy_combos)):
-            self.hierarchy_combos[i] = (self.hierarchy_combos[i][0], self.hierarchy_combos[i][1], i)
+            self.hierarchy_combos[i] = (
+                self.hierarchy_combos[i][0],
+                self.hierarchy_combos[i][1],
+                i,
+            )
             self.hierarchy_combos[i][0].setProperty("level", i)
 
         if selected_id:
@@ -330,10 +351,12 @@ class HierarchyManager:
         print(f"[DEBUG] on_hierarchy_changed(index={index})")
 
         combo = self.parent.sender()
-        if not combo: return
+        if not combo:
+            return
 
         level = combo.property("level")
-        if level is None: return
+        if level is None:
+            return
 
         if self.leader_checkbox:
             self.leader_checkbox.blockSignals(True)
@@ -345,7 +368,9 @@ class HierarchyManager:
         if selected_id:
             if level == 0:
                 # Уровень организации → берём КОРНЕВЫЕ отделы этой организации
-                children = self.get_children_for_parent(None, organization_id=selected_id)
+                children = self.get_children_for_parent(
+                    None, organization_id=selected_id
+                )
             else:
                 # Уровень отдела → берём его дочерние
                 children = self.get_children_for_parent(selected_id)
@@ -364,7 +389,7 @@ class HierarchyManager:
         if level < len(self.hierarchy_combos):
             combo, label, lvl = self.hierarchy_combos[level]
             base_text = label.property("base_text") or self.get_level_name(level) + ":"
-            clean_base = base_text.rstrip(':')
+            clean_base = base_text.rstrip(":")
             new_text = f"{clean_base}:"
             label.setText(new_text)
             print(f"[DEBUG] Метка обновлена на: '{new_text}'")
@@ -393,7 +418,9 @@ class HierarchyManager:
                 level_name = self.get_level_name(last_level).lower()
                 item_name = self.get_item_name(last_selected)
                 if item_name:
-                    self.leader_checkbox.setText(f"Является руководителем «{item_name}»")
+                    self.leader_checkbox.setText(
+                        f"Является руководителем «{item_name}»"
+                    )
                 else:
                     self.leader_checkbox.setText(f"Является руководителем {level_name}")
             else:
@@ -404,18 +431,26 @@ class HierarchyManager:
                         prev_id = self.current_hierarchy_path[prev_level]
                         item_name = self.get_item_name(prev_id)
                         if item_name:
-                            self.leader_checkbox.setText(f"Является руководителем «{item_name}»")
+                            self.leader_checkbox.setText(
+                                f"Является руководителем «{item_name}»"
+                            )
                         else:
-                            self.leader_checkbox.setText(f"Является руководителем {level_name}")
+                            self.leader_checkbox.setText(
+                                f"Является руководителем {level_name}"
+                            )
                     else:
-                        self.leader_checkbox.setText(f"Является руководителем {level_name}")
+                        self.leader_checkbox.setText(
+                            f"Является руководителем {level_name}"
+                        )
                 else:
                     self.leader_checkbox.setText("Является руководителем организации")
         else:
             org_id = self.current_hierarchy_path[0]
             org_name = self.get_item_name(org_id)
             if org_name:
-                self.leader_checkbox.setText(f"Является руководителем организации «{org_name}»")
+                self.leader_checkbox.setText(
+                    f"Является руководителем организации «{org_name}»"
+                )
             else:
                 self.leader_checkbox.setText("Является руководителем организации")
 
@@ -427,8 +462,12 @@ class HierarchyManager:
             if len(self.current_hierarchy_path) == 0:
                 self.leader_checkbox.setChecked(False)
                 from PyQt6.QtWidgets import QMessageBox
-                QMessageBox.warning(self.parent, "Предупреждение",
-                                    "Для назначения руководителем необходимо выбрать организацию")
+
+                QMessageBox.warning(
+                    self.parent,
+                    "Предупреждение",
+                    "Для назначения руководителем необходимо выбрать организацию",
+                )
                 return
 
             if len(self.hierarchy_combos) > 1:
@@ -498,39 +537,65 @@ class HierarchyManager:
         print("[DEBUG] set_test_data() вызван")
         print("[INFO] Используются тестовые данные")
 
-        self.organizations = {
-            1: "ОАО МАЗ",
-            2: "ООО Тестовая организация"
-        }
+        self.organizations = {1: "ОАО МАЗ", 2: "ООО Тестовая организация"}
 
         self.departments_tree = {
-            1: {'id': 1, 'name': 'Управление информационных технологий', 'parent_id': None, 'organization_id': 1,
-                'children': [2, 3]},
-            2: {'id': 2, 'name': 'Отдел разработки', 'parent_id': 1, 'organization_id': 1, 'children': [4]},
-            3: {'id': 3, 'name': 'Отдел тестирования', 'parent_id': 1, 'organization_id': 1, 'children': []},
-            4: {'id': 4, 'name': 'Группа бэкенда', 'parent_id': 2, 'organization_id': 1, 'children': []},
-            5: {'id': 5, 'name': 'Управление продаж', 'parent_id': None, 'organization_id': 2, 'children': [6]},
-            6: {'id': 6, 'name': 'Отдел прямых продаж', 'parent_id': 5, 'organization_id': 2, 'children': []},
+            1: {
+                "id": 1,
+                "name": "Управление информационных технологий",
+                "parent_id": None,
+                "organization_id": 1,
+                "children": [2, 3],
+            },
+            2: {
+                "id": 2,
+                "name": "Отдел разработки",
+                "parent_id": 1,
+                "organization_id": 1,
+                "children": [4],
+            },
+            3: {
+                "id": 3,
+                "name": "Отдел тестирования",
+                "parent_id": 1,
+                "organization_id": 1,
+                "children": [],
+            },
+            4: {
+                "id": 4,
+                "name": "Группа бэкенда",
+                "parent_id": 2,
+                "organization_id": 1,
+                "children": [],
+            },
+            5: {
+                "id": 5,
+                "name": "Управление продаж",
+                "parent_id": None,
+                "organization_id": 2,
+                "children": [6],
+            },
+            6: {
+                "id": 6,
+                "name": "Отдел прямых продаж",
+                "parent_id": 5,
+                "organization_id": 2,
+                "children": [],
+            },
         }
 
         self.all_departments = {
-            1: 'Управление информационных технологий',
-            2: 'Отдел разработки',
-            3: 'Отдел тестирования',
-            4: 'Группа бэкенда',
-            5: 'Управление продаж',
-            6: 'Отдел прямых продаж'
+            1: "Управление информационных технологий",
+            2: "Отдел разработки",
+            3: "Отдел тестирования",
+            4: "Группа бэкенда",
+            5: "Управление продаж",
+            6: "Отдел прямых продаж",
         }
 
-        self.departments_by_org = {
-            1: [1, 2, 3, 4],
-            2: [5, 6]
-        }
+        self.departments_by_org = {1: [1, 2, 3, 4], 2: [5, 6]}
 
-        self.root_departments = {
-            1: [1],
-            2: [5]
-        }
+        self.root_departments = {1: [1], 2: [5]}
 
     def apply_theme(self):
         """Перекрасить динамически созданные виджеты (combos, labels, checkbox)."""

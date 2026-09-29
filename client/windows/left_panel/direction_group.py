@@ -1,10 +1,18 @@
 import os
-import sys
-from typing import List, Dict, Any
-from PyQt6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QApplication, QSpacerItem, QSizePolicy
-from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal, QTimer, QSize
+
+from PyQt6.QtCore import (
+    QEasingCurve,
+    QPropertyAnimation,
+    QSize,
+    Qt,
+    QTimer,
+)
 from PyQt6.QtGui import QIcon
-from PyQt6.uic import loadUi
+from PyQt6.QtWidgets import (
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ICONS_PATH = "D:/Documents/client/icons"
@@ -16,6 +24,7 @@ class DirectionGroup(QWidget):
     def __init__(self, group_name: str, parent=None):
         super().__init__(parent)
         from client.core.themes import get_manager
+
         _t = get_manager().current
 
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -63,6 +72,7 @@ class DirectionGroup(QWidget):
     def _toggle_button_style(self) -> str:
         """Стиль кнопки-переключателя группы."""
         from client.core.themes import get_manager
+
         _t = get_manager().current
         return f"""
             QPushButton {{
@@ -139,6 +149,7 @@ class DirectionGroup(QWidget):
     def animate_button_press(self):
         """Мини-анимация при нажатии на кнопку"""
         from client.core.themes import get_manager
+
         _t = get_manager().current
 
         original_style = self.toggle_btn.styleSheet()
@@ -183,6 +194,7 @@ class DirectionGroup(QWidget):
     def _direction_button_style(self) -> str:
         """Стиль кнопки направления из АКТУАЛЬНОЙ темы."""
         from client.core.themes import get_manager
+
         _t = get_manager().current
         return f"""
             QPushButton {{
@@ -220,6 +232,7 @@ class DirectionGroup(QWidget):
     def animate_direction_button(self, button):
         """Анимация при клике на кнопку направления"""
         from client.core.themes import get_manager
+
         t = get_manager().current
 
         original_style = button.styleSheet()
@@ -259,6 +272,7 @@ class DirectionGroup(QWidget):
     def reapply_theme(self):
         """Вызывается при смене темы."""
         from client.core.themes import get_manager
+
         _t = get_manager().current
 
         self.setStyleSheet(f"background-color: {_t.SIDEBAR_BG};")

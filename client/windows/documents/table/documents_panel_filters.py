@@ -6,7 +6,8 @@
 panel._update_table(...) — единственная точка, которая реально трогает UI
 таблицы, поэтому она остаётся в самой панели.
 """
-from PyQt6.QtCore import QTimer, QDate
+
+from PyQt6.QtCore import QDate, QTimer
 
 from client.windows.documents.menus.filter_menu import FilterMenu
 from client.windows.documents.menus.status_menu import StatusesMenu
@@ -14,7 +15,6 @@ from client.windows.period_dialog import PeriodDialog
 
 
 class DocumentsFilterController:
-
     def __init__(self, panel):
         self.panel = panel
         self.filter_menu = None
@@ -26,13 +26,13 @@ class DocumentsFilterController:
         self._timer.setInterval(200)
         self._timer.timeout.connect(self._reload)
 
-        if hasattr(panel, 'filterBtn'):
+        if hasattr(panel, "filterBtn"):
             self.filter_menu = FilterMenu(panel)
             self.filter_menu.filterChanged.connect(self.schedule_reload)
             self.filter_menu.dateFilterRequested.connect(self._choose_date_range)
             panel.filterBtn.clicked.connect(self.show_filter_menu)
 
-        if hasattr(panel, 'statusesBtn'):
+        if hasattr(panel, "statusesBtn"):
             self.statuses_menu = StatusesMenu(panel)
             self.statuses_menu.statusesChanged.connect(self.schedule_reload)
             panel.statusesBtn.clicked.connect(self.show_statuses_menu)
@@ -51,7 +51,9 @@ class DocumentsFilterController:
 
     def _reload(self):
         f = self.filter_menu.get_active_filters() if self.filter_menu else {}
-        statuses = self.statuses_menu.get_checked_statuses() if self.statuses_menu else []
+        statuses = (
+            self.statuses_menu.get_checked_statuses() if self.statuses_menu else []
+        )
         documents, title, view_mode, doc_type = self.panel.controller.set_filters(
             scope=f.get("scope", "all"),
             is_completed=f.get("is_completed"),
@@ -72,5 +74,7 @@ class DocumentsFilterController:
         dialog.exec()
 
     def _on_period_selected(self, period: dict):
-        self.filter_menu.set_date_range(period["start_date_python"], period["end_date_python"])
+        self.filter_menu.set_date_range(
+            period["start_date_python"], period["end_date_python"]
+        )
         self.schedule_reload()

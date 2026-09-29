@@ -1,19 +1,35 @@
-import sys
+import logging
 import os
-from PyQt6.QtWidgets import QMainWindow, QWidget, QGraphicsDropShadowEffect, QApplication
-from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QUrl, QPoint, QParallelAnimationGroup, pyqtSignal, \
-    QObject, QThread, QTimer
+import sys
+
+from PyQt6.QtCore import (
+    QEasingCurve,
+    QObject,
+    QParallelAnimationGroup,
+    QPoint,
+    QPropertyAnimation,
+    Qt,
+    QThread,
+    QTimer,
+    QUrl,
+    pyqtSignal,
+)
 from PyQt6.QtGui import QColor, QPixmap
 from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWidgets import (
+    QApplication,
+    QGraphicsDropShadowEffect,
+    QMainWindow,
+    QWidget,
+)
 from PyQt6.uic import loadUi
-import logging
 
 from client.core.state.app_state import AppState
+from client.windows.animations.animated_notification import NotificationManager
 from client.windows.login.auth_widget import AuthWidget
 from client.windows.login.new_password_widget import NewPasswordWidget
 from client.windows.login.reset_password_widget import ResetPasswordWidget
 from client.windows.main_window import MainWindow
-from client.windows.animations.animated_notification import NotificationManager
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +62,15 @@ class AutoLoginWorker(QObject):
             logger.error(f"Ошибка автовхода: {e}")
             self.failed.emit(str(e))
 
+
 class LoginWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
         # Получаем корневую директорию проекта (client)
-        self.root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.root_dir = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
 
         # Правильный путь к back_login.ui
         ui_path = os.path.join(self.root_dir, "ui", "login", "back_login.ui")
@@ -100,9 +119,10 @@ class LoginWindow(QMainWindow):
                 self.logoLabel.setStyleSheet("background-color: transparent;")
                 self.logoLabel.setText("")
                 scaled_pixmap = pixmap.scaled(
-                    200, 150,
+                    200,
+                    150,
                     Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
+                    Qt.TransformationMode.SmoothTransformation,
                 )
                 self.logoLabel.setPixmap(scaled_pixmap)
                 self.logoLabel.setScaledContents(False)
@@ -113,31 +133,41 @@ class LoginWindow(QMainWindow):
 
         # 5. Подключение сигналов переключения
 
-        if hasattr(self.new_password_card, 'password_changed_successfully'):
-            self.new_password_card.password_changed_successfully.connect(self.switch_to_main_window)
+        if hasattr(self.new_password_card, "password_changed_successfully"):
+            self.new_password_card.password_changed_successfully.connect(
+                self.switch_to_main_window
+            )
 
-        if hasattr(self.new_password_card, 'password_changed_successfully'):
-            self.new_password_card.password_changed_successfully.connect(self.switch_to_main_window)
+        if hasattr(self.new_password_card, "password_changed_successfully"):
+            self.new_password_card.password_changed_successfully.connect(
+                self.switch_to_main_window
+            )
 
-        if hasattr(self.auth_card, 'forgotPasswordButton'):
-            self.auth_card.forgotPasswordButton.clicked.connect(self.show_reset_password)
+        if hasattr(self.auth_card, "forgotPasswordButton"):
+            self.auth_card.forgotPasswordButton.clicked.connect(
+                self.show_reset_password
+            )
 
-        if hasattr(self.reset_card, 'back_to_login'):
+        if hasattr(self.reset_card, "back_to_login"):
             self.reset_card.back_to_login.connect(self.show_login_card)
 
         # ВАЖНО: Подключаем сигнал go_to_new_password к обработчику
-        if hasattr(self.reset_card, 'go_to_new_password'):
+        if hasattr(self.reset_card, "go_to_new_password"):
             self.reset_card.go_to_new_password.connect(self._on_go_to_new_password)
 
-        if hasattr(self.new_password_card, 'backToLoginButton'):
-            self.new_password_card.backToLoginButton.clicked.connect(self.show_login_card)
+        if hasattr(self.new_password_card, "backToLoginButton"):
+            self.new_password_card.backToLoginButton.clicked.connect(
+                self.show_login_card
+            )
 
         # 6. Подключение сигналов для перехода в MainWindow
-        if hasattr(self.auth_card, 'login_successful'):
+        if hasattr(self.auth_card, "login_successful"):
             self.auth_card.login_successful.connect(self.switch_to_main_window)
 
-        if hasattr(self.new_password_card, 'password_changed_successfully'):
-            self.new_password_card.password_changed_successfully.connect(self.switch_to_main_window)
+        if hasattr(self.new_password_card, "password_changed_successfully"):
+            self.new_password_card.password_changed_successfully.connect(
+                self.switch_to_main_window
+            )
 
         # Передаем менеджер уведомлений в виджеты
         self.auth_card.set_notification_manager(self.notification_manager)
@@ -227,7 +257,7 @@ class LoginWindow(QMainWindow):
             self.main_window.logout_requested.connect(self.on_logout_from_main)
             self.main_window.showMaximized()
 
-        if user_data and hasattr(self.main_window, 'set_user_data'):
+        if user_data and hasattr(self.main_window, "set_user_data"):
             logger.info("📥 Устанавливаем данные пользователя в MainWindow")
             self.main_window.set_user_data(user_data)
 
@@ -245,6 +275,7 @@ class LoginWindow(QMainWindow):
     def _collect_garbage(self):
         """Принудительный сборщик мусора после уничтожения WebEngine."""
         import gc
+
         collected = gc.collect()
         logger.info(f"🧹 gc.collect() освободил {collected} объектов")
 
@@ -298,22 +329,18 @@ class LoginWindow(QMainWindow):
         self.auth_card.move(auth_x, auth_y)
         self.auth_card.show()
 
-        self.reset_card.move(
-            bg_w + 100,
-            (bg_h - self.reset_card.height()) // 2
-        )
+        self.reset_card.move(bg_w + 100, (bg_h - self.reset_card.height()) // 2)
         self.new_password_card.move(
-            bg_w + 100,
-            (bg_h - self.new_password_card.height()) // 2
+            bg_w + 100, (bg_h - self.new_password_card.height()) // 2
         )
 
     def _clear_auth_fields(self):
         """Очищает поля авторизации и снимает галочку 'Запомнить меня'."""
-        if hasattr(self.auth_card, 'phoneInput'):
+        if hasattr(self.auth_card, "phoneInput"):
             self.auth_card.phoneInput.clear()
-        if hasattr(self.auth_card, 'passwordInput'):
+        if hasattr(self.auth_card, "passwordInput"):
             self.auth_card.passwordInput.clear()
-        if hasattr(self.auth_card, 'rememberCheckBox'):
+        if hasattr(self.auth_card, "rememberCheckBox"):
             self.auth_card.rememberCheckBox.setChecked(False)
 
     def _check_saved_session(self):
@@ -359,11 +386,11 @@ class LoginWindow(QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if hasattr(self, 'web_view') and self.web_view:
+        if hasattr(self, "web_view") and self.web_view:
             self.web_view.setGeometry(0, 0, self.width(), self.height())
         self._update_cards_position()
         # Обновляем позиции уведомлений
-        if hasattr(self, 'notification_manager'):
+        if hasattr(self, "notification_manager"):
             self.notification_manager._update_notifications_position()
 
     def _update_cards_position(self):
@@ -397,12 +424,14 @@ class LoginWindow(QMainWindow):
         Обработчик перехода к виджету нового пароля
         Вызывается из reset_card при успешной верификации кода
         """
-        logger.info(f"📥 Получены данные в LoginWindow: phone={phone_number}, code={code}")
+        logger.info(
+            f"📥 Получены данные в LoginWindow: phone={phone_number}, code={code}"
+        )
 
         # Передаем данные в виджет нового пароля
-        if hasattr(self, 'new_password_card'):
+        if hasattr(self, "new_password_card"):
             self.new_password_card.set_reset_data(phone_number, code)
-            logger.info(f"✅ Данные переданы в NewPasswordWidget")
+            logger.info("✅ Данные переданы в NewPasswordWidget")
         else:
             logger.error("❌ new_password_card не найден в LoginWindow")
             return
@@ -414,12 +443,12 @@ class LoginWindow(QMainWindow):
         """Показать окно восстановления пароля"""
         # Получаем номер телефона из поля ввода
         phone = ""
-        if hasattr(self.auth_card, 'phoneInput'):
+        if hasattr(self.auth_card, "phoneInput"):
             phone = self.auth_card.phoneInput.text().strip()
             print(f"📱 Номер телефона для восстановления: {phone}")
 
         # Передаем номер в виджет восстановления
-        if hasattr(self.reset_card, 'set_phone_number'):
+        if hasattr(self.reset_card, "set_phone_number"):
             self.reset_card.set_phone_number(phone)
         else:
             print("⚠️ ResetPasswordWidget не имеет метода set_phone_number")
@@ -515,15 +544,15 @@ class LoginWindow(QMainWindow):
         anim_new_password = QPropertyAnimation(self.new_password_card, b"pos")
         anim_new_password.setDuration(450)
         anim_new_password.setStartValue(self.new_password_card.pos())
-        anim_new_password.setEndValue(QPoint(new_password_target_x, self.new_password_card.y()))
+        anim_new_password.setEndValue(
+            QPoint(new_password_target_x, self.new_password_card.y())
+        )
         anim_new_password.setEasingCurve(QEasingCurve.Type.InOutCubic)
 
         self.anim_group.addAnimation(anim_auth)
         self.anim_group.addAnimation(anim_reset)
         self.anim_group.addAnimation(anim_new_password)
         self.anim_group.start()
-
-
 
     def on_main_window_closed(self):
         """Обработка закрытия главного окна"""

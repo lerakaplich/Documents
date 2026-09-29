@@ -1,14 +1,16 @@
-from PyQt6.QtWidgets import QDialog, QColorDialog
-from PyQt6.QtCore import pyqtSignal
-from PyQt6 import uic
 import os
 from functools import partial
 
-from client.core.themes import apply_theme_to_widget, T
+from PyQt6 import uic
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QColorDialog, QDialog
+
+from client.core.themes import T, apply_theme_to_widget
 
 
 class ColorPickerDialog(QDialog):
     """Диалог выбора цвета для тега"""
+
     color_selected = pyqtSignal(str)
 
     def __init__(self, current_color=None, parent=None):
@@ -20,9 +22,14 @@ class ColorPickerDialog(QDialog):
 
         ui_path = os.path.join(
             os.path.dirname(__file__),
-            '..', '..', '..', 'ui', 'system', 'tags', "color_picker_dialog.ui"
+            "..",
+            "..",
+            "..",
+            "ui",
+            "system",
+            "tags",
+            "color_picker_dialog.ui",
         )
-
 
         uic.loadUi(ui_path, self)
         apply_theme_to_widget(self)
@@ -33,10 +40,26 @@ class ColorPickerDialog(QDialog):
     def setup_connections(self):
         """Подключение всех сигналов"""
         preset_colors = [
-            "#ccab6e", "#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4",
-            "#f9ca24", "#f0932b", "#eb4d4b", "#6ab04c", "#7ed6df",
-            "#e056fd", "#686de0", "#30336b", "#95afc0", "#22a6b3",
-            "#ff9ff3", "#feca57", "#ff6b6b", "#48dbfb", "#1dd1a1"
+            "#ccab6e",
+            "#ff6b6b",
+            "#4ecdc4",
+            "#45b7d1",
+            "#96ceb4",
+            "#f9ca24",
+            "#f0932b",
+            "#eb4d4b",
+            "#6ab04c",
+            "#7ed6df",
+            "#e056fd",
+            "#686de0",
+            "#30336b",
+            "#95afc0",
+            "#22a6b3",
+            "#ff9ff3",
+            "#feca57",
+            "#ff6b6b",
+            "#48dbfb",
+            "#1dd1a1",
         ]
 
         # Подключаем все кнопки палитры (используем partial вместо lambda)
@@ -47,11 +70,11 @@ class ColorPickerDialog(QDialog):
             btn.clicked.connect(partial(self.on_color_preset_clicked, color))
 
         # Подключаем остальные кнопки
-        if hasattr(self, 'custom_btn'):
+        if hasattr(self, "custom_btn"):
             self.custom_btn.clicked.connect(self.open_color_dialog)
-        if hasattr(self, 'ok_btn'):
+        if hasattr(self, "ok_btn"):
             self.ok_btn.clicked.connect(self.accept)
-        if hasattr(self, 'cancel_btn'):
+        if hasattr(self, "cancel_btn"):
             self.cancel_btn.clicked.connect(self.reject)
 
     def on_color_preset_clicked(self, color):
@@ -68,7 +91,7 @@ class ColorPickerDialog(QDialog):
 
     def update_preview(self):
         """Обновляет превью цвета"""
-        if hasattr(self, 'preview_frame'):
+        if hasattr(self, "preview_frame"):
             self.preview_frame.setStyleSheet(f"""
                 QFrame {{
                     background-color: {self.selected_color};

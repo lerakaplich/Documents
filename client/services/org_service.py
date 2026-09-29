@@ -3,8 +3,9 @@
 """
 Сервис для работы с организациями через API
 """
+
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from client.core.http_client import HttpClient
 
@@ -18,14 +19,15 @@ class OrgService:
         self.http = http_client
         self.base_path = "/org"
 
-    def get_all_organizations(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+    def get_all_organizations(
+        self, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, Any]]:
         """Получить все организации"""
         try:
             logger.info("📥 Запрос на получение организаций...")
 
             response = self.http.get(
-                f"{self.base_path}",
-                params={"limit": limit, "offset": offset}
+                f"{self.base_path}", params={"limit": limit, "offset": offset}
             )
 
             logger.info(f"📥 Получен ответ: {response}")
@@ -35,10 +37,11 @@ class OrgService:
         except Exception as e:
             logger.error(f"❌ Ошибка получения организаций: {e}")
             import traceback
+
             traceback.print_exc()
             return []
 
-    def get_organization(self, org_id: int) -> Optional[Dict[str, Any]]:
+    def get_organization(self, org_id: int) -> dict[str, Any] | None:
         """Получить организацию по ID"""
         try:
             response = self.http.get(f"{self.base_path}/{org_id}")
@@ -47,7 +50,7 @@ class OrgService:
             logger.error(f"Ошибка получения организации {org_id}: {e}")
             return None
 
-    def get_org_structure(self, org_id: int) -> List[Dict[str, Any]]:
+    def get_org_structure(self, org_id: int) -> list[dict[str, Any]]:
         """Получить структуру организации"""
         try:
             response = self.http.get(f"{self.base_path}/{org_id}/structure")
@@ -60,60 +63,59 @@ class OrgService:
 
     # client/services/org_service.py
 
-    def create_organization(self, org_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def create_organization(self, org_data: dict[str, Any]) -> dict[str, Any] | None:
         """Создать новую организацию"""
         try:
             # Формируем данные для сервера
             server_data = {
-                'name': org_data.get('name', ''),
-                'full_name': org_data.get('full_name', ''),
-                'short_name': org_data.get('short_name', ''),
-                'unp': org_data.get('unp', ''),
-                'address': org_data.get('address', ''),
-                'phone_number': org_data.get('phone_number', org_data.get('phone', '')),  # Приоритет phone_number
-                'email': org_data.get('email', ''),
-                'director': org_data.get('director', ''),
-                'smdo_code': org_data.get('smdo_code', ''),
-                'is_subscriber': org_data.get('is_subscriber', False)
+                "name": org_data.get("name", ""),
+                "full_name": org_data.get("full_name", ""),
+                "short_name": org_data.get("short_name", ""),
+                "unp": org_data.get("unp", ""),
+                "address": org_data.get("address", ""),
+                "phone_number": org_data.get(
+                    "phone_number", org_data.get("phone", "")
+                ),  # Приоритет phone_number
+                "email": org_data.get("email", ""),
+                "director": org_data.get("director", ""),
+                "smdo_code": org_data.get("smdo_code", ""),
+                "is_subscriber": org_data.get("is_subscriber", False),
             }
 
-            response = self.http.post(
-                f"{self.base_path}",
-                json=server_data
-            )
+            response = self.http.post(f"{self.base_path}", json=server_data)
             logger.info(f"✅ Организация создана: {response}")
             return response
         except Exception as e:
             logger.error(f"❌ Ошибка создания организации: {e}")
             return None
 
-    def update_organization(self, org_id: int, org_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def update_organization(
+        self, org_id: int, org_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Обновить организацию"""
         try:
             # Формируем данные для сервера
             server_data = {
-                'name': org_data.get('name', ''),
-                'full_name': org_data.get('full_name', ''),
-                'short_name': org_data.get('short_name', ''),
-                'unp': org_data.get('unp', ''),
-                'address': org_data.get('address', ''),
-                'phone_number': org_data.get('phone_number', org_data.get('phone', '')),  # Приоритет phone_number
-                'email': org_data.get('email', ''),
-                'director': org_data.get('director', ''),
-                'smdo_code': org_data.get('smdo_code', ''),
-                'is_subscriber': org_data.get('is_subscriber', False)
+                "name": org_data.get("name", ""),
+                "full_name": org_data.get("full_name", ""),
+                "short_name": org_data.get("short_name", ""),
+                "unp": org_data.get("unp", ""),
+                "address": org_data.get("address", ""),
+                "phone_number": org_data.get(
+                    "phone_number", org_data.get("phone", "")
+                ),  # Приоритет phone_number
+                "email": org_data.get("email", ""),
+                "director": org_data.get("director", ""),
+                "smdo_code": org_data.get("smdo_code", ""),
+                "is_subscriber": org_data.get("is_subscriber", False),
             }
 
-            response = self.http.patch(
-                f"{self.base_path}/{org_id}",
-                json=server_data
-            )
+            response = self.http.patch(f"{self.base_path}/{org_id}", json=server_data)
             logger.info(f"✅ Организация обновлена: {response}")
             return response
         except Exception as e:
             logger.error(f"❌ Ошибка обновления организации {org_id}: {e}")
             return None
-
 
     def delete_organization(self, org_id: int) -> bool:
         """Удалить организацию"""
@@ -134,8 +136,9 @@ class OrgService:
             logger.error(f"Ошибка получения сотрудников орг {org_id}: {e}")
             return []
 
+
 # Синглтон
-_org_service_instance: Optional[OrgService] = None
+_org_service_instance: OrgService | None = None
 
 
 def get_org_service(http_client: HttpClient) -> OrgService:

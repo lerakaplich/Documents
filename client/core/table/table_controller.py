@@ -1,12 +1,11 @@
 """
 Контроллер таблицы - координатор всех менеджеров
 """
-from PyQt6.QtCore import QObject, pyqtSignal, QTimer
-from PyQt6.QtCore import Qt, QSize
+
+from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 
 from client.core.table.table_builder import TableBuilder
 from client.core.table.table_icon_updater import TableIconUpdater
-from client.core.utils.icon_manager import icon_manager
 
 
 class TableController(QObject):
@@ -17,7 +16,9 @@ class TableController(QObject):
     pin_status_changed = pyqtSignal(int, bool)
     data_loaded = pyqtSignal(int)
 
-    def __init__(self, table_widget, data_manager, row_renderer, updater, http_client=None):
+    def __init__(
+        self, table_widget, data_manager, row_renderer, updater, http_client=None
+    ):
         super().__init__()
         self._table = table_widget
         self._data_manager = data_manager
@@ -31,6 +32,7 @@ class TableController(QObject):
         self._doc_type_service = None
         if http_client is not None:
             from client.services.doc_type_service import DocTypeService
+
             self._doc_type_service = DocTypeService(http_client)
         self._type_fields_cache = {}
 
@@ -46,15 +48,11 @@ class TableController(QObject):
     def _build_table(self):
         """Построить таблицу"""
         columns_config = self._get_columns_config(
-            self._current_doc_type,
-            self._current_view_mode
+            self._current_doc_type, self._current_view_mode
         )
 
         builder = TableBuilder(
-            self._table,
-            columns_config,
-            self._current_doc_type,
-            self._current_view_mode
+            self._table, columns_config, self._current_doc_type, self._current_view_mode
         )
 
         self._facade = builder.setup(self._data_manager, self._updater)
@@ -72,9 +70,7 @@ class TableController(QObject):
     def _on_pin_changed(self, document_id: int, is_pinned: bool):
         self.pin_status_changed.emit(document_id, is_pinned)
         self._icon_updater.update_pin_icon(
-            document_id,
-            is_pinned,
-            self._find_reg_number_column()
+            document_id, is_pinned, self._find_reg_number_column()
         )
 
     def _get_columns_config(self, doc_type: str, view_mode: str) -> dict:
@@ -123,7 +119,9 @@ class TableController(QObject):
                     # на всякий случай — вдруг когда-то станет списком
                     for idx, field in enumerate(fields, start=20):
                         if isinstance(field, dict):
-                            label = field.get("label") or field.get("name") or f"Поле_{idx}"
+                            label = (
+                                field.get("label") or field.get("name") or f"Поле_{idx}"
+                            )
                         else:
                             label = str(field)
                         columns_config[idx] = label
@@ -148,6 +146,7 @@ class TableController(QObject):
         else:
             # Нет http_client (напр. автономный запуск __main__) — тестовые метаданные
             from client.core.data.document_repository import document_repository
+
             type_info = document_repository.get_document_type_by_id(type_id)
             fields = (type_info or {}).get("fields") or []
 
@@ -161,7 +160,9 @@ class TableController(QObject):
 
     # ========== ПУБЛИЧНЫЕ МЕТОДЫ ==========
 
-    def load_documents(self, documents: list, doc_type: str = None, view_mode: str = None):
+    def load_documents(
+        self, documents: list, doc_type: str = None, view_mode: str = None
+    ):
         """Загрузить документы"""
         doc_type = doc_type or "default"
         view_mode = view_mode or "all"
@@ -172,7 +173,10 @@ class TableController(QObject):
         self._current_doc_type = str(doc_type)
         self._current_view_mode = view_mode
 
-        if old_doc_type != self._current_doc_type or old_view_mode != self._current_view_mode:
+        if (
+            old_doc_type != self._current_doc_type
+            or old_view_mode != self._current_view_mode
+        ):
             # Сохраняем старые настройки (через facade)
             if self._facade:
                 self._facade.save_state()
@@ -186,8 +190,7 @@ class TableController(QObject):
         if self._row_manager:
             pinned_ids = self._row_manager.pinned_ids
             self._icon_updater.update_all_pin_icons(
-                pinned_ids,
-                self._find_reg_number_column()
+                pinned_ids, self._find_reg_number_column()
             )
 
         QTimer.singleShot(300, self._restore_heights_after_load)
@@ -228,8 +231,7 @@ class TableController(QObject):
         if self._row_manager:
             pinned_ids = self._row_manager.pinned_ids
             self._icon_updater.update_all_pin_icons(
-                pinned_ids,
-                self._find_reg_number_column()
+                pinned_ids, self._find_reg_number_column()
             )
 
         QTimer.singleShot(300, self._restore_heights_after_load)
@@ -261,7 +263,9 @@ class TableController(QObject):
         return self.get_document_at_row(current_row)
 
     def update_read_status(self, document_id: int, is_read: bool):
-        columns_config = self._get_columns_config(self._current_doc_type, self._current_view_mode)
+        columns_config = self._get_columns_config(
+            self._current_doc_type, self._current_view_mode
+        )
         col_map = {name: idx for idx, name in columns_config.items()}
         read_col = col_map.get("Прочитано")
 
@@ -276,7 +280,7 @@ class TableController(QObject):
                 doc_data = item.data(Qt.ItemDataRole.UserRole)
                 if doc_data and doc_data.get("id") == document_id:
                     read_widget = self._table.cellWidget(row, read_col)
-                    if read_widget and hasattr(read_widget, 'set_read_state'):
+                    if read_widget and hasattr(read_widget, "set_read_state"):
                         read_widget.set_read_state(is_read)
                     break
 
@@ -297,6 +301,7 @@ class TableController(QObject):
 
     def change_read_status(self, document_id: int, is_completed: bool):
         from client.services.document_service import DocumentService
+
         if self._http_client is None:
             return False
         service = DocumentService(self._http_client)

@@ -1,5 +1,4 @@
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QAction
 
 from client.windows.documents.menus.base_menu import BaseMenu
 
@@ -10,8 +9,8 @@ class ColumnsMenu(BaseMenu):
     Список колонок задаёт панель документов (populate) при каждой смене
     вида — набор колонок зависит от типа/направления."""
 
-    columnToggled = pyqtSignal(str, bool)   # (название колонки, показана ли)
-    resetRequested = pyqtSignal()           # «Показать все столбцы»
+    columnToggled = pyqtSignal(str, bool)  # (название колонки, показана ли)
+    resetRequested = pyqtSignal()  # «Показать все столбцы»
 
     def __init__(self, columns: list[str] = None, parent=None):
         super().__init__(parent)

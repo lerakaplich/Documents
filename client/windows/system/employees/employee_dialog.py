@@ -4,14 +4,18 @@ UI загружается из .ui файла
 Поддерживает динамическую древовидную структуру подразделений
 """
 
-import os
 import asyncio
+
 from PyQt6 import QtWidgets
-from PyQt6.QtCore import pyqtSignal, QTimer
+from PyQt6.QtCore import QTimer, pyqtSignal
 from PyQt6.QtWidgets import QMessageBox
 
-from client.core.org_structure.employee.dialog.employee_async_operations import EmployeeAsyncOperations
-from client.core.org_structure.employee.dialog.employee_data_manager import EmployeeDataManager
+from client.core.org_structure.employee.dialog.employee_async_operations import (
+    EmployeeAsyncOperations,
+)
+from client.core.org_structure.employee.dialog.employee_data_manager import (
+    EmployeeDataManager,
+)
 from client.core.org_structure.employee.dialog.hierarchy_manager import HierarchyManager
 from client.windows.system.employees.employee_dialog_ui import EmployeeUI
 
@@ -20,13 +24,25 @@ class EmployeeDialog(QtWidgets.QDialog):
     employee_created = pyqtSignal(int)
     employee_updated = pyqtSignal(int)
 
-    def __init__(self, parent_editor=None, employee=None, is_maz=False, http_client=None,
-                 current_user_rights='user', current_user_org_id=None, current_user_div_id=None,
-                 current_user_dept_id=None, is_organization_head=False, is_division_head=False,
-                 is_department_head=False, filter_external_only=False, organization_head_ids=None):
+    def __init__(
+        self,
+        parent_editor=None,
+        employee=None,
+        is_maz=False,
+        http_client=None,
+        current_user_rights="user",
+        current_user_org_id=None,
+        current_user_div_id=None,
+        current_user_dept_id=None,
+        is_organization_head=False,
+        is_division_head=False,
+        is_department_head=False,
+        filter_external_only=False,
+        organization_head_ids=None,
+    ):
         super().__init__(parent_editor)
 
-        self.http_client = http_client                      # ← было profile_manager
+        self.http_client = http_client  # ← было profile_manager
         self.current_user_rights = current_user_rights
         self.filter_external_only = filter_external_only
 
@@ -46,6 +62,7 @@ class EmployeeDialog(QtWidgets.QDialog):
         """Явный размер — иначе QDialog с parent'ом внутри QStackedWidget/Tab
         считает sizeHint от родителя и получается то крошечным, то огромным."""
         from PyQt6.QtWidgets import QApplication
+
         self.setMinimumWidth(675)
         self.setMinimumHeight(600)
 
@@ -56,15 +73,18 @@ class EmployeeDialog(QtWidgets.QDialog):
     def reapply_theme(self):
         """Переприменить тему после set_theme()."""
         from client.core.themes import apply_theme_to_widget
+
         apply_theme_to_widget(self)
-        if hasattr(self, 'hierarchy_manager'):
+        if hasattr(self, "hierarchy_manager"):
             self.hierarchy_manager.apply_theme()
 
     def _load_initial_data(self):
         if self.http_client:
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(self.async_ops.load_data_async(self.filter_external_only))
+                loop.create_task(
+                    self.async_ops.load_data_async(self.filter_external_only)
+                )
             except RuntimeError:
                 QTimer.singleShot(100, self._load_data_sync)
         else:
@@ -79,13 +99,11 @@ class EmployeeDialog(QtWidgets.QDialog):
             print(f"[ERROR] {e}")
             self.async_ops._fill_test_data()
 
-
     def _connect_signals(self):
         """Подключает сигналы"""
         print("[DEBUG] _connect_signals() вызван")
-        if hasattr(self, 'saveButton'):
+        if hasattr(self, "saveButton"):
             self.saveButton.clicked.connect(self.save)
-
 
     def _fill_employee_data_delayed(self):
         """Заполняет данные сотрудника с задержкой"""
@@ -95,6 +113,7 @@ class EmployeeDialog(QtWidgets.QDialog):
         except Exception as e:
             print(f"[ERROR] Ошибка заполнения данных: {e}")
             import traceback
+
             traceback.print_exc()
 
     def save(self):
@@ -105,7 +124,7 @@ class EmployeeDialog(QtWidgets.QDialog):
             return
 
         data = self.data_manager.get_data()
-        is_edit = self.data_manager.employee and self.data_manager.employee.get('id')
+        is_edit = self.data_manager.employee and self.data_manager.employee.get("id")
 
         if is_edit:
             self.async_ops.start_async_update(data)
@@ -118,11 +137,14 @@ class EmployeeDialog(QtWidgets.QDialog):
 
     def is_edit_mode(self):
         """Возвращает True, если диалог в режиме редактирования"""
-        return self.data_manager.employee and self.data_manager.employee.get('id') is not None
+        return (
+            self.data_manager.employee
+            and self.data_manager.employee.get("id") is not None
+        )
 
 
 # Тестовый запуск
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
@@ -132,9 +154,7 @@ if __name__ == '__main__':
     print("=" * 50)
 
     dialog = EmployeeDialog(
-        parent_editor=None,
-        employee=None,
-        current_user_rights='admin'
+        parent_editor=None, employee=None, current_user_rights="admin"
     )
     dialog.show()
 

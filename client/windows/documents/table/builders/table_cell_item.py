@@ -2,18 +2,21 @@
 Адаптация существующих билдеров для работы с TableCellItem
 """
 
-from PyQt6.QtWidgets import QTableWidgetItem, QWidget, QLabel, QPushButton, QHBoxLayout, QStyleOptionViewItem
-from PyQt6.QtCore import Qt, QSize, pyqtSignal, QObject, QRect
-from PyQt6.QtGui import QBrush, QColor, QPainter
-from typing import Any, Optional, Callable, Dict, List
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QBrush, QColor
+from PyQt6.QtWidgets import QLabel, QTableWidgetItem, QWidget
 
 # ============== Базовые классы ==============
 
+
 class CellType(Enum):
     """Типы ячеек"""
+
     TEXT = "text"
     WIDGET = "widget"
     CUSTOM = "custom"
@@ -22,19 +25,22 @@ class CellType(Enum):
 @dataclass
 class CellData:
     """Контейнер для данных ячейки"""
+
     value: Any
     display_text: str = ""
     tooltip: str = ""
-    background_color: Optional[QColor] = None
-    foreground_color: Optional[QColor] = None
-    alignment: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+    background_color: QColor | None = None
+    foreground_color: QColor | None = None
+    alignment: Qt.AlignmentFlag = (
+        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+    )
     editable: bool = False
-    icon: Optional[Any] = None
+    icon: Any | None = None
     user_data: Any = None
 
     # Для виджетов
-    widget: Optional[QWidget] = None
-    widget_builder: Optional[Callable] = None
+    widget: QWidget | None = None
+    widget_builder: Callable | None = None
     widget_args: tuple = ()
     widget_kwargs: dict = None
 
@@ -48,7 +54,7 @@ class TableCellItem(QTableWidgetItem):
     Кастомный аналог QTableWidgetItem с поддержкой виджетов
     """
 
-    def __init__(self, cell_data: Optional[CellData] = None):
+    def __init__(self, cell_data: CellData | None = None):
         super().__init__()
         self._cell_data = cell_data or CellData(value="")
         self._widget = None
@@ -91,7 +97,7 @@ class TableCellItem(QTableWidgetItem):
         self._row = row
         self._document = document
 
-    def get_widget(self) -> Optional[QWidget]:
+    def get_widget(self) -> QWidget | None:
         """
         Получить виджет для ячейки (создается при первом вызове)
         """
@@ -106,14 +112,17 @@ class TableCellItem(QTableWidgetItem):
             try:
                 if self._cell_data.widget_args or self._cell_data.widget_kwargs:
                     self._widget = self._cell_data.widget_builder(
-                        self._row, self._document,
+                        self._row,
+                        self._document,
                         *self._cell_data.widget_args,
-                        **self._cell_data.widget_kwargs
+                        **self._cell_data.widget_kwargs,
                     )
                 else:
-                    self._widget = self._cell_data.widget_builder(self._row, self._document)
+                    self._widget = self._cell_data.widget_builder(
+                        self._row, self._document
+                    )
             except Exception as e:
-                error_widget = QLabel(f"Ошибка: {str(e)}")
+                error_widget = QLabel(f"Ошибка: {e!s}")
                 error_widget.setStyleSheet("color: red; background-color: transparent;")
                 self._widget = error_widget
 
@@ -121,5 +130,7 @@ class TableCellItem(QTableWidgetItem):
 
     def has_widget(self) -> bool:
         """Есть ли у ячейки виджет"""
-        return (self._cell_data.widget is not None or
-                self._cell_data.widget_builder is not None)
+        return (
+            self._cell_data.widget is not None
+            or self._cell_data.widget_builder is not None
+        )

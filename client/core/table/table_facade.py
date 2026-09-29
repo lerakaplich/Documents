@@ -1,8 +1,8 @@
 """
 Фасад для работы с таблицей - единая точка входа
 """
-from PyQt6.QtCore import QObject
-from PyQt6.QtCore import QTimer
+
+from PyQt6.QtCore import QObject, QTimer
 
 from client.core.table.managers.column.column_manager import ColumnManager
 from client.core.table.managers.row.row_manager import RowManager
@@ -15,7 +15,13 @@ class TableFacade(QObject):
     Координирует работу менеджеров и предоставляет простой API.
     """
 
-    def __init__(self, table_widget, columns_config, doc_type: str = "default", view_mode: str = "all"):
+    def __init__(
+        self,
+        table_widget,
+        columns_config,
+        doc_type: str = "default",
+        view_mode: str = "all",
+    ):
         super().__init__()
         self._table_widget = table_widget
         self._columns_config = columns_config
@@ -28,22 +34,25 @@ class TableFacade(QObject):
         self.row_manager = None
         self._initialized = False
 
-    def build(self, data_manager: TableDataManager = None, updater=None) -> 'TableFacade':
+    def build(
+        self, data_manager: TableDataManager = None, updater=None
+    ) -> "TableFacade":
         """Собрать таблицу со всеми менеджерами"""
         self.data_manager = data_manager
         self.row_manager = RowManager(
-            self._table_widget,
-            data_manager,
-            updater,
-            self._doc_type
+            self._table_widget, data_manager, updater, self._doc_type
         )
         self._initialized = True
         return self
 
-    def load_documents(self, documents: list, doc_type: str = None, view_mode: str = None):
+    def load_documents(
+        self, documents: list, doc_type: str = None, view_mode: str = None
+    ):
         """Загрузить документы с обновлением типа если нужно"""
         if not self._initialized:
-            raise RuntimeError("TableFacade не инициализирован. Вызовите build() сначала.")
+            raise RuntimeError(
+                "TableFacade не инициализирован. Вызовите build() сначала."
+            )
 
         doc_type = doc_type or self._doc_type
         view_mode = view_mode or self._view_mode
@@ -89,7 +98,6 @@ class TableFacade(QObject):
 
     def _update_pin_icons(self):
         """Обновить иконки закрепления"""
-        pass
 
     def save_state(self):
         """Сохранить состояние всех менеджеров"""

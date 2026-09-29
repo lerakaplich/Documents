@@ -1,6 +1,7 @@
-from PyQt6 import QtWidgets, QtCore, uic
 import os
 import sys
+
+from PyQt6 import QtCore, QtWidgets, uic
 
 from client.core.themes import get_manager, get_message_box_style
 

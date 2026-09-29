@@ -1,21 +1,31 @@
 """
 Модуль с построителями ячеек таблицы
 """
-from PyQt6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton,
-    QSpacerItem, QSizePolicy, QMenu, QFileDialog, QMessageBox
-)
-from PyQt6.QtCore import Qt, pyqtSignal, QObject
-from PyQt6.QtGui import QAction, QFont
-import os
 
-from client.core.themes import T
-from client.windows.documents.table.widgets.hashtag_widget import HashtagWidget
 import logging
+
+from PyQt6.QtCore import QObject, Qt, pyqtSignal
+from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import (
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QWidget,
+)
+
+from client.windows.documents.table.widgets.hashtag_widget import HashtagWidget
+
 logger = logging.getLogger("AppDebug")
+
 
 class CellBuilderSignals(QObject):
     """Сигналы для построителей ячеек"""
+
     attachment_clicked = pyqtSignal(dict, dict)  # document_data, attachment
     attachment_upload = pyqtSignal(int, str)  # document_id, file_path
     reply_clicked = pyqtSignal(dict)  # reply_file
@@ -23,6 +33,7 @@ class CellBuilderSignals(QObject):
     comment_clicked = pyqtSignal(dict)  # document_data
     delegate_added = pyqtSignal(dict)
     redirect_requested = pyqtSignal(int, list)
+
 
 class TagsCellBuilder:
     """Построитель ячейки с хэштегами"""
@@ -56,13 +67,16 @@ class TagsCellBuilder:
                 layout.addWidget(tag_widget)
                 tag_widget.update_style()
 
-        spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        spacer = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
         layout.addItem(spacer)
 
         return container
 
 
 # client/windows/documents/table/builders/cell_builders.py
+
 
 class ElidedLabel(QLabel):
     """QLabel с автоматическим обрезанием текста и цветом из темы."""
@@ -71,15 +85,13 @@ class ElidedLabel(QLabel):
         super().__init__(text, parent)
         self._full_text = text
         self.setWordWrap(False)
-        self.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Preferred
-        )
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self._apply_theme()
 
     def _apply_theme(self):
         from client.core.themes import get_manager
+
         t = get_manager().current
         self.setStyleSheet(f"""
             QLabel {{
@@ -107,9 +119,7 @@ class ElidedLabel(QLabel):
             available_width = 100
         font_metrics = self.fontMetrics()
         elided_text = font_metrics.elidedText(
-            self._full_text,
-            Qt.TextElideMode.ElideRight,
-            available_width
+            self._full_text, Qt.TextElideMode.ElideRight, available_width
         )
         self.setText(elided_text)
 
@@ -150,7 +160,7 @@ class CommentsCellBuilder:
         if comments or last_comment_text:
             text_to_show = last_comment_text
             if not text_to_show and comments:
-                text_to_show = comments[-1].get('text', '')
+                text_to_show = comments[-1].get("text", "")
 
             label = ElidedLabel()
             label.set_full_text(text_to_show)
@@ -161,7 +171,7 @@ class CommentsCellBuilder:
 
             def on_cell_pressed(event):
                 if event.button() == Qt.MouseButton.LeftButton:
-                    if self.signals and hasattr(self.signals, 'comment_clicked'):
+                    if self.signals and hasattr(self.signals, "comment_clicked"):
                         self.signals.comment_clicked.emit(document)
                     event.accept()
 
@@ -181,6 +191,7 @@ class CommentsCellBuilder:
     def _button_style():
         """Добавить комментарий — тёплый акцентный (не совпадает с темой)."""
         from client.core.themes import get_manager
+
         t = get_manager().current
         return f"""
             QPushButton {{
@@ -208,9 +219,11 @@ class CommentsCellBuilder:
         # если перерисовываем таблицу целиком. См. пункт 3.
         pass
 
-class AttachmentCellBuilder:
 
-    def __init__(self, even_color, odd_color, supported_formats, signals, attachment_service=None):
+class AttachmentCellBuilder:
+    def __init__(
+        self, even_color, odd_color, supported_formats, signals, attachment_service=None
+    ):
         self.even_color = even_color
         self.odd_color = odd_color
         self.supported_formats = supported_formats
@@ -233,7 +246,9 @@ class AttachmentCellBuilder:
         # Реестр документов (GET /documents/documents/) не отдаёт список файлов —
         # только флаг has_attachments. Реальный список подгружаем по клику
         # (см. _show_attachments_menu), а не заранее для каждой строки.
-        has_attachments = document.get("has_attachments", bool(document.get("attachments")))
+        has_attachments = document.get(
+            "has_attachments", bool(document.get("attachments"))
+        )
 
         if has_attachments:
             btn = QPushButton("Вложения")
@@ -253,6 +268,7 @@ class AttachmentCellBuilder:
     def _upload_style():
         """Загрузить вложение — зелёный, «призыв добавить»."""
         from client.core.themes import get_manager
+
         t = get_manager().current
         return f"""
             QPushButton {{
@@ -279,6 +295,7 @@ class AttachmentCellBuilder:
     def _open_style():
         """Открыть вложение — нейтральный, спокойный."""
         from client.core.themes import get_manager
+
         t = get_manager().current
         return f"""
             QPushButton {{
@@ -302,6 +319,7 @@ class AttachmentCellBuilder:
 
     def _show_attachments_menu(self, button):
         from client.core.themes import get_menu_style
+
         document = button.property("document")
         if not document:
             return
@@ -309,8 +327,7 @@ class AttachmentCellBuilder:
         attachments = self._fetch_attachments(document)
         if not attachments:
             QMessageBox.information(
-                button, "Вложения",
-                "Не удалось получить список вложений (или их нет)."
+                button, "Вложения", "Не удалось получить список вложений (или их нет)."
             )
             return
 
@@ -318,18 +335,23 @@ class AttachmentCellBuilder:
         menu.setStyleSheet(get_menu_style())
 
         for attachment in attachments:
-            file_name = attachment.get("file_name") or attachment.get("name") or "Без имени"
-            file_icon = "📄" if not file_name.lower().endswith('.pdf') else "📕"
+            file_name = (
+                attachment.get("file_name") or attachment.get("name") or "Без имени"
+            )
+            file_icon = "📄" if not file_name.lower().endswith(".pdf") else "📕"
             action = QAction(f"{file_icon} {file_name}", menu)
             action.triggered.connect(
-                lambda checked, a=attachment, d=document:
-                self.signals.attachment_clicked.emit(d, a)
+                lambda checked, a=attachment, d=document: (
+                    self.signals.attachment_clicked.emit(d, a)
+                )
             )
             menu.addAction(action)
 
         menu.addSeparator()
         add_action = QAction("➕ Добавить файл", menu)
-        add_action.triggered.connect(lambda checked: self._upload_attachment_for(document.get("id")))
+        add_action.triggered.connect(
+            lambda checked: self._upload_attachment_for(document.get("id"))
+        )
         menu.addAction(add_action)
 
         menu.exec(button.mapToGlobal(button.rect().bottomLeft()))
@@ -348,8 +370,10 @@ class AttachmentCellBuilder:
 
     def _upload_attachment_for(self, document_id):
         file_path, _ = QFileDialog.getOpenFileName(
-            None, "Выберите файл для загрузки", "",
-            "Документы (*.pdf *.docx *.doc *.txt *.tif);;PDF (*.pdf);;Word (*.docx *.doc);;Текст (*.txt);;TIFF (*.tif)"
+            None,
+            "Выберите файл для загрузки",
+            "",
+            "Документы (*.pdf *.docx *.doc *.txt *.tif);;PDF (*.pdf);;Word (*.docx *.doc);;Текст (*.txt);;TIFF (*.tif)",
         )
         if file_path:
             self.signals.attachment_upload.emit(document_id, file_path)
@@ -358,14 +382,10 @@ class AttachmentCellBuilder:
 """
 Модуль заполнения строк таблицы
 """
-import os
-
-from PyQt6.QtWidgets import QTableWidgetItem, QMessageBox, QWidget, QHBoxLayout, QPushButton
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QBrush
 
 
 # client/windows/documents/table/builders/cell_builders.py
+
 
 class DelegatesCellBuilder:
     """Построитель ячейки с делегатами"""
@@ -397,7 +417,9 @@ class DelegatesCellBuilder:
                 else:
                     processed_names.append(str(d))
 
-            delegates_text = ", ".join(filter(None, processed_names)) if processed_names else "-"
+            delegates_text = (
+                ", ".join(filter(None, processed_names)) if processed_names else "-"
+            )
 
             label = ElidedLabel()
             label.set_full_text(delegates_text)
@@ -408,7 +430,7 @@ class DelegatesCellBuilder:
 
             def on_cell_pressed(event):
                 if event.button() == Qt.MouseButton.LeftButton:
-                    if self.signals and hasattr(self.signals, 'redirect_requested'):
+                    if self.signals and hasattr(self.signals, "redirect_requested"):
                         self.signals.redirect_requested.emit(doc_id, delegates)
                     event.accept()
 
@@ -427,6 +449,7 @@ class DelegatesCellBuilder:
     def _button_style():
         """Добавить делегата — красный (важное действие)."""
         from client.core.themes import get_manager
+
         t = get_manager().current
         return f"""
             QPushButton {{
@@ -451,7 +474,6 @@ class DelegatesCellBuilder:
 
 
 class ReplyCellBuilder:
-
     def __init__(self, even_color, odd_color, supported_formats, signals):
         self.even_color = even_color
         self.odd_color = odd_color
@@ -491,6 +513,7 @@ class ReplyCellBuilder:
     def _upload_style():
         """Загрузить ответ — зелёный, как вложение."""
         from client.core.themes import get_manager
+
         t = get_manager().current
         return f"""
             QPushButton {{
@@ -517,6 +540,7 @@ class ReplyCellBuilder:
     def _open_style():
         """Открыть ответ — нейтральный."""
         from client.core.themes import get_manager
+
         t = get_manager().current
         return f"""
             QPushButton {{
@@ -540,8 +564,10 @@ class ReplyCellBuilder:
 
     def _upload_reply(self, document_id):
         file_path, _ = QFileDialog.getOpenFileName(
-            None, "Выберите файл ответа", "",
-            "Документы (*.pdf *.docx *.doc *.txt *.tif);;PDF (*.pdf);;Word (*.docx *.doc);;Текст (*.txt);;TIFF (*.tif)"
+            None,
+            "Выберите файл ответа",
+            "",
+            "Документы (*.pdf *.docx *.doc *.txt *.tif);;PDF (*.pdf);;Word (*.docx *.doc);;Текст (*.txt);;TIFF (*.tif)",
         )
         if file_path:
             self.signals.reply_upload.emit(document_id, file_path)

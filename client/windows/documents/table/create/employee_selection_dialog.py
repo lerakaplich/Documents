@@ -1,12 +1,15 @@
 import os
-from typing import List, Dict, Any, Optional
-from PyQt6.QtWidgets import QDialog, QTreeWidgetItem
-from PyQt6.QtCore import pyqtSignal, Qt
+from typing import Any
 
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QDialog, QTreeWidgetItem
+
+from client.core.org_structure.employee_selection_data_loader import (
+    EmployeeSelectionDataLoader,
+)
 from client.core.org_structure.hierarchy_builder import HierarchyBuilder
 from client.core.org_structure.selection_manager import SelectionManager
 from client.core.org_structure.tree_builder import TreeBuilder
-from client.core.org_structure.employee_selection_data_loader import EmployeeSelectionDataLoader
 from client.core.themes import apply_theme_to_widget
 from client.windows.documents.table.create.employee_selection import EmployeeSelection
 
@@ -17,17 +20,20 @@ class EmployeeSelectionDialog(QDialog):
     Если списки organizations / departments / employees пусты — грузит
     данные с сервера через http_client.
     """
+
     selection_confirmed = pyqtSignal(list)
 
-    def __init__(self,
-                 organizations: Optional[List[Dict[str, Any]]] = None,
-                 departments: Optional[List[Dict[str, Any]]] = None,
-                 employees: Optional[List[Dict[str, Any]]] = None,
-                 preselected_ids: Optional[List[int]] = None,
-                 parent=None,
-                 title: str = "Выбор получателей",
-                 instruction: str = "Выберите организации, отделы или сотрудников:",
-                 http_client=None):
+    def __init__(
+        self,
+        organizations: list[dict[str, Any]] | None = None,
+        departments: list[dict[str, Any]] | None = None,
+        employees: list[dict[str, Any]] | None = None,
+        preselected_ids: list[int] | None = None,
+        parent=None,
+        title: str = "Выбор получателей",
+        instruction: str = "Выберите организации, отделы или сотрудников:",
+        http_client=None,
+    ):
 
         super().__init__(parent)
 
@@ -58,11 +64,16 @@ class EmployeeSelectionDialog(QDialog):
                 )
                 if employees:
                     emp0 = employees[0]
-                    print(f"[EmployeeSelectionDialog] первый сотрудник: keys={sorted(emp0.keys())}")
-                    print(f"[EmployeeSelectionDialog] первый сотрудник: positions={emp0.get('positions')}")
+                    print(
+                        f"[EmployeeSelectionDialog] первый сотрудник: keys={sorted(emp0.keys())}"
+                    )
+                    print(
+                        f"[EmployeeSelectionDialog] первый сотрудник: positions={emp0.get('positions')}"
+                    )
             except Exception as e:
                 print(f"[EmployeeSelectionDialog] Ошибка автозагрузки: {e}")
                 import traceback
+
                 traceback.print_exc()
 
         # Инициализация данных
@@ -85,6 +96,7 @@ class EmployeeSelectionDialog(QDialog):
         """Пробуем достать http_client из AppState, если он не передан."""
         try:
             from client.core.state.app_state import AppState
+
             return AppState().http_client
         except Exception:
             return None
@@ -169,7 +181,7 @@ class EmployeeSelectionDialog(QDialog):
             return
 
         new_state = item.checkState(column)
-        is_checked = (new_state == Qt.CheckState.Checked)
+        is_checked = new_state == Qt.CheckState.Checked
 
         data = item.data(0, Qt.ItemDataRole.UserRole)
         if not data:
@@ -201,7 +213,9 @@ class EmployeeSelectionDialog(QDialog):
                 if child_data and child_data.get("id") and child_data.get("id") > 0:
                     child_item.setCheckState(
                         0,
-                        Qt.CheckState.Checked if is_checked else Qt.CheckState.Unchecked,
+                        Qt.CheckState.Checked
+                        if is_checked
+                        else Qt.CheckState.Unchecked,
                     )
 
             if item.parent():
@@ -225,14 +239,15 @@ class EmployeeSelectionDialog(QDialog):
         if total_count == 0:
             return
         new_state = (
-            Qt.CheckState.Checked if checked_count == total_count
+            Qt.CheckState.Checked
+            if checked_count == total_count
             else Qt.CheckState.Unchecked
         )
         item.setCheckState(0, new_state)
         if item.parent():
             self._update_parent_checks_only(item.parent())
 
-    def _get_all_descendants(self, item) -> List[QTreeWidgetItem]:
+    def _get_all_descendants(self, item) -> list[QTreeWidgetItem]:
         descendants = []
         for i in range(item.childCount()):
             child = item.child(i)
@@ -332,14 +347,14 @@ class EmployeeSelectionDialog(QDialog):
         self.accept()
 
     # Public
-    def get_selected_ids(self) -> List[int]:
+    def get_selected_ids(self) -> list[int]:
         return self.selection_manager.get_selected_ids()
 
-    def get_selected_organizations(self) -> List[Dict]:
+    def get_selected_organizations(self) -> list[dict]:
         return self.selection_manager.get_selected_organizations()
 
-    def get_selected_departments(self) -> List[Dict]:
+    def get_selected_departments(self) -> list[dict]:
         return self.selection_manager.get_selected_departments()
 
-    def get_selected_employees(self) -> List[Dict]:
+    def get_selected_employees(self) -> list[dict]:
         return self.selection_manager.get_selected_employees()

@@ -2,16 +2,28 @@
 """
 Диалог для просмотра и добавления комментариев к документу
 """
+
 import os
 from datetime import datetime
-from PyQt6.QtWidgets import QDialog, QListWidgetItem, QWidget, QHBoxLayout, QLabel, QVBoxLayout, QFrame
-from PyQt6.QtCore import pyqtSignal, Qt, QSize
+
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtWidgets import (
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QListWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 from PyQt6.uic import loadUi
 
-from client.core.themes import apply_theme_to_widget, T
+from client.core.themes import T, apply_theme_to_widget
 
 ROOT_DIR = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
 )
 
 
@@ -34,7 +46,12 @@ class CommentItemWidget(QWidget):
 
         # Имя автора (жирный)
         author_label = QLabel()
-        author_name = comment.get('author_fio') or comment.get('author_name') or comment.get('author') or 'Неизвестный'
+        author_name = (
+            comment.get("author_fio")
+            or comment.get("author_name")
+            or comment.get("author")
+            or "Неизвестный"
+        )
         author_label.setText(author_name)
         author_label.setStyleSheet(f"""
             QLabel {{
@@ -55,7 +72,7 @@ class CommentItemWidget(QWidget):
 
         # Время
         time_label = QLabel()
-        created_at = comment.get('created_at')
+        created_at = comment.get("created_at")
         if created_at:
             if isinstance(created_at, datetime):
                 time_str = created_at.strftime("%d.%m.%Y %H:%M")
@@ -78,7 +95,7 @@ class CommentItemWidget(QWidget):
 
         # Текст комментария
         text_label = QLabel()
-        text = comment.get('text', '')
+        text = comment.get("text", "")
         text_label.setText(text)
         text_label.setWordWrap(True)
         text_label.setStyleSheet(f"""
@@ -119,8 +136,10 @@ class CommentItemWidget(QWidget):
 from client.core.state.app_state import AppState
 from client.services.comment_service import CommentService
 
+
 class CommentDialog(QDialog):
     comment_added = pyqtSignal(dict)
+
     def __init__(self, document_data, parent=None, current_user=None, http_client=None):
         super().__init__(parent)
         self.document_data = document_data
@@ -129,29 +148,35 @@ class CommentDialog(QDialog):
         self.http_client = http_client or AppState().http_client
         self.comment_service = CommentService(self.http_client)
 
-        ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "comments_dialog.ui")
+        ui_path = os.path.join(
+            ROOT_DIR, "client", "ui", "documents", "comments_dialog.ui"
+        )
         loadUi(ui_path, self)
         apply_theme_to_widget(self)
 
         self._setup_ui()
-        self._load_comments_from_server()   # ← вместо self._load_comments()
+        self._load_comments_from_server()  # ← вместо self._load_comments()
         self._connect_signals()
 
     def _get_default_user(self) -> dict:
         """Возвращает тестового пользователя"""
         return {
-            'id': 1,
-            'full_name': 'Иванов И.И.',
-            'last_name': 'Иванов',
-            'first_name': 'Иван',
-            'middle_name': 'Иванович'
+            "id": 1,
+            "full_name": "Иванов И.И.",
+            "last_name": "Иванов",
+            "first_name": "Иван",
+            "middle_name": "Иванович",
         }
 
     def _setup_ui(self):
         """Настройка UI элементов"""
         # Устанавливаем заголовок
-        doc_number = self.document_data.get('reg_number', self.document_data.get('number', 'Без номера'))
-        doc_title = self.document_data.get('title', self.document_data.get('subject', 'Без темы'))
+        doc_number = self.document_data.get(
+            "reg_number", self.document_data.get("number", "Без номера")
+        )
+        doc_title = self.document_data.get(
+            "title", self.document_data.get("subject", "Без темы")
+        )
 
         self.docInfoLabel.setText(f"Документ №{doc_number}")
         self.commentsListWidget.setStyleSheet(f"""
@@ -189,7 +214,9 @@ class CommentDialog(QDialog):
         # Локальные (добавленные в этой сессии) — оставляем тоже
         local = self.document_data.get("comments", []) or []
         server_ids = {c.get("id") for c in server_comments}
-        merged = list(server_comments) + [c for c in local if c.get("id") not in server_ids]
+        merged = list(server_comments) + [
+            c for c in local if c.get("id") not in server_ids
+        ]
 
         self.document_data["comments"] = merged
         self._load_comments()
@@ -198,7 +225,7 @@ class CommentDialog(QDialog):
         """Загрузка комментариев в список"""
         self.commentsListWidget.clear()
 
-        comments = self.document_data.get('comments', [])
+        comments = self.document_data.get("comments", [])
         self._comments_cache = comments.copy()
 
         if not comments:
@@ -208,9 +235,10 @@ class CommentDialog(QDialog):
             item.setSizeHint(QSize(0, 60))  # высота, ширина = по вьюпорту
             self.commentsListWidget.addItem(item)
             return
+
         # Функция для преобразования created_at в datetime (без часового пояса)
         def parse_created_at(comment):
-            created_at = comment.get('created_at')
+            created_at = comment.get("created_at")
             if created_at is None:
                 return datetime.min
 
@@ -224,8 +252,8 @@ class CommentDialog(QDialog):
                 try:
                     # Пробуем парсить строку
                     # Сначала пробуем ISO формат с Z или +00:00
-                    if created_at.endswith('Z'):
-                        created_at = created_at[:-1] + '+00:00'
+                    if created_at.endswith("Z"):
+                        created_at = created_at[:-1] + "+00:00"
 
                     # Парсим с возможным часовым поясом
                     dt = datetime.fromisoformat(created_at)
@@ -235,7 +263,12 @@ class CommentDialog(QDialog):
                     return dt
                 except (ValueError, TypeError):
                     # Пробуем другие форматы
-                    for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%d.%m.%Y %H:%M", "%Y-%m-%d"]:
+                    for fmt in [
+                        "%Y-%m-%d %H:%M:%S",
+                        "%Y-%m-%d %H:%M",
+                        "%d.%m.%Y %H:%M",
+                        "%Y-%m-%d",
+                    ]:
                         try:
                             dt = datetime.strptime(created_at, fmt)
                             return dt
@@ -246,14 +279,10 @@ class CommentDialog(QDialog):
             return datetime.min
 
         # Сортируем комментарии по дате
-        sorted_comments = sorted(
-            comments,
-            key=parse_created_at,
-            reverse=False
-        )
+        sorted_comments = sorted(comments, key=parse_created_at, reverse=False)
 
         for i, comment in enumerate(sorted_comments):
-            show_separator = (i < len(sorted_comments) - 1)
+            show_separator = i < len(sorted_comments) - 1
             self._add_comment_to_list(comment, show_separator)
 
         self.commentsListWidget.scrollToBottom()
@@ -282,11 +311,13 @@ class CommentDialog(QDialog):
     def eventFilter(self, obj, event):
         """Обработка событий для поля ввода"""
         from PyQt6.QtCore import QEvent
-        from PyQt6.QtGui import QKeyEvent
 
         if obj == self.commentTextEdit and event.type() == QEvent.Type.KeyPress:
             key_event = event
-            if key_event.key() == Qt.Key.Key_Return and key_event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+            if (
+                key_event.key() == Qt.Key.Key_Return
+                and key_event.modifiers() == Qt.KeyboardModifier.ControlModifier
+            ):
                 self._on_send_clicked()
                 return True
         return super().eventFilter(obj, event)
@@ -307,12 +338,12 @@ class CommentDialog(QDialog):
 
         # 2. Локально — как раньше
         new_comment = {
-            'id': len(self._comments_cache) + 1,
-            'author_fio': self.current_user.get('full_name', 'Пользователь'),
-            'author': self.current_user.get('full_name', 'Пользователь'),
-            'text': text,
-            'created_at': datetime.now(),
-            'user_id': self.current_user.get('id', 0),
+            "id": len(self._comments_cache) + 1,
+            "author_fio": self.current_user.get("full_name", "Пользователь"),
+            "author": self.current_user.get("full_name", "Пользователь"),
+            "text": text,
+            "created_at": datetime.now(),
+            "user_id": self.current_user.get("id", 0),
         }
 
         # Добавляем в кеш
@@ -334,9 +365,11 @@ class CommentDialog(QDialog):
             last_item = self.commentsListWidget.item(count - 1)
             if last_item:
                 old_widget = self.commentsListWidget.itemWidget(last_item)
-                if old_widget and hasattr(old_widget, 'comment'):
+                if old_widget and hasattr(old_widget, "comment"):
                     # Создаем новый виджет с разделителем
-                    new_widget = CommentItemWidget(old_widget.comment, show_separator=True)
+                    new_widget = CommentItemWidget(
+                        old_widget.comment, show_separator=True
+                    )
                     last_item.setSizeHint(new_widget.sizeHint())
                     self.commentsListWidget.setItemWidget(last_item, new_widget)
 
@@ -353,11 +386,11 @@ class CommentDialog(QDialog):
         self.comment_added.emit(new_comment)
 
         # Обновляем данные документа
-        if 'comments' not in self.document_data:
-            self.document_data['comments'] = []
-        self.document_data['comments'].append(new_comment)
-        self.document_data['last_comment_text'] = text
+        if "comments" not in self.document_data:
+            self.document_data["comments"] = []
+        self.document_data["comments"].append(new_comment)
+        self.document_data["last_comment_text"] = text
 
     def get_comments(self) -> list:
         """Получить все комментарии"""
-        return self.document_data.get('comments', [])
+        return self.document_data.get("comments", [])

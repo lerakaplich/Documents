@@ -2,26 +2,28 @@
 
 import os
 import sys
-from typing import List, Dict, Any, Optional
+from typing import Any
 
+from PyQt6.QtCore import QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLineEdit, QScrollArea, QMenu, QMessageBox, QApplication,
-    QGridLayout, QSizePolicy
+    QApplication,
+    QMenu,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
 
-from client.core.themes import get_menu_style, T, apply_theme_to_widget
-from client.windows.system.tags.tag_card import TagCard
-from client.windows.animations.floating_action_button import FloatingActionButton
-from client.windows.system.tags.tag_dialog import TagDialog
-from client.windows.animations.animated_notification import NotificationManager
-from client.windows.system.delete_dialog import DeleteDialog
-from client.services.tag_service import get_tag_service
-from client.core.http_client import HttpClient
 from client.core.config import config
+from client.core.http_client import HttpClient
 from client.core.state.app_state import AppState
+from client.core.themes import T, apply_theme_to_widget, get_menu_style
+from client.services.tag_service import get_tag_service
+from client.windows.animations.animated_notification import NotificationManager
+from client.windows.animations.floating_action_button import FloatingActionButton
+from client.windows.system.delete_dialog import DeleteDialog
+from client.windows.system.tags.tag_card import TagCard
+from client.windows.system.tags.tag_dialog import TagDialog
 
 
 class TagsPage(QWidget):
@@ -29,7 +31,7 @@ class TagsPage(QWidget):
 
     data_loaded = pyqtSignal()
 
-    def __init__(self, parent=None, http_client: Optional[HttpClient] = None):
+    def __init__(self, parent=None, http_client: HttpClient | None = None):
         super().__init__(parent)
 
         # Используем переданный HttpClient или создаем новый
@@ -45,8 +47,8 @@ class TagsPage(QWidget):
         self.tag_service = get_tag_service(self.http_client)
 
         # Данные
-        self.tags: List[Dict[str, Any]] = []
-        self.filtered_tags: List[Dict[str, Any]] = []
+        self.tags: list[dict[str, Any]] = []
+        self.filtered_tags: list[dict[str, Any]] = []
 
         # Состояние
         self.current_sort = "По приоритету (важные сверху)"
@@ -82,7 +84,9 @@ class TagsPage(QWidget):
     def get_ui_path(self):
         """Возвращает путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'tags', 'tag_page.ui')
+        ui_path = os.path.join(
+            current_dir, "..", "..", "..", "ui", "system", "tags", "tag_page.ui"
+        )
         return os.path.normpath(ui_path)
 
     def setup_connections(self):
@@ -93,24 +97,15 @@ class TagsPage(QWidget):
 
     def show_success_notification(self, message: str):
         """Показать уведомление об успехе"""
-        self.notification_manager.show_notification(
-            f"✅ {message}",
-            duration=2500
-        )
+        self.notification_manager.show_notification(f"✅ {message}", duration=2500)
 
     def show_error_notification(self, message: str):
         """Показать уведомление об ошибке"""
-        self.notification_manager.show_notification(
-            f"❌ {message}",
-            duration=3000
-        )
+        self.notification_manager.show_notification(f"❌ {message}", duration=3000)
 
     def show_info_notification(self, message: str):
         """Показать информационное уведомление"""
-        self.notification_manager.show_notification(
-            f"ℹ️ {message}",
-            duration=2500
-        )
+        self.notification_manager.show_notification(f"ℹ️ {message}", duration=2500)
 
     # ==================== ЗАГРУЗКА ДАННЫХ ====================
 
@@ -127,28 +122,30 @@ class TagsPage(QWidget):
             # Преобразуем данные в нужный формат
             self.tags = []
             for tag in tags:
-                self.tags.append({
-                    'id': tag.get('id'),
-                    'name': tag.get('name', ''),
-                    'color': tag.get('color', T.ACCENT_PRIMARY),
-                    'documents_count': tag.get('documents_count', 0),
-                    'priority': tag.get('priority', 'normal')
-                })
+                self.tags.append(
+                    {
+                        "id": tag.get("id"),
+                        "name": tag.get("name", ""),
+                        "color": tag.get("color", T.ACCENT_PRIMARY),
+                        "documents_count": tag.get("documents_count", 0),
+                        "priority": tag.get("priority", "normal"),
+                    }
+                )
 
             self.is_loading = False
             self.update_display()
             self.data_loaded.emit()
 
-
         except Exception as e:
             self.is_loading = False
             import logging
+
             logging.error(f"Ошибка загрузки тегов: {e}")
 
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
-                self.show_error_notification(f"Не удалось загрузить теги")
+                self.show_error_notification("Не удалось загрузить теги")
 
     # ==================== СОРТИРОВКА ====================
 
@@ -168,41 +165,49 @@ class TagsPage(QWidget):
 
         for name, func in sort_options.items():
             action = menu.addAction(name)
-            action.triggered.connect(lambda checked, f=func, n=name: self.apply_sort(f, n))
+            action.triggered.connect(
+                lambda checked, f=func, n=name: self.apply_sort(f, n)
+            )
 
         menu.exec(self.btnSort.mapToGlobal(self.btnSort.rect().bottomLeft()))
 
     def sort_by_priority_desc(self, tags):
         """Срочные → Важные → Обычные, внутри — по названию."""
-        order = {'urgent': 0, 'important': 1, 'normal': 2}
+        order = {"urgent": 0, "important": 1, "normal": 2}
         return sorted(
             tags,
-            key=lambda x: (order.get(x.get('priority', 'normal'), 3), x.get('name', '').lower())
+            key=lambda x: (
+                order.get(x.get("priority", "normal"), 3),
+                x.get("name", "").lower(),
+            ),
         )
 
     def sort_by_priority_asc(self, tags):
         """Обычные → Важные → Срочные, внутри — по названию."""
-        order = {'normal': 0, 'important': 1, 'urgent': 2}
+        order = {"normal": 0, "important": 1, "urgent": 2}
         return sorted(
             tags,
-            key=lambda x: (order.get(x.get('priority', 'normal'), 3), x.get('name', '').lower())
+            key=lambda x: (
+                order.get(x.get("priority", "normal"), 3),
+                x.get("name", "").lower(),
+            ),
         )
 
     def sort_by_name_asc(self, tags):
-        return sorted(tags, key=lambda x: x.get('name', '').lower())
+        return sorted(tags, key=lambda x: x.get("name", "").lower())
 
     def sort_by_name_desc(self, tags):
-        return sorted(tags, key=lambda x: x.get('name', '').lower(), reverse=True)
+        return sorted(tags, key=lambda x: x.get("name", "").lower(), reverse=True)
 
     def sort_by_count_asc(self, tags):
-        return sorted(tags, key=lambda x: x.get('documents_count', 0))
+        return sorted(tags, key=lambda x: x.get("documents_count", 0))
 
     def sort_by_count_desc(self, tags):
-        return sorted(tags, key=lambda x: x.get('documents_count', 0), reverse=True)
+        return sorted(tags, key=lambda x: x.get("documents_count", 0), reverse=True)
 
     def apply_sort(self, sort_func, sort_name):
         self.current_sort = sort_name
-        short_name = sort_name.split('(')[0].strip() if '(' in sort_name else sort_name
+        short_name = sort_name.split("(")[0].strip() if "(" in sort_name else sort_name
         self.btnSort.setText(f"Сортировка ▼ ({short_name})")
         self.update_reset_button_visibility()
         self.update_display()
@@ -242,8 +247,7 @@ class TagsPage(QWidget):
         search_text = self.searchEdit.text().strip().lower()
         if search_text:
             filtered = [
-                tag for tag in filtered
-                if search_text in tag.get('name', '').lower()
+                tag for tag in filtered if search_text in tag.get("name", "").lower()
             ]
 
         # Сортировка
@@ -294,10 +298,7 @@ class TagsPage(QWidget):
 
         # Добавляем растяжку
         spacer = QWidget()
-        spacer.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Expanding
-        )
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.tagsGridLayout.addWidget(spacer, row + 1, 0, 1, max_cols)
 
         self.position_floating_button()
@@ -312,20 +313,22 @@ class TagsPage(QWidget):
             tag_data = dialog.get_tag_data()
             self._create_tag(tag_data)
 
-    def _create_tag(self, tag_data: Dict[str, Any]):
+    def _create_tag(self, tag_data: dict[str, Any]):
         """Создание тега"""
         try:
-            tag_data.pop('id', None)
+            tag_data.pop("id", None)
             result = self.tag_service.create_tag(tag_data)
 
             if result:
-                self.tags.append({
-                    'id': result.get('id'),
-                    'name': result.get('name', ''),
-                    'color': result.get('color', '#CCAB6E'),
-                    'documents_count': result.get('documents_count', 0),
-                    'priority': result.get('priority', 'normal')
-                })
+                self.tags.append(
+                    {
+                        "id": result.get("id"),
+                        "name": result.get("name", ""),
+                        "color": result.get("color", "#CCAB6E"),
+                        "documents_count": result.get("documents_count", 0),
+                        "priority": result.get("priority", "normal"),
+                    }
+                )
 
                 self.update_display()
                 self.show_success_notification(f"Тег «{result.get('name')}» создан")
@@ -334,17 +337,18 @@ class TagsPage(QWidget):
 
         except Exception as e:
             import logging
+
             logging.error(f"Ошибка создания тега: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
                 self.show_error_notification("Не удалось создать тег")
 
-    def on_edit_tag(self, tag_data: Dict[str, Any]):
+    def on_edit_tag(self, tag_data: dict[str, Any]):
         """Обработка редактирования тега"""
         full_tag_data = None
         for tag in self.tags:
-            if tag.get('id') == tag_data.get('id'):
+            if tag.get("id") == tag_data.get("id"):
                 full_tag_data = tag.copy()
                 break
 
@@ -352,26 +356,28 @@ class TagsPage(QWidget):
             self.show_error_notification("Тег не найден")
             return
 
-        dialog = TagDialog(self, tag_id=tag_data.get('id'), tag_data=full_tag_data)
+        dialog = TagDialog(self, tag_id=tag_data.get("id"), tag_data=full_tag_data)
 
         if dialog.exec():
             updated_data = dialog.get_tag_data()
-            self._update_tag(tag_data.get('id'), updated_data)
+            self._update_tag(tag_data.get("id"), updated_data)
 
-    def _update_tag(self, tag_id: int, updated_data: Dict[str, Any]):
+    def _update_tag(self, tag_id: int, updated_data: dict[str, Any]):
         """Обновление тега"""
         try:
             result = self.tag_service.update_tag(tag_id, updated_data)
 
             if result:
                 for i, tag in enumerate(self.tags):
-                    if tag.get('id') == tag_id:
-                        self.tags[i].update({
-                            'name': result.get('name', ''),
-                            'color': result.get('color', T.ACCENT_PRIMARY),
-                            'priority': result.get('priority', 'normal'),
-                            'documents_count': result.get('documents_count', 0)
-                        })
+                    if tag.get("id") == tag_id:
+                        self.tags[i].update(
+                            {
+                                "name": result.get("name", ""),
+                                "color": result.get("color", T.ACCENT_PRIMARY),
+                                "priority": result.get("priority", "normal"),
+                                "documents_count": result.get("documents_count", 0),
+                            }
+                        )
                         break
 
                 self.update_display()
@@ -381,6 +387,7 @@ class TagsPage(QWidget):
 
         except Exception as e:
             import logging
+
             logging.error(f"Ошибка обновления тега: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -391,8 +398,8 @@ class TagsPage(QWidget):
         """Обработка удаления тега"""
         tag_name = "Неизвестный тег"
         for tag in self.tags:
-            if tag.get('id') == tag_id:
-                tag_name = tag.get('name', 'Неизвестный тег')
+            if tag.get("id") == tag_id:
+                tag_name = tag.get("name", "Неизвестный тег")
                 break
 
         # Используем красивый диалог удаления
@@ -405,7 +412,7 @@ class TagsPage(QWidget):
             success = self.tag_service.delete_tag(tag_id)
 
             if success:
-                self.tags = [tag for tag in self.tags if tag.get('id') != tag_id]
+                self.tags = [tag for tag in self.tags if tag.get("id") != tag_id]
                 self.update_display()
                 self.show_success_notification(f"Тег «{tag_name}» удален")
             else:
@@ -413,6 +420,7 @@ class TagsPage(QWidget):
 
         except Exception as e:
             import logging
+
             logging.error(f"Ошибка удаления тега: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -422,23 +430,26 @@ class TagsPage(QWidget):
     def on_color_changed(self, tag_id: int, new_color: str):
         """Обработчик изменения цвета тега"""
         try:
-            result = self.tag_service.update_tag(tag_id, {'color': new_color})
+            result = self.tag_service.update_tag(tag_id, {"color": new_color})
             if result:
                 for tag in self.tags:
-                    if tag.get('id') == tag_id:
-                        tag['color'] = new_color
+                    if tag.get("id") == tag_id:
+                        tag["color"] = new_color
                         break
                 # Показываем уведомление об изменении цвета
-                tag_name = next((t.get('name') for t in self.tags if t.get('id') == tag_id), "Тег")
+                tag_name = next(
+                    (t.get("name") for t in self.tags if t.get("id") == tag_id), "Тег"
+                )
                 self.show_info_notification(f"Цвет тега «{tag_name}» обновлен")
         except Exception as e:
             import logging
+
             logging.error(f"Ошибка обновления цвета тега {tag_id}: {e}")
 
     # ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 
     def position_floating_button(self):
-        if hasattr(self, 'floating_btn'):
+        if hasattr(self, "floating_btn"):
             margin = 20
             x = self.width() - self.floating_btn.width() - margin
             y = self.height() - self.floating_btn.height() - margin
@@ -446,7 +457,7 @@ class TagsPage(QWidget):
             self.floating_btn.raise_()
 
     def on_scroll(self, value):
-        if hasattr(self, 'floating_btn'):
+        if hasattr(self, "floating_btn"):
             self.floating_btn.hide_with_animation()
             self.floating_btn.start_hide_timer()
 
@@ -455,7 +466,7 @@ class TagsPage(QWidget):
         self.position_floating_button()
 
         # Обновляем размер контейнера уведомлений
-        if hasattr(self, 'notification_manager'):
+        if hasattr(self, "notification_manager"):
             self.notification_manager.container.setGeometry(
                 0, 0, self.width(), self.height()
             )

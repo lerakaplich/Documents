@@ -1,4 +1,5 @@
 """Перекраска SVG-иконок под цвет темы (с кэшем в %TEMP%)."""
+
 import hashlib
 import os
 import re
@@ -6,7 +7,6 @@ import tempfile
 
 import PyQt6.QtSvg  # noqa: F401
 from PyQt6.QtGui import QIcon
-
 
 _SHAPE_TAGS = ("path", "rect", "circle", "ellipse", "polygon", "polyline", "line")
 
@@ -18,8 +18,8 @@ _ICON_DIR = os.path.abspath(
 )
 
 
-_FILL_RE   = re.compile(r'fill="[^"]*"')
-_STROKE_RE = re.compile(r'stroke="[^"]*"')     # ← БЕЗ (?!none) — обрабатываем вручную
+_FILL_RE = re.compile(r'fill="[^"]*"')
+_STROKE_RE = re.compile(r'stroke="[^"]*"')  # ← БЕЗ (?!none) — обрабатываем вручную
 
 
 def _recolored_svg_path(name: str, color: str) -> str:
@@ -47,6 +47,7 @@ def _recolored_svg_path(name: str, color: str) -> str:
             f.write(data)
     return out.replace("\\", "/")
 
+
 def _generate_checkbox_svg(checked, color: str) -> str:
     """
     checked=True   → залитый квадрат + белая галочка
@@ -72,17 +73,19 @@ def _generate_checkbox_svg(checked, color: str) -> str:
         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>'''
 
+
 def _recolor_regular(data: str, color: str) -> str:
     """Обычные иконки: все fill / stroke (кроме 'none') → color."""
+
     def _fill(m):
-        return m.group(0) if 'none' in m.group(0) else f'fill="{color}"'
+        return m.group(0) if "none" in m.group(0) else f'fill="{color}"'
+
     def _stroke(m):
-        return m.group(0) if 'none' in m.group(0) else f'stroke="{color}"'
+        return m.group(0) if "none" in m.group(0) else f'stroke="{color}"'
 
     data = _FILL_RE.sub(_fill, data)
     data = _STROKE_RE.sub(_stroke, data)
     return data
-
 
 
 def icon_path(name: str, color: str) -> str:

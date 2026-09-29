@@ -1,11 +1,14 @@
 # client/windows/system/departments/builders/employee_group_builder.py
-import os
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt
 from PyQt6.QtWidgets import (
-    QWidget, QFrame, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QSizePolicy
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QIcon
 
 
 def build_employee_group(title: str, is_expanded: bool = True) -> QWidget:
@@ -15,7 +18,7 @@ def build_employee_group(title: str, is_expanded: bool = True) -> QWidget:
 
     _t = get_manager().current
     down_icon = icon("down_arrow", _t.ICON_COLOR)
-    up_icon   = icon("up_arrow",   _t.ICON_COLOR)
+    up_icon = icon("up_arrow", _t.ICON_COLOR)
 
     group_widget = QWidget()
     group_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
@@ -68,13 +71,13 @@ def build_employee_group(title: str, is_expanded: bool = True) -> QWidget:
     anim.setDuration(250)
     anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
 
-    state = {'expanded': is_expanded}
+    state = {"expanded": is_expanded}
 
     def toggle():
-        state['expanded'] = not state['expanded']
-        btn.setIcon(up_icon if state['expanded'] else down_icon)
+        state["expanded"] = not state["expanded"]
+        btn.setIcon(up_icon if state["expanded"] else down_icon)
         anim.stop()
-        if state['expanded']:
+        if state["expanded"]:
             content.setVisible(True)
             content.updateGeometry()
             content.adjustSize()
@@ -89,7 +92,7 @@ def build_employee_group(title: str, is_expanded: bool = True) -> QWidget:
         anim.start()
 
     def on_finished():
-        if state['expanded']:
+        if state["expanded"]:
             content.setMaximumHeight(16777215)
         else:
             content.setVisible(False)

@@ -1,5 +1,6 @@
 # client/windows/profile/overtime/overtime_crud_manager.py
 from datetime import datetime
+
 from PyQt6.QtWidgets import QDialog
 
 from client.windows.profile.overtime.overtime_dialog import OvertimeDialog
@@ -20,8 +21,10 @@ class OvertimeCrudManager:
         return self.panel.overtime_service
 
     def _notify(self, message, duration=3000):
-        if hasattr(self._parent, 'notification_manager'):
-            self._parent.notification_manager.show_notification(message, duration=duration)
+        if hasattr(self._parent, "notification_manager"):
+            self._parent.notification_manager.show_notification(
+                message, duration=duration
+            )
 
     # ==================== СОЗДАНИЕ ====================
 
@@ -30,7 +33,7 @@ class OvertimeCrudManager:
             self._parent,
             readonly=False,
             overtime_service=self._service,
-            current_employee_id=self.panel.current_employee_id or 1
+            current_employee_id=self.panel.current_employee_id or 1,
         )
 
         if dialog.exec() != QDialog.DialogCode.Accepted or dialog.result_data is None:
@@ -46,23 +49,23 @@ class OvertimeCrudManager:
             return
 
         try:
-            date_obj = datetime.strptime(data['date'], "%d.%m.%Y")
+            date_obj = datetime.strptime(data["date"], "%d.%m.%Y")
             create_data = {
                 "employee_id": employee_id,
-                "note_text": data['description'],
+                "note_text": data["description"],
                 "overtime_date": date_obj.strftime("%Y-%m-%d"),
-                "overtime_start": data['start_time'],
-                "overtime_end": data['end_time'],
+                "overtime_start": data["start_time"],
+                "overtime_end": data["end_time"],
             }
             self._service.create_overtime(create_data)
             self.panel.load_overtime_data(
                 filter_department_id=self.panel.data_manager.current_filter_department_id,
-                for_my=False
+                for_my=False,
             )
             self._notify("Переработка успешно добавлена")
         except Exception as e:
             print(f"❌ Ошибка создания переработки: {e}")
-            self._notify(f"Ошибка создания: {str(e)}", duration=4000)
+            self._notify(f"Ошибка создания: {e!s}", duration=4000)
 
     # ==================== РЕДАКТИРОВАНИЕ (ВСЕ) ====================
 
@@ -76,7 +79,7 @@ class OvertimeCrudManager:
             self._parent,
             readonly=False,
             overtime_service=self._service,
-            current_employee_id=self.panel.current_employee_id or 1
+            current_employee_id=self.panel.current_employee_id or 1,
         )
         dialog.set_data(data)
 
@@ -88,22 +91,22 @@ class OvertimeCrudManager:
             return
 
         try:
-            date_obj = datetime.strptime(new_data['date'], "%d.%m.%Y")
+            date_obj = datetime.strptime(new_data["date"], "%d.%m.%Y")
             update_data = {
-                "note_text": new_data['description'],
+                "note_text": new_data["description"],
                 "overtime_date": date_obj.strftime("%Y-%m-%d"),
-                "overtime_start": new_data['start_time'],
-                "overtime_end": new_data['end_time'],
+                "overtime_start": new_data["start_time"],
+                "overtime_end": new_data["end_time"],
             }
             self._service.update_overtime(overtime_id, update_data)
             self.panel.load_overtime_data(
                 filter_department_id=self.panel.data_manager.current_filter_department_id,
-                for_my=False
+                for_my=False,
             )
             self._notify("Переработка обновлена")
         except Exception as e:
             print(f"❌ Ошибка обновления переработки: {e}")
-            self._notify(f"Ошибка обновления: {str(e)}", duration=4000)
+            self._notify(f"Ошибка обновления: {e!s}", duration=4000)
 
     # ==================== РЕДАКТИРОВАНИЕ (МОИ, ТОЛЬКО ОПИСАНИЕ) ====================
 
@@ -119,8 +122,8 @@ class OvertimeCrudManager:
         if dialog.exec() != QDialog.DialogCode.Accepted or dialog.result_data is None:
             return
 
-        new_note = dialog.result_data.get('description', '')
-        if new_note == data.get('description', '') or not self._service:
+        new_note = dialog.result_data.get("description", "")
+        if new_note == data.get("description", "") or not self._service:
             return
 
         try:
@@ -129,7 +132,7 @@ class OvertimeCrudManager:
             self._notify("Описание обновлено")
         except Exception as e:
             print(f"❌ Ошибка обновления заметки: {e}")
-            self._notify(f"Ошибка обновления: {str(e)}", duration=4000)
+            self._notify(f"Ошибка обновления: {e!s}", duration=4000)
 
     # ==================== УДАЛЕНИЕ ====================
 
@@ -139,11 +142,11 @@ class OvertimeCrudManager:
                 self._service.delete_overtime(overtime_id)
             except Exception as e:
                 print(f"❌ Ошибка удаления переработки: {e}")
-                self._notify(f"Ошибка удаления: {str(e)}", duration=4000)
+                self._notify(f"Ошибка удаления: {e!s}", duration=4000)
                 return
 
         self._notify(f"Запись #{overtime_id} удалена")
         self.panel.load_overtime_data(
             filter_department_id=self.panel.data_manager.current_filter_department_id,
-            for_my=False
+            for_my=False,
         )

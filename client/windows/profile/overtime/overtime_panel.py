@@ -1,12 +1,22 @@
 # client/windows/profile/overtime/overtime_panel.py
-from client.core.filtering.hierarchical_department_filter import HierarchicalDepartmentFilter
-from client.windows.profile.overtime.overtime_data_manager import OvertimeDataManager
-from client.windows.profile.overtime.overtime_card_container import OvertimeCardContainer
-from client.windows.profile.overtime.overtime_period_manager import OvertimePeriodManager
-from client.windows.profile.overtime.overtime_pagination_manager import OvertimePaginationManager
-from client.windows.profile.overtime.overtime_crud_manager import OvertimeCrudManager
-from client.windows.profile.overtime.overtime_import_export_manager import OvertimeImportExportManager
+from client.core.filtering.hierarchical_department_filter import (
+    HierarchicalDepartmentFilter,
+)
 from client.services.overtime_service import OvertimeService
+from client.windows.profile.overtime.overtime_card_container import (
+    OvertimeCardContainer,
+)
+from client.windows.profile.overtime.overtime_crud_manager import OvertimeCrudManager
+from client.windows.profile.overtime.overtime_data_manager import OvertimeDataManager
+from client.windows.profile.overtime.overtime_import_export_manager import (
+    OvertimeImportExportManager,
+)
+from client.windows.profile.overtime.overtime_pagination_manager import (
+    OvertimePaginationManager,
+)
+from client.windows.profile.overtime.overtime_period_manager import (
+    OvertimePeriodManager,
+)
 
 
 class OvertimePanel:
@@ -51,10 +61,21 @@ class OvertimePanel:
         self.data_manager.set_overtime_service(overtime_service)
         print("✅ OvertimeService установлен в OvertimePanel")
 
-    def setup_ui_elements(self, tabWidget, btnSelectPeriod, btnSelectPeriodAll,
-                          btnResetFilters, btnResetFiltersAll, btnAddOvertimeAll,
-                          btnExport, labelTotalHoursMy, labelTotalHoursAll,
-                          allOvertimeFiltersLayout, btnAddOvertime=None, btnImport=None):
+    def setup_ui_elements(
+        self,
+        tabWidget,
+        btnSelectPeriod,
+        btnSelectPeriodAll,
+        btnResetFilters,
+        btnResetFiltersAll,
+        btnAddOvertimeAll,
+        btnExport,
+        labelTotalHoursMy,
+        labelTotalHoursAll,
+        allOvertimeFiltersLayout,
+        btnAddOvertime=None,
+        btnImport=None,
+    ):
         self.tabWidget = tabWidget
         self.btnSelectPeriod = btnSelectPeriod
         self.btnSelectPeriodAll = btnSelectPeriodAll
@@ -83,15 +104,15 @@ class OvertimePanel:
     # ==================== ПАГИНАЦИЯ ====================
 
     def _change_page(self, tab: str, delta: int):
-        if tab == 'my':
+        if tab == "my":
             p = self.data_manager.get_my_pagination()
         else:
             p = self.data_manager.get_all_pagination()
 
         new_page = self.pagination.current_page(tab) + delta
-        if 1 <= new_page <= p['pages']:
+        if 1 <= new_page <= p["pages"]:
             self.pagination.set_page(tab, new_page)
-            self.load_overtime_data(for_my=(tab == 'my'))
+            self.load_overtime_data(for_my=(tab == "my"))
 
     def _update_pagination_labels(self):
         self.pagination.update_labels(
@@ -113,10 +134,10 @@ class OvertimePanel:
 
             if self.overtime_service:
                 my_data, all_data = self.data_manager.load_overtime_from_api(
-                    my_start=my_period['start'] if my_period else None,
-                    my_end=my_period['end'] if my_period else None,
-                    all_start=all_period['start'] if all_period else None,
-                    all_end=all_period['end'] if all_period else None,
+                    my_start=my_period["start"] if my_period else None,
+                    my_end=my_period["end"] if my_period else None,
+                    all_start=all_period["start"] if all_period else None,
+                    all_end=all_period["end"] if all_period else None,
                     my_page=self.pagination.my_current_page,
                     all_page=self.pagination.all_current_page,
                     page_size=self.pagination.page_size,
@@ -131,22 +152,30 @@ class OvertimePanel:
             if for_my:
                 print(f"Обновление только 'Моих переработок' с {len(my_data)} записями")
                 self.card_container.populate_card_container(
-                    self.card_container.myOvertimeContainer, my_data,
-                    self.crud.edit_overtime_my, self.crud.delete_overtime
+                    self.card_container.myOvertimeContainer,
+                    my_data,
+                    self.crud.edit_overtime_my,
+                    self.crud.delete_overtime,
                 )
                 self.card_container.update_total_hours(self.labelTotalHoursMy, my_data)
             else:
                 print(f"Обновление 'Всех переработок' с {len(all_data)} записями")
                 print(f"Обновление 'Моих переработок' с {len(my_data)} записями")
                 self.card_container.populate_card_container(
-                    self.card_container.allOvertimeContainer, all_data,
-                    self.crud.edit_overtime_all, self.crud.delete_overtime
+                    self.card_container.allOvertimeContainer,
+                    all_data,
+                    self.crud.edit_overtime_all,
+                    self.crud.delete_overtime,
                 )
                 self.card_container.populate_card_container(
-                    self.card_container.myOvertimeContainer, my_data,
-                    self.crud.edit_overtime_my, self.crud.delete_overtime
+                    self.card_container.myOvertimeContainer,
+                    my_data,
+                    self.crud.edit_overtime_my,
+                    self.crud.delete_overtime,
                 )
-                self.card_container.update_total_hours(self.labelTotalHoursAll, all_data)
+                self.card_container.update_total_hours(
+                    self.labelTotalHoursAll, all_data
+                )
                 self.card_container.update_total_hours(self.labelTotalHoursMy, my_data)
 
             self._update_pagination_labels()
@@ -160,71 +189,83 @@ class OvertimePanel:
                 self.tabWidget.updateGeometry()
 
             # Пересчитываем высоту вкладки после подгрузки карточек
-            if self.parent and hasattr(self.parent, '_resize_tab_widget'):
+            if self.parent and hasattr(self.parent, "_resize_tab_widget"):
                 from PyQt6.QtCore import QTimer
+
                 QTimer.singleShot(0, self.parent._resize_tab_widget)
 
         except Exception as e:
             print(f"Ошибка в load_overtime_data: {e}")
             import traceback
+
             traceback.print_exc()
-            self._notify(f"Ошибка загрузки данных: {str(e)}", duration=4000)
+            self._notify(f"Ошибка загрузки данных: {e!s}", duration=4000)
 
     # ==================== ПЕРИОДЫ ====================
 
     def on_select_period_clicked(self):
         self.period_manager.show_period_dialog(
             self.period_manager.my_period,
-            lambda data: self.period_manager.on_period_selected(data, True, self._load_with_period)
+            lambda data: self.period_manager.on_period_selected(
+                data, True, self._load_with_period
+            ),
         )
 
     def on_select_period_all_clicked(self):
         self.period_manager.show_period_dialog(
             self.period_manager.all_period,
-            lambda data: self.period_manager.on_period_selected(data, False, self._load_with_period)
+            lambda data: self.period_manager.on_period_selected(
+                data, False, self._load_with_period
+            ),
         )
 
     def _load_with_period(self, is_my, start_date, end_date):
         """Обновляет текст кнопки периода, показывает кнопку сброса и перезагружает данные."""
         if is_my:
-            self.show_reset_button('my')
+            self.show_reset_button("my")
             self.period_manager.update_period_button_text(
                 self.btnSelectPeriod,
-                {'start_date_str': start_date, 'end_date_str': end_date} if start_date else None
+                {"start_date_str": start_date, "end_date_str": end_date}
+                if start_date
+                else None,
             )
         else:
-            self.show_reset_button('all')
+            self.show_reset_button("all")
             self.period_manager.update_period_button_text(
                 self.btnSelectPeriodAll,
-                {'start_date_str': start_date, 'end_date_str': end_date} if start_date else None
+                {"start_date_str": start_date, "end_date_str": end_date}
+                if start_date
+                else None,
             )
 
-        self.pagination.reset('my' if is_my else 'all')
+        self.pagination.reset("my" if is_my else "all")
         self.load_overtime_data(
             filter_department_id=self.data_manager.current_filter_department_id,
-            for_my=False
+            for_my=False,
         )
 
     def _apply_initial_periods(self):
         if self.period_manager.my_period and self.btnSelectPeriod:
             self.period_manager.update_period_button_text(
                 self.btnSelectPeriod,
-                self.period_manager.period_for_button(self.period_manager.my_period)
+                self.period_manager.period_for_button(self.period_manager.my_period),
             )
-            self.show_reset_button('my')
+            self.show_reset_button("my")
         if self.period_manager.all_period and self.btnSelectPeriodAll:
             self.period_manager.update_period_button_text(
                 self.btnSelectPeriodAll,
-                self.period_manager.period_for_button(self.period_manager.all_period)
+                self.period_manager.period_for_button(self.period_manager.all_period),
             )
-            self.show_reset_button('all')
+            self.show_reset_button("all")
 
     # ==================== ФИЛЬТР ПО ОТДЕЛАМ ====================
 
     def setup_hierarchical_filter(self):
         print("setup_hierarchical_filter started")
         self.department_filter = HierarchicalDepartmentFilter()
-        self.department_filter.set_children_func(self.data_manager.get_children_departments)
+        self.department_filter.set_children_func(
+            self.data_manager.get_children_departments
+        )
         root = self.data_manager.get_children_departments(None)
         print(f"Root departments: {root}")
         self.department_filter.set_root_items(root)
@@ -244,14 +285,16 @@ class OvertimePanel:
         else:
             layout.insertWidget(0, self.department_filter)
 
-        self.department_filter.selectionChanged.connect(self.on_department_filter_changed_id)
+        self.department_filter.selectionChanged.connect(
+            self.on_department_filter_changed_id
+        )
 
     def on_department_filter_changed_id(self, department_id):
         """Только для вкладки «Все переработки»."""
-        self.pagination.reset('all')
+        self.pagination.reset("all")
         print(f"Фильтр по отделу ID: {department_id}")
         self.data_manager.current_filter_department_id = department_id
-        self.show_reset_button('all')
+        self.show_reset_button("all")
         self.load_overtime_data(filter_department_id=department_id, for_my=False)
 
     # ==================== КНОПКИ СБРОСА ====================
@@ -263,15 +306,15 @@ class OvertimePanel:
             self.btnResetFiltersAll.setVisible(False)
 
     def show_reset_button(self, tab_name):
-        if tab_name == 'my' and self.btnResetFilters:
+        if tab_name == "my" and self.btnResetFilters:
             self.btnResetFilters.setVisible(True)
-        elif tab_name == 'all' and self.btnResetFiltersAll:
+        elif tab_name == "all" and self.btnResetFiltersAll:
             self.btnResetFiltersAll.setVisible(True)
 
     def hide_reset_button(self, tab_name):
-        if tab_name == 'my' and self.btnResetFilters:
+        if tab_name == "my" and self.btnResetFilters:
             self.btnResetFilters.setVisible(False)
-        elif tab_name == 'all' and self.btnResetFiltersAll:
+        elif tab_name == "all" and self.btnResetFiltersAll:
             self.btnResetFiltersAll.setVisible(False)
 
     def remove_add_button_from_my_overtime(self):
@@ -280,25 +323,27 @@ class OvertimePanel:
             if parent and parent.objectName() == "tabMyOvertime":
                 self.btnAddOvertime.deleteLater()
                 self.btnAddOvertime = None
-                print("Кнопка 'Добавить переработку' удалена из вкладки 'Мои переработки'")
+                print(
+                    "Кнопка 'Добавить переработку' удалена из вкладки 'Мои переработки'"
+                )
 
     # ==================== СБРОС ФИЛЬТРОВ ====================
 
     def reset_my_period(self):
-        self.pagination.reset('my')
+        self.pagination.reset("my")
         self.period_manager.reset_period(True)
-        self.hide_reset_button('my')
+        self.hide_reset_button("my")
         self.period_manager.update_period_button_text(self.btnSelectPeriod, None)
         self.load_overtime_data(filter_department_id=None, for_my=True)
 
     def reset_all_period(self):
-        self.pagination.reset('all')
+        self.pagination.reset("all")
         self.period_manager.reset_period(False)
-        self.hide_reset_button('all')
+        self.hide_reset_button("all")
         self.period_manager.update_period_button_text(self.btnSelectPeriodAll, None)
         self.load_overtime_data(
             filter_department_id=self.data_manager.current_filter_department_id,
-            for_my=False
+            for_my=False,
         )
 
     def reset_my_filters(self):
@@ -328,8 +373,10 @@ class OvertimePanel:
     # ==================== ВСПОМОГАТЕЛЬНОЕ ====================
 
     def _notify(self, message, duration=3000):
-        if hasattr(self.parent, 'notification_manager'):
-            self.parent.notification_manager.show_notification(message, duration=duration)
+        if hasattr(self.parent, "notification_manager"):
+            self.parent.notification_manager.show_notification(
+                message, duration=duration
+            )
 
     def reapply_theme(self):
         if self.pagination:

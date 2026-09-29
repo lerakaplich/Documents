@@ -2,27 +2,31 @@
 
 import os
 import sys
-from typing import List, Dict, Any, Optional
+from typing import Any
 
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLineEdit, QScrollArea, QMenu, QMessageBox, QApplication,
-    QSizePolicy, QLabel
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
 
+from client.core.config import config
+from client.core.http_client import HttpClient, logger
+from client.core.state.app_state import AppState
 from client.core.state.data_events import get_data_events
-from client.core.themes import T, get_menu_style, apply_theme_to_widget
-from client.windows.system.departments.api_task import ApiTask, TaskKeeper
+from client.core.themes import T, apply_theme_to_widget, get_menu_style
+from client.services.org_service import get_org_service
+from client.windows.animations.animated_notification import NotificationManager
+from client.windows.animations.floating_action_button import FloatingActionButton
+from client.windows.system.departments.api_task import TaskKeeper
 from client.windows.system.organizations.organization_card import OrganizationCard
 from client.windows.system.organizations.organization_dialog import OrganizationDialog
-from client.windows.animations.floating_action_button import FloatingActionButton
-from client.windows.animations.animated_notification import NotificationManager
-from client.services.org_service import get_org_service
-from client.core.http_client import HttpClient, logger
-from client.core.config import config
-from client.core.state.app_state import AppState
 
 
 class OrganizationsPage(QWidget):
@@ -30,7 +34,7 @@ class OrganizationsPage(QWidget):
 
     data_loaded = pyqtSignal()
 
-    def __init__(self, parent=None, http_client: Optional[HttpClient] = None):
+    def __init__(self, parent=None, http_client: HttpClient | None = None):
         super().__init__(parent)
 
         if http_client is None:
@@ -52,8 +56,8 @@ class OrganizationsPage(QWidget):
         self.org_service = get_org_service(self.http_client)
 
         # Данные
-        self.organizations: List[Dict[str, Any]] = []
-        self.filtered_orgs: List[Dict[str, Any]] = []
+        self.organizations: list[dict[str, Any]] = []
+        self.filtered_orgs: list[dict[str, Any]] = []
         self._tasks = TaskKeeper()
 
         # Состояние
@@ -85,7 +89,16 @@ class OrganizationsPage(QWidget):
 
     def get_ui_path(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'organizations', 'organization_page.ui')
+        ui_path = os.path.join(
+            current_dir,
+            "..",
+            "..",
+            "..",
+            "ui",
+            "system",
+            "organizations",
+            "organization_page.ui",
+        )
         return os.path.normpath(ui_path)
 
     def setup_connections(self):
@@ -133,7 +146,7 @@ class OrganizationsPage(QWidget):
         if not server_org:
             return False
         for i, o in enumerate(self.organizations):
-            if o.get('id') == org_id:
+            if o.get("id") == org_id:
                 self.organizations[i] = self._normalize_org(server_org)
                 self.update_display()
                 return True
@@ -165,11 +178,14 @@ class OrganizationsPage(QWidget):
             self.data_loaded.emit()
 
             if self.organizations:
-                self.show_success_notification(f"Загружено {len(self.organizations)} организаций")
+                self.show_success_notification(
+                    f"Загружено {len(self.organizations)} организаций"
+                )
 
         except Exception as e:
             self.is_loading = False
             import logging
+
             logging.error(f"Ошибка загрузки организаций: {e}")
 
             if "401" in str(e) or "AuthError" in str(e):
@@ -179,24 +195,24 @@ class OrganizationsPage(QWidget):
 
     def _normalize_org(self, raw: dict) -> dict:
         """Приводит сырой ответ сервера к формату, который ждут карточки."""
-        phone = raw.get('phone_number')
+        phone = raw.get("phone_number")
         if phone is None:
-            phone = raw.get('phone', '')
+            phone = raw.get("phone", "")
         if phone is None:
-            phone = ''
+            phone = ""
         return {
-            'id': raw.get('id'),
-            'name': raw.get('name', raw.get('full_name', '')),
-            'full_name': raw.get('full_name', ''),
-            'short_name': raw.get('short_name', ''),
-            'unp': raw.get('unp', ''),
-            'address': raw.get('address', ''),
-            'phone': str(phone) if phone else '',
-            'phone_number': str(phone) if phone else '',
-            'email': raw.get('email', ''),
-            'director': raw.get('director', ''),
-            'smdo_code': raw.get('smdo_code', ''),
-            'is_subscriber': raw.get('is_subscriber', False),
+            "id": raw.get("id"),
+            "name": raw.get("name", raw.get("full_name", "")),
+            "full_name": raw.get("full_name", ""),
+            "short_name": raw.get("short_name", ""),
+            "unp": raw.get("unp", ""),
+            "address": raw.get("address", ""),
+            "phone": str(phone) if phone else "",
+            "phone_number": str(phone) if phone else "",
+            "email": raw.get("email", ""),
+            "director": raw.get("director", ""),
+            "smdo_code": raw.get("smdo_code", ""),
+            "is_subscriber": raw.get("is_subscriber", False),
         }
 
     # ==================== СОРТИРОВКА ====================
@@ -214,25 +230,27 @@ class OrganizationsPage(QWidget):
 
         for name, func in sort_options.items():
             action = menu.addAction(name)
-            action.triggered.connect(lambda checked, f=func, n=name: self.apply_sort(f, n))
+            action.triggered.connect(
+                lambda checked, f=func, n=name: self.apply_sort(f, n)
+            )
 
         menu.exec(self.btnSort.mapToGlobal(self.btnSort.rect().bottomLeft()))
 
     def sort_by_name_asc(self, orgs):
-        return sorted(orgs, key=lambda x: x.get('name', '').lower())
+        return sorted(orgs, key=lambda x: x.get("name", "").lower())
 
     def sort_by_name_desc(self, orgs):
-        return sorted(orgs, key=lambda x: x.get('name', '').lower(), reverse=True)
+        return sorted(orgs, key=lambda x: x.get("name", "").lower(), reverse=True)
 
     def sort_by_unp_asc(self, orgs):
-        return sorted(orgs, key=lambda x: x.get('unp', ''))
+        return sorted(orgs, key=lambda x: x.get("unp", ""))
 
     def sort_by_unp_desc(self, orgs):
-        return sorted(orgs, key=lambda x: x.get('unp', ''), reverse=True)
+        return sorted(orgs, key=lambda x: x.get("unp", ""), reverse=True)
 
     def apply_sort(self, sort_func, sort_name):
         self.current_sort = sort_name
-        short_name = sort_name.split('(')[0].strip() if '(' in sort_name else sort_name
+        short_name = sort_name.split("(")[0].strip() if "(" in sort_name else sort_name
         self.btnSort.setText(f"Сортировка ▼ ({short_name})")
         self.update_reset_button_visibility()
         self.update_display()
@@ -271,13 +289,14 @@ class OrganizationsPage(QWidget):
         search_text = self.searchEdit.text().strip().lower()
         if search_text:
             filtered = [
-                org for org in filtered
-                if search_text in org.get('name', '').lower() or
-                   search_text in org.get('full_name', '').lower() or
-                   search_text in org.get('unp', '').lower() or
-                   search_text in org.get('address', '').lower() or
-                   search_text in org.get('director', '').lower() or
-                   search_text in org.get('smdo_code', '').lower()
+                org
+                for org in filtered
+                if search_text in org.get("name", "").lower()
+                or search_text in org.get("full_name", "").lower()
+                or search_text in org.get("unp", "").lower()
+                or search_text in org.get("address", "").lower()
+                or search_text in org.get("director", "").lower()
+                or search_text in org.get("smdo_code", "").lower()
             ]
 
         sort_methods = {
@@ -366,25 +385,25 @@ class OrganizationsPage(QWidget):
             new_org_data = dialog.get_data()
             self._create_organization(new_org_data)
 
-    def _create_organization(self, org_data: Dict[str, Any]):
+    def _create_organization(self, org_data: dict[str, Any]):
         try:
-            phone = org_data.get('phone')
+            phone = org_data.get("phone")
             if phone is None:
-                phone = org_data.get('phone_number')
+                phone = org_data.get("phone_number")
             if phone is None:
-                phone = ''
+                phone = ""
 
             server_data = {
-                'name': org_data.get('full_name', org_data.get('name', '')),
-                'full_name': org_data.get('full_name', ''),
-                'short_name': org_data.get('short_name', ''),
-                'unp': org_data.get('unp', ''),
-                'address': org_data.get('address', ''),
-                'phone_number': str(phone) if phone else None,
-                'email': org_data.get('email', ''),
-                'director': org_data.get('director', ''),
-                'smdo_code': org_data.get('smdo_code', ''),
-                'is_subscriber': org_data.get('is_subscriber', False)
+                "name": org_data.get("full_name", org_data.get("name", "")),
+                "full_name": org_data.get("full_name", ""),
+                "short_name": org_data.get("short_name", ""),
+                "unp": org_data.get("unp", ""),
+                "address": org_data.get("address", ""),
+                "phone_number": str(phone) if phone else None,
+                "email": org_data.get("email", ""),
+                "director": org_data.get("director", ""),
+                "smdo_code": org_data.get("smdo_code", ""),
+                "is_subscriber": org_data.get("is_subscriber", False),
             }
 
             print(f"[DEBUG] Создание организации: server_data={server_data}")
@@ -392,16 +411,19 @@ class OrganizationsPage(QWidget):
             result = self.org_service.create_organization(server_data)
 
             if result:
-                new_id = result.get('id')
+                new_id = result.get("id")
                 self.organizations.append(self._normalize_org(result))
                 self.update_display()  # без refetch
-                self.show_success_notification(f"Организация «{result.get('name')}» создана")
+                self.show_success_notification(
+                    f"Организация «{result.get('name')}» создана"
+                )
                 self._emit_self_change(new_id)
             else:
                 self.show_error_notification("Не удалось создать организацию")
 
         except Exception as e:
             import logging
+
             logging.error(f"Ошибка создания организации: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -409,31 +431,31 @@ class OrganizationsPage(QWidget):
                 self.show_error_notification("Не удалось создать организацию")
 
     def on_edit_org(self, org_data):
-        org_id = org_data.get('id')
+        org_id = org_data.get("id")
         if not org_id:
             self.show_error_notification("ID организации не найден")
             return
 
-        local = next((o for o in self.organizations if o.get('id') == org_id), {}) or {}
+        local = next((o for o in self.organizations if o.get("id") == org_id), {}) or {}
         self._open_edit_dialog(org_id, dict(local))
 
     def _open_edit_dialog(self, org_id, data):
-        phone = data.get('phone_number') or data.get('phone') or ''
-        full_name = data.get('full_name') or data.get('name', '')
+        phone = data.get("phone_number") or data.get("phone") or ""
+        full_name = data.get("full_name") or data.get("name", "")
 
         payload = {
-            'id': data.get('id'),
-            'name': data.get('name', ''),
-            'full_name': full_name,
-            'short_name': data.get('short_name') or '',
-            'unp': data.get('unp') or '',
-            'address': data.get('address') or '',
-            'phone': str(phone),
-            'phone_number': str(phone),
-            'email': data.get('email') or '',
-            'director': data.get('director') or '',
-            'smdo_code': data.get('smdo_code') or '',
-            'is_subscriber': data.get('is_subscriber', False),
+            "id": data.get("id"),
+            "name": data.get("name", ""),
+            "full_name": full_name,
+            "short_name": data.get("short_name") or "",
+            "unp": data.get("unp") or "",
+            "address": data.get("address") or "",
+            "phone": str(phone),
+            "phone_number": str(phone),
+            "email": data.get("email") or "",
+            "director": data.get("director") or "",
+            "smdo_code": data.get("smdo_code") or "",
+            "is_subscriber": data.get("is_subscriber", False),
         }
 
         dialog = OrganizationDialog(self, item=payload)
@@ -441,25 +463,25 @@ class OrganizationsPage(QWidget):
             updated = dialog.get_data()
             self._update_organization(org_id, updated)
 
-    def _update_organization(self, org_id: int, updated_data: Dict[str, Any]):
+    def _update_organization(self, org_id: int, updated_data: dict[str, Any]):
         try:
-            phone = updated_data.get('phone')
+            phone = updated_data.get("phone")
             if phone is None:
-                phone = updated_data.get('phone_number')
+                phone = updated_data.get("phone_number")
             if phone is None:
-                phone = ''
+                phone = ""
 
             server_data = {
-                'name': updated_data.get('full_name', updated_data.get('name', '')),
-                'full_name': updated_data.get('full_name', ''),
-                'short_name': updated_data.get('short_name', ''),
-                'unp': updated_data.get('unp', ''),
-                'address': updated_data.get('address', ''),
-                'phone_number': str(phone) if phone else None,
-                'email': updated_data.get('email', ''),
-                'director': updated_data.get('director', ''),
-                'smdo_code': updated_data.get('smdo_code', ''),
-                'is_subscriber': updated_data.get('is_subscriber', False)
+                "name": updated_data.get("full_name", updated_data.get("name", "")),
+                "full_name": updated_data.get("full_name", ""),
+                "short_name": updated_data.get("short_name", ""),
+                "unp": updated_data.get("unp", ""),
+                "address": updated_data.get("address", ""),
+                "phone_number": str(phone) if phone else None,
+                "email": updated_data.get("email", ""),
+                "director": updated_data.get("director", ""),
+                "smdo_code": updated_data.get("smdo_code", ""),
+                "is_subscriber": updated_data.get("is_subscriber", False),
             }
 
             print(f"[DEBUG] Обновление организации {org_id}: server_data={server_data}")
@@ -469,18 +491,21 @@ class OrganizationsPage(QWidget):
             if result:
                 # точечно обновляем локальный список из ответа PATCH
                 for i, org in enumerate(self.organizations):
-                    if org.get('id') == org_id:
+                    if org.get("id") == org_id:
                         self.organizations[i] = self._normalize_org(result)
                         break
 
-                self.update_display()   # без GET /org
-                self.show_success_notification(f"Организация «{result.get('name')}» обновлена")
+                self.update_display()  # без GET /org
+                self.show_success_notification(
+                    f"Организация «{result.get('name')}» обновлена"
+                )
                 self._emit_self_change(org_id)
             else:
                 self.show_error_notification("Не удалось обновить организацию")
 
         except Exception as e:
             import logging
+
             logging.error(f"Ошибка обновления организации: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -490,11 +515,12 @@ class OrganizationsPage(QWidget):
     def on_delete_org(self, org_id: int):
         org_name = "Неизвестная организация"
         for org in self.organizations:
-            if org.get('id') == org_id:
-                org_name = org.get('name', 'Неизвестная организация')
+            if org.get("id") == org_id:
+                org_name = org.get("name", "Неизвестная организация")
                 break
 
         from client.windows.system.delete_dialog import DeleteDialog
+
         if DeleteDialog.show_confirmation(self):
             self._delete_organization(org_id, org_name)
 
@@ -510,7 +536,7 @@ class OrganizationsPage(QWidget):
                 self.show_error_notification(f"Не удалось удалить: {e}")
                 return
 
-        self.organizations = [o for o in self.organizations if o.get('id') != org_id]
+        self.organizations = [o for o in self.organizations if o.get("id") != org_id]
         self.update_display()
         self.show_success_notification(f"Организация «{org_name}» удалена")
         self._emit_self_change(org_id)
@@ -525,7 +551,7 @@ class OrganizationsPage(QWidget):
             self._self_change_in_progress = False
 
     def position_floating_button(self):
-        if hasattr(self, 'floating_btn'):
+        if hasattr(self, "floating_btn"):
             margin = 20
             x = self.width() - self.floating_btn.width() - margin
             y = self.height() - self.floating_btn.height() - margin
@@ -533,14 +559,14 @@ class OrganizationsPage(QWidget):
             self.floating_btn.raise_()
 
     def on_scroll(self, value):
-        if hasattr(self, 'floating_btn'):
+        if hasattr(self, "floating_btn"):
             self.floating_btn.hide_with_animation()
             self.floating_btn.start_hide_timer()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.position_floating_button()
-        if hasattr(self, 'notification_manager'):
+        if hasattr(self, "notification_manager"):
             self.notification_manager.container.setGeometry(
                 0, 0, self.width(), self.height()
             )

@@ -2,26 +2,30 @@
 
 import os
 import sys
-from typing import List, Dict, Any, Optional, Union
+from typing import Any
 
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLineEdit, QScrollArea, QMenu, QMessageBox, QApplication,
-    QSizePolicy, QLabel
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.uic import loadUi
 
-from client.core.themes import T, get_menu_style, apply_theme_to_widget
-from client.windows.system.document_types.document_type_card import DocumentTypeCard
-from client.windows.animations.floating_action_button import FloatingActionButton
-from client.windows.system.document_types.document_type_dialog import DocumentTypeDialog
-from client.windows.system.delete_dialog import DeleteDialog
-from client.windows.animations.animated_notification import NotificationManager
-from client.services.doc_type_service import get_doc_type_service
-from client.core.http_client import HttpClient
 from client.core.config import config
+from client.core.http_client import HttpClient
 from client.core.state.app_state import AppState
+from client.core.themes import T, apply_theme_to_widget, get_menu_style
+from client.services.doc_type_service import get_doc_type_service
+from client.windows.animations.animated_notification import NotificationManager
+from client.windows.animations.floating_action_button import FloatingActionButton
+from client.windows.system.delete_dialog import DeleteDialog
+from client.windows.system.document_types.document_type_card import DocumentTypeCard
+from client.windows.system.document_types.document_type_dialog import DocumentTypeDialog
 
 
 class DocumentTypesPage(QWidget):
@@ -29,7 +33,7 @@ class DocumentTypesPage(QWidget):
 
     data_loaded = pyqtSignal()
 
-    def __init__(self, parent=None, http_client: Optional[HttpClient] = None):
+    def __init__(self, parent=None, http_client: HttpClient | None = None):
         super().__init__(parent)
 
         # Используем переданный HttpClient или создаем новый
@@ -45,8 +49,8 @@ class DocumentTypesPage(QWidget):
         self.doc_type_service = get_doc_type_service(self.http_client)
 
         # Данные
-        self.document_types: List[Dict[str, Any]] = []
-        self.filtered_types: List[Dict[str, Any]] = []
+        self.document_types: list[dict[str, Any]] = []
+        self.filtered_types: list[dict[str, Any]] = []
 
         # Состояние
         self.current_sort = "А→Я"
@@ -82,7 +86,16 @@ class DocumentTypesPage(QWidget):
     def get_ui_path(self):
         """Возвращает путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'document_types', 'document_type_page.ui')
+        ui_path = os.path.join(
+            current_dir,
+            "..",
+            "..",
+            "..",
+            "ui",
+            "system",
+            "document_types",
+            "document_type_page.ui",
+        )
         return os.path.normpath(ui_path)
 
     def setup_connections(self):
@@ -103,7 +116,9 @@ class DocumentTypesPage(QWidget):
         """Показать информационное уведомление"""
         self.notification_manager.show_notification(f"ℹ️ {message}", duration=2500)
 
-    def _normalize_fields(self, fields: Union[Dict[str, bool], List[str], None]) -> Dict[str, bool]:
+    def _normalize_fields(
+        self, fields: dict[str, bool] | list[str] | None
+    ) -> dict[str, bool]:
         """
         Нормализует поле fields в словарь {field_name: True/False}
 
@@ -127,7 +142,9 @@ class DocumentTypesPage(QWidget):
         # Если что-то другое - возвращаем пустой словарь
         return {}
 
-    def _convert_fields_to_parameters(self, fields: Union[Dict[str, bool], List[str], None]) -> List[str]:
+    def _convert_fields_to_parameters(
+        self, fields: dict[str, bool] | list[str] | None
+    ) -> list[str]:
         """
         Конвертирует fields в список активных параметров
 
@@ -141,7 +158,7 @@ class DocumentTypesPage(QWidget):
         # Возвращаем только те поля, у которых значение True
         return [key for key, value in normalized.items() if value]
 
-    def _convert_parameters_to_fields(self, parameters: List[str]) -> Dict[str, bool]:
+    def _convert_parameters_to_fields(self, parameters: list[str]) -> dict[str, bool]:
         """
         Конвертирует список параметров в словарь fields
 
@@ -171,34 +188,39 @@ class DocumentTypesPage(QWidget):
             self.document_types = []
             for doc_type in types:
                 # Нормализуем fields
-                fields = doc_type.get('fields', {})
+                fields = doc_type.get("fields", {})
                 normalized_fields = self._normalize_fields(fields)
                 parameters = self._convert_fields_to_parameters(fields)
 
-                self.document_types.append({
-                    'id': doc_type.get('id'),
-                    'name': doc_type.get('name', ''),
-                    'code': doc_type.get('smdo_code_type', ''),
-                    'description': doc_type.get('description', ''),
-                    'documents_count': doc_type.get('documents_count', 0),
-                    'fields_count': len(parameters),
-                    'auto_numbering': doc_type.get('auto_num', False),
-                    'parameters': parameters,
-                    'fields': normalized_fields,
-                    'auto_num': doc_type.get('auto_num', False),
-                    'smdo_code_type': doc_type.get('smdo_code_type', '')
-                })
+                self.document_types.append(
+                    {
+                        "id": doc_type.get("id"),
+                        "name": doc_type.get("name", ""),
+                        "code": doc_type.get("smdo_code_type", ""),
+                        "description": doc_type.get("description", ""),
+                        "documents_count": doc_type.get("documents_count", 0),
+                        "fields_count": len(parameters),
+                        "auto_numbering": doc_type.get("auto_num", False),
+                        "parameters": parameters,
+                        "fields": normalized_fields,
+                        "auto_num": doc_type.get("auto_num", False),
+                        "smdo_code_type": doc_type.get("smdo_code_type", ""),
+                    }
+                )
 
             self.is_loading = False
             self.update_display()
             self.data_loaded.emit()
 
             if self.document_types:
-                self.show_success_notification(f"Загружено {len(self.document_types)} типов документов")
+                self.show_success_notification(
+                    f"Загружено {len(self.document_types)} типов документов"
+                )
 
         except Exception as e:
             self.is_loading = False
             import logging
+
             logging.error(f"Ошибка загрузки типов документов: {e}")
 
             if "401" in str(e) or "AuthError" in str(e):
@@ -222,25 +244,27 @@ class DocumentTypesPage(QWidget):
 
         for name, func in sort_options.items():
             action = menu.addAction(name)
-            action.triggered.connect(lambda checked, f=func, n=name: self.apply_sort(f, n))
+            action.triggered.connect(
+                lambda checked, f=func, n=name: self.apply_sort(f, n)
+            )
 
         menu.exec(self.btnSort.mapToGlobal(self.btnSort.rect().bottomLeft()))
 
     def sort_by_name_asc(self, types):
-        return sorted(types, key=lambda x: x.get('name', '').lower())
+        return sorted(types, key=lambda x: x.get("name", "").lower())
 
     def sort_by_name_desc(self, types):
-        return sorted(types, key=lambda x: x.get('name', '').lower(), reverse=True)
+        return sorted(types, key=lambda x: x.get("name", "").lower(), reverse=True)
 
     def sort_by_count_asc(self, types):
-        return sorted(types, key=lambda x: x.get('documents_count', 0))
+        return sorted(types, key=lambda x: x.get("documents_count", 0))
 
     def sort_by_count_desc(self, types):
-        return sorted(types, key=lambda x: x.get('documents_count', 0), reverse=True)
+        return sorted(types, key=lambda x: x.get("documents_count", 0), reverse=True)
 
     def apply_sort(self, sort_func, sort_name):
         self.current_sort = sort_name
-        short_name = sort_name.split('(')[0].strip() if '(' in sort_name else sort_name
+        short_name = sort_name.split("(")[0].strip() if "(" in sort_name else sort_name
         self.btnSort.setText(f"Сортировка ▼ ({short_name})")
         self.update_reset_button_visibility()
         self.update_display()
@@ -281,10 +305,11 @@ class DocumentTypesPage(QWidget):
         search_text = self.searchEdit.text().strip().lower()
         if search_text:
             filtered = [
-                dt for dt in filtered
-                if search_text in dt.get('name', '').lower() or
-                   search_text in dt.get('smdo_code_type', '').lower() or
-                   search_text in dt.get('description', '').lower()
+                dt
+                for dt in filtered
+                if search_text in dt.get("name", "").lower()
+                or search_text in dt.get("smdo_code_type", "").lower()
+                or search_text in dt.get("description", "").lower()
             ]
 
         # Сортировка
@@ -350,7 +375,9 @@ class DocumentTypesPage(QWidget):
             type_card = DocumentTypeCard(doc_type)
             type_card.edit_clicked.connect(self.on_edit_type)
             type_card.delete_clicked.connect(self.on_delete_type)
-            type_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            type_card.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+            )
 
             if i % 2 == 0:
                 left_column.addWidget(type_card)
@@ -393,21 +420,27 @@ class DocumentTypesPage(QWidget):
 
     # client/windows/system/document_types/document_type_page.py
 
-    def _create_type(self, type_data: Dict[str, Any]):
+    def _create_type(self, type_data: dict[str, Any]):
         """Создание типа документа"""
         try:
             # Формируем данные для сервера
             server_data = {
-                'name': type_data.get('name', ''),
-                'fields': type_data.get('fields', {}),
-                'auto_num': type_data.get('auto_num',
-                                          type_data.get('auto_number', type_data.get('auto_numbering', False))),
-                'smdo_code_type': type_data.get('smdo_code_type', '')
+                "name": type_data.get("name", ""),
+                "fields": type_data.get("fields", {}),
+                "auto_num": type_data.get(
+                    "auto_num",
+                    type_data.get(
+                        "auto_number", type_data.get("auto_numbering", False)
+                    ),
+                ),
+                "smdo_code_type": type_data.get("smdo_code_type", ""),
             }
 
             # Если fields пустой, берем из parameters (для обратной совместимости)
-            if not server_data['fields'] and type_data.get('parameters'):
-                server_data['fields'] = {param: True for param in type_data['parameters']}
+            if not server_data["fields"] and type_data.get("parameters"):
+                server_data["fields"] = {
+                    param: True for param in type_data["parameters"]
+                }
 
             print(f"[DEBUG] Создание типа: server_data={server_data}")
 
@@ -417,28 +450,30 @@ class DocumentTypesPage(QWidget):
                 print(f"[DEBUG] Результат создания: {result}")
 
                 # Нормализуем полученные fields
-                result_fields = result.get('fields', {})
+                result_fields = result.get("fields", {})
                 normalized_fields = self._normalize_fields(result_fields)
                 parameters_result = self._convert_fields_to_parameters(result_fields)
 
                 # Получаем значение auto_num из результата
-                auto_num = result.get('auto_num', False)
+                auto_num = result.get("auto_num", False)
                 print(f"[DEBUG] auto_num из результата: {auto_num}")
 
-                self.document_types.append({
-                    'id': result.get('id'),
-                    'name': result.get('name', ''),
-                    'code': result.get('smdo_code_type', ''),
-                    'description': type_data.get('description', ''),
-                    'documents_count': 0,
-                    'fields_count': len(parameters_result),
-                    'auto_numbering': auto_num,  # Для совместимости
-                    'auto_num': auto_num,  # Для сервера
-                    'auto_number': auto_num,  # Для UI
-                    'parameters': parameters_result,
-                    'fields': normalized_fields,
-                    'smdo_code_type': result.get('smdo_code_type', '')
-                })
+                self.document_types.append(
+                    {
+                        "id": result.get("id"),
+                        "name": result.get("name", ""),
+                        "code": result.get("smdo_code_type", ""),
+                        "description": type_data.get("description", ""),
+                        "documents_count": 0,
+                        "fields_count": len(parameters_result),
+                        "auto_numbering": auto_num,  # Для совместимости
+                        "auto_num": auto_num,  # Для сервера
+                        "auto_number": auto_num,  # Для UI
+                        "parameters": parameters_result,
+                        "fields": normalized_fields,
+                        "smdo_code_type": result.get("smdo_code_type", ""),
+                    }
+                )
 
                 self.update_display()
                 self.show_success_notification(f"Тип «{result.get('name')}» создан")
@@ -447,6 +482,7 @@ class DocumentTypesPage(QWidget):
 
         except Exception as e:
             import logging
+
             logging.error(f"Ошибка создания типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -455,21 +491,27 @@ class DocumentTypesPage(QWidget):
 
     # client/windows/system/document_types/document_type_page.py
 
-    def _update_type(self, type_id: int, updated_data: Dict[str, Any]):
+    def _update_type(self, type_id: int, updated_data: dict[str, Any]):
         """Обновление типа документа"""
         try:
             # Формируем данные для сервера
             server_data = {
-                'name': updated_data.get('name', ''),
-                'fields': updated_data.get('fields', {}),
-                'auto_num': updated_data.get('auto_num', updated_data.get('auto_number',
-                                                                          updated_data.get('auto_numbering', False))),
-                'smdo_code_type': updated_data.get('smdo_code_type', '')
+                "name": updated_data.get("name", ""),
+                "fields": updated_data.get("fields", {}),
+                "auto_num": updated_data.get(
+                    "auto_num",
+                    updated_data.get(
+                        "auto_number", updated_data.get("auto_numbering", False)
+                    ),
+                ),
+                "smdo_code_type": updated_data.get("smdo_code_type", ""),
             }
 
             # Если fields пустой, берем из parameters (для обратной совместимости)
-            if not server_data['fields'] and updated_data.get('parameters'):
-                server_data['fields'] = {param: True for param in updated_data['parameters']}
+            if not server_data["fields"] and updated_data.get("parameters"):
+                server_data["fields"] = {
+                    param: True for param in updated_data["parameters"]
+                }
 
             print(f"[DEBUG] Обновление типа {type_id}: server_data={server_data}")
 
@@ -479,28 +521,32 @@ class DocumentTypesPage(QWidget):
                 print(f"[DEBUG] Результат обновления: {result}")
 
                 # Нормализуем полученные fields
-                result_fields = result.get('fields', {})
+                result_fields = result.get("fields", {})
                 normalized_fields = self._normalize_fields(result_fields)
                 parameters_result = self._convert_fields_to_parameters(result_fields)
 
                 # Получаем значение auto_num из результата
-                auto_num = result.get('auto_num', False)
+                auto_num = result.get("auto_num", False)
                 print(f"[DEBUG] auto_num из результата: {auto_num}")
 
                 for i, dt in enumerate(self.document_types):
-                    if dt.get('id') == type_id:
-                        self.document_types[i].update({
-                            'name': result.get('name', ''),
-                            'code': result.get('smdo_code_type', ''),
-                            'fields_count': len(parameters_result),
-                            'auto_numbering': auto_num,  # Для совместимости
-                            'auto_num': auto_num,  # Для сервера
-                            'auto_number': auto_num,  # Для UI
-                            'parameters': parameters_result,
-                            'fields': normalized_fields,
-                            'smdo_code_type': result.get('smdo_code_type', '')
-                        })
-                        print(f"[DEBUG] Обновлен тип в памяти: {self.document_types[i]}")
+                    if dt.get("id") == type_id:
+                        self.document_types[i].update(
+                            {
+                                "name": result.get("name", ""),
+                                "code": result.get("smdo_code_type", ""),
+                                "fields_count": len(parameters_result),
+                                "auto_numbering": auto_num,  # Для совместимости
+                                "auto_num": auto_num,  # Для сервера
+                                "auto_number": auto_num,  # Для UI
+                                "parameters": parameters_result,
+                                "fields": normalized_fields,
+                                "smdo_code_type": result.get("smdo_code_type", ""),
+                            }
+                        )
+                        print(
+                            f"[DEBUG] Обновлен тип в памяти: {self.document_types[i]}"
+                        )
                         break
 
                 self.update_display()
@@ -510,6 +556,7 @@ class DocumentTypesPage(QWidget):
 
         except Exception as e:
             import logging
+
             logging.error(f"Ошибка обновления типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -518,9 +565,9 @@ class DocumentTypesPage(QWidget):
 
     # client/windows/system/document_types/document_type_page.py
 
-    def on_edit_type(self, type_data: Dict[str, Any]):
+    def on_edit_type(self, type_data: dict[str, Any]):
         """Обработка редактирования типа документа"""
-        type_id = type_data.get('id')
+        type_id = type_data.get("id")
         if not type_id:
             self.show_error_notification("ID типа не найден")
             return
@@ -535,26 +582,26 @@ class DocumentTypesPage(QWidget):
             print(f"[DEBUG] Загружен тип с сервера: {server_type}")
 
             # Преобразуем данные в формат для диалога
-            fields = server_type.get('fields', {})
+            fields = server_type.get("fields", {})
             normalized_fields = self._normalize_fields(fields)
             parameters = self._convert_fields_to_parameters(fields)
 
             # Получаем auto_num
-            auto_num = server_type.get('auto_num', False)
+            auto_num = server_type.get("auto_num", False)
 
             full_type_data = {
-                'id': server_type.get('id'),
-                'name': server_type.get('name', ''),
-                'code': server_type.get('smdo_code_type', ''),
-                'description': server_type.get('description', ''),
-                'documents_count': server_type.get('documents_count', 0),
-                'fields_count': len(parameters),
-                'auto_numbering': auto_num,
-                'auto_num': auto_num,
-                'auto_number': auto_num,
-                'parameters': parameters,
-                'fields': normalized_fields,
-                'smdo_code_type': server_type.get('smdo_code_type', '')
+                "id": server_type.get("id"),
+                "name": server_type.get("name", ""),
+                "code": server_type.get("smdo_code_type", ""),
+                "description": server_type.get("description", ""),
+                "documents_count": server_type.get("documents_count", 0),
+                "fields_count": len(parameters),
+                "auto_numbering": auto_num,
+                "auto_num": auto_num,
+                "auto_number": auto_num,
+                "parameters": parameters,
+                "fields": normalized_fields,
+                "smdo_code_type": server_type.get("smdo_code_type", ""),
             }
 
             print(f"[DEBUG] Подготовлены данные для диалога: {full_type_data}")
@@ -570,17 +617,17 @@ class DocumentTypesPage(QWidget):
         except Exception as e:
             import logging
             import traceback
+
             logging.error(f"Ошибка загрузки типа для редактирования: {e}")
             traceback.print_exc()
             self.show_error_notification("Не удалось загрузить данные типа")
-
 
     def on_delete_type(self, type_id: int):
         """Обработка удаления типа документа"""
         type_name = "Неизвестный тип"
         for dt in self.document_types:
-            if dt.get('id') == type_id:
-                type_name = dt.get('name', 'Неизвестный тип')
+            if dt.get("id") == type_id:
+                type_name = dt.get("name", "Неизвестный тип")
                 break
 
         if DeleteDialog.show_confirmation(self):
@@ -592,7 +639,9 @@ class DocumentTypesPage(QWidget):
             success = self.doc_type_service.delete_type(type_id)
 
             if success:
-                self.document_types = [dt for dt in self.document_types if dt.get('id') != type_id]
+                self.document_types = [
+                    dt for dt in self.document_types if dt.get("id") != type_id
+                ]
                 self.update_display()
                 self.show_success_notification(f"Тип «{type_name}» удален")
             else:
@@ -600,6 +649,7 @@ class DocumentTypesPage(QWidget):
 
         except Exception as e:
             import logging
+
             logging.error(f"Ошибка удаления типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -609,7 +659,7 @@ class DocumentTypesPage(QWidget):
     # ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 
     def position_floating_button(self):
-        if hasattr(self, 'floating_btn'):
+        if hasattr(self, "floating_btn"):
             margin = 20
             x = self.width() - self.floating_btn.width() - margin
             y = self.height() - self.floating_btn.height() - margin
@@ -617,7 +667,7 @@ class DocumentTypesPage(QWidget):
             self.floating_btn.raise_()
 
     def on_scroll(self, value):
-        if hasattr(self, 'floating_btn'):
+        if hasattr(self, "floating_btn"):
             self.floating_btn.hide_with_animation()
             self.floating_btn.start_hide_timer()
 
@@ -625,7 +675,7 @@ class DocumentTypesPage(QWidget):
         super().resizeEvent(event)
         self.position_floating_button()
 
-        if hasattr(self, 'notification_manager'):
+        if hasattr(self, "notification_manager"):
             self.notification_manager.container.setGeometry(
                 0, 0, self.width(), self.height()
             )

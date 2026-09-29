@@ -1,13 +1,16 @@
 """
 Модуль состояния таблицы - модель состояния UI
 """
-from PyQt6.QtCore import QObject, pyqtSignal
-from typing import Optional, Dict, Any
+
 from enum import Enum
+from typing import Any
+
+from PyQt6.QtCore import QObject, pyqtSignal
 
 
 class SortOrder(Enum):
     """Порядок сортировки"""
+
     ASCENDING = "ascending"
     DESCENDING = "descending"
 
@@ -23,10 +26,10 @@ class TableState(QObject):
     def __init__(self):
         super().__init__()
         self._selected_row: int = -1
-        self._selected_document: Optional[Dict[str, Any]] = None
-        self._sort_column: Optional[str] = None
-        self._sort_order: Optional[SortOrder] = None
-        self._filter_criteria: Dict[str, Any] = {}
+        self._selected_document: dict[str, Any] | None = None
+        self._sort_column: str | None = None
+        self._sort_order: SortOrder | None = None
+        self._filter_criteria: dict[str, Any] = {}
         self._current_page: int = 0
         self._page_size: int = 20
 
@@ -44,18 +47,18 @@ class TableState(QObject):
             self.selection_changed.emit(value, self._selected_document)
 
     @property
-    def selected_document(self) -> Optional[Dict[str, Any]]:
+    def selected_document(self) -> dict[str, Any] | None:
         return self._selected_document
 
     @selected_document.setter
-    def selected_document(self, value: Optional[Dict[str, Any]]):
+    def selected_document(self, value: dict[str, Any] | None):
         if self._selected_document != value:
             self._selected_document = value
             self.state_changed.emit()
             if value:
                 self.selection_changed.emit(self._selected_row, value)
 
-    def select_row(self, row: int, document: Optional[Dict[str, Any]] = None):
+    def select_row(self, row: int, document: dict[str, Any] | None = None):
         """Выбрать строку"""
         self._selected_row = row
         self._selected_document = document
@@ -71,23 +74,25 @@ class TableState(QObject):
     # ========== СОРТИРОВКА ==========
 
     @property
-    def sort_column(self) -> Optional[str]:
+    def sort_column(self) -> str | None:
         return self._sort_column
 
     @sort_column.setter
-    def sort_column(self, value: Optional[str]):
+    def sort_column(self, value: str | None):
         if self._sort_column != value:
             self._sort_column = value
             self.state_changed.emit()
             if value:
-                self.sort_changed.emit(value, self._sort_order.value if self._sort_order else "ascending")
+                self.sort_changed.emit(
+                    value, self._sort_order.value if self._sort_order else "ascending"
+                )
 
     @property
-    def sort_order(self) -> Optional[SortOrder]:
+    def sort_order(self) -> SortOrder | None:
         return self._sort_order
 
     @sort_order.setter
-    def sort_order(self, value: Optional[SortOrder]):
+    def sort_order(self, value: SortOrder | None):
         if self._sort_order != value:
             self._sort_order = value
             self.state_changed.emit()
@@ -124,7 +129,7 @@ class TableState(QObject):
 
     # ========== ФИЛЬТРЫ ==========
 
-    def get_filter(self, key: str) -> Optional[Any]:
+    def get_filter(self, key: str) -> Any | None:
         """Получить фильтр по ключу"""
         return self._filter_criteria.get(key)
 
@@ -141,7 +146,7 @@ class TableState(QObject):
             self.state_changed.emit()
             self.filter_changed.emit(self._filter_criteria)
 
-    def get_all_filters(self) -> Dict[str, Any]:
+    def get_all_filters(self) -> dict[str, Any]:
         """Получить все фильтры"""
         return self._filter_criteria.copy()
 
@@ -198,7 +203,7 @@ class TableState(QObject):
         self._current_page = 0
         self.state_changed.emit()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Сериализация состояния"""
         return {
             "selected_row": self._selected_row,
@@ -206,5 +211,5 @@ class TableState(QObject):
             "sort_order": self._sort_order.value if self._sort_order else None,
             "filters": self._filter_criteria.copy(),
             "current_page": self._current_page,
-            "page_size": self._page_size
+            "page_size": self._page_size,
         }

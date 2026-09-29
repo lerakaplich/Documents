@@ -1,12 +1,17 @@
 # client/windows/documents/stats/unanswered_stats_dialog.py
 
-import os
-from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget,
-    QTableWidgetItem, QPushButton, QHeaderView, QMessageBox
-)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QBrush, QColor
+from PyQt6.QtWidgets import (
+    QDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+)
 
 from client.core.themes import get_manager
 
@@ -42,9 +47,7 @@ class UnansweredStatsDialog(QDialog):
         header.addStretch()
 
         total_penalty = sum(int(s.get("penalty", 0) or 0) for s in self.stats)
-        summary = QLabel(
-            f"Всего: {len(self.stats)}  •  Общий штраф: {total_penalty}"
-        )
+        summary = QLabel(f"Всего: {len(self.stats)}  •  Общий штраф: {total_penalty}")
         summary.setObjectName("statsSummary")
         header.addWidget(summary)
 
@@ -53,9 +56,9 @@ class UnansweredStatsDialog(QDialog):
         # Таблица
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels([
-            "№", "Документ", "Тема", "Срок", "Просрочка (дн.)", "Штраф"
-        ])
+        self.table.setHorizontalHeaderLabels(
+            ["№", "Документ", "Тема", "Срок", "Просрочка (дн.)", "Штраф"]
+        )
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.verticalHeader().setVisible(False)

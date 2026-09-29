@@ -37,7 +37,8 @@
         CommentsCellBuilder показывает last_comment_text напрямую
         (см. правку в cell_builders.py).
 """
-from typing import Any, Dict, List, Optional
+
+from typing import Any
 
 # TODO(бэкенд): значение "delegate" подтверждено докстрингом
 # UnansweredDocumentStat.assignees на сервере ("ФИО Получателей (recipient)
@@ -47,10 +48,10 @@ EXECUTOR_ROLES = {"executor"}  # ⚠ догадка, сверить с DocumentR
 DELEGATE_ROLES = {"delegate"}  # подтверждено докстрингом на сервере
 
 
-def map_document_list_item(item: Dict[str, Any]) -> Dict[str, Any]:
+def map_document_list_item(item: dict[str, Any]) -> dict[str, Any]:
     """Приводит один DocumentListItem к формату, ожидаемому таблицей."""
     sender = item.get("sender")
-    senders: List[Dict[str, Any]] = [sender] if sender else []
+    senders: list[dict[str, Any]] = [sender] if sender else []
 
     participants = item.get("participants") or []
     executors = [p for p in participants if p.get("role") in EXECUTOR_ROLES]
@@ -69,7 +70,7 @@ def map_document_list_item(item: Dict[str, Any]) -> Dict[str, Any]:
     return mapped
 
 
-def map_documents_response(response: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def map_documents_response(response: dict[str, Any] | None) -> list[dict[str, Any]]:
     """Разворачивает {"total", "limit", "offset", "items": [...]} в список строк таблицы."""
     if not response:
         return []

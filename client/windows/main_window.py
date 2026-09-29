@@ -1,10 +1,16 @@
-import os
 import sys
 import traceback
-from PyQt6.QtWidgets import QMainWindow, QApplication, QHBoxLayout, QWidget, QStackedWidget, QMessageBox
-from PyQt6.QtCore import Qt, pyqtSignal
 
-from client.core import http_client
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QMainWindow,
+    QMessageBox,
+    QStackedWidget,
+    QWidget,
+)
+
 from client.core.state.app_state import AppState
 from client.windows.documents.table.documents_panel import DocumentsPanel
 from client.windows.left_panel.left_panel import LeftPanel
@@ -15,6 +21,7 @@ from client.windows.system.tab_system import SystemTab
 
 class MainWindow(QMainWindow):
     """Главное окно приложения - ТОЛЬКО НАВИГАЦИЯ"""
+
     logout_requested = pyqtSignal()
 
     def __init__(self):
@@ -31,6 +38,7 @@ class MainWindow(QMainWindow):
 
             # ── Тема (нужна и ниже) ──
             from client.core.themes import get_manager
+
             _t = get_manager().current
 
             # Центральный виджет
@@ -94,11 +102,14 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"✗ Ошибка при инициализации MainWindow: {e}")
             traceback.print_exc()
-            QMessageBox.critical(self, "Ошибка", f"Не удалось инициализировать приложение:\n{str(e)}")
+            QMessageBox.critical(
+                self, "Ошибка", f"Не удалось инициализировать приложение:\n{e!s}"
+            )
             raise
 
     def setup_app_style(self):
         from client.core.themes import get_manager
+
         t = get_manager().current
         self.setStyleSheet(f"""
             QMainWindow {{
@@ -121,45 +132,49 @@ class MainWindow(QMainWindow):
             print("Настройка сигналов...")
 
             # Левая панель -> навигация
-            if hasattr(self.left_panel, 'type_clicked'):
+            if hasattr(self.left_panel, "type_clicked"):
                 self.left_panel.type_clicked.connect(self.on_type_selected)
                 print("✓ type_clicked подключен")
 
-            if hasattr(self.left_panel, 'direction_clicked'):
+            if hasattr(self.left_panel, "direction_clicked"):
                 self.left_panel.direction_clicked.connect(self.on_direction_selected)
                 print("✓ direction_clicked подключен")
 
-            if hasattr(self.left_panel, 'profile_clicked'):
+            if hasattr(self.left_panel, "profile_clicked"):
                 self.left_panel.profile_clicked.connect(self.on_profile_clicked)
                 print("✓ profile_clicked подключен")
 
-            if hasattr(self.left_panel, 'all_documents_clicked'):
-                self.left_panel.all_documents_clicked.connect(self.on_all_documents_clicked)
+            if hasattr(self.left_panel, "all_documents_clicked"):
+                self.left_panel.all_documents_clicked.connect(
+                    self.on_all_documents_clicked
+                )
                 print("✓ all_documents_clicked подключен")
 
-            if hasattr(self.left_panel, 'archive_clicked'):
+            if hasattr(self.left_panel, "archive_clicked"):
                 self.left_panel.archive_clicked.connect(self.on_archive_clicked)
 
-            if hasattr(self.left_panel, 'system_clicked'):
+            if hasattr(self.left_panel, "system_clicked"):
                 self.left_panel.system_clicked.connect(self.on_system_clicked)
                 print("✓ system_clicked подключен")
 
-            if hasattr(self.left_panel, 'settings_clicked'):
+            if hasattr(self.left_panel, "settings_clicked"):
                 self.left_panel.settings_clicked.connect(self.on_settings_clicked)
                 print("✓ settings_clicked подключен")
 
             # Статус-бар
-            if hasattr(self.documents_panel, 'data_loaded'):
+            if hasattr(self.documents_panel, "data_loaded"):
                 self.documents_panel.data_loaded.connect(
-                    lambda count: self.statusBar().showMessage(f"Загружено {count} документов", 3000)
+                    lambda count: self.statusBar().showMessage(
+                        f"Загружено {count} документов", 3000
+                    )
                 )
                 print("✓ data_loaded подключен")
 
-            if hasattr(self.settings_tab, 'theme_change_requested'):
+            if hasattr(self.settings_tab, "theme_change_requested"):
                 self.settings_tab.theme_change_requested.connect(self.on_theme_changed)
                 print("✓ theme_change_requested подключен")
 
-            if hasattr(self.settings_tab, 'logout_requested'):
+            if hasattr(self.settings_tab, "logout_requested"):
                 self.settings_tab.logout_requested.connect(self.on_logout_clicked)
                 print("✓ settings logout_requested подключен")
 
@@ -175,7 +190,9 @@ class MainWindow(QMainWindow):
         """Переключение на архивные документы"""
         self.content_stack.setCurrentWidget(self.documents_panel)
         self.documents_panel.controller.set_filters(scope="archive")
-        docs, title, view_mode, doc_type = self.documents_panel.controller._load_current(1)
+        docs, title, view_mode, doc_type = (
+            self.documents_panel.controller._load_current(1)
+        )
         self.documents_panel._update_table(docs, doc_type, "Архив", view_mode)
         self.statusBar().showMessage("Архив", 3000)
 
@@ -193,11 +210,13 @@ class MainWindow(QMainWindow):
 
     def on_theme_changed(self, key: str):
         """Применить выбранную тему, сохранить её локально."""
-        from client.core.themes import (
-            get_theme, get_palette_and_mode,
-            set_theme, apply_theme_to_all_windows,
-        )
         from client.core.settings.settings_manager import SettingsManager
+        from client.core.themes import (
+            apply_theme_to_all_windows,
+            get_palette_and_mode,
+            get_theme,
+            set_theme,
+        )
 
         palette, mode = get_palette_and_mode(key)
         theme = get_theme(palette, mode)
@@ -223,15 +242,15 @@ class MainWindow(QMainWindow):
             "Выход из аккаунта",
             "Вы уверены, что хотите выйти из аккаунта?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
 
         # ─── Серверный logout + очистка токенов и сохранённой сессии ───
         try:
-            from client.services.auth_service import AuthService
             from client.core.state.app_state import AppState
+            from client.services.auth_service import AuthService
 
             auth = AuthService(AppState().http_client)
             auth.logout()
@@ -270,8 +289,6 @@ class MainWindow(QMainWindow):
         self.content_stack.setCurrentWidget(self.documents_panel)
         direction_key = "internal" if "внутр" in group_name.lower() else "external"
         self.documents_panel.load_documents_by_direction(direction_key, direction_name)
-
-
 
     def closeEvent(self, event):
         """Закрытие приложения без подтверждения."""

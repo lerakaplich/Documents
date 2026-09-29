@@ -172,5 +172,5 @@ class BaseTheme:
     BTN_NEUTRAL_PRESSED_BG: str
 
     # ── Иконки (перекрашиваются в рантайме) ──
-    ICON_COLOR: str            # основной цвет (стрелки, календарь, +, чекбоксы)
-    ICON_PIN_COLOR: str        # отдельно pin.svg — в тёмной он белый
+    ICON_COLOR: str  # основной цвет (стрелки, календарь, +, чекбоксы)
+    ICON_PIN_COLOR: str  # отдельно pin.svg — в тёмной он белый

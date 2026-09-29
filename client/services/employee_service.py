@@ -1,5 +1,6 @@
 # client/services/employee_service.py
-from typing import Optional, Dict, Any
+from typing import Any
+
 from client.core.http_client import HttpClient
 
 
@@ -9,7 +10,7 @@ class EmployeeService:
     def __init__(self, http_client: HttpClient):
         self.client = http_client
 
-    def get_my_profile(self) -> Dict[str, Any]:
+    def get_my_profile(self) -> dict[str, Any]:
         """Получить профиль текущего пользователя через /me"""
         try:
             print("📤 Отправка запроса на /employees/me")
@@ -20,11 +21,11 @@ class EmployeeService:
             print(f"❌ Ошибка в get_my_profile: {e}")
             raise
 
-    def get_employee(self, employee_id: int) -> Dict[str, Any]:
+    def get_employee(self, employee_id: int) -> dict[str, Any]:
         """Получить профиль сотрудника по ID"""
         return self.client.get(f"/employees/{employee_id}")
 
-    def update_my_profile(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_my_profile(self, data: dict[str, Any]) -> dict[str, Any]:
         """Обновить профиль текущего пользователя (PATCH /employees/me/profile)."""
         return self.client.patch("/employees/me/profile", json=data)
 
@@ -34,7 +35,9 @@ class EmployeeService:
         page = 1
         while True:
             print(f"[DEBUG] Запрос /employees/all page={page} limit=100")
-            result = self.client.get("/employees/all", params={"page": page, "limit": 100})
+            result = self.client.get(
+                "/employees/all", params={"page": page, "limit": 100}
+            )
             print(f"[DEBUG] Получено {len(result) if result else 0} записей")
             if not result:
                 break

@@ -1,12 +1,22 @@
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QGraphicsOpacityEffect, QFrame, QApplication
-)
 from PyQt6.QtCore import (
-    Qt, QPropertyAnimation, QEasingCurve, QTimer,
-    QPoint, QParallelAnimationGroup, pyqtSignal
+    QEasingCurve,
+    QParallelAnimationGroup,
+    QPoint,
+    QPropertyAnimation,
+    Qt,
+    QTimer,
+    pyqtSignal,
 )
-from PyQt6.QtGui import QIcon, QColor, QPalette
+from PyQt6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QGraphicsOpacityEffect,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from client.core.themes import get_manager
 
@@ -139,7 +149,7 @@ class AnimatedNotification(QFrame):
 
     def start_auto_close_timer(self):
         """Запускает таймер автоматического закрытия"""
-        if hasattr(self, 'auto_close_timer') and not self.is_closing:
+        if hasattr(self, "auto_close_timer") and not self.is_closing:
             self.auto_close_timer.start(self.duration)
 
     def start_fade_out(self):
@@ -149,7 +159,7 @@ class AnimatedNotification(QFrame):
 
         self.is_closing = True
 
-        if hasattr(self, 'auto_close_timer'):
+        if hasattr(self, "auto_close_timer"):
             self.auto_close_timer.stop()
 
         current_opacity = self.opacity_effect.opacity()
@@ -214,11 +224,7 @@ class NotificationManager:
             oldest.close_notification()
 
         # Создаем новое уведомление
-        notification = AnimatedNotification(
-            self.container,
-            message,
-            duration
-        )
+        notification = AnimatedNotification(self.container, message, duration)
 
         # Подключаем сигнал закрытия
         notification.closed.connect(lambda: self._remove_notification(notification))
@@ -250,7 +256,11 @@ class NotificationManager:
         # Отступ от нижнего края
         bottom_margin = 30
         # Вычисляем позицию для текущего уведомления
-        y = parent_height - bottom_margin - (index + 1) * (notification_height + self.notification_spacing)
+        y = (
+            parent_height
+            - bottom_margin
+            - (index + 1) * (notification_height + self.notification_spacing)
+        )
 
         return x, y
 
@@ -264,8 +274,14 @@ class NotificationManager:
 # Пример использования
 if __name__ == "__main__":
     import sys
-    from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QTextEdit
 
+    from PyQt6.QtWidgets import (
+        QApplication,
+        QMainWindow,
+        QPushButton,
+        QTextEdit,
+        QVBoxLayout,
+    )
 
     class MainWindow(QMainWindow):
         def __init__(self):
@@ -284,7 +300,9 @@ if __name__ == "__main__":
                 "Нажмите сюда, чтобы проверить, что уведомления не блокируют клики.\n\nВы можете взаимодействовать с этим полем, пока видны уведомления."
                 "\n\nУведомления теперь:\n• По центру экрана\n• Ближе друг к другу\n• Крупный шрифт 18px"
             )
-            text.setStyleSheet("border: 2px solid #ccc; border-radius: 8px; padding: 10px; font-size: 14px;")
+            text.setStyleSheet(
+                "border: 2px solid #ccc; border-radius: 8px; padding: 10px; font-size: 14px;"
+            )
             layout.addWidget(text)
 
             # Кнопка для показа уведомлений
@@ -315,10 +333,9 @@ if __name__ == "__main__":
         def show_notification(self):
             self.notification_manager.show_notification(
                 f"Уведомление #{self.counter}: Действие выполнено успешно!",
-                duration=3000
+                duration=3000,
             )
             self.counter += 1
-
 
     app = QApplication(sys.argv)
     window = MainWindow()

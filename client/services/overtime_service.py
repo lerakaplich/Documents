@@ -1,7 +1,8 @@
 # client/services/overtime_service.py
 import os
-from typing import Optional, List, Dict, Any
-from datetime import datetime, date
+from datetime import date
+from typing import Any
+
 from client.core.http_client import HttpClient
 
 
@@ -13,58 +14,70 @@ class OvertimeService:
 
     def get_my_overtime(self, start_date=None, end_date=None, page=1, size=100):
         try:
-            params = {'page': page, 'size': size}
-            if start_date: params['start_date'] = start_date
-            if end_date:   params['end_date'] = end_date
+            params = {"page": page, "size": size}
+            if start_date:
+                params["start_date"] = start_date
+            if end_date:
+                params["end_date"] = end_date
 
             result = self.client.get("/overtime/my", params=params)
             if isinstance(result, dict):
-                print(f"📥 Мои: страница {result.get('page')} из {result.get('pages')}, "
-                      f"всего {result.get('total')}, на странице {len(result.get('items', []))}")
+                print(
+                    f"📥 Мои: страница {result.get('page')} из {result.get('pages')}, "
+                    f"всего {result.get('total')}, на странице {len(result.get('items', []))}"
+                )
                 return result
-            return {'items': [], 'total': 0, 'page': 1, 'pages': 1, 'size': size}
+            return {"items": [], "total": 0, "page": 1, "pages": 1, "size": size}
         except Exception as e:
             print(f"❌ Ошибка получения моих переработок: {e}")
-            return {'items': [], 'total': 0, 'page': 1, 'pages': 1, 'size': size}
+            return {"items": [], "total": 0, "page": 1, "pages": 1, "size": size}
 
     def get_all_overtime(self, start_date=None, end_date=None, page=1, size=100):
         try:
-            params = {'page': page, 'size': size}
-            if start_date: params['start_date'] = start_date
-            if end_date:   params['end_date'] = end_date
+            params = {"page": page, "size": size}
+            if start_date:
+                params["start_date"] = start_date
+            if end_date:
+                params["end_date"] = end_date
 
             result = self.client.get("/overtime/all", params=params)
             if isinstance(result, dict):
-                print(f"📥 Все: страница {result.get('page')} из {result.get('pages')}, "
-                      f"всего {result.get('total')}, на странице {len(result.get('items', []))}")
+                print(
+                    f"📥 Все: страница {result.get('page')} из {result.get('pages')}, "
+                    f"всего {result.get('total')}, на странице {len(result.get('items', []))}"
+                )
                 return result
-            return {'items': [], 'total': 0, 'page': 1, 'pages': 1, 'size': size}
+            return {"items": [], "total": 0, "page": 1, "pages": 1, "size": size}
         except Exception as e:
             print(f"❌ Ошибка получения всех переработок: {e}")
-            return {'items': [], 'total': 0, 'page': 1, 'pages': 1, 'size': size}
+            return {"items": [], "total": 0, "page": 1, "pages": 1, "size": size}
 
-
-
-    def get_department_overtime(self, department_id: int, start_date: Optional[str] = None,
-                                end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_department_overtime(
+        self,
+        department_id: int,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> list[dict[str, Any]]:
         try:
             print(f"📤 Запрос на получение переработок для отдела {department_id}")
             params = {}
             if start_date:
-                params['start_date'] = start_date
+                params["start_date"] = start_date
             if end_date:
-                params['end_date'] = end_date
-            params['page'] = 1
-            params['size'] = 100
-            result = self.client.get(f"/overtime/department/{department_id}", params=params)
-            items = result.get('items', []) if isinstance(result, dict) else []
+                params["end_date"] = end_date
+            params["page"] = 1
+            params["size"] = 100
+            result = self.client.get(
+                f"/overtime/department/{department_id}", params=params
+            )
+            items = result.get("items", []) if isinstance(result, dict) else []
             print(f"📥 Получено {len(items)} переработок для отдела")
             return items
         except Exception as e:
             print(f"❌ Ошибка получения переработок для отдела: {e}")
             return []
 
-    def create_overtime(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_overtime(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Создать новую переработку
         POST /overtime
@@ -78,7 +91,7 @@ class OvertimeService:
             print(f"❌ Ошибка создания переработки: {e}")
             raise
 
-    def update_overtime(self, overtime_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_overtime(self, overtime_id: int, data: dict[str, Any]) -> dict[str, Any]:
         """
         Обновить переработку
         PATCH /overtime/{ot_id}
@@ -92,14 +105,16 @@ class OvertimeService:
             print(f"❌ Ошибка обновления переработки: {e}")
             raise
 
-    def update_overtime_note(self, overtime_id: int, note: str) -> Dict[str, Any]:
+    def update_overtime_note(self, overtime_id: int, note: str) -> dict[str, Any]:
         """
         Обновить заметку переработки
         PATCH /overtime/{ot_id}/description?note={note}
         """
         try:
             print(f"📤 Обновление заметки переработки {overtime_id}")
-            result = self.client.patch(f"/overtime/{overtime_id}/description", params={"note": note})
+            result = self.client.patch(
+                f"/overtime/{overtime_id}/description", params={"note": note}
+            )
             print(f"✅ Заметка переработки {overtime_id} обновлена")
             return result
         except Exception as e:
@@ -163,7 +178,7 @@ class OvertimeService:
             print(f"❌ Ошибка импорта: {e}")
             raise
 
-    def update_bulk_notes(self, overtime_ids: List[int], note: str) -> Dict[str, Any]:
+    def update_bulk_notes(self, overtime_ids: list[int], note: str) -> dict[str, Any]:
         """
         Массовое обновление заметок
         PATCH /overtime/bulk-description
@@ -172,15 +187,18 @@ class OvertimeService:
             print(f"📤 Массовое обновление заметок для {len(overtime_ids)} переработок")
             data = {"overtime_ids": overtime_ids, "note": note}
             result = self.client.patch("/overtime/bulk-description", json=data)
-            print(f"✅ Массовое обновление заметок выполнено")
+            print("✅ Массовое обновление заметок выполнено")
             return result
         except Exception as e:
             print(f"❌ Ошибка массового обновления заметок: {e}")
             raise
 
-    def export_overtime(self, dept_id: Optional[int] = None,
-                        start_date: Optional[date] = None,
-                        end_date: Optional[date] = None) -> bytes:
+    def export_overtime(
+        self,
+        dept_id: int | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> bytes:
         """
         Экспорт переработок в Excel
         GET /overtime/export-excel
@@ -201,10 +219,7 @@ class OvertimeService:
             url = f"{self.client.base_url}/overtime/export-excel"
 
             response = self.client.session.get(
-                url,
-                headers=headers,
-                params=params,
-                timeout=60
+                url, headers=headers, params=params, timeout=60
             )
 
             print(f"📥 Статус ответа: {response.status_code}")
@@ -217,7 +232,9 @@ class OvertimeService:
                 error_body = response.text
                 print(f"❌ Ошибка экспорта: {response.status_code}")
                 print(f"❌ Тело ошибки: {error_body[:500]}")
-                raise Exception(f"Ошибка экспорта: {response.status_code}\n{error_body}")
+                raise Exception(
+                    f"Ошибка экспорта: {response.status_code}\n{error_body}"
+                )
         except Exception as e:
             print(f"❌ Ошибка экспорта: {e}")
             raise

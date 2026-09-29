@@ -1,10 +1,10 @@
 import re
 from dataclasses import asdict
 
-from PyQt6.QtWidgets import QWidget, QApplication
+from PyQt6.QtWidgets import QApplication, QWidget
 
-from client.core.themes.tokens import BaseTheme
 from client.core.themes.standard import StandardTheme
+from client.core.themes.tokens import BaseTheme
 from client.core.utils.icon_manager import icon_manager
 
 _PLACEHOLDER_RE = re.compile(r"\{([A-Z][A-Z0-9_]*)\}")
@@ -28,17 +28,18 @@ class ThemeManager:
         d = asdict(self._current)
 
         from client.core.themes.icon_utils import icon_path
+
         icon_color = self._current.ICON_COLOR
         pin_color = self._current.ICON_PIN_COLOR
 
         # QSS-пути (используются в .ui как {ICON_*_PATH})
-        d["ICON_ARROW_DOWN_PATH"]         = icon_path("down_arrow",   icon_color)
-        d["ICON_ARROW_UP_PATH"]           = icon_path("up_arrow",     icon_color)
-        d["ICON_CALENDAR_PATH"]           = icon_path("calendar_date", icon_color)
-        d["ICON_PLUS_PATH"]               = icon_path("plus24_gold",  icon_color)
-        d["ICON_PIN_PATH"]                = icon_path("pin",          pin_color)
+        d["ICON_ARROW_DOWN_PATH"] = icon_path("down_arrow", icon_color)
+        d["ICON_ARROW_UP_PATH"] = icon_path("up_arrow", icon_color)
+        d["ICON_CALENDAR_PATH"] = icon_path("calendar_date", icon_color)
+        d["ICON_PLUS_PATH"] = icon_path("plus24_gold", icon_color)
+        d["ICON_PIN_PATH"] = icon_path("pin", pin_color)
         # ── Чекбоксы (новое) ──
-        d["ICON_CHECKBOX_CHECKED_PATH"]   = icon_path("cb_checked",   icon_color)
+        d["ICON_CHECKBOX_CHECKED_PATH"] = icon_path("cb_checked", icon_color)
         d["ICON_CHECKBOX_UNCHECKED_PATH"] = icon_path("cb_unchecked", icon_color)
         d["ICON_CLOCK_PATH"] = icon_path("clock", icon_color)
 
@@ -161,4 +162,3 @@ def get_message_box_style() -> str:
             color: {t.TEXT_BLACK};
         }}
     """
-

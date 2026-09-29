@@ -1,8 +1,9 @@
 # organization_card.py
-import sys
 import os
-from PyQt6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget
-from PyQt6.QtCore import pyqtSignal, Qt
+import sys
+
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QApplication, QFrame
 from PyQt6.uic import loadUi
 
 from client.core.themes import apply_theme_to_widget
@@ -23,29 +24,39 @@ class OrganizationCard(QFrame):
         if os.path.exists(ui_path):
             loadUi(ui_path, self)
             apply_theme_to_widget(self)
-            from PyQt6.QtWidgets import QSizePolicy
             from PyQt6.QtCore import Qt
+            from PyQt6.QtWidgets import QSizePolicy
 
-            labels = [self.nameLabel, self.unpLabel, self.addressLabel,
-                      self.phoneLabel, self.emailLabel, self.directorLabel]
+            labels = [
+                self.nameLabel,
+                self.unpLabel,
+                self.addressLabel,
+                self.phoneLabel,
+                self.emailLabel,
+                self.directorLabel,
+            ]
 
             for lbl in labels:
-                lbl.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-                lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+                lbl.setSizePolicy(
+                    QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
+                )
+                lbl.setAlignment(
+                    Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+                )
         else:
             raise FileNotFoundError(f"UI файл не найден: {ui_path}")
 
         # Сохраняем данные
         self.organization_data = organization_data or {}
-        self.organization_id = self.organization_data.get('id', 0)
+        self.organization_id = self.organization_data.get("id", 0)
 
         # Настраиваем карточку
         self.setup_card()
 
         # Подключаем сигналы кнопок
-        if hasattr(self, 'editBtn'):
+        if hasattr(self, "editBtn"):
             self.editBtn.clicked.connect(self.on_edit_clicked)
-        if hasattr(self, 'deleteBtn'):
+        if hasattr(self, "deleteBtn"):
             self.deleteBtn.clicked.connect(self.on_delete_clicked)
 
     def get_ui_path(self):
@@ -53,7 +64,16 @@ class OrganizationCard(QFrame):
         # Путь относительно текущего файла
         current_dir = os.path.dirname(os.path.abspath(__file__))
         # Поднимаемся на уровень выше до client/windows/system/organizations/
-        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'organizations', 'organization_card.ui')
+        ui_path = os.path.join(
+            current_dir,
+            "..",
+            "..",
+            "..",
+            "ui",
+            "system",
+            "organizations",
+            "organization_card.ui",
+        )
 
         return os.path.normpath(ui_path)
 
@@ -63,34 +83,36 @@ class OrganizationCard(QFrame):
             return
 
         # Заполняем название организации
-        if hasattr(self, 'nameLabel'):
-            name = self.organization_data.get('name', '')
-            self.nameLabel.setText(name if name else 'Название не указано')
+        if hasattr(self, "nameLabel"):
+            name = self.organization_data.get("name", "")
+            self.nameLabel.setText(name if name else "Название не указано")
 
         # Заполняем УНП
-        if hasattr(self, 'unpLabel'):
-            unp = self.organization_data.get('unp', '')
+        if hasattr(self, "unpLabel"):
+            unp = self.organization_data.get("unp", "")
             self.unpLabel.setText(f"УНП: {unp}" if unp else "УНП: не указан")
 
         # Заполняем адрес
-        if hasattr(self, 'addressLabel'):
-            address = self.organization_data.get('address', '')
+        if hasattr(self, "addressLabel"):
+            address = self.organization_data.get("address", "")
             self.addressLabel.setText(address if address else "Адрес не указан")
 
         # Заполняем телефон
-        if hasattr(self, 'phoneLabel'):
-            phone = self.organization_data.get('phone', '')
+        if hasattr(self, "phoneLabel"):
+            phone = self.organization_data.get("phone", "")
             self.phoneLabel.setText(phone if phone else "Телефон не указан")
 
         # Заполняем email
-        if hasattr(self, 'emailLabel'):
-            email = self.organization_data.get('email', '')
+        if hasattr(self, "emailLabel"):
+            email = self.organization_data.get("email", "")
             self.emailLabel.setText(email if email else "Email не указан")
 
         # Заполняем директора
-        if hasattr(self, 'directorLabel'):
-            director = self.organization_data.get('director', '')
-            self.directorLabel.setText(f"Директор: {director}" if director else "Директор: не назначен")
+        if hasattr(self, "directorLabel"):
+            director = self.organization_data.get("director", "")
+            self.directorLabel.setText(
+                f"Директор: {director}" if director else "Директор: не назначен"
+            )
 
     def on_edit_clicked(self):
         """Обработчик кнопки редактирования"""
@@ -110,20 +132,19 @@ class OrganizationCard(QFrame):
         return self.organization_data
 
 
-
 # Точка входа для тестирования
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     # Тест отдельной карточки
     test_data = {
-        'id': 1,
-        'name': 'ОАО "МАЗ" - Минский автомобильный завод',
-        'unp': '100123456',
-        'address': 'г. Минск, ул. Социалистическая, 42',
-        'phone': '+375 17 276-20-20',
-        'email': 'info@maz.by',
-        'director': 'Иванов И.И.'
+        "id": 1,
+        "name": 'ОАО "МАЗ" - Минский автомобильный завод',
+        "unp": "100123456",
+        "address": "г. Минск, ул. Социалистическая, 42",
+        "phone": "+375 17 276-20-20",
+        "email": "info@maz.by",
+        "director": "Иванов И.И.",
     }
 
     # Создаем и показываем карточку

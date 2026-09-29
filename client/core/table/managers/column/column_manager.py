@@ -1,18 +1,18 @@
-from typing import Dict
-
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QHeaderView
 
 from client.core.settings.settings_manager import SettingsManager
 from client.core.table.managers.column.column_order_manager import ColumnOrderManager
 from client.core.table.managers.column.column_size_manager import ColumnSizeManager
-from client.core.table.managers.column.column_visibility_manager import ColumnVisibilityManager
+from client.core.table.managers.column.column_visibility_manager import (
+    ColumnVisibilityManager,
+)
 
 
 class ColumnManager:
     """Координатор управления состоянием колонок"""
 
-    def __init__(self, table_widget, columns_config: Dict, doc_type: str = None):
+    def __init__(self, table_widget, columns_config: dict, doc_type: str = None):
         self.table_widget = table_widget
         self.columns_config = columns_config
         self.doc_type = doc_type or "default"
@@ -49,7 +49,9 @@ class ColumnManager:
         header.sectionMoved.connect(self._on_section_moved)
         header.sectionResized.connect(self._on_section_resized)
 
-    def _on_section_moved(self, logicalIndex: int, oldVisualIndex: int, newVisualIndex: int):
+    def _on_section_moved(
+        self, logicalIndex: int, oldVisualIndex: int, newVisualIndex: int
+    ):
         """Обработчик перемещения секции"""
         if self._is_restoring:
             return
@@ -84,7 +86,7 @@ class ColumnManager:
             self.visibility_manager.restore()
             self.order_manager.restore()
             QTimer.singleShot(100, self.size_manager.restore)
-            QTimer.singleShot(1000, lambda: setattr(self, '_is_restoring', False))
+            QTimer.singleShot(1000, lambda: setattr(self, "_is_restoring", False))
         except Exception as e:
             print(f"[ColumnManager] Error during restore: {e}")
             self._is_restoring = False

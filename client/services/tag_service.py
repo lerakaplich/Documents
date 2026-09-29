@@ -3,8 +3,9 @@
 """
 Сервис для работы с тегами через API
 """
+
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from client.core.http_client import HttpClient
 
@@ -18,7 +19,7 @@ class TagService:
         self.http = http_client
         self.base_path = "/tag"
 
-    def get_all_tags(self) -> List[Dict[str, Any]]:
+    def get_all_tags(self) -> list[dict[str, Any]]:
         """Получить все теги"""
         try:
             response = self.http.get(f"{self.base_path}")
@@ -29,7 +30,7 @@ class TagService:
             logger.error(f"Ошибка получения тегов: {e}")
             return []
 
-    def get_tag(self, tag_id: int) -> Optional[Dict[str, Any]]:
+    def get_tag(self, tag_id: int) -> dict[str, Any] | None:
         """Получить тег по ID"""
         try:
             response = self.http.get(f"{self.base_path}/{tag_id}")
@@ -38,25 +39,21 @@ class TagService:
             logger.error(f"Ошибка получения тега {tag_id}: {e}")
             return None
 
-    def create_tag(self, tag_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def create_tag(self, tag_data: dict[str, Any]) -> dict[str, Any] | None:
         """Создать новый тег"""
         try:
-            response = self.http.post(
-                f"{self.base_path}",
-                json=tag_data
-            )
+            response = self.http.post(f"{self.base_path}", json=tag_data)
             return response
         except Exception as e:
             logger.error(f"Ошибка создания тега: {e}")
             return None
 
-    def update_tag(self, tag_id: int, tag_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def update_tag(
+        self, tag_id: int, tag_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Обновить тег"""
         try:
-            response = self.http.patch(
-                f"{self.base_path}/{tag_id}",
-                json=tag_data
-            )
+            response = self.http.patch(f"{self.base_path}/{tag_id}", json=tag_data)
             return response
         except Exception as e:
             logger.error(f"Ошибка обновления тега {tag_id}: {e}")
@@ -73,7 +70,7 @@ class TagService:
 
 
 # Синглтон
-_tag_service_instance: Optional[TagService] = None
+_tag_service_instance: TagService | None = None
 
 
 def get_tag_service(http_client: HttpClient) -> TagService:

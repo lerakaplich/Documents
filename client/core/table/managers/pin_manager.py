@@ -1,6 +1,7 @@
 """
 Управление закреплением документов
 """
+
 from PyQt6.QtCore import QObject, pyqtSignal
 
 from client.core.settings.settings_manager import SettingsManager

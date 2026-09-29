@@ -1,10 +1,8 @@
 """
 Модуль с тестовыми данными и конфигурацией таблицы документов
 """
+
 from PyQt6.QtGui import QColor
-from datetime import datetime, timedelta
-from typing import List, Dict, Any
-import copy
 
 
 class DocumentDataConfig:
@@ -15,13 +13,11 @@ class DocumentDataConfig:
         {
             "id": 1,
             "name": "Служебная записка",
-            "fields": [
-                {"name": "basis", "type": "text", "label": "Основание"}
-            ],
+            "fields": [{"name": "basis", "type": "text", "label": "Основание"}],
             # Какие поля с пользователями доступны для этого типа
             "user_fields": ["senders", "receivers", "executors", "delegates"],
             "auto_num": True,
-            "smdo_code_type": None
+            "smdo_code_type": None,
         },
         {
             "id": 2,
@@ -31,7 +27,7 @@ class DocumentDataConfig:
             ],
             "user_fields": ["senders", "receivers", "executors"],
             "auto_num": True,
-            "smdo_code_type": None
+            "smdo_code_type": None,
         },
         {
             "id": 3,
@@ -39,7 +35,7 @@ class DocumentDataConfig:
             "fields": [],
             "user_fields": ["senders", "receivers"],
             "auto_num": False,
-            "smdo_code_type": "1.1.2.5"
+            "smdo_code_type": "1.1.2.5",
         },
         {
             "id": 4,
@@ -47,32 +43,30 @@ class DocumentDataConfig:
             "fields": [],
             "user_fields": ["senders", "receivers", "executors", "delegates"],
             "auto_num": True,
-            "smdo_code_type": "1.1.2.1"
-        }
+            "smdo_code_type": "1.1.2.1",
+        },
     ]
 
     # ============ НАПРАВЛЕНИЯ (DIRECTIONS) ============
     DIRECTION_MAPPING = {
         "internal": "Внутренние документы",
-        "external": "Внешние документы"
+        "external": "Внешние документы",
     }
 
-    TYPE_DIRECTION_MAPPING = {
-        "internal": [1, 2],
-        "external": [3, 4]
-    }
+    TYPE_DIRECTION_MAPPING = {"internal": [1, 2], "external": [3, 4]}
 
     # ============ СТАТУСЫ ============
     STATUS_MAPPING = {
         "under_review": "На рассмотрении",
         "partially_approved": "Частично утвержден",
         "approved": "Утвержден",
-        "rejected": "Отклонен"
+        "rejected": "Отклонен",
     }
 
     # ============ КОНФИГУРАЦИЯ КОЛОНОК ============
     COLUMNS_CONFIG = {
         0: "ID",
+        1: "Прочитано",
         2: "Номер документа",
         3: "Тема",
         4: "Тип",
@@ -88,7 +82,7 @@ class DocumentDataConfig:
         14: "Вложение",
         15: "Ответ",
         16: "Краткое содержание",
-        17: "Срок исполнения"
+        17: "Срок исполнения",
     }
 
     # ============ ЦВЕТА ============
@@ -98,6 +92,7 @@ class DocumentDataConfig:
     def get_row_color(cls, is_even: bool) -> QColor:
         """Фон чётной/нечётной строки таблицы."""
         from client.core.themes import get_manager
+
         t = get_manager().current
         return QColor(t.TABLE_BG if is_even else t.TABLE_ROW_ALT)
 
@@ -113,12 +108,14 @@ class DocumentDataConfig:
     def get_text_color(cls) -> QColor:
         """Основной цвет текста в таблице."""
         from client.core.themes import get_manager
+
         return QColor(get_manager().current.TEXT_PRIMARY)
 
     @classmethod
     def get_selected_color(cls) -> QColor:
         """Фон выделенной строки."""
         from client.core.themes import get_manager
+
         return QColor(get_manager().current.TABLE_SELECTION_BG)
 
     # ============ ФОРМАТЫ ФАЙЛОВ ============
@@ -140,25 +137,45 @@ class DocumentDataConfig:
                 "Служебная записка о закупке оборудования",
                 "Заявка на командировку",
                 "Служебная записка о премировании",
-                "Запрос на согласование бюджета"
+                "Запрос на согласование бюджета",
             ],
             "abouts": [
                 "Закупка нового оборудования для отдела разработки",
                 "Командировка в Минск для участия в конференции",
                 "Премирование сотрудников по итогам квартала",
-                "Согласование бюджета на следующий квартал"
+                "Согласование бюджета на следующий квартал",
             ],
-            "senders": [["Петров П.П."], ["Морозов М.М.", "Петров А.А."], ["Сидоров С.С."], ["Иванов И.И."]],
+            "senders": [
+                ["Петров П.П."],
+                ["Морозов М.М.", "Петров А.А."],
+                ["Сидоров С.С."],
+                ["Иванов И.И."],
+            ],
             "senders_ids": [[8], [6, 2], [5], [1]],
-            "receivers": [["Отдел закупок"], ["Отдел кадров", "Бухгалтерия", "Руководство"], ["Финансовый отдел"], ["Плановый отдел"]],
+            "receivers": [
+                ["Отдел закупок"],
+                ["Отдел кадров", "Бухгалтерия", "Руководство"],
+                ["Финансовый отдел"],
+                ["Плановый отдел"],
+            ],
             "receivers_ids": [[9], [3, 4, 1], [13], [14]],
-            "executors": [["Морозов М.М.", "Сидоров С.С."], ["Иванов И.И.", "Сидоров С.С."], ["Петров А.А."], ["Козлов К.К."]],
+            "executors": [
+                ["Морозов М.М.", "Сидоров С.С."],
+                ["Иванов И.И.", "Сидоров С.С."],
+                ["Петров А.А."],
+                ["Козлов К.К."],
+            ],
             "executors_ids": [[6, 5], [1, 5], [2], [7]],
             "delegates": [[], ["Петров А.А.", "Козлов К.К."], ["Морозов М.М."], []],
             "delegates_ids": [[], [2, 7], [6], []],
             "extra_fields": {
-                "basis": ["Для закупки оборудования", "Для командировки", "Для премирования", "Для бюджета"]
-            }
+                "basis": [
+                    "Для закупки оборудования",
+                    "Для командировки",
+                    "Для премирования",
+                    "Для бюджета",
+                ]
+            },
         },
         2: {  # Приказ генерального директора
             "type_name": "Приказ генерального директора",
@@ -167,25 +184,40 @@ class DocumentDataConfig:
                 "О внесении изменений в план работы",
                 "О назначении ответственных лиц",
                 "Об утверждении новой структуры",
-                "О проведении инвентаризации"
+                "О проведении инвентаризации",
             ],
             "abouts": [
                 "Внесение корректировок в план работы на 2-е полугодие",
                 "Назначение ответственных за реализацию проекта",
                 "Утверждение новой организационной структуры",
-                "Проведение ежегодной инвентаризации"
+                "Проведение ежегодной инвентаризации",
             ],
-            "senders": [["Иванов И.И.", "Петров А.А."], ["Иванов И.И."], ["Петров А.А."], ["Иванов И.И.", "Сидоров С.С."]],
+            "senders": [
+                ["Иванов И.И.", "Петров А.А."],
+                ["Иванов И.И."],
+                ["Петров А.А."],
+                ["Иванов И.И.", "Сидоров С.С."],
+            ],
             "senders_ids": [[1, 2], [1], [2], [1, 5]],
-            "receivers": [["Отдел кадров", "Бухгалтерия"], ["Все подразделения"], ["Отдел кадров"], ["Бухгалтерия", "Склад"]],
+            "receivers": [
+                ["Отдел кадров", "Бухгалтерия"],
+                ["Все подразделения"],
+                ["Отдел кадров"],
+                ["Бухгалтерия", "Склад"],
+            ],
             "receivers_ids": [[3, 4], [15], [3], [4, 16]],
-            "executors": [["Сидоров С.С.", "Морозов М.М."], ["Козлов К.К."], ["Морозов М.М."], ["Сидоров С.С."]],
+            "executors": [
+                ["Сидоров С.С.", "Морозов М.М."],
+                ["Козлов К.К."],
+                ["Морозов М.М."],
+                ["Сидоров С.С."],
+            ],
             "executors_ids": [[5, 6], [7], [6], [5]],
             "delegates": [],  # У приказов нет делегатов в этом примере
             "delegates_ids": [],
             "extra_fields": {
                 "control_date": ["2026-07-10", "2026-06-30", "2026-08-15", "2026-07-20"]
-            }
+            },
         },
         3: {  # Официальное письмо
             "type_name": "Официальное письмо (Входящее СМДО)",
@@ -194,23 +226,33 @@ class DocumentDataConfig:
                 "Письмо о сотрудничестве от ООО Партнер",
                 "Запрос от АО Технологии",
                 "Предложение от ИП Смирнов",
-                "Уведомление от ООО СтройИнвест"
+                "Уведомление от ООО СтройИнвест",
             ],
             "abouts": [
                 "Предложение о долгосрочном сотрудничестве",
                 "Запрос на участие в тендере",
                 "Коммерческое предложение",
-                "Уведомление о проведении аудита"
+                "Уведомление о проведении аудита",
             ],
-            "senders": [["ООО Партнер"], ["АО Технологии"], ["ИП Смирнов"], ["ООО СтройИнвест"]],
+            "senders": [
+                ["ООО Партнер"],
+                ["АО Технологии"],
+                ["ИП Смирнов"],
+                ["ООО СтройИнвест"],
+            ],
             "senders_ids": [[10], [17], [18], [19]],
-            "receivers": [["Юридический отдел", "Отдел продаж"], ["Отдел закупок"], ["Отдел развития"], ["Бухгалтерия"]],
+            "receivers": [
+                ["Юридический отдел", "Отдел продаж"],
+                ["Отдел закупок"],
+                ["Отдел развития"],
+                ["Бухгалтерия"],
+            ],
             "receivers_ids": [[11, 12], [9], [20], [4]],
             "executors": [],  # У официальных писем нет исполнителей
             "executors_ids": [],
             "delegates": [],  # У официальных писем нет делегатов
             "delegates_ids": [],
-            "extra_fields": {}
+            "extra_fields": {},
         },
         4: {  # Циркулярное письмо
             "type_name": "Циркулярное письмо (Исходящее СМДО)",
@@ -219,37 +261,52 @@ class DocumentDataConfig:
                 "Циркулярное письмо о внедрении новой системы",
                 "Циркуляр о новых правилах документооборота",
                 "Циркуляр о изменении графика работы",
-                "Циркуляр о проведении обучения"
+                "Циркуляр о проведении обучения",
             ],
             "abouts": [
                 "Уведомление о внедрении новой системы документооборота",
                 "Информирование о новых правилах работы с документами",
                 "Изменение графика работы в праздничные дни",
-                "Проведение обязательного обучения персонала"
+                "Проведение обязательного обучения персонала",
             ],
-            "senders": [["Руководство МАЗ"], ["Департамент управления"], ["Руководство МАЗ"], ["Отдел кадров"]],
+            "senders": [
+                ["Руководство МАЗ"],
+                ["Департамент управления"],
+                ["Руководство МАЗ"],
+                ["Отдел кадров"],
+            ],
             "senders_ids": [[1], [21], [1], [3]],
-            "receivers": [["Все структурные подразделения"], ["Все отделы"], ["Все сотрудники"], ["Все подразделения"]],
+            "receivers": [
+                ["Все структурные подразделения"],
+                ["Все отделы"],
+                ["Все сотрудники"],
+                ["Все подразделения"],
+            ],
             "receivers_ids": [[], [], [], []],
-            "executors": [["Козлов К.К.", "Морозов М.М."], ["Сидоров С.С."], ["Петров А.А."], ["Морозов М.М."]],
+            "executors": [
+                ["Козлов К.К.", "Морозов М.М."],
+                ["Сидоров С.С."],
+                ["Петров А.А."],
+                ["Морозов М.М."],
+            ],
             "executors_ids": [[7, 6], [5], [2], [6]],
             "delegates": [[], ["Козлов К.К."], [], ["Петров А.А."]],
             "delegates_ids": [[], [7], [], [2]],
-            "extra_fields": {}
-        }
+            "extra_fields": {},
+        },
     }
 
     TAGS_DATA = [
-        {'id': 1, 'name': 'Срочно', 'priority': 'urgent', 'color': '#FF0000'},
-        {'id': 2, 'name': 'Важно', 'priority': 'important', 'color': '#FFA500'},
-        {'id': 3, 'name': 'Обычный', 'priority': 'normal', 'color': '#808080'},
-        {'id': 4, 'name': 'Финансы', 'priority': 'important', 'color': '#008000'},
-        {'id': 5, 'name': 'Кадры', 'priority': 'normal', 'color': '#0000FF'},
-        {'id': 6, 'name': 'Юридический', 'priority': 'normal', 'color': '#800080'},
-        {'id': 7, 'name': 'Договор', 'priority': 'urgent', 'color': '#FF4500'},
-        {'id': 8, 'name': 'Отчет', 'priority': 'important', 'color': '#2E8B57'},
-        {'id': 9, 'name': 'Технический', 'priority': 'normal', 'color': '#4169E1'},
-        {'id': 10, 'name': 'Маркетинг', 'priority': 'normal', 'color': '#FF1493'},
+        {"id": 1, "name": "Срочно", "priority": "urgent", "color": "#FF0000"},
+        {"id": 2, "name": "Важно", "priority": "important", "color": "#FFA500"},
+        {"id": 3, "name": "Обычный", "priority": "normal", "color": "#808080"},
+        {"id": 4, "name": "Финансы", "priority": "important", "color": "#008000"},
+        {"id": 5, "name": "Кадры", "priority": "normal", "color": "#0000FF"},
+        {"id": 6, "name": "Юридический", "priority": "normal", "color": "#800080"},
+        {"id": 7, "name": "Договор", "priority": "urgent", "color": "#FF4500"},
+        {"id": 8, "name": "Отчет", "priority": "important", "color": "#2E8B57"},
+        {"id": 9, "name": "Технический", "priority": "normal", "color": "#4169E1"},
+        {"id": 10, "name": "Маркетинг", "priority": "normal", "color": "#FF1493"},
     ]
 
     @classmethod
@@ -261,21 +318,37 @@ class DocumentDataConfig:
     def get_tag_by_id(cls, tag_id: int) -> dict:
         """Получить тег по ID"""
         for tag in cls.TAGS_DATA:
-            if tag.get('id') == tag_id:
+            if tag.get("id") == tag_id:
                 return tag.copy()
         return None
 
     # ============ ГЕНЕРАЦИЯ ТЕСТОВЫХ ДАННЫХ ============
     @classmethod
-    def _generate_document(cls, type_id: int, index: int, status: str, is_read: bool, is_completed: bool,
-                          reg_number: str, sequence_number: int, sent_date: str, deadline: str,
-                          incoming_number: str = None, incoming_date: str = None,
-                          parent_document_id: int = None, confident_flag: int = 0,
-                          clearance_id: int = None, clearance_name: str = None,
-                          attachments: list = None, reply_file: dict = None,
-                          has_reply: bool = False, source_employee_id: int = None,
-                          source_organization_id: int = 1, source_official_text: str = "",
-                          extra_values: dict = None) -> dict:
+    def _generate_document(
+        cls,
+        type_id: int,
+        index: int,
+        status: str,
+        is_read: bool,
+        is_completed: bool,
+        reg_number: str,
+        sequence_number: int,
+        sent_date: str,
+        deadline: str,
+        incoming_number: str = None,
+        incoming_date: str = None,
+        parent_document_id: int = None,
+        confident_flag: int = 0,
+        clearance_id: int = None,
+        clearance_name: str = None,
+        attachments: list = None,
+        reply_file: dict = None,
+        has_reply: bool = False,
+        source_employee_id: int = None,
+        source_organization_id: int = 1,
+        source_official_text: str = "",
+        extra_values: dict = None,
+    ) -> dict:
         """Генерирует документ на основе шаблона типа"""
 
         base = cls._BASE_DOCUMENTS.get(type_id, cls._BASE_DOCUMENTS[1])
@@ -324,23 +397,41 @@ class DocumentDataConfig:
         if "receivers" in user_fields:
             receivers_list = base["receivers"][index % len(base["receivers"])]
             doc["receivers"] = receivers_list
-            doc["receivers_ids"] = base["receivers_ids"][index % len(base["receivers_ids"])]
+            doc["receivers_ids"] = base["receivers_ids"][
+                index % len(base["receivers_ids"])
+            ]
         else:
             doc["receivers"] = []
             doc["receivers_ids"] = []
 
         if "executors" in user_fields:
-            executors_list = base["executors"][index % len(base["executors"])] if base["executors"] else []
+            executors_list = (
+                base["executors"][index % len(base["executors"])]
+                if base["executors"]
+                else []
+            )
             doc["executors"] = executors_list
-            doc["executors_ids"] = base["executors_ids"][index % len(base["executors_ids"])] if base["executors_ids"] else []
+            doc["executors_ids"] = (
+                base["executors_ids"][index % len(base["executors_ids"])]
+                if base["executors_ids"]
+                else []
+            )
         else:
             doc["executors"] = []
             doc["executors_ids"] = []
 
         if "delegates" in user_fields:
-            delegates_list = base["delegates"][index % len(base["delegates"])] if base["delegates"] else []
+            delegates_list = (
+                base["delegates"][index % len(base["delegates"])]
+                if base["delegates"]
+                else []
+            )
             doc["delegates"] = delegates_list
-            doc["delegates_ids"] = base["delegates_ids"][index % len(base["delegates_ids"])] if base["delegates_ids"] else []
+            doc["delegates_ids"] = (
+                base["delegates_ids"][index % len(base["delegates_ids"])]
+                if base["delegates_ids"]
+                else []
+            )
         else:
             doc["delegates"] = []
             doc["delegates_ids"] = []
@@ -350,7 +441,9 @@ class DocumentDataConfig:
 
         # Добавляем комментарии
         doc["comments"] = cls._generate_comments(index, status)
-        doc["last_comment_text"] = doc["comments"][-1]["text"] if doc["comments"] else ""
+        doc["last_comment_text"] = (
+            doc["comments"][-1]["text"] if doc["comments"] else ""
+        )
 
         # Добавляем вложения
         doc["attachments"] = attachments or cls._generate_attachments(index, type_id)
@@ -380,11 +473,11 @@ class DocumentDataConfig:
         tags_map = {
             0: [
                 {"id": 1, "name": "Срочно", "color": "#D22730", "priority": "urgent"},
-                {"id": 2, "name": "Кадры", "color": "#4A90E2", "priority": "normal"}
+                {"id": 2, "name": "Кадры", "color": "#4A90E2", "priority": "normal"},
             ],
             1: [
                 {"id": 3, "name": "Закупки", "color": "#50C878", "priority": "normal"},
-                {"id": 4, "name": "Важно", "color": "#FF8C00", "priority": "important"}
+                {"id": 4, "name": "Важно", "color": "#FF8C00", "priority": "important"},
             ],
             2: [
                 {"id": 5, "name": "Партнеры", "color": "#9B59B6", "priority": "normal"}
@@ -393,9 +486,14 @@ class DocumentDataConfig:
                 {"id": 6, "name": "Системные", "color": "#3498DB", "priority": "urgent"}
             ],
             4: [
-                {"id": 7, "name": "Командировки", "color": "#E67E22", "priority": "normal"},
-                {"id": 1, "name": "Срочно", "color": "#D22730", "priority": "urgent"}
-            ]
+                {
+                    "id": 7,
+                    "name": "Командировки",
+                    "color": "#E67E22",
+                    "priority": "normal",
+                },
+                {"id": 1, "name": "Срочно", "color": "#D22730", "priority": "urgent"},
+            ],
         }
         return tags_map.get(index % 5, [])
 
@@ -404,26 +502,61 @@ class DocumentDataConfig:
         """Генерирует комментарии для документа в правильном формате"""
         base_comments = {
             0: [
-                {"id": 1, "author_fio": "Иванов И.И.", "text": "Прошу рассмотреть в кратчайшие сроки",
-                 "created_at": "2026-06-10T10:00:00Z"},
-                {"id": 2, "author_fio": "Петров П.П.", "text": "Согласовано", "created_at": "2026-06-11T11:30:00Z"},
-                {"id": 3, "author_fio": "Сидоров С.С.", "text": "Требуется доработка раздела 3",
-                 "created_at": "2026-06-11T14:20:00Z"}
+                {
+                    "id": 1,
+                    "author_fio": "Иванов И.И.",
+                    "text": "Прошу рассмотреть в кратчайшие сроки",
+                    "created_at": "2026-06-10T10:00:00Z",
+                },
+                {
+                    "id": 2,
+                    "author_fio": "Петров П.П.",
+                    "text": "Согласовано",
+                    "created_at": "2026-06-11T11:30:00Z",
+                },
+                {
+                    "id": 3,
+                    "author_fio": "Сидоров С.С.",
+                    "text": "Требуется доработка раздела 3",
+                    "created_at": "2026-06-11T14:20:00Z",
+                },
             ],
             1: [
-                {"id": 4, "author_fio": "Морозов М.М.", "text": "Оборудование заказано",
-                 "created_at": "2026-06-10T09:00:00Z"}
+                {
+                    "id": 4,
+                    "author_fio": "Морозов М.М.",
+                    "text": "Оборудование заказано",
+                    "created_at": "2026-06-10T09:00:00Z",
+                }
             ],
             3: [  # ← Документ 3
-                {"id": 7, "author_fio": "Неизвестный", "text": "Письмо отправлено всем подразделениям",
-                 "created_at": "2026-06-07T16:00:00Z"},
-                {"id": 8, "author_fio": "Неизвестный", "text": "Утверждено", "created_at": "2026-06-08T09:00:00Z"}
+                {
+                    "id": 7,
+                    "author_fio": "Неизвестный",
+                    "text": "Письмо отправлено всем подразделениям",
+                    "created_at": "2026-06-07T16:00:00Z",
+                },
+                {
+                    "id": 8,
+                    "author_fio": "Неизвестный",
+                    "text": "Утверждено",
+                    "created_at": "2026-06-08T09:00:00Z",
+                },
             ],
             4: [
-                {"id": 9, "author_fio": "Козлов К.К.", "text": "Прошу согласовать командировку",
-                 "created_at": "2026-06-06T08:00:00Z"},
-                {"id": 10, "author_fio": "Иванов И.И.", "text": "Отклонено", "created_at": "2026-06-07T10:00:00Z"}
-            ]
+                {
+                    "id": 9,
+                    "author_fio": "Козлов К.К.",
+                    "text": "Прошу согласовать командировку",
+                    "created_at": "2026-06-06T08:00:00Z",
+                },
+                {
+                    "id": 10,
+                    "author_fio": "Иванов И.И.",
+                    "text": "Отклонено",
+                    "created_at": "2026-06-07T10:00:00Z",
+                },
+            ],
         }
 
         # Для всех остальных документов добавляем хотя бы один комментарий
@@ -433,7 +566,7 @@ class DocumentDataConfig:
                     "id": 100 + index,
                     "author_fio": "Сидоров С.С.",
                     "text": f"Тестовый комментарий к документу #{index}",
-                    "created_at": "2026-06-01T12:00:00Z"
+                    "created_at": "2026-06-01T12:00:00Z",
                 }
             ]
 
@@ -444,20 +577,50 @@ class DocumentDataConfig:
         """Генерирует вложения для документа"""
         attachments_map = {
             0: [
-                {"id": 1, "file_name": "Приказ_№123.pdf", "file_size": 245760, "storage_path": "/attachments/order_123.pdf"},
-                {"id": 2, "file_name": "Приложение_1.docx", "file_size": 102400, "storage_path": "/attachments/appendix_1.docx"}
+                {
+                    "id": 1,
+                    "file_name": "Приказ_№123.pdf",
+                    "file_size": 245760,
+                    "storage_path": "/attachments/order_123.pdf",
+                },
+                {
+                    "id": 2,
+                    "file_name": "Приложение_1.docx",
+                    "file_size": 102400,
+                    "storage_path": "/attachments/appendix_1.docx",
+                },
             ],
             1: [],
             2: [
-                {"id": 3, "file_name": "Договор_проект.pdf", "file_size": 512000, "storage_path": "/attachments/contract_draft.pdf"}
+                {
+                    "id": 3,
+                    "file_name": "Договор_проект.pdf",
+                    "file_size": 512000,
+                    "storage_path": "/attachments/contract_draft.pdf",
+                }
             ],
             3: [
-                {"id": 4, "file_name": "Циркуляр.pdf", "file_size": 1024000, "storage_path": "/attachments/circular.pdf"},
-                {"id": 5, "file_name": "Приложение_А.xlsx", "file_size": 256000, "storage_path": "/attachments/appendix_a.xlsx"}
+                {
+                    "id": 4,
+                    "file_name": "Циркуляр.pdf",
+                    "file_size": 1024000,
+                    "storage_path": "/attachments/circular.pdf",
+                },
+                {
+                    "id": 5,
+                    "file_name": "Приложение_А.xlsx",
+                    "file_size": 256000,
+                    "storage_path": "/attachments/appendix_a.xlsx",
+                },
             ],
             4: [
-                {"id": 6, "file_name": "Заявка_командировка.docx", "file_size": 45600, "storage_path": "/attachments/business_trip.docx"}
-            ]
+                {
+                    "id": 6,
+                    "file_name": "Заявка_командировка.docx",
+                    "file_size": 45600,
+                    "storage_path": "/attachments/business_trip.docx",
+                }
+            ],
         }
         return attachments_map.get(index % 5, [])
 
@@ -489,10 +652,15 @@ class DocumentDataConfig:
                 "clearance_id": None,
                 "clearance_name": None,
                 "attachments": None,
-                "reply_file": {"id": 1, "file_name": "Ответ_на_приказ.pdf", "file_size": 156672, "storage_path": "/replies/reply_123.pdf"},
+                "reply_file": {
+                    "id": 1,
+                    "file_name": "Ответ_на_приказ.pdf",
+                    "file_size": 156672,
+                    "storage_path": "/replies/reply_123.pdf",
+                },
                 "has_reply": True,
                 "source_employee_id": 1,
-                "source_official_text": "Генеральный директор Иванов И.И."
+                "source_official_text": "Генеральный директор Иванов И.И.",
             },
             {
                 "type_id": 1,
@@ -513,7 +681,7 @@ class DocumentDataConfig:
                 "reply_file": None,
                 "has_reply": False,
                 "source_employee_id": 8,
-                "source_official_text": "Начальник отдела Петров П.П."
+                "source_official_text": "Начальник отдела Петров П.П.",
             },
             {
                 "type_id": 3,
@@ -535,7 +703,7 @@ class DocumentDataConfig:
                 "has_reply": False,
                 "source_employee_id": None,
                 "source_organization_id": 2,
-                "source_official_text": "ООО Партнер, директор Смирнов С.С."
+                "source_official_text": "ООО Партнер, директор Смирнов С.С.",
             },
             {
                 "type_id": 4,
@@ -556,7 +724,7 @@ class DocumentDataConfig:
                 "reply_file": None,
                 "has_reply": False,
                 "source_employee_id": 1,
-                "source_official_text": "Генеральный директор Иванов И.И."
+                "source_official_text": "Генеральный директор Иванов И.И.",
             },
             {
                 "type_id": 1,
@@ -577,8 +745,8 @@ class DocumentDataConfig:
                 "reply_file": None,
                 "has_reply": False,
                 "source_employee_id": 6,
-                "source_official_text": "Ведущий специалист Морозов М.М."
-            }
+                "source_official_text": "Ведущий специалист Морозов М.М.",
+            },
         ]
 
         for idx, config in enumerate(doc_configs, start=1):
@@ -603,7 +771,7 @@ class DocumentDataConfig:
                 has_reply=config.get("has_reply", False),
                 source_employee_id=config.get("source_employee_id"),
                 source_organization_id=config.get("source_organization_id", 1),
-                source_official_text=config.get("source_official_text", "")
+                source_official_text=config.get("source_official_text", ""),
             )
             cls.TEST_DATA.append(doc)
 
@@ -614,21 +782,71 @@ class DocumentDataConfig:
     def _get_tags_data(self) -> list:
         """Получает список доступных тегов из контроллера"""
         try:
-            if hasattr(self.controller, 'get_tags'):
+            if hasattr(self.controller, "get_tags"):
                 return self.controller.get_tags()
             else:
                 # Возвращаем те самые тестовые данные, которые были в DocumentDialog
                 return [
-                    {'id': 1, 'name': 'Срочно', 'priority': 'urgent', 'color': '#FF0000'},
-                    {'id': 2, 'name': 'Важно', 'priority': 'important', 'color': '#FFA500'},
-                    {'id': 3, 'name': 'Обычный', 'priority': 'normal', 'color': '#808080'},
-                    {'id': 4, 'name': 'Финансы', 'priority': 'important', 'color': '#008000'},
-                    {'id': 5, 'name': 'Кадры', 'priority': 'normal', 'color': '#0000FF'},
-                    {'id': 6, 'name': 'Юридический', 'priority': 'normal', 'color': '#800080'},
-                    {'id': 7, 'name': 'Договор', 'priority': 'urgent', 'color': '#FF4500'},
-                    {'id': 8, 'name': 'Отчет', 'priority': 'important', 'color': '#2E8B57'},
-                    {'id': 9, 'name': 'Технический', 'priority': 'normal', 'color': '#4169E1'},
-                    {'id': 10, 'name': 'Маркетинг', 'priority': 'normal', 'color': '#FF1493'},
+                    {
+                        "id": 1,
+                        "name": "Срочно",
+                        "priority": "urgent",
+                        "color": "#FF0000",
+                    },
+                    {
+                        "id": 2,
+                        "name": "Важно",
+                        "priority": "important",
+                        "color": "#FFA500",
+                    },
+                    {
+                        "id": 3,
+                        "name": "Обычный",
+                        "priority": "normal",
+                        "color": "#808080",
+                    },
+                    {
+                        "id": 4,
+                        "name": "Финансы",
+                        "priority": "important",
+                        "color": "#008000",
+                    },
+                    {
+                        "id": 5,
+                        "name": "Кадры",
+                        "priority": "normal",
+                        "color": "#0000FF",
+                    },
+                    {
+                        "id": 6,
+                        "name": "Юридический",
+                        "priority": "normal",
+                        "color": "#800080",
+                    },
+                    {
+                        "id": 7,
+                        "name": "Договор",
+                        "priority": "urgent",
+                        "color": "#FF4500",
+                    },
+                    {
+                        "id": 8,
+                        "name": "Отчет",
+                        "priority": "important",
+                        "color": "#2E8B57",
+                    },
+                    {
+                        "id": 9,
+                        "name": "Технический",
+                        "priority": "normal",
+                        "color": "#4169E1",
+                    },
+                    {
+                        "id": 10,
+                        "name": "Маркетинг",
+                        "priority": "normal",
+                        "color": "#FF1493",
+                    },
                 ]
         except Exception as e:
             print(f"[DocumentsPanel] Ошибка получения тегов: {e}")
@@ -701,10 +919,10 @@ class DocumentDataConfig:
                         "fields": doc_type.get("fields", []),
                         "user_fields": doc_type.get("user_fields", []),
                         "auto_num": doc_type.get("auto_num", False),
-                        "smdo_code_type": doc_type.get("smdo_code_type")
+                        "smdo_code_type": doc_type.get("smdo_code_type"),
                     }
                     for doc_type in types
-                ]
+                ],
             }
             directions_data.append(direction_data)
 
@@ -747,7 +965,7 @@ class DocumentDataConfig:
             14: "Вложение",
             15: "Ответ",
             16: "Краткое содержание",
-            17: "Срок исполнения"
+            17: "Срок исполнения",
         }
 
         # Добавляем пользовательские поля в зависимости от типа
@@ -760,7 +978,7 @@ class DocumentDataConfig:
                 "senders": 8,
                 "receivers": 9,
                 "executors": 10,
-                "delegates": 11
+                "delegates": 11,
             }
 
             for field_name in user_fields:
@@ -798,9 +1016,21 @@ class DocumentDataConfig:
             if type_info:
                 user_fields = type_info.get("user_fields", [])
                 # Создаем копию документа с только нужными полями
-                filtered_doc = {k: v for k, v in doc.items()
-                               if k not in ["senders", "senders_ids", "receivers", "receivers_ids",
-                                          "executors", "executors_ids", "delegates", "delegates_ids"]}
+                filtered_doc = {
+                    k: v
+                    for k, v in doc.items()
+                    if k
+                    not in [
+                        "senders",
+                        "senders_ids",
+                        "receivers",
+                        "receivers_ids",
+                        "executors",
+                        "executors_ids",
+                        "delegates",
+                        "delegates_ids",
+                    ]
+                }
                 # Добавляем только разрешенные пользовательские поля
                 for field in user_fields:
                     if field in doc:
@@ -817,7 +1047,7 @@ class DocumentDataConfig:
             "total": len(filtered_items),
             "limit": 20,
             "offset": 0,
-            "items": filtered_items
+            "items": filtered_items,
         }
 
     @classmethod
@@ -886,7 +1116,7 @@ class DocumentDataConfig:
             schema[field_name] = {
                 "type": field_type,
                 "label": field.get("label", field_name),
-                "required": False
+                "required": False,
             }
 
         return schema

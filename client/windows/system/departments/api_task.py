@@ -1,5 +1,5 @@
 # client/windows/system/departments/api_task.py
-from PyQt6.QtCore import QRunnable, QThreadPool, QObject, pyqtSignal
+from PyQt6.QtCore import QObject, QRunnable, QThreadPool, pyqtSignal
 
 
 class _Signals(QObject):

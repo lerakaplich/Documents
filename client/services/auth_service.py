@@ -1,7 +1,7 @@
-from typing import Optional, Dict, Any
-from client.core.http_client import HttpClient, AuthError
 import logging
+from typing import Any
 
+from client.core.http_client import HttpClient
 from client.core.settings.settings_manager import SettingsManager
 
 logger = logging.getLogger(__name__)
@@ -13,11 +13,13 @@ class AuthService:
     def __init__(self, http_client: HttpClient):
         self.client = http_client
 
-    def login(self, phone: str, password: str, remember_me: bool = False) -> Dict[str, Any]:
+    def login(
+        self, phone: str, password: str, remember_me: bool = False
+    ) -> dict[str, Any]:
         try:
             clean_phone = phone.strip()
-            if not clean_phone.startswith('+'):
-                clean_phone = '+' + clean_phone
+            if not clean_phone.startswith("+"):
+                clean_phone = "+" + clean_phone
 
             logger.info(f"Попытка входа для номера: {clean_phone}")
 
@@ -26,15 +28,15 @@ class AuthService:
                 json={
                     "phone_number": clean_phone,
                     "password": password,
-                    "remember_me": remember_me
-                }
+                    "remember_me": remember_me,
+                },
             )
 
             if "access_token" in response and "refresh_token" in response:
                 self.client.set_tokens(
                     access_token=response["access_token"],
                     refresh_token=response["refresh_token"],
-                    expires_in=response.get("expires_in", 3600)
+                    expires_in=response.get("expires_in", 3600),
                 )
                 logger.info("Токены успешно сохранены")
 
@@ -51,7 +53,7 @@ class AuthService:
             logger.error(f"Ошибка входа: {e}")
             raise
 
-    def try_restore_session(self) -> Optional[Dict[str, Any]]:
+    def try_restore_session(self) -> dict[str, Any] | None:
         """
         Пробует восстановить сессию по сохранённому refresh_token.
         Возвращает ответ /auth/refresh или None.
@@ -64,10 +66,7 @@ class AuthService:
 
         try:
             logger.info("🔄 Попытка автовхода по сохранённому refresh_token...")
-            response = self.client.post(
-                "/auth/refresh",
-                json={"refresh_token": rt}
-            )
+            response = self.client.post("/auth/refresh", json={"refresh_token": rt})
 
             if "access_token" not in response:
                 SettingsManager().clear_auth_session()
@@ -77,7 +76,7 @@ class AuthService:
             self.client.set_tokens(
                 access_token=response["access_token"],
                 refresh_token=new_rt,
-                expires_in=response.get("expires_in", 3600)
+                expires_in=response.get("expires_in", 3600),
             )
             # ротация refresh_token — сохраняем актуальный
             SettingsManager().save_auth_session(new_rt, session.get("phone"))
@@ -109,7 +108,7 @@ class AuthService:
             SettingsManager().clear_auth_session()  # ← NEW
             return False
 
-    def refresh_token(self) -> Optional[Dict[str, Any]]:
+    def refresh_token(self) -> dict[str, Any] | None:
         """Обновить токен доступа"""
         try:
             if not self.client._refresh_token:
@@ -117,15 +116,16 @@ class AuthService:
                 return None
 
             response = self.client.post(
-                "/auth/refresh",
-                json={"refresh_token": self.client._refresh_token}
+                "/auth/refresh", json={"refresh_token": self.client._refresh_token}
             )
 
             if "access_token" in response:
                 self.client.set_tokens(
                     access_token=response["access_token"],
-                    refresh_token=response.get("refresh_token", self.client._refresh_token),
-                    expires_in=response.get("expires_in", 3600)
+                    refresh_token=response.get(
+                        "refresh_token", self.client._refresh_token
+                    ),
+                    expires_in=response.get("expires_in", 3600),
                 )
                 logger.info("Токен успешно обновлен")
                 return response
@@ -143,8 +143,8 @@ class AuthService:
                 "/auth/change-password",
                 json={
                     "current_password": current_password,
-                    "new_password": new_password
-                }
+                    "new_password": new_password,
+                },
             )
             logger.info("Пароль успешно изменен")
             return True
@@ -157,12 +157,11 @@ class AuthService:
         """Запрос на восстановление пароля"""
         try:
             clean_phone = phone_number.strip()
-            if not clean_phone.startswith('+'):
-                clean_phone = '+' + clean_phone
+            if not clean_phone.startswith("+"):
+                clean_phone = "+" + clean_phone
 
             self.client.post(
-                "/auth/forgot-password",
-                json={"phone_number": clean_phone}
+                "/auth/forgot-password", json={"phone_number": clean_phone}
             )
             logger.info(f"Запрос восстановления отправлен для {clean_phone}")
             return True
@@ -175,15 +174,12 @@ class AuthService:
         """Подтверждение кода восстановления"""
         try:
             clean_phone = phone_number.strip()
-            if not clean_phone.startswith('+'):
-                clean_phone = '+' + clean_phone
+            if not clean_phone.startswith("+"):
+                clean_phone = "+" + clean_phone
 
             self.client.post(
                 "/auth/verify-reset-code",
-                json={
-                    "phone_number": clean_phone,
-                    "code": code
-                }
+                json={"phone_number": clean_phone, "code": code},
             )
             logger.info(f"Код подтвержден для {clean_phone}")
             return True
@@ -196,16 +192,16 @@ class AuthService:
         """Сброс пароля с подтверждением кода"""
         try:
             clean_phone = phone_number.strip()
-            if not clean_phone.startswith('+'):
-                clean_phone = '+' + clean_phone
+            if not clean_phone.startswith("+"):
+                clean_phone = "+" + clean_phone
 
             self.client.post(
                 "/auth/reset-password",
                 json={
                     "phone_number": clean_phone,
                     "code": code,
-                    "new_password": new_password
-                }
+                    "new_password": new_password,
+                },
             )
             logger.info(f"Пароль сброшен для {clean_phone}")
             return True
@@ -213,4 +209,3 @@ class AuthService:
         except Exception as e:
             logger.error(f"Ошибка сброса пароля: {e}")
             raise
-

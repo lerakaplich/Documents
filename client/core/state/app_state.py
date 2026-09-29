@@ -1,9 +1,10 @@
-from typing import Optional, Dict, Any
+import logging
+from typing import Any
+
+from client.core.config import config
 from client.core.http_client import HttpClient
 from client.services.auth_service import AuthService
 from client.services.employee_service import EmployeeService
-from client.core.config import config
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +31,16 @@ class AppState:
         self.http_client = HttpClient(self.base_url)
         self.auth_service = AuthService(self.http_client)
         self.employee_service = EmployeeService(self.http_client)
-        self.current_user: Optional[Dict[str, Any]] = None
+        self.current_user: dict[str, Any] | None = None
         self.is_authenticated = False
 
-    def set_user(self, user_data: Dict[str, Any]):
+    def set_user(self, user_data: dict[str, Any]):
         """Установить данные текущего пользователя"""
         self.current_user = user_data
         self.is_authenticated = True
-        logger.info(f"Пользователь авторизован: {user_data.get('full_name', 'Unknown')}")
+        logger.info(
+            f"Пользователь авторизован: {user_data.get('full_name', 'Unknown')}"
+        )
 
     def clear_user(self):
         """Очистить данные пользователя"""
@@ -45,4 +48,3 @@ class AppState:
         self.is_authenticated = False
         self.http_client.clear_tokens()
         logger.info("Пользователь деавторизован")
-

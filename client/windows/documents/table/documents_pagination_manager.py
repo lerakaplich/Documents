@@ -1,6 +1,6 @@
 # client/windows/documents/table/documents_pagination_manager.py
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
 
 
 class DocumentsPaginationManager:
@@ -60,6 +60,7 @@ class DocumentsPaginationManager:
 
     def _create_bar(self):
         from client.core.themes import get_manager
+
         t = get_manager().current
 
         bar = QWidget()
@@ -97,8 +98,8 @@ class DocumentsPaginationManager:
         if self.bar is None or self.page_label is None:
             return
 
-        pages = p.get('pages', 1) or 1
-        total = p.get('total', 0)
+        pages = p.get("pages", 1) or 1
+        total = p.get("total", 0)
 
         # Одна страница (или данных нет) — прячем всю панель
         if pages <= 1:
@@ -107,12 +108,13 @@ class DocumentsPaginationManager:
 
         self.bar.setVisible(True)
         self.page_label.setText(f"Страница {p['page']} из {pages}  (всего: {total})")
-        self.prev_btn.setEnabled(p['page'] > 1)
-        self.next_btn.setEnabled(p['page'] < pages)
+        self.prev_btn.setEnabled(p["page"] > 1)
+        self.next_btn.setEnabled(p["page"] < pages)
 
     def reapply_theme(self):
         """Перерисовать стили кнопок и метки под актуальную тему."""
         from client.core.themes import get_manager
+
         t = get_manager().current
 
         for btn in (self.prev_btn, self.next_btn):

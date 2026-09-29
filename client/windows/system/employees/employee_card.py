@@ -1,7 +1,15 @@
-import sys
 import os
-from PyQt6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget, QHBoxLayout, QLabel, QPushButton
-from PyQt6.QtCore import pyqtSignal, Qt
+import sys
+
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+)
 from PyQt6.uic import loadUi
 
 from client.core.themes import T, apply_theme_to_widget
@@ -28,21 +36,30 @@ class EmployeeCard(QFrame):
 
         # Сохраняем данные
         self.employee_data = employee_data or {}
-        self.employee_id = self.employee_data.get('id', 0)
+        self.employee_id = self.employee_data.get("id", 0)
 
         # Настраиваем карточку
         self.setup_card()
 
         # Подключаем сигналы кнопок
-        if hasattr(self, 'editBtn'):
+        if hasattr(self, "editBtn"):
             self.editBtn.clicked.connect(self.on_edit_clicked)
-        if hasattr(self, 'deleteBtn'):
+        if hasattr(self, "deleteBtn"):
             self.deleteBtn.clicked.connect(self.on_delete_clicked)
 
     def get_ui_path(self):
         """Возвращает путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'employees', 'employee_card.ui')
+        ui_path = os.path.join(
+            current_dir,
+            "..",
+            "..",
+            "..",
+            "ui",
+            "system",
+            "employees",
+            "employee_card.ui",
+        )
 
         return os.path.normpath(ui_path)
 
@@ -52,9 +69,9 @@ class EmployeeCard(QFrame):
             return
 
         # Заполняем ФИО с порядковым номером
-        if hasattr(self, 'nameLabel'):
-            name = self.employee_data.get('full_name', '')
-            number = self.employee_data.get('display_number', '')
+        if hasattr(self, "nameLabel"):
+            name = self.employee_data.get("full_name", "")
+            number = self.employee_data.get("display_number", "")
             if number and name:
                 self.nameLabel.setText(f"{number}. {name}")
             elif name:
@@ -63,15 +80,15 @@ class EmployeeCard(QFrame):
                 self.nameLabel.setText("ФИО не указано")
 
         # Заполняем должность
-        if hasattr(self, 'positionLabel'):
-            position = self.employee_data.get('position', '')
+        if hasattr(self, "positionLabel"):
+            position = self.employee_data.get("position", "")
             self.positionLabel.setText(position if position else "Должность не указана")
 
         # Заполняем отдел/компанию
-        if hasattr(self, 'departmentLabel'):
-            company = self.employee_data.get('company', '')
-            department = self.employee_data.get('department', '')
-            subdivision = self.employee_data.get('subdivision', '')
+        if hasattr(self, "departmentLabel"):
+            company = self.employee_data.get("company", "")
+            department = self.employee_data.get("department", "")
+            subdivision = self.employee_data.get("subdivision", "")
 
             parts = [p for p in [company, department, subdivision] if p]
             if parts:
@@ -80,29 +97,29 @@ class EmployeeCard(QFrame):
                 self.departmentLabel.setText("Место работы не указано")
 
         # Заполняем рабочий телефон
-        if hasattr(self, 'workPhoneLabel'):
-            work_phone = self.employee_data.get('work_phone', '')
+        if hasattr(self, "workPhoneLabel"):
+            work_phone = self.employee_data.get("work_phone", "")
             if work_phone:
                 self.workPhoneLabel.setText(f"📞 {work_phone}")
             else:
                 self.workPhoneLabel.setText("📞 не указан")
 
         # Заполняем email
-        if hasattr(self, 'emailLabel'):
-            email = self.employee_data.get('email', '')
+        if hasattr(self, "emailLabel"):
+            email = self.employee_data.get("email", "")
             if email:
                 self.emailLabel.setText(f"✉ {email}")
             else:
                 self.emailLabel.setText("✉ не указан")
 
         # Заполняем права доступа
-        if hasattr(self, 'rightsLabel'):
-            rights = self.employee_data.get('rights', '')
+        if hasattr(self, "rightsLabel"):
+            rights = self.employee_data.get("rights", "")
             if rights:
                 self.rightsLabel.setText(rights)
-                if rights.lower() == 'администратор':
+                if rights.lower() == "администратор":
                     color = T.ACCENT_PRIMARY
-                elif rights.lower() == 'пользователь':
+                elif rights.lower() == "пользователь":
                     color = T.TEXT_SUCCESS
                 else:
                     color = T.TEXT_MUTED_ALT
@@ -132,7 +149,7 @@ class EmployeeCard(QFrame):
 
     def set_display_number(self, number):
         """Устанавливает порядковый номер для отображения"""
-        self.employee_data['display_number'] = str(number)
+        self.employee_data["display_number"] = str(number)
         self.setup_card()
 
     def setup_placeholder(self):
@@ -170,20 +187,20 @@ class EmployeeCard(QFrame):
 
 
 # Точка входа для тестирования
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     test_data = {
-        'id': 1,
-        'display_number': '1',
-        'full_name': 'Иванов Иван Иванович',
-        'position': 'Генеральный директор',
-        'company': 'ОАО МАЗ',
-        'department': 'Управление персоналом',
-        'subdivision': 'Отдел кадров',
-        'work_phone': '101',
-        'email': 'i.ivanov@maz.by',
-        'rights': 'Администратор'
+        "id": 1,
+        "display_number": "1",
+        "full_name": "Иванов Иван Иванович",
+        "position": "Генеральный директор",
+        "company": "ОАО МАЗ",
+        "department": "Управление персоналом",
+        "subdivision": "Отдел кадров",
+        "work_phone": "101",
+        "email": "i.ivanov@maz.by",
+        "rights": "Администратор",
     }
 
     card = EmployeeCard(test_data)

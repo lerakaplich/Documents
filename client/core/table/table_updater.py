@@ -1,6 +1,7 @@
 """
 Обновление UI таблицы
 """
+
 from PyQt6.QtCore import QObject, QTimer
 from PyQt6.QtWidgets import QApplication
 

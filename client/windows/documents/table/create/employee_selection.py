@@ -1,8 +1,8 @@
 import os
-from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QHBoxLayout,
-                             QLabel, QFrame, QTreeWidget, QPushButton,
-                             QLineEdit, QSpacerItem, QSizePolicy)
-from PyQt6.QtCore import Qt
+
+from PyQt6.QtWidgets import (
+    QDialog,
+)
 from PyQt6.uic import loadUi
 
 
@@ -28,7 +28,7 @@ class EmployeeSelection:
         unchecked = icon_path("cb_unchecked", _t.ICON_COLOR)
         partial = icon_path("cb_partial", _t.ICON_COLOR)
 
-        if hasattr(dialog, 'treeWidget'):
+        if hasattr(dialog, "treeWidget"):
             checkbox_style = f"""
                 QTreeWidget::indicator {{
                     width: 18px; height: 18px;
@@ -53,4 +53,6 @@ class EmployeeSelection:
         root_dir = base_dir
         for _ in range(4):
             root_dir = os.path.dirname(root_dir)
-        return os.path.join(root_dir, "ui", "documents", "create", "employee_selection_dialog.ui")
+        return os.path.join(
+            root_dir, "ui", "documents", "create", "employee_selection_dialog.ui"
+        )

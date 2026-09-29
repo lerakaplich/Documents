@@ -2,19 +2,29 @@ import json
 import os
 import sys
 import traceback
+
 import requests
-from PyQt6.QtWidgets import QWidget, QApplication, QMessageBox, QFormLayout, QLabel, QVBoxLayout, QHBoxLayout, \
-    QPushButton, QTabWidget, QFrame
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtWidgets import (
+    QApplication,
+    QFormLayout,
+    QFrame,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 from PyQt6.uic import loadUi
 
-from client.core.state.app_state import AppState
-from client.core.themes import apply_theme_to_widget, T, get_manager
-from client.windows.profile.overtime.overtime_panel import OvertimePanel
-from client.windows.profile.profile_info import ProfileInfo
 from client.core.http_client import HttpClient
+from client.core.state.app_state import AppState
+from client.core.themes import apply_theme_to_widget, get_manager
 from client.services.employee_service import EmployeeService
 from client.services.overtime_service import OvertimeService
+from client.windows.profile.overtime.overtime_panel import OvertimePanel
+from client.windows.profile.profile_info import ProfileInfo
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -36,6 +46,7 @@ sys.excepthook = global_exception_handler
 # ===== ProfileLoader - класс для загрузки данных в отдельном потоке =====
 class ProfileLoader(QThread):
     """Загрузка профиля в отдельном потоке"""
+
     finished = pyqtSignal(dict)
     error = pyqtSignal(str)
 
@@ -59,18 +70,25 @@ class ProfileLoader(QThread):
             self.finished.emit(data)
 
         except requests.exceptions.ConnectionError:
-            self.error.emit("Не удалось подключиться к серверу. Проверьте, что сервер запущен.")
+            self.error.emit(
+                "Не удалось подключиться к серверу. Проверьте, что сервер запущен."
+            )
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 401:
-                self.error.emit(f"Ошибка авторизации. Токен истек или неверный.\n{e.response.text}")
+                self.error.emit(
+                    f"Ошибка авторизации. Токен истек или неверный.\n{e.response.text}"
+                )
             elif e.response.status_code == 404:
                 self.error.emit("Профиль пользователя не найден.")
             else:
-                self.error.emit(f"Ошибка сервера: {e.response.status_code}\n{e.response.text}")
+                self.error.emit(
+                    f"Ошибка сервера: {e.response.status_code}\n{e.response.text}"
+                )
         except Exception as e:
             import traceback
+
             traceback.print_exc()
-            self.error.emit(f"Ошибка загрузки профиля: {str(e)}")
+            self.error.emit(f"Ошибка загрузки профиля: {e!s}")
 
 
 class ProfileForm(QWidget):
@@ -81,7 +99,6 @@ class ProfileForm(QWidget):
 
         self.employee_id = employee_id
         self.use_current_user = employee_id is None
-
 
         if self.use_current_user:
             print("👤 Загружаем профиль текущего пользователя")
@@ -96,6 +113,7 @@ class ProfileForm(QWidget):
         else:
             print("⚠️ HTTP клиент не найден в AppState, создаем новый")
             from client.core.config import config
+
             self.http_client = HttpClient(config.base_url)
             print(f"✅ Создан новый HTTP клиент: {self.http_client.base_url}")
         # ===== Конец инициализации HTTP клиента =====
@@ -128,32 +146,60 @@ class ProfileForm(QWidget):
 
         # ===== Передаём виджеты в компоненты =====
         self.profile_info.setup_ui_elements(
-            infoFrame=self.infoFrame if hasattr(self, 'infoFrame') else None,
-            labelTitle=self.labelTitle if hasattr(self, 'labelTitle') else None,
-            label_position_value=self.label_position_value if hasattr(self, 'label_position_value') else None,
-            label_phone_value=self.label_phone_value if hasattr(self, 'label_phone_value') else None,
-            label_email_value=self.label_email_value if hasattr(self, 'label_email_value') else None,
-            label_birth_date_value=self.label_birth_date_value if hasattr(self, 'label_birth_date_value') else None,
-            mainLayout=self.mainLayout if hasattr(self, 'mainLayout') else None,
-            )
+            infoFrame=self.infoFrame if hasattr(self, "infoFrame") else None,
+            labelTitle=self.labelTitle if hasattr(self, "labelTitle") else None,
+            label_position_value=self.label_position_value
+            if hasattr(self, "label_position_value")
+            else None,
+            label_phone_value=self.label_phone_value
+            if hasattr(self, "label_phone_value")
+            else None,
+            label_email_value=self.label_email_value
+            if hasattr(self, "label_email_value")
+            else None,
+            label_birth_date_value=self.label_birth_date_value
+            if hasattr(self, "label_birth_date_value")
+            else None,
+            mainLayout=self.mainLayout if hasattr(self, "mainLayout") else None,
+        )
 
         self.profile_info.set_http_client(self.http_client)
         # ===== Конец передачи виджетов =====
 
         # ===== Настройка overtime panel =====
         # Проверяем наличие виджетов перед передачей
-        tabWidget = self.tabWidget if hasattr(self, 'tabWidget') else None
-        btnSelectPeriod = self.btnSelectPeriod if hasattr(self, 'btnSelectPeriod') else None
-        btnSelectPeriodAll = self.btnSelectPeriodAll if hasattr(self, 'btnSelectPeriodAll') else None
-        btnResetFilters = self.btnResetFilters if hasattr(self, 'btnResetFilters') else None
-        btnResetFiltersAll = self.btnResetFiltersAll if hasattr(self, 'btnResetFiltersAll') else None
-        btnAddOvertimeAll = self.btnAddOvertimeAll if hasattr(self, 'btnAddOvertimeAll') else None
-        btnExport = self.btnExport if hasattr(self, 'btnExport') else None
-        labelTotalHoursMy = self.labelTotalHoursMy if hasattr(self, 'labelTotalHoursMy') else None
-        labelTotalHoursAll = self.labelTotalHoursAll if hasattr(self, 'labelTotalHoursAll') else None
-        allOvertimeFiltersLayout = self.allOvertimeFiltersLayout if hasattr(self, 'allOvertimeFiltersLayout') else None
-        btnAddOvertime = self.btnAddOvertime if hasattr(self, 'btnAddOvertime') else None
-        btnImport = self.btnImport if hasattr(self, 'btnImport') else None
+        tabWidget = self.tabWidget if hasattr(self, "tabWidget") else None
+        btnSelectPeriod = (
+            self.btnSelectPeriod if hasattr(self, "btnSelectPeriod") else None
+        )
+        btnSelectPeriodAll = (
+            self.btnSelectPeriodAll if hasattr(self, "btnSelectPeriodAll") else None
+        )
+        btnResetFilters = (
+            self.btnResetFilters if hasattr(self, "btnResetFilters") else None
+        )
+        btnResetFiltersAll = (
+            self.btnResetFiltersAll if hasattr(self, "btnResetFiltersAll") else None
+        )
+        btnAddOvertimeAll = (
+            self.btnAddOvertimeAll if hasattr(self, "btnAddOvertimeAll") else None
+        )
+        btnExport = self.btnExport if hasattr(self, "btnExport") else None
+        labelTotalHoursMy = (
+            self.labelTotalHoursMy if hasattr(self, "labelTotalHoursMy") else None
+        )
+        labelTotalHoursAll = (
+            self.labelTotalHoursAll if hasattr(self, "labelTotalHoursAll") else None
+        )
+        allOvertimeFiltersLayout = (
+            self.allOvertimeFiltersLayout
+            if hasattr(self, "allOvertimeFiltersLayout")
+            else None
+        )
+        btnAddOvertime = (
+            self.btnAddOvertime if hasattr(self, "btnAddOvertime") else None
+        )
+        btnImport = self.btnImport if hasattr(self, "btnImport") else None
 
         # Настраиваем UI элементы панели переработок
         self.overtime_panel.setup_ui_elements(
@@ -196,8 +242,7 @@ class ProfileForm(QWidget):
             return
 
         self.loader = ProfileLoader(
-            self.http_client,
-            use_current_user=self.use_current_user
+            self.http_client, use_current_user=self.use_current_user
         )
         self.loader.finished.connect(self.on_profile_loaded)
         self.loader.error.connect(self.on_profile_error)
@@ -214,9 +259,9 @@ class ProfileForm(QWidget):
             print("=" * 60)
 
             # ==== 1. ФИО ====
-            last_name = data.get('last_name', '')
-            first_name = data.get('first_name', '')
-            patronymic = data.get('patronymic', '')
+            last_name = data.get("last_name", "")
+            first_name = data.get("first_name", "")
+            patronymic = data.get("patronymic", "")
 
             full_name_parts = []
             if last_name:
@@ -226,61 +271,64 @@ class ProfileForm(QWidget):
             if patronymic:
                 full_name_parts.append(patronymic)
 
-            full_name = ' '.join(full_name_parts) if full_name_parts else 'Не указано'
+            full_name = " ".join(full_name_parts) if full_name_parts else "Не указано"
             print(f"📝 Собрано ФИО: {full_name}")
 
             # ==== 2. Должность и подразделения ====
-            positions = data.get('positions', [])
-            position_name = 'Не указана'
+            positions = data.get("positions", [])
+            position_name = "Не указана"
             department_chain = []
 
             if positions and len(positions) > 0:
                 first_position = positions[0]
-                position_name = first_position.get('position_name', 'Не указана')
+                position_name = first_position.get("position_name", "Не указана")
 
                 # Получаем цепочку подразделений
-                dept_chain = first_position.get('department_chain', [])
+                dept_chain = first_position.get("department_chain", [])
 
                 if dept_chain:
                     print(f"📋 Найдена цепочка подразделений: {dept_chain}")
                     for dept in dept_chain:
-                        dept_type = dept.get('department_type_name', 'Подразделение')
-                        dept_name = dept.get('name', '')
+                        dept_type = dept.get("department_type_name", "Подразделение")
+                        dept_name = dept.get("name", "")
                         if dept_name:
                             department_chain.append((dept_type, dept_name))
                     print(f"🏢 Сформирована цепочка: {department_chain}")
                 else:
-                    dept_path = first_position.get('department_path', [])
+                    dept_path = first_position.get("department_path", [])
                     if dept_path:
                         print(f"📋 Используем department_path: {dept_path}")
-                        types = ['Организация', 'Управление', 'Отдел', 'Сектор']
+                        types = ["Организация", "Управление", "Отдел", "Сектор"]
                         for i, dept_name in enumerate(dept_path):
-                            dept_type = types[i] if i < len(types) else 'Подразделение'
+                            dept_type = types[i] if i < len(types) else "Подразделение"
                             department_chain.append((dept_type, dept_name))
                     else:
-                        dept_id = first_position.get('department_id')
+                        dept_id = first_position.get("department_id")
                         if dept_id:
-                            print(f"⚠️ Нет цепочки подразделений, только department_id: {dept_id}")
+                            print(
+                                f"⚠️ Нет цепочки подразделений, только department_id: {dept_id}"
+                            )
                             department_chain.append(("Подразделение", f"ID: {dept_id}"))
 
             print(f"📋 Должность: {position_name}")
             print(f"🏢 Итоговая цепочка подразделений: {department_chain}")
 
             # ==== 3. Телефон ====
-            phone = data.get('phone_number', '')
+            phone = data.get("phone_number", "")
             print(f"📞 Телефон: {phone}")
 
             # ==== 4. Email ====
-            email = data.get('email', '')
+            email = data.get("email", "")
             print(f"📧 Email: {email}")
 
             # ==== 5. Дата рождения ====
-            birth_date = data.get('birth_date', 'Не указана')
-            if birth_date and birth_date != 'Не указана':
+            birth_date = data.get("birth_date", "Не указана")
+            if birth_date and birth_date != "Не указана":
                 try:
                     from datetime import datetime
-                    dt = datetime.fromisoformat(birth_date.replace('Z', '+00:00'))
-                    birth_date = dt.strftime('%d.%m.%Y')
+
+                    dt = datetime.fromisoformat(birth_date.replace("Z", "+00:00"))
+                    birth_date = dt.strftime("%d.%m.%Y")
                 except:
                     pass
             print(f"🎂 Дата рождения: {birth_date}")
@@ -292,15 +340,15 @@ class ProfileForm(QWidget):
                 department_chain=department_chain,
                 phone=phone,
                 email=email,
-                birth_date=birth_date
+                birth_date=birth_date,
             )
 
             # Сохраняем данные для редактирования
             self.profile_info.current_phone_raw = phone
             self.profile_info.current_email_raw = email
 
-            self.current_employee_id = data.get('id')
-            if hasattr(self, 'overtime_panel'):
+            self.current_employee_id = data.get("id")
+            if hasattr(self, "overtime_panel"):
                 self.overtime_panel.current_employee_id = self.current_employee_id
             print(f"👤 ID текущего сотрудника: {self.current_employee_id}")
             # ────────────────────────────────────────────────────────────────
@@ -310,8 +358,11 @@ class ProfileForm(QWidget):
         except Exception as e:
             print(f"❌ Ошибка обработки данных: {e}")
             import traceback
+
             traceback.print_exc()
-            QMessageBox.warning(self, "Ошибка", f"Не удалось обработать данные профиля:\n{str(e)}")
+            QMessageBox.warning(
+                self, "Ошибка", f"Не удалось обработать данные профиля:\n{e!s}"
+            )
 
     def on_profile_error(self, error_msg: str):
         """Обработка ошибки загрузки профиля"""
@@ -321,35 +372,43 @@ class ProfileForm(QWidget):
 
     def setup_connections(self):
         """Подключает сигналы кнопок и фильтров."""
-        if hasattr(self, 'btnSelectPeriod') and self.btnSelectPeriod:
-            self.btnSelectPeriod.clicked.connect(self.overtime_panel.on_select_period_clicked)
-        if hasattr(self, 'btnSelectPeriodAll') and self.btnSelectPeriodAll:
-            self.btnSelectPeriodAll.clicked.connect(self.overtime_panel.on_select_period_all_clicked)
+        if hasattr(self, "btnSelectPeriod") and self.btnSelectPeriod:
+            self.btnSelectPeriod.clicked.connect(
+                self.overtime_panel.on_select_period_clicked
+            )
+        if hasattr(self, "btnSelectPeriodAll") and self.btnSelectPeriodAll:
+            self.btnSelectPeriodAll.clicked.connect(
+                self.overtime_panel.on_select_period_all_clicked
+            )
 
-        if hasattr(self, 'btnResetFilters') and self.btnResetFilters:
+        if hasattr(self, "btnResetFilters") and self.btnResetFilters:
             self.btnResetFilters.clicked.connect(self.overtime_panel.reset_my_filters)
-        if hasattr(self, 'btnResetFiltersAll') and self.btnResetFiltersAll:
-            self.btnResetFiltersAll.clicked.connect(self.overtime_panel.reset_all_filters)
+        if hasattr(self, "btnResetFiltersAll") and self.btnResetFiltersAll:
+            self.btnResetFiltersAll.clicked.connect(
+                self.overtime_panel.reset_all_filters
+            )
 
-        if hasattr(self, 'btnAddOvertimeAll') and self.btnAddOvertimeAll:
-            self.btnAddOvertimeAll.clicked.connect(self.overtime_panel.on_add_overtime_all_clicked)
+        if hasattr(self, "btnAddOvertimeAll") and self.btnAddOvertimeAll:
+            self.btnAddOvertimeAll.clicked.connect(
+                self.overtime_panel.on_add_overtime_all_clicked
+            )
 
-        if hasattr(self, 'btnExport') and self.btnExport:
+        if hasattr(self, "btnExport") and self.btnExport:
             self.btnExport.clicked.connect(self.overtime_panel.on_export_clicked)
 
-        if hasattr(self, 'btnImport') and self.btnImport:
+        if hasattr(self, "btnImport") and self.btnImport:
             self.btnImport.clicked.connect(self.overtime_panel.on_import_clicked)
 
         # ─── НОВОЕ: сброс скролла при смене вкладки ───
-        if hasattr(self, 'tabWidget') and self.tabWidget:
+        if hasattr(self, "tabWidget") and self.tabWidget:
             self.tabWidget.currentChanged.connect(self._on_tab_changed)
 
     def _on_tab_changed(self, index: int):
         """Сброс скролла и пересчёт размеров при переключении вкладки."""
-        if hasattr(self, 'scrollArea') and self.scrollArea:
+        if hasattr(self, "scrollArea") and self.scrollArea:
             self.scrollArea.verticalScrollBar().setValue(0)
 
-        if not hasattr(self, 'tabWidget') or not self.tabWidget:
+        if not hasattr(self, "tabWidget") or not self.tabWidget:
             return
 
         current = self.tabWidget.currentWidget()
@@ -358,14 +417,16 @@ class ProfileForm(QWidget):
 
         self.tabWidget.updateGeometry()
 
-        for container in (self.overtime_panel.card_container.myOvertimeContainer,
-                          self.overtime_panel.card_container.allOvertimeContainer):
+        for container in (
+            self.overtime_panel.card_container.myOvertimeContainer,
+            self.overtime_panel.card_container.allOvertimeContainer,
+        ):
             if container:
                 container.updateGeometry()
-                if hasattr(container, 'main_layout'):
+                if hasattr(container, "main_layout"):
                     container.main_layout.activate()
 
-        if hasattr(self, 'tabWidget'):
+        if hasattr(self, "tabWidget"):
             current_tab = self.tabWidget.currentWidget()
             if current_tab and current_tab.layout():
                 current_tab.layout().activate()
@@ -377,7 +438,7 @@ class ProfileForm(QWidget):
 
     def _setup_adaptive_tabs(self):
         """Настраивает подгонку высоты QTabWidget под текущую вкладку."""
-        if hasattr(self, 'scrollArea') and self.scrollArea:
+        if hasattr(self, "scrollArea") and self.scrollArea:
             content = self.scrollArea.widget()
             if content and content.layout():
                 layout = content.layout()
@@ -390,23 +451,24 @@ class ProfileForm(QWidget):
                     layout.addStretch(1)
 
         # 2. Подписываемся на переключение вкладок
-        if hasattr(self, 'tabWidget') and self.tabWidget:
+        if hasattr(self, "tabWidget") and self.tabWidget:
             self.tabWidget.currentChanged.connect(self._resize_tab_widget)
             # Первичная подгонка
             from PyQt6.QtCore import QTimer
+
             QTimer.singleShot(0, self._resize_tab_widget)
 
         from PyQt6.QtWidgets import QSizePolicy
 
-        if hasattr(self, 'infoFrame') and self.infoFrame:
+        if hasattr(self, "infoFrame") and self.infoFrame:
             self.infoFrame.setSizePolicy(
                 QSizePolicy.Policy.Preferred,
-                QSizePolicy.Policy.Maximum  # вертикально — не больше sizeHint
+                QSizePolicy.Policy.Maximum,  # вертикально — не больше sizeHint
             )
 
     def _resize_tab_widget(self, _index=None):
         """Фиксирует высоту QTabWidget по высоте текущей вкладки."""
-        if not hasattr(self, 'tabWidget') or not self.tabWidget:
+        if not hasattr(self, "tabWidget") or not self.tabWidget:
             return
 
         current = self.tabWidget.currentWidget()
@@ -445,7 +507,7 @@ class ProfileForm(QWidget):
             ("Организация", "ОАО 'Минский автомобильный завод'"),
             ("Управление", "Управление информационных технологий"),
             ("Отдел", "Отдел разработки ПО"),
-            ("Сектор", "Сектор бэкенд-разработки")
+            ("Сектор", "Сектор бэкенд-разработки"),
         ]
         self.profile_info.update_profile(
             full_name="Иванов Иван Петрович",
@@ -453,7 +515,7 @@ class ProfileForm(QWidget):
             department_chain=department_chain,
             phone="375291234567",
             email="ivan.ivanov@company.by",
-            birth_date="15.05.1985"
+            birth_date="15.05.1985",
         )
 
     def create_fallback_ui(self):
@@ -494,14 +556,14 @@ class ProfileForm(QWidget):
             label_phone_value=self.label_phone_value,
             label_email_value=self.label_email_value,
             label_birth_date_value=self.label_birth_date_value,
-            mainLayout=main_layout
+            mainLayout=main_layout,
         )
 
     def reapply_theme(self):
         """Переприменить стили к вложенным менеджерам (пагинация, инфо)."""
-        if hasattr(self, 'overtime_panel') and self.overtime_panel:
+        if hasattr(self, "overtime_panel") and self.overtime_panel:
             self.overtime_panel.reapply_theme()
-        if hasattr(self, 'profile_info') and self.profile_info:
+        if hasattr(self, "profile_info") and self.profile_info:
             self.profile_info.reapply_theme()
 
 

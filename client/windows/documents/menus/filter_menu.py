@@ -1,6 +1,5 @@
 # client/windows/documents/menus/filter_menu.py
 from datetime import date
-from typing import Optional
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QAction
@@ -18,13 +17,13 @@ class FilterMenu(BaseMenu):
       • «По дате…» — открывает диалог выбора периода (date_from / date_to).
     """
 
-    filterChanged = pyqtSignal()          # изменился любой фильтр
-    dateFilterRequested = pyqtSignal()    # нажали «По дате…» — панель откроет диалог
+    filterChanged = pyqtSignal()  # изменился любой фильтр
+    dateFilterRequested = pyqtSignal()  # нажали «По дате…» — панель откроет диалог
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._date_from: Optional[date] = None
-        self._date_to: Optional[date] = None
+        self._date_from: date | None = None
+        self._date_to: date | None = None
 
         self.only_read_action = self.add_checkable_action("Только прочитанные")
         self.only_unread_action = self.add_checkable_action("Только непрочитанные")
@@ -41,13 +40,25 @@ class FilterMenu(BaseMenu):
         self.addAction(self.reset_date_action)
 
         self.only_read_action.toggled.connect(
-            lambda c: self._on_pair_toggled(self.only_read_action, self.only_unread_action, c, must_keep_one=False))
+            lambda c: self._on_pair_toggled(
+                self.only_read_action, self.only_unread_action, c, must_keep_one=False
+            )
+        )
         self.only_unread_action.toggled.connect(
-            lambda c: self._on_pair_toggled(self.only_unread_action, self.only_read_action, c, must_keep_one=False))
+            lambda c: self._on_pair_toggled(
+                self.only_unread_action, self.only_read_action, c, must_keep_one=False
+            )
+        )
         self.my_docs_action.toggled.connect(
-            lambda c: self._on_pair_toggled(self.my_docs_action, self.all_docs_action, c, must_keep_one=True))
+            lambda c: self._on_pair_toggled(
+                self.my_docs_action, self.all_docs_action, c, must_keep_one=True
+            )
+        )
         self.all_docs_action.toggled.connect(
-            lambda c: self._on_pair_toggled(self.all_docs_action, self.my_docs_action, c, must_keep_one=True))
+            lambda c: self._on_pair_toggled(
+                self.all_docs_action, self.my_docs_action, c, must_keep_one=True
+            )
+        )
         self.by_date_action.triggered.connect(lambda: self.dateFilterRequested.emit())
         self.reset_date_action.triggered.connect(self._on_reset_date)
 
@@ -59,7 +70,9 @@ class FilterMenu(BaseMenu):
         action.setChecked(state)
         action.blockSignals(False)
 
-    def _on_pair_toggled(self, changed: QAction, other: QAction, checked: bool, must_keep_one: bool):
+    def _on_pair_toggled(
+        self, changed: QAction, other: QAction, checked: bool, must_keep_one: bool
+    ):
         if checked:
             self._set_silent(other, False)
         elif must_keep_one:
@@ -87,7 +100,7 @@ class FilterMenu(BaseMenu):
         """(date_from, date_to) как datetime.date или (None, None)."""
         return self._date_from, self._date_to
 
-    def set_date_range(self, date_from: Optional[date], date_to: Optional[date]):
+    def set_date_range(self, date_from: date | None, date_to: date | None):
         """Запоминает период и обновляет подпись пункта. Сигнал не шлёт —
         панель сама решает, когда перезагружать данные."""
         self._date_from, self._date_to = date_from, date_to

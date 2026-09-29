@@ -1,21 +1,19 @@
 """
 Основной модуль таблицы документов - ТОЛЬКО UI
 """
+
 import sys
 
-from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QWidget, QTableWidget, QApplication, QVBoxLayout
-from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QSize
+from PyQt6.QtCore import QPoint, Qt, pyqtSignal
+from PyQt6.QtWidgets import QApplication, QTableWidget, QVBoxLayout, QWidget
 
 from client.core.data.document_data import DocumentDataConfig
 from client.core.table.managers.table_data_manager import TableDataManager
-from client.core.table.table_builder import TableBuilder
-from client.core.table.table_updater import TableUpdater
-from client.core.utils.icon_manager import icon_manager
-from client.windows.documents.table.builders.row_renderer import RowRenderer
-from client.windows.documents.table.styles import TableStyles
-from client.windows.documents.table.context_menu import ContextMenu
 from client.core.table.table_controller import TableController
+from client.core.table.table_updater import TableUpdater
+from client.windows.documents.table.builders.row_renderer import RowRenderer
+from client.windows.documents.table.context_menu import ContextMenu
+from client.windows.documents.table.styles import TableStyles
 
 
 class DocumentsTable(QWidget):
@@ -59,7 +57,9 @@ class DocumentsTable(QWidget):
     def _init_components(self):
         """Инициализация компонентов - создание, но без логики"""
         self.config = DocumentDataConfig()
-        self.row_renderer = RowRenderer(self.tableWidget, self.config, self, http_client=self.http_client)
+        self.row_renderer = RowRenderer(
+            self.tableWidget, self.config, self, http_client=self.http_client
+        )
         self.data_manager = TableDataManager(self.tableWidget, self.row_renderer)
         self.updater = TableUpdater(self.tableWidget)
 
@@ -69,7 +69,7 @@ class DocumentsTable(QWidget):
             data_manager=self.data_manager,
             row_renderer=self.row_renderer,
             updater=self.updater,
-            http_client=self.http_client
+            http_client=self.http_client,
         )
 
         self.context_menu_manager = ContextMenu(self)
@@ -107,7 +107,7 @@ class DocumentsTable(QWidget):
             lambda doc: self.document_action_triggered.emit("delete", doc)
         )
         self.context_menu_manager.pin_toggle_requested.connect(
-            lambda doc: self._controller.toggle_pin(doc.get('id'))
+            lambda doc: self._controller.toggle_pin(doc.get("id"))
         )
 
         self.read_status_changed.connect(self._controller.change_read_status)
@@ -120,7 +120,13 @@ class DocumentsTable(QWidget):
 
     # ========== ПУБЛИЧНЫЕ МЕТОДЫ - только делегирование ==========
 
-    def load_documents(self, documents: list, doc_type: str = None, title: str = None, view_mode: str = None):
+    def load_documents(
+        self,
+        documents: list,
+        doc_type: str = None,
+        title: str = None,
+        view_mode: str = None,
+    ):
         """Загрузить документы - делегируем контроллеру"""
         self._controller.load_documents(documents, doc_type, view_mode)
 
@@ -136,6 +142,7 @@ class DocumentsTable(QWidget):
 
         # Перекрасить виджеты в ячейках (комментарии, делегаты, вложения, ответы)
         from PyQt6.QtWidgets import QWidget
+
         for r in range(self.tableWidget.rowCount()):
             for c in range(self.tableWidget.columnCount()):
                 w = self.tableWidget.cellWidget(r, c)
@@ -149,7 +156,9 @@ class DocumentsTable(QWidget):
                         try:
                             ra()
                         except Exception as e:
-                            print(f"[DocumentsTable] reapply_theme error in {type(t).__name__}: {e}")
+                            print(
+                                f"[DocumentsTable] reapply_theme error in {type(t).__name__}: {e}"
+                            )
 
     def get_selected_document(self):
         """Получение выделенного документа"""
@@ -197,7 +206,7 @@ class DocumentsTable(QWidget):
         visual_rect = self.tableWidget.visualRect(index)
         position = QPoint(
             visual_rect.x() + visual_rect.width() // 2,
-            visual_rect.y() + visual_rect.height() // 2
+            visual_rect.y() + visual_rect.height() // 2,
         )
 
         self._on_context_menu(position)
@@ -216,6 +225,9 @@ if __name__ == "__main__":
     window.show()
 
     from client.core.data.document_repository import document_repository
-    window.load_documents(document_repository.get_all_documents(), "default", "Все документы", "all")
+
+    window.load_documents(
+        document_repository.get_all_documents(), "default", "Все документы", "all"
+    )
 
     sys.exit(app.exec())

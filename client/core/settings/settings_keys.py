@@ -1,5 +1,6 @@
 # client/core/settings/settings_keys.py
 
+
 class SettingsKeys:
     """Ключи для локальных настроек (хранятся в JSON файле)"""
 
@@ -11,8 +12,8 @@ class SettingsKeys:
     HIDDEN_ROWS = "hidden_rows"
 
     # ============ ТЕМА ============
-    THEME_PALETTE = "theme_palette"   # "standard" | "blue" | ...
-    THEME_MODE    = "theme_mode"      # "light" | "dark"
+    THEME_PALETTE = "theme_palette"  # "standard" | "blue" | ...
+    THEME_MODE = "theme_mode"  # "light" | "dark"
 
     # ============ НАСТРОЙКИ ПО ТИПУ ДОКУМЕНТА ============
     COLUMN_WIDTHS = "column_widths"

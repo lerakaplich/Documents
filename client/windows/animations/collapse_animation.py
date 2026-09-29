@@ -1,7 +1,13 @@
 # animations.py - файл с анимациями
 
-from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, pyqtProperty, QObject, pyqtSignal, QPoint
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtCore import (
+    QEasingCurve,
+    QObject,
+    QPoint,
+    QPropertyAnimation,
+    pyqtProperty,
+    pyqtSignal,
+)
 
 
 class CollapseAnimation(QObject):
@@ -19,9 +25,15 @@ class CollapseAnimation(QObject):
     animation_finished = pyqtSignal()
     state_changed = pyqtSignal(bool)  # True - развернут, False - свернут
 
-    def __init__(self, target_widget, collapsed_size=50, expanded_size=280,
-                 duration=300, easing_curve=QEasingCurve.Type.InOutCubic,
-                 orientation="horizontal"):
+    def __init__(
+        self,
+        target_widget,
+        collapsed_size=50,
+        expanded_size=280,
+        duration=300,
+        easing_curve=QEasingCurve.Type.InOutCubic,
+        orientation="horizontal",
+    ):
         """
         Args:
             target_widget: Виджет для анимации
@@ -54,7 +66,7 @@ class CollapseAnimation(QObject):
     def _add_animated_property(self):
         """Динамически добавляет свойство animatedSize к виджету"""
         # Проверяем, есть ли уже свойство
-        if not hasattr(self.target.__class__, 'animatedSize'):
+        if not hasattr(self.target.__class__, "animatedSize"):
 
             def get_size(self_obj):
                 if self.orientation == "horizontal":
@@ -70,7 +82,7 @@ class CollapseAnimation(QObject):
 
             # Создаем свойство
             prop = pyqtProperty(int, fget=get_size, fset=set_size)
-            setattr(self.target.__class__, 'animatedSize', prop)
+            self.target.__class__.animatedSize = prop
 
     def toggle(self):
         """Переключить состояние"""
@@ -125,8 +137,9 @@ class FadeAnimation(QObject):
     animation_started = pyqtSignal()
     animation_finished = pyqtSignal()
 
-    def __init__(self, target_widget, duration=300,
-                 easing_curve=QEasingCurve.Type.InOutQuad):
+    def __init__(
+        self, target_widget, duration=300, easing_curve=QEasingCurve.Type.InOutQuad
+    ):
         super().__init__(target_widget)
 
         self.target = target_widget
@@ -174,8 +187,9 @@ class SlideAnimation(QObject):
     animation_started = pyqtSignal()
     animation_finished = pyqtSignal()
 
-    def __init__(self, target_widget, duration=300,
-                 easing_curve=QEasingCurve.Type.OutCubic):
+    def __init__(
+        self, target_widget, duration=300, easing_curve=QEasingCurve.Type.OutCubic
+    ):
         super().__init__(target_widget)
 
         self.target = target_widget
@@ -198,8 +212,11 @@ class SlideAnimation(QObject):
     def slide_by(self, dx, dy):
         """Скольжение на заданное смещение"""
         current_pos = self.target.pos()
-        end_pos = current_pos + QPoint(dx, dy) if hasattr(QPoint, '__add__') else QPoint(current_pos.x() + dx,
-                                                                                         current_pos.y() + dy)
+        end_pos = (
+            current_pos + QPoint(dx, dy)
+            if hasattr(QPoint, "__add__")
+            else QPoint(current_pos.x() + dx, current_pos.y() + dy)
+        )
         self.slide_from(current_pos, end_pos)
 
 
@@ -211,12 +228,13 @@ class CombinedAnimation(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         from PyQt6.QtCore import QParallelAnimationGroup
+
         self.group = QParallelAnimationGroup()
         self.group.finished.connect(self.animation_finished.emit)
 
     def add_animation(self, animation):
         """Добавить анимацию в группу"""
-        if hasattr(animation, 'animation'):
+        if hasattr(animation, "animation"):
             self.group.addAnimation(animation.animation)
 
     def start(self):

@@ -1,9 +1,16 @@
 # document_type_card.py
-import sys
 import os
-from PyQt6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget, QHBoxLayout, QLabel, QPushButton, QSpacerItem, \
-    QSizePolicy
-from PyQt6.QtCore import pyqtSignal, Qt
+import sys
+
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+)
 from PyQt6.uic import loadUi
 
 from client.core.themes import T, apply_theme_to_widget
@@ -31,15 +38,15 @@ class DocumentTypeCard(QFrame):
 
         # Сохраняем данные
         self.doc_type_data = doc_type_data or {}
-        self.type_id = self.doc_type_data.get('id', 0)
+        self.type_id = self.doc_type_data.get("id", 0)
 
         # Настраиваем карточку
         self.setup_card()
 
         # Подключаем сигналы кнопок
-        if hasattr(self, 'editBtn'):
+        if hasattr(self, "editBtn"):
             self.editBtn.clicked.connect(self.on_edit_clicked)
-        if hasattr(self, 'deleteBtn'):
+        if hasattr(self, "deleteBtn"):
             self.deleteBtn.clicked.connect(self.on_delete_clicked)
 
     def get_ui_path(self):
@@ -47,7 +54,16 @@ class DocumentTypeCard(QFrame):
         # Путь относительно текущего файла
         current_dir = os.path.dirname(os.path.abspath(__file__))
         # Поднимаемся на уровень выше до client/windows/system/document_types/
-        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'document_types', 'document_type_card.ui')
+        ui_path = os.path.join(
+            current_dir,
+            "..",
+            "..",
+            "..",
+            "ui",
+            "system",
+            "document_types",
+            "document_type_card.ui",
+        )
 
         return os.path.normpath(ui_path)
 
@@ -57,18 +73,20 @@ class DocumentTypeCard(QFrame):
             return
 
         # Заполняем название
-        if hasattr(self, 'nameLabel_2'):
-            name = self.doc_type_data.get('name', '')
-            self.nameLabel_2.setText(name if name else 'Без названия')
+        if hasattr(self, "nameLabel_2"):
+            name = self.doc_type_data.get("name", "")
+            self.nameLabel_2.setText(name if name else "Без названия")
 
         # Заполняем количество дополнительных полей
-        if hasattr(self, 'fieldsCountLabel'):
-            fields_count = self.doc_type_data.get('fields_count', 0)
-            self.fieldsCountLabel.setText(f"{fields_count} доп. полей" if fields_count != 1 else "1 доп. поле")
+        if hasattr(self, "fieldsCountLabel"):
+            fields_count = self.doc_type_data.get("fields_count", 0)
+            self.fieldsCountLabel.setText(
+                f"{fields_count} доп. полей" if fields_count != 1 else "1 доп. поле"
+            )
 
         # Заполняем статус автонумерации
-        if hasattr(self, 'autoNumLabel'):
-            auto_num = self.doc_type_data.get('auto_numbering', False)
+        if hasattr(self, "autoNumLabel"):
+            auto_num = self.doc_type_data.get("auto_numbering", False)
             if auto_num:
                 self.autoNumLabel.setText("✓ Автонумерация включена")
                 self.autoNumLabel.setStyleSheet(
@@ -81,12 +99,14 @@ class DocumentTypeCard(QFrame):
                 )
 
         # Заполняем количество документов
-        if hasattr(self, 'docsCountLabel'):
-            docs_count = self.doc_type_data.get('documents_count', 0)
+        if hasattr(self, "docsCountLabel"):
+            docs_count = self.doc_type_data.get("documents_count", 0)
             # Склонение слова "документ"
             if docs_count % 10 == 1 and docs_count % 100 != 11:
                 word = "документ"
-            elif 2 <= docs_count % 10 <= 4 and (docs_count % 100 < 10 or docs_count % 100 >= 20):
+            elif 2 <= docs_count % 10 <= 4 and (
+                docs_count % 100 < 10 or docs_count % 100 >= 20
+            ):
                 word = "документа"
             else:
                 word = "документов"
@@ -132,16 +152,17 @@ class DocumentTypeCard(QFrame):
         self.editBtn.clicked.connect(self.on_edit_clicked)
         self.deleteBtn.clicked.connect(self.on_delete_clicked)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     # Тест отдельной карточки
     test_data = {
-        'id': 1,
-        'name': 'Приказ',
-        'fields_count': 4,
-        'auto_numbering': True,
-        'documents_count': 156
+        "id": 1,
+        "name": "Приказ",
+        "fields_count": 4,
+        "auto_numbering": True,
+        "documents_count": 156,
     }
 
     # Создаем и показываем карточку

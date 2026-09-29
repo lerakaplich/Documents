@@ -3,7 +3,8 @@
 """
 
 import os
-from PyQt6 import QtWidgets, uic
+
+from PyQt6 import uic
 from PyQt6.QtWidgets import QVBoxLayout
 
 from client.core.themes import apply_theme_to_widget
@@ -19,7 +20,14 @@ class EmployeeUI:
         """Загружает UI из .ui файла"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
         ui_path = os.path.join(
-            current_dir, '..', '..', '..', 'ui', 'system', 'employees', 'employee_dialog.ui'
+            current_dir,
+            "..",
+            "..",
+            "..",
+            "ui",
+            "system",
+            "employees",
+            "employee_dialog.ui",
         )
         ui_path = os.path.normpath(ui_path)
 
@@ -32,12 +40,14 @@ class EmployeeUI:
     def setup_window(self, employee, current_user_rights):
         """Настраивает заголовок окна и инициализирует лейауты"""
         print("[DEBUG] setup_window() вызван")
-        is_edit = employee and employee.get('id')
+        is_edit = employee and employee.get("id")
 
         if is_edit:
-            full_name = f"{employee.get('last_name', '')} {employee.get('first_name', '')}"
+            full_name = (
+                f"{employee.get('last_name', '')} {employee.get('first_name', '')}"
+            )
             self.parent.setWindowTitle(f"Редактирование сотрудника - {full_name}")
-            self.parent.titleLabel.setText(f"Редактирование сотрудника")
+            self.parent.titleLabel.setText("Редактирование сотрудника")
         else:
             self.parent.setWindowTitle("Новый сотрудник")
             self.parent.titleLabel.setText("Новый сотрудник")
@@ -48,14 +58,15 @@ class EmployeeUI:
     def reapply_theme(self):
         """Переприменить тему после set_theme()."""
         from client.core.themes import apply_theme_to_widget
+
         apply_theme_to_widget(self)
 
     def setup_static_comboboxes(self, current_user_rights):
         self.parent.rightsCombo.clear()
         self.parent.rightsCombo.addItem("Пользователь", "user")
-        if current_user_rights in ['admin', 'superadmin']:
+        if current_user_rights in ["admin", "superadmin"]:
             self.parent.rightsCombo.addItem("Администратор", "admin")
-        if current_user_rights == 'superadmin':
+        if current_user_rights == "superadmin":
             self.parent.rightsCombo.addItem("Суперадминистратор", "superadmin")
         self.parent.isLeaderCheckbox.hide()
 
@@ -71,6 +82,5 @@ class EmployeeUI:
         new_layout.setSpacing(8)
         self.parent.hierarchyLayout = new_layout
         parent_widget.layout().insertLayout(
-            parent_widget.layout().indexOf(old_layout),
-            new_layout
+            parent_widget.layout().indexOf(old_layout), new_layout
         )

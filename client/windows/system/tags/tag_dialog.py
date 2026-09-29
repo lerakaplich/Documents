@@ -3,14 +3,12 @@
 """
 Модуль диалогового окна для создания/редактирования хэштегов
 """
+
 import os
 import sys
-from typing import Optional, Dict, Any
-from PyQt6.QtWidgets import (
-    QDialog, QColorDialog, QMessageBox, QApplication
-)
-from PyQt6.QtGui import QColor
-from PyQt6.QtCore import Qt
+from typing import Any
+
+from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox
 from PyQt6.uic import loadUi
 
 from client.core.themes import apply_theme_to_widget
@@ -22,26 +20,28 @@ class TagDialog(QDialog):
 
     # Сопоставление названий цветов из ComboBox с HEX-кодами
     COLOR_MAP = {
-        'Золотой (#ccab6e)': '#ccab6e',
-        'Красный (#D22730)': '#D22730',
-        'Синий (#3498db)': '#3498db',
-        'Зеленый (#2ecc71)': '#2ecc71',
-        'Фиолетовый (#9b59b6)': '#9b59b6',
-        'Оранжевый (#e67e22)': '#e67e22'
+        "Золотой (#ccab6e)": "#ccab6e",
+        "Красный (#D22730)": "#D22730",
+        "Синий (#3498db)": "#3498db",
+        "Зеленый (#2ecc71)": "#2ecc71",
+        "Фиолетовый (#9b59b6)": "#9b59b6",
+        "Оранжевый (#e67e22)": "#e67e22",
     }
 
     COLOR_REVERSE_MAP = {v: k for k, v in COLOR_MAP.items()}
 
     # Сопоставление приоритетов
     PRIORITY_MAP = {
-        '1 - Без приоритета': 'normal',
-        '2 - Средний приоритет': 'important',
-        '3 - Критический приоритет': 'urgent'
+        "1 - Без приоритета": "normal",
+        "2 - Средний приоритет": "important",
+        "3 - Критический приоритет": "urgent",
     }
 
     PRIORITY_REVERSE_MAP = {v: k for k, v in PRIORITY_MAP.items()}
 
-    def __init__(self, parent=None, tag_id: Optional[int] = None, tag_data: Optional[Dict] = None):
+    def __init__(
+        self, parent=None, tag_id: int | None = None, tag_data: dict | None = None
+    ):
         """
         Инициализация диалога
 
@@ -68,7 +68,7 @@ class TagDialog(QDialog):
         """Загружает UI из .ui файла"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
         ui_path = os.path.join(
-            current_dir, '..', '..', '..', 'ui', 'system', 'tags', 'tag_dialog.ui'
+            current_dir, "..", "..", "..", "ui", "system", "tags", "tag_dialog.ui"
         )
         ui_path = os.path.normpath(ui_path)
 
@@ -103,11 +103,11 @@ class TagDialog(QDialog):
             return self.COLOR_MAP[current_text]
 
         style = self.colorIndicator.styleSheet()
-        if 'background-color:' in style:
-            color_part = style.split('background-color:')[1].split(';')[0].strip()
+        if "background-color:" in style:
+            color_part = style.split("background-color:")[1].split(";")[0].strip()
             return color_part
 
-        return '#ccab6e'
+        return "#ccab6e"
 
     def _set_color(self, hex_color: str):
         self._update_color_indicator(hex_color)
@@ -145,33 +145,35 @@ class TagDialog(QDialog):
             # Заполняем заглушками - реальные данные будут переданы через tag_data
             pass
 
-    def _fill_form(self, data: Dict[str, Any]):
+    def _fill_form(self, data: dict[str, Any]):
         """Заполняет форму данными"""
         # Имя
-        self.lineEditName.setText(data.get('name', ''))
+        self.lineEditName.setText(data.get("name", ""))
 
         # Приоритет
-        priority = data.get('priority', 'normal')
-        priority_text = self.PRIORITY_REVERSE_MAP.get(priority, '1 - Без приоритета')
+        priority = data.get("priority", "normal")
+        priority_text = self.PRIORITY_REVERSE_MAP.get(priority, "1 - Без приоритета")
         self.comboBoxPriority.setCurrentText(priority_text)
 
         # Цвет
-        color = data.get('color', '#ccab6e')
+        color = data.get("color", "#ccab6e")
         self._set_color(color)
 
     def _validate_input(self) -> bool:
         name = self.lineEditName.text().strip()
 
         if not name:
-            QMessageBox.warning(self, "Ошибка валидации", "Название хэштега обязательно для заполнения")
+            QMessageBox.warning(
+                self, "Ошибка валидации", "Название хэштега обязательно для заполнения"
+            )
             self.lineEditName.setFocus()
             return False
 
-        if name.startswith('#'):
+        if name.startswith("#"):
             QMessageBox.warning(
                 self,
                 "Предупреждение",
-                "Название хэштега не должно содержать символ # в начале"
+                "Название хэштега не должно содержать символ # в начале",
             )
             self.lineEditName.setFocus()
             return False
@@ -180,7 +182,7 @@ class TagDialog(QDialog):
             QMessageBox.warning(
                 self,
                 "Ошибка валидации",
-                "Название хэштега не должно превышать 100 символов"
+                "Название хэштега не должно превышать 100 символов",
             )
             self.lineEditName.setFocus()
             return False
@@ -194,21 +196,17 @@ class TagDialog(QDialog):
         # Данные готовы - родительский компонент сохранит их через API
         self.accept()
 
-    def get_tag_data(self) -> Dict[str, Any]:
+    def get_tag_data(self) -> dict[str, Any]:
         """Возвращает данные тега"""
         name = self.lineEditName.text().strip()
         priority_text = self.comboBoxPriority.currentText()
-        priority = self.PRIORITY_MAP.get(priority_text, 'normal')
+        priority = self.PRIORITY_MAP.get(priority_text, "normal")
         color = self._get_current_color()
 
-        tag_data = {
-            'name': name,
-            'priority': priority,
-            'color': color
-        }
+        tag_data = {"name": name, "priority": priority, "color": color}
 
         if self.tag_id:
-            tag_data['id'] = self.tag_id
+            tag_data["id"] = self.tag_id
 
         return tag_data
 
@@ -216,7 +214,7 @@ class TagDialog(QDialog):
 # ============================================================================
 # ТЕСТОВЫЙ ЗАПУСК
 # ============================================================================
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     # Тест: Создание нового тега

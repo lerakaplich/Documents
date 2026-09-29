@@ -1,7 +1,9 @@
 """
 Модуль со стилями для таблицы документов
 """
-from client.core.themes import get_manager, get_menu_style as _get_menu_style
+
+from client.core.themes import get_manager
+from client.core.themes import get_menu_style as _get_menu_style
 
 
 class TableStyles:

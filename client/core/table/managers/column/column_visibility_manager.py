@@ -1,9 +1,6 @@
 """
 Модуль управления колонками таблицы
 """
-from PyQt6.QtWidgets import QHeaderView
-from PyQt6.QtCore import Qt, QTimer
-from typing import Dict, List, Optional
 
 from client.core.settings.settings_manager import SettingsManager
 
@@ -53,11 +50,3 @@ class ColumnVisibilityManager:
                 header.setSectionHidden(logical_idx, False)
         except Exception as e:
             print(f"[ColumnVisibilityManager] Error resetting: {e}")
-
-
-
-
-
-
-
-

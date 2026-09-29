@@ -3,15 +3,23 @@
 Кастомный календарь-виджет для выбора даты.
 Заголовок: ◀ [Месяц▾] [Год: SpinBox] ▶
 """
+
 import calendar
 from datetime import date
 
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QPushButton, QToolButton, QFrame, QMenu, QSpinBox,
-)
-from PyQt6.QtCore import Qt, QDate, pyqtSignal, QPoint
+from PyQt6.QtCore import QDate, QPoint, Qt, pyqtSignal
 from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QPushButton,
+    QSpinBox,
+    QToolButton,
+    QVBoxLayout,
+)
 
 from client.core.themes import get_manager
 
@@ -20,12 +28,23 @@ class CalendarPopup(QFrame):
     """
     Кастомный календарь. Показывается как popup.
     """
+
     date_selected = pyqtSignal(QDate)
 
     WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
     MONTHS = [
-        "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-        "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+        "Январь",
+        "Февраль",
+        "Март",
+        "Апрель",
+        "Май",
+        "Июнь",
+        "Июль",
+        "Август",
+        "Сентябрь",
+        "Октябрь",
+        "Ноябрь",
+        "Декабрь",
     ]
 
     # Границы для поля ввода года
@@ -75,7 +94,9 @@ class CalendarPopup(QFrame):
         self.spin_year.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
         self.spin_year.setFixedWidth(60)
         self.spin_year.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.spin_year.setKeyboardTracking(False)   # valueChanged — после Enter/потери фокуса
+        self.spin_year.setKeyboardTracking(
+            False
+        )  # valueChanged — после Enter/потери фокуса
         self.spin_year.valueChanged.connect(self._on_year_changed)
         self.spin_year.editingFinished.connect(self._on_year_editing_finished)
 
@@ -186,6 +207,7 @@ class CalendarPopup(QFrame):
         # Стиль меню месяца
         try:
             from client.core.themes import get_menu_style
+
             self.btn_month.menu().setStyleSheet(get_menu_style())
         except Exception:
             pass

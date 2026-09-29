@@ -1,4 +1,5 @@
 from PyQt6.QtWidgets import QMessageBox
+
 from client.windows.system.delete_dialog import DeleteDialog
 from client.windows.system.employees.employee_dialog import EmployeeDialog
 from client.windows.system.employees.employee_edit_dialog import EmployeeEditDialog
@@ -14,8 +15,11 @@ class EmployeeHandlers:
     def show_add_employee_dialog(self):
         try:
             if not self.page.current_org_id:
-                QMessageBox.warning(self.page, "Организация не выбрана",
-                    "Пожалуйста, выберите организацию, в которую хотите добавить сотрудника.")
+                QMessageBox.warning(
+                    self.page,
+                    "Организация не выбрана",
+                    "Пожалуйста, выберите организацию, в которую хотите добавить сотрудника.",
+                )
                 return
 
             dialog = EmployeeDialog(
@@ -23,7 +27,7 @@ class EmployeeHandlers:
                 employee=None,
                 is_maz=False,
                 http_client=self._http(),
-                current_user_rights='admin',
+                current_user_rights="admin",
                 current_user_org_id=self.page.current_org_id,
                 current_user_div_id=None,
                 current_user_dept_id=self.page.current_department_id,
@@ -37,13 +41,18 @@ class EmployeeHandlers:
             dialog.employee_updated.connect(self.page.on_employee_updated)
             dialog.exec()
         except Exception as e:
-            QMessageBox.critical(self.page, "Ошибка",
-                f"Не удалось открыть диалог создания сотрудника:\n{e}")
-            import traceback; traceback.print_exc()
+            QMessageBox.critical(
+                self.page,
+                "Ошибка",
+                f"Не удалось открыть диалог создания сотрудника:\n{e}",
+            )
+            import traceback
+
+            traceback.print_exc()
 
     def show_edit_employee_dialog(self, employee_data):
         try:
-            employee_id = employee_data.get('id')
+            employee_id = employee_data.get("id")
             if not employee_id:
                 QMessageBox.warning(self.page, "Ошибка", "ID сотрудника не найден")
                 return
@@ -58,7 +67,7 @@ class EmployeeHandlers:
                 employee=employee,
                 is_maz=False,
                 http_client=self._http(),
-                current_user_rights='admin',
+                current_user_rights="admin",
                 current_user_org_id=self.page.current_org_id,
                 current_user_div_id=None,
                 current_user_dept_id=self.page.current_department_id,
@@ -71,9 +80,14 @@ class EmployeeHandlers:
             dialog.employee_updated.connect(self.page.on_employee_updated)
             dialog.exec()
         except Exception as e:
-            QMessageBox.critical(self.page, "Ошибка",
-                f"Не удалось открыть диалог редактирования сотрудника:\n{e}")
-            import traceback; traceback.print_exc()
+            QMessageBox.critical(
+                self.page,
+                "Ошибка",
+                f"Не удалось открыть диалог редактирования сотрудника:\n{e}",
+            )
+            import traceback
+
+            traceback.print_exc()
 
     def show_delete_employee_dialog(self, employee_id):
         try:
@@ -88,16 +102,19 @@ class EmployeeHandlers:
 
             dialog = DeleteDialog(parent=self.page)
 
-            if hasattr(dialog, 'messageLabel'):
-                dialog.messageLabel.setText(f"Вы уверены, что хотите удалить сотрудника:\n\n{full_name}?")
-            if hasattr(dialog, 'nameLabel'):
+            if hasattr(dialog, "messageLabel"):
+                dialog.messageLabel.setText(
+                    f"Вы уверены, что хотите удалить сотрудника:\n\n{full_name}?"
+                )
+            if hasattr(dialog, "nameLabel"):
                 dialog.nameLabel.setText(f"Сотрудник: {full_name}")
 
             dialog.deleted.connect(lambda: self.confirm_delete_employee(employee_id))
             dialog.exec()
 
-        except Exception as e:
+        except Exception:
             import traceback
+
             traceback.print_exc()
 
     def confirm_delete_employee(self, employee_id):
@@ -108,8 +125,9 @@ class EmployeeHandlers:
 
             del self.page.data_manager.employees[employee_id]
             self.page.data_manager.employee_positions = [
-                pos for pos in self.page.data_manager.employee_positions
-                if pos.get('employee_id') != employee_id
+                pos
+                for pos in self.page.data_manager.employee_positions
+                if pos.get("employee_id") != employee_id
             ]
 
             QMessageBox.information(self.page, "Успешно", "Сотрудник успешно удален!")
@@ -122,16 +140,22 @@ class EmployeeHandlers:
                 self.page._self_change_in_progress = False
 
         except Exception as e:
-            QMessageBox.critical(self.page, "Ошибка", f"Не удалось удалить сотрудника:\n{str(e)}")
+            QMessageBox.critical(
+                self.page, "Ошибка", f"Не удалось удалить сотрудника:\n{e!s}"
+            )
 
     def on_employee_created(self, employee_id):
-        QMessageBox.information(self.page, "Успешно", f"Сотрудник с ID {employee_id} успешно создан!")
+        QMessageBox.information(
+            self.page, "Успешно", f"Сотрудник с ID {employee_id} успешно создан!"
+        )
         self.page.data_manager.load_test_data(self.page)
         self.page.update_display()
         self.page.employees_updated.emit()
 
     def on_employee_updated(self, employee_id):
-        QMessageBox.information(self.page, "Успешно", f"Сотрудник с ID {employee_id} успешно обновлен!")
+        QMessageBox.information(
+            self.page, "Успешно", f"Сотрудник с ID {employee_id} успешно обновлен!"
+        )
         self.page.data_manager.load_test_data(self.page)
         self.page.update_display()
         self.page.employees_updated.emit()

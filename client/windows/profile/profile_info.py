@@ -1,5 +1,4 @@
-import os
-from PyQt6.QtWidgets import QLabel, QMessageBox, QFormLayout
+from PyQt6.QtWidgets import QFormLayout, QLabel, QMessageBox
 
 
 class ProfileInfo:
@@ -32,10 +31,12 @@ class ProfileInfo:
         self._dept_name_labels = []
 
         from client.core.state.data_events import get_data_events
+
         get_data_events().profile_changed.connect(self._on_profile_changed)
 
         # в SettingsTab.__init__
         from client.core.state.data_events import get_data_events
+
         get_data_events().profile_changed.connect(self._on_profile_changed)
 
     def _on_profile_changed(self, data: dict):
@@ -54,7 +55,6 @@ class ProfileInfo:
 
     # ─────────────────────────────────────────────
     # Инъекция виджетов
-
 
     def set_http_client(self, http_client):
         self.http_client = http_client
@@ -78,11 +78,12 @@ class ProfileInfo:
         self.label_birth_date_value = label_birth_date_value
         self.mainLayout = mainLayout
 
-
     # ─────────────────────────────────────────────
     # Обновление данных
 
-    def update_profile(self, full_name, position, department_chain, phone, email, birth_date):
+    def update_profile(
+        self, full_name, position, department_chain, phone, email, birth_date
+    ):
         print("update_profile вызван")
         self._last_department_chain = department_chain
 
@@ -123,10 +124,13 @@ class ProfileInfo:
             )
 
         from client.core.state.data_events import get_data_events
-        get_data_events().profile_changed.emit({
-            "phone_number": phone or "",
-            "email": email or "",
-        })
+
+        get_data_events().profile_changed.emit(
+            {
+                "phone_number": phone or "",
+                "email": email or "",
+            }
+        )
 
         print("update_profile завершён")
 
@@ -178,7 +182,6 @@ class ProfileInfo:
             name_lbl.setObjectName("label_dept_name_value")
 
             # Применяем стили темы (в .ui для этих objectName заданы стили)
-            from client.core.themes import apply_theme_to_widget
             # Пока просто зададим objectName — ThemeManager подставит по нему
             # при следующем apply_theme_to_all_windows(). Но чтобы цвета
             # применились СРАЗУ при создании, скопируем стиль у соседнего
@@ -224,20 +227,23 @@ class ProfileInfo:
         if self.http_client:
             try:
                 from client.services.employee_service import EmployeeService
+
                 EmployeeService(self.http_client).update_my_profile(
                     {"phone_number": new_phone}
                 )
-                QMessageBox.information(self.parent, "Успешно", "Номер телефона обновлён")
+                QMessageBox.information(
+                    self.parent, "Успешно", "Номер телефона обновлён"
+                )
             except Exception as e:
                 QMessageBox.warning(
-                    self.parent, "Ошибка",
-                    f"Не удалось обновить телефон на сервере:\n{str(e)}"
+                    self.parent,
+                    "Ошибка",
+                    f"Не удалось обновить телефон на сервере:\n{e!s}",
                 )
         else:
-            QMessageBox.information(self.parent, "Успешно",
-                                    "Номер телефона обновлён (локально)")
-
-
+            QMessageBox.information(
+                self.parent, "Успешно", "Номер телефона обновлён (локально)"
+            )
 
     def on_email_updated(self, new_email: str):
         self.current_email_raw = new_email
@@ -247,16 +253,19 @@ class ProfileInfo:
         if self.http_client:
             try:
                 from client.services.employee_service import EmployeeService
-                EmployeeService(self.http_client).update_my_profile({"email": new_email})
+
+                EmployeeService(self.http_client).update_my_profile(
+                    {"email": new_email}
+                )
                 QMessageBox.information(self.parent, "Успешно", "Email обновлён")
             except Exception as e:
                 QMessageBox.warning(
-                    self.parent, "Ошибка",
-                    f"Не удалось обновить email на сервере:\n{str(e)}"
+                    self.parent,
+                    "Ошибка",
+                    f"Не удалось обновить email на сервере:\n{e!s}",
                 )
         else:
-            QMessageBox.information(self.parent, "Успешно",
-                                    "Email обновлён (локально)")
+            QMessageBox.information(self.parent, "Успешно", "Email обновлён (локально)")
 
     def reapply_theme(self):
         """Пересоздать строки подразделений с актуальными стилями темы."""

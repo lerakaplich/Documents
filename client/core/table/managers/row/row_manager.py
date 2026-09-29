@@ -1,13 +1,13 @@
 """
 Управление строками - фасад для менеджеров
 """
-from PyQt6.QtCore import QObject, pyqtSignal, QTimer, Qt
-from PyQt6.QtWidgets import QHeaderView
+
+from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 
 from client.core.table.managers.pin_manager import PinManager
-from client.core.table.managers.row.row_order_manager import RowOrderManager
-from client.core.table.managers.row.row_height_manager import RowHeightManager
 from client.core.table.managers.row.row_behavior_manager import RowBehaviorManager
+from client.core.table.managers.row.row_height_manager import RowHeightManager
+from client.core.table.managers.row.row_order_manager import RowOrderManager
 
 
 class RowManager(QObject):
@@ -53,7 +53,7 @@ class RowManager(QObject):
         try:
             documents = self._get_documents_in_order()
             self._save_row_order(documents)
-            self.order_changed.emit([doc.get('id') for doc in documents])
+            self.order_changed.emit([doc.get("id") for doc in documents])
         except Exception as e:
             print(f"[RowManager] Error in _on_section_moved: {e}")
 
@@ -64,7 +64,7 @@ class RowManager(QObject):
         try:
             documents = self._get_documents_in_order()
             self._save_row_order(documents)
-            self.order_changed.emit([doc.get('id') for doc in documents])
+            self.order_changed.emit([doc.get("id") for doc in documents])
         except Exception as e:
             print(f"[RowManager] Error in _on_rows_moved: {e}")
 
@@ -86,7 +86,7 @@ class RowManager(QObject):
 
     def _save_row_order(self, documents: list):
         """Сохранить порядок строк"""
-        order_ids = [doc.get('id') for doc in documents if doc.get('id') is not None]
+        order_ids = [doc.get("id") for doc in documents if doc.get("id") is not None]
         self._order_manager.save_order(order_ids)
 
     # ========== PIN ==========
@@ -144,8 +144,8 @@ class RowManager(QObject):
 
         # Обновляем is_pinned
         for doc in documents:
-            doc_id = doc.get('id')
-            doc['is_pinned'] = doc_id in pinned_ids
+            doc_id = doc.get("id")
+            doc["is_pinned"] = doc_id in pinned_ids
 
         # Применяем порядок
         sorted_documents = self._order_manager.apply_order(documents, pinned_ids)
@@ -160,7 +160,7 @@ class RowManager(QObject):
             self._updater.force_update()
 
         # Сохраняем порядок
-        order_ids = [d.get('id') for d in sorted_documents if d.get('id') is not None]
+        order_ids = [d.get("id") for d in sorted_documents if d.get("id") is not None]
         self._order_manager.save_order(order_ids)
 
     # В методе set_doc_type:
@@ -184,6 +184,7 @@ class RowManager(QObject):
         self._height_manager.update_document_map(documents)
 
         QTimer.singleShot(200, self._height_manager.restore_heights)
+
     # ========== HELPERS ==========
 
     def find_reg_number_column(self) -> int:

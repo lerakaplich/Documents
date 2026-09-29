@@ -1,7 +1,8 @@
 # client/services/document_service.py
 
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any
+
 from client.core.http_client import HttpClient, logger
 
 # Поля, обязательные по контракту POST /documents (DocumentCreateForm).
@@ -16,7 +17,7 @@ REQUIRED_FIELDS_MESSAGES = {
 # "Приказы") поле отправителя не используется вовсе.
 
 
-def validate_create_payload(payload: Dict[str, Any]) -> List[str]:
+def validate_create_payload(payload: dict[str, Any]) -> list[str]:
     """
     Локальная (клиентская) проверка payload'а перед отправкой на сервер,
     чтобы не ждать 422 от FastAPI и показать понятную ошибку сразу.
@@ -42,25 +43,27 @@ class DocumentService:
 
     # ─────────── ЧТЕНИЕ ───────────
 
-    DEFAULT_PAGE_SIZE = 50  # максимум, который сервер отдаёт за один запрос (limit ≤ 100)
+    DEFAULT_PAGE_SIZE = (
+        50  # максимум, который сервер отдаёт за один запрос (limit ≤ 100)
+    )
 
     def get_documents(
         self,
         scope: str = "all",
-        type_id: Optional[int] = None,
-        direction: Optional[str] = None,
-        search: Optional[str] = None,
-        tag_ids: Optional[List[int]] = None,
-        status_filters: Optional[List[str]] = None,
-        is_completed: Optional[bool] = None,
-        is_archived: Optional[bool] = None,
-        date_from: Optional[str] = None,
-        date_to: Optional[str] = None,
+        type_id: int | None = None,
+        direction: str | None = None,
+        search: str | None = None,
+        tag_ids: list[int] | None = None,
+        status_filters: list[str] | None = None,
+        is_completed: bool | None = None,
+        is_archived: bool | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
         sort_by: str = "created_at",
         sort_order: str = "desc",
         limit: int = DEFAULT_PAGE_SIZE,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         GET /documents/documents/ — реестр документов с фильтрацией и пагинацией.
         Возвращает {"total": int, "limit": int, "offset": int, "items": [...]}
@@ -70,7 +73,7 @@ class DocumentService:
         часть документов не попадёт в первую страницу — здесь пока нет UI-пагинации
         ("показать ещё" / бесконечная прокрутка), это следующий шаг.
         """
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             "scope": scope,
             "sort_by": sort_by,
             "sort_order": sort_order,
@@ -102,12 +105,17 @@ class DocumentService:
                 return r
             # на случай, если сервер вдруг вернёт голый список
             items = r if isinstance(r, list) else []
-            return {"total": len(items), "limit": limit, "offset": offset, "items": items}
+            return {
+                "total": len(items),
+                "limit": limit,
+                "offset": offset,
+                "items": items,
+            }
         except Exception as e:
             print(f"❌ get_documents: {e}")
             return {"total": 0, "limit": limit, "offset": offset, "items": []}
 
-    def get_all_documents(self) -> List[Dict[str, Any]]:
+    def get_all_documents(self) -> list[dict[str, Any]]:
         """Оставлено для обратной совместимости. Предпочитайте get_documents()."""
         try:
             r = self.client.get(f"{self.base_path}/")
@@ -116,7 +124,7 @@ class DocumentService:
             print(f"❌ get_all_documents: {e}")
             return []
 
-    def get_document_by_id(self, document_id: int) -> Optional[Dict[str, Any]]:
+    def get_document_by_id(self, document_id: int) -> dict[str, Any] | None:
         try:
             return self.client.get(f"{self.base_path}/{document_id}")
         except Exception as e:
@@ -124,7 +132,7 @@ class DocumentService:
             return None
 
     # ─────────── СОЗДАНИЕ ───────────
-    def create_document(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_document(self, data: dict[str, Any]) -> dict[str, Any]:
         payload = self._build_create_payload(data)
         errors = validate_create_payload(payload)
         if errors:
@@ -132,7 +140,7 @@ class DocumentService:
         print(f"📤 POST /documents/ payload: {payload}")
         return self.client.post(f"{self.base_path}/", json=payload)  # ← добавили "/"
 
-    def get_proposed_number(self, type_id: int, direction: str) -> Optional[str]:
+    def get_proposed_number(self, type_id: int, direction: str) -> str | None:
         try:
             r = self.client.get(
                 f"{self.base_path}/proposed-number",
@@ -143,9 +151,11 @@ class DocumentService:
             print(f"❌ get_proposed_number: {e}")
             return None
 
-    def mark_as_read(self, document_ids: List[int]) -> Dict[str, Any]:
+    def mark_as_read(self, document_ids: list[int]) -> dict[str, Any]:
         try:
-            return self.client.post(f"{self.base_path}/mark-read", json={"doc_ids": document_ids})
+            return self.client.post(
+                f"{self.base_path}/mark-read", json={"doc_ids": document_ids}
+            )
         except Exception as e:
             print(f"❌ mark_as_read: {e}")
             return {"marked_count": 0}
@@ -153,7 +163,7 @@ class DocumentService:
     # ─────────── МАППИНГ UI → СЕРВЕР ───────────
 
     @staticmethod
-    def _build_create_payload(data: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_create_payload(data: dict[str, Any]) -> dict[str, Any]:
         """
         Принимает плоский dict из DocumentDialog.save_document().
         Возвращает тело для POST /documents по контракту DocumentCreateForm.
@@ -162,7 +172,7 @@ class DocumentService:
         def _iso(v):
             if not v:
                 return None
-            if hasattr(v, "toString"):                       # QDate
+            if hasattr(v, "toString"):  # QDate
                 return v.toString("yyyy-MM-dd")
             if isinstance(v, str) and len(v) >= 10 and v[4] == "-":
                 return v
@@ -174,24 +184,28 @@ class DocumentService:
         # ── Получатели ──
         # UI отдаёт плоский список ID. Разделяем по типу через справочники,
         # которые прокидывает диалог: data["_orgs"], data["_depts"], data["_emps"].
-        orgs   = {o["id"] for o in (data.get("_orgs")   or []) if "id" in o}
-        depts  = {d["id"] for d in (data.get("_depts")  or []) if "id" in d}
-        emps   = {e["id"] for e in (data.get("_emps")   or []) if "id" in e}
+        orgs = {o["id"] for o in (data.get("_orgs") or []) if "id" in o}
+        depts = {d["id"] for d in (data.get("_depts") or []) if "id" in d}
+        emps = {e["id"] for e in (data.get("_emps") or []) if "id" in e}
 
-        receivers_payload: List[Dict[str, Any]] = []
-        for node_id in (data.get("receiver_ids") or []):
+        receivers_payload: list[dict[str, Any]] = []
+        for node_id in data.get("receiver_ids") or []:
             if node_id in depts:
-                receivers_payload.append({
-                    "target_department_id": node_id,
-                    "target_organization_id": None,
-                    "target_official_text": None,
-                })
+                receivers_payload.append(
+                    {
+                        "target_department_id": node_id,
+                        "target_organization_id": None,
+                        "target_official_text": None,
+                    }
+                )
             elif node_id in orgs:
-                receivers_payload.append({
-                    "target_department_id": None,
-                    "target_organization_id": node_id,
-                    "target_official_text": None,
-                })
+                receivers_payload.append(
+                    {
+                        "target_department_id": None,
+                        "target_organization_id": node_id,
+                        "target_official_text": None,
+                    }
+                )
             elif node_id in emps:
                 # В `document_receivers` нет employee_id — по контракту
                 # сотрудник как получатель не выражается. Скипаем.
@@ -209,7 +223,9 @@ class DocumentService:
             executors_payload = [eid for eid in raw_executors if eid in emps]
             skipped = [eid for eid in raw_executors if eid not in emps]
             if skipped:
-                print(f"[DocumentService] ⚠️ исполнители пропущены (не сотрудники): {skipped}")
+                print(
+                    f"[DocumentService] ⚠️ исполнители пропущены (не сотрудники): {skipped}"
+                )
         else:
             # Справочник сотрудников не передан — доверяем списку как есть.
             executors_payload = raw_executors
@@ -222,7 +238,7 @@ class DocumentService:
             tag_ids = [int(x) for x in tags_raw if str(x).isdigit()]
 
         # ── Сборка ──
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "type_id": data.get("type_id"),
             "direction": data.get("direction"),
             "title": (data.get("title") or "").strip(),
@@ -238,7 +254,8 @@ class DocumentService:
             "clearance_id": data.get("clearance_id"),
             "source_employee_id": data.get("source_employee_id"),
             "source_organization_id": data.get("source_organization_id"),
-            "source_official_text": (data.get("source_official_text") or "").strip() or None,
+            "source_official_text": (data.get("source_official_text") or "").strip()
+            or None,
             "sender_id": data.get("sender_id"),
             "executors": executors_payload,
             "receivers": receivers_payload,
@@ -248,10 +265,18 @@ class DocumentService:
 
         # Чистим None только для НЕобязательных
         optional_none_ok = {
-            "about", "reg_number", "sequence_number", "deadline",
-            "incoming_number", "incoming_date", "parent_document_id",
-            "clearance_id", "source_employee_id", "source_organization_id",
-            "source_official_text", "sender_id",
+            "about",
+            "reg_number",
+            "sequence_number",
+            "deadline",
+            "incoming_number",
+            "incoming_date",
+            "parent_document_id",
+            "clearance_id",
+            "source_employee_id",
+            "source_organization_id",
+            "source_official_text",
+            "sender_id",
         }
         for k in list(payload.keys()):
             if payload[k] is None and k in optional_none_ok:
@@ -259,7 +284,7 @@ class DocumentService:
 
         return payload
 
-    def get_unanswered_stats(self) -> List[Dict[str, Any]]:
+    def get_unanswered_stats(self) -> list[dict[str, Any]]:
         """GET /documents/documents/stats/unanswered."""
         try:
             r = self.client.get(f"{self.base_path}/stats/unanswered")

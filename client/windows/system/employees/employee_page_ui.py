@@ -1,10 +1,13 @@
 import os
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QMenu, QSizePolicy
+
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QHBoxLayout, QMenu, QSizePolicy, QVBoxLayout
 from PyQt6.uic import loadUi
 
-from client.core.filtering.hierarchical_department_filter import HierarchicalDepartmentFilter
-from client.core.themes import get_menu_style, apply_theme_to_widget
+from client.core.filtering.hierarchical_department_filter import (
+    HierarchicalDepartmentFilter,
+)
+from client.core.themes import apply_theme_to_widget, get_menu_style
 from client.windows.animations.collapsible_group import CollapsibleGroup
 from client.windows.animations.floating_action_button import FloatingActionButton
 from client.windows.system.employees.employee_card import EmployeeCard
@@ -30,27 +33,30 @@ class EmployeeUIInitializer:
             )
 
             # Добавляем фильтр в layout
-            if hasattr(self.page, 'dynamicFiltersLayout'):
+            if hasattr(self.page, "dynamicFiltersLayout"):
                 self.page.dynamicFiltersLayout.addWidget(self.page.department_filter)
-            elif hasattr(self.page, 'dynamicFiltersWidget'):
+            elif hasattr(self.page, "dynamicFiltersWidget"):
                 if self.page.dynamicFiltersWidget.layout() is None:
                     self.page.dynamicFiltersWidget.setLayout(QHBoxLayout())
-                self.page.dynamicFiltersWidget.layout().addWidget(self.page.department_filter)
+                self.page.dynamicFiltersWidget.layout().addWidget(
+                    self.page.department_filter
+                )
 
             # Настройка плавающей кнопки
             self.page.floating_btn = FloatingActionButton(self.page)
             self.page.floating_btn.clicked.connect(self.page.show_add_employee_dialog)
 
             # Подключаем скролл
-            self.page.scrollArea.verticalScrollBar().valueChanged.connect(self.page.on_scroll)
+            self.page.scrollArea.verticalScrollBar().valueChanged.connect(
+                self.page.on_scroll
+            )
 
             # Устанавливаем минимальную высоту
             self.page.scrollAreaWidgetContents.setMinimumHeight(
                 self.page.scrollArea.height() - 10
             )
             self.page.scrollAreaWidgetContents.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.MinimumExpanding
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding
             )
 
             # Скрываем кнопку сброса
@@ -62,8 +68,7 @@ class EmployeeUIInitializer:
     def setup_toolbar_alignment(self):
         """Настройка выравнивания элементов тулбара"""
         self.page.dynamicFiltersWidget.setSizePolicy(
-            QSizePolicy.Policy.Fixed,
-            QSizePolicy.Policy.Preferred
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
         )
         self.page.searchEdit.setMaximumWidth(300)
         self.page.toolbarLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -71,13 +76,24 @@ class EmployeeUIInitializer:
     def get_ui_path(self):
         """Возвращает путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'employees', 'employee_page.ui')
+        ui_path = os.path.join(
+            current_dir,
+            "..",
+            "..",
+            "..",
+            "ui",
+            "system",
+            "employees",
+            "employee_page.ui",
+        )
         return os.path.normpath(ui_path)
 
     def setup_connections(self):
         """Настройка сигналов"""
         self.page.btnSort.clicked.connect(self.page.show_sort_menu)
-        self.page.comboOrganization.currentIndexChanged.connect(self.page.on_organization_changed)
+        self.page.comboOrganization.currentIndexChanged.connect(
+            self.page.on_organization_changed
+        )
         self.page.searchEdit.textChanged.connect(self.page.on_search_changed)
         self.page.btnResetFilters.clicked.connect(self.page.reset_all_filters)
 
@@ -88,7 +104,7 @@ class EmployeeUIInitializer:
         sort_options = {
             "А→Я": self.page.sort_by_name_asc,
             "Я→А": self.page.sort_by_name_desc,
-            "по табельному номеру": self.page.sort_by_tab_number
+            "по табельному номеру": self.page.sort_by_tab_number,
         }
 
         for name, func in sort_options.items():
@@ -110,8 +126,13 @@ class EmployeeUIInitializer:
         filtered = self.page.filter_employees()
         groups = self.page.group_by_organization(filtered)
 
-        if self.page.current_org_id and self.page.current_org_id in self.page.data_manager.organizations:
-            org_name = self.page.data_manager.organizations[self.page.current_org_id]["name"]
+        if (
+            self.page.current_org_id
+            and self.page.current_org_id in self.page.data_manager.organizations
+        ):
+            org_name = self.page.data_manager.organizations[self.page.current_org_id][
+                "name"
+            ]
             if org_name in groups:
                 groups = {org_name: groups[org_name]}
 
@@ -125,17 +146,21 @@ class EmployeeUIInitializer:
 
             is_expanded = False
             if self.page.current_org_id:
-                selected_org_name = self.page.data_manager.organizations[self.page.current_org_id]["name"]
-                is_expanded = (org_name == selected_org_name)
+                selected_org_name = self.page.data_manager.organizations[
+                    self.page.current_org_id
+                ]["name"]
+                is_expanded = org_name == selected_org_name
             else:
-                is_expanded = (i == 0)
+                is_expanded = i == 0
 
             group = CollapsibleGroup(org_name, is_expanded)
 
-            if hasattr(group, 'content_layout') and isinstance(group.content_layout, QVBoxLayout):
+            if hasattr(group, "content_layout") and isinstance(
+                group.content_layout, QVBoxLayout
+            ):
                 group.content_layout.setSpacing(12)
                 group.content_layout.setContentsMargins(8, 8, 8, 12)
-            elif hasattr(group, 'layout') and isinstance(group.layout, QVBoxLayout):
+            elif hasattr(group, "layout") and isinstance(group.layout, QVBoxLayout):
                 group.layout.setSpacing(12)
 
             for emp in employees:
@@ -152,17 +177,23 @@ class EmployeeUIInitializer:
                     "subdivision": emp.get("department_path", ""),
                     "work_phone": emp.get("work_number", ""),
                     "email": emp.get("email", ""),
-                    "rights": "Администратор" if emp.get("is_leader") else "Пользователь"
+                    "rights": "Администратор"
+                    if emp.get("is_leader")
+                    else "Пользователь",
                 }
 
                 employee_card = EmployeeCard(card_data)
-                emp_id = emp.get('id')
+                emp_id = emp.get("id")
 
                 employee_card.edit_clicked.connect(
-                    lambda data, card_data=card_data: self.page.show_edit_employee_dialog(card_data)
+                    lambda data, card_data=card_data: (
+                        self.page.show_edit_employee_dialog(card_data)
+                    )
                 )
                 employee_card.delete_clicked.connect(
-                    lambda eid, emp_id=emp_id: self.page.show_delete_employee_dialog(emp_id)
+                    lambda eid, emp_id=emp_id: self.page.show_delete_employee_dialog(
+                        emp_id
+                    )
                 )
 
                 group.add_widget(employee_card)
@@ -191,7 +222,7 @@ class EmployeeUIInitializer:
 
     def position_floating_button(self):
         """Позиционирование плавающей кнопки"""
-        if hasattr(self.page, 'floating_btn'):
+        if hasattr(self.page, "floating_btn"):
             margin = 20
             x = self.page.width() - self.page.floating_btn.width() - margin
             y = self.page.height() - self.page.floating_btn.height() - margin
@@ -200,6 +231,6 @@ class EmployeeUIInitializer:
 
     def on_scroll(self, value):
         """Обработчик скролла"""
-        if hasattr(self.page, 'floating_btn'):
+        if hasattr(self.page, "floating_btn"):
             self.page.floating_btn.hide_with_animation()
             self.page.floating_btn.start_hide_timer()

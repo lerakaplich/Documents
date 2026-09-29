@@ -1,0 +1,27 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Корпус -->
+  <circle cx="128" cy="140" r="108" stroke="#CCAB6E" stroke-width="12"/>
+  <!-- Внутренний круг -->
+  <circle cx="128" cy="140" r="88" stroke="#CCAB6E" stroke-width="4"/>
+  <!-- Кнопка-завод сверху (главный признак таймера) -->
+  <rect x="112" y="8" width="32" height="24" rx="4" fill="#CCAB6E"/>
+  <!-- Ножка кнопки -->
+  <rect x="120" y="30" width="16" height="8" fill="#CCAB6E"/>
+  <!-- Деления по кругу (много мелких, как у таймера) -->
+  <rect x="124" y="52" width="8" height="14" fill="#CCAB6E"/>
+  <rect x="124" y="214" width="8" height="14" fill="#CCAB6E"/>
+  <rect x="40" y="136" width="14" height="8" fill="#CCAB6E"/>
+  <rect x="202" y="136" width="14" height="8" fill="#CCAB6E"/>
+  <rect x="66" y="72" width="8" height="12" fill="#CCAB6E" transform="rotate(-45 70 78)"/>
+  <rect x="182" y="72" width="8" height="12" fill="#CCAB6E" transform="rotate(45 186 78)"/>
+  <rect x="66" y="196" width="8" height="12" fill="#CCAB6E" transform="rotate(45 70 202)"/>
+  <rect x="182" y="196" width="8" height="12" fill="#CCAB6E" transform="rotate(-45 186 202)"/>
+  <rect x="52" y="104" width="8" height="12" fill="#CCAB6E" transform="rotate(-22 56 110)"/>
+  <rect x="196" y="104" width="8" height="12" fill="#CCAB6E" transform="rotate(22 200 110)"/>
+  <rect x="52" y="164" width="8" height="12" fill="#CCAB6E" transform="rotate(22 56 170)"/>
+  <rect x="196" y="164" width="8" height="12" fill="#CCAB6E" transform="rotate(-22 200 170)"/>
+  <!-- Одна стрелка-указатель (в отличие от часов — без второй) -->
+  <rect x="124" y="80" width="8" height="68" rx="4" fill="#CCAB6E" transform="rotate(135 128 140)"/>
+  <!-- Центральная точка -->
+  <circle cx="128" cy="140" r="10" fill="#CCAB6E"/>
+</svg>

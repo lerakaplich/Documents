@@ -1,6 +1,6 @@
-from PyQt6.QtWidgets import QWidget, QSizePolicy
-from PyQt6.QtCore import Qt, QRectF, QSize
-from PyQt6.QtGui import QColor, QPainter, QBrush, QPen, QFont, QFontMetrics
+from PyQt6.QtCore import QRectF, QSize, Qt
+from PyQt6.QtGui import QBrush, QColor, QFont, QFontMetrics, QPainter, QPen
+from PyQt6.QtWidgets import QSizePolicy, QWidget
 
 
 class HashtagWidget(QWidget):
@@ -52,7 +52,7 @@ class HashtagWidget(QWidget):
         """
         Определение контрастных цветов для текста и границы
         """
-        hex_color = hex_color.lstrip('#')
+        hex_color = hex_color.lstrip("#")
 
         r = int(hex_color[0:2], 16)
         g = int(hex_color[2:4], 16)

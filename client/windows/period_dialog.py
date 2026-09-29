@@ -7,14 +7,17 @@
 - По клику на QDateEdit открывается наш CalendarPopup.
 - Кнопка «Отмена» убрана, «Применить» растянута.
 """
+
 import os
 import sys
 
+from PyQt6.QtCore import QDate, QEvent, QPoint, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QDialog, QApplication, QMessageBox,
+    QApplication,
+    QDialog,
+    QMessageBox,
     QSizePolicy,
 )
-from PyQt6.QtCore import QDate, pyqtSignal, Qt, QPoint, QEvent, QTimer
 from PyQt6.uic import loadUi
 
 from client.core.themes import get_manager
@@ -39,8 +42,8 @@ class PeriodDialog(QDialog):
         super().__init__(parent)
 
         self._active_button = None
-        self._popups = {}                 # name -> CalendarPopup
-        self._field_popup_map = {}        # id(widget) -> popup
+        self._popups = {}  # name -> CalendarPopup
+        self._field_popup_map = {}  # id(widget) -> popup
 
         self._load_ui()
         self._setup_spacing()
@@ -72,8 +75,10 @@ class PeriodDialog(QDialog):
         # Между двумя строками дат можно добавить ещё чуть-чуть
         try:
             from PyQt6.QtWidgets import QSpacerItem
+
             spacer = QSpacerItem(
-                0, 6,
+                0,
+                6,
                 QSizePolicy.Policy.Minimum,
                 QSizePolicy.Policy.Fixed,
             )
@@ -81,8 +86,6 @@ class PeriodDialog(QDialog):
             self.periodLayout.insertItem(1, spacer)
         except Exception:
             pass
-
-
 
     # ─────────── Кастомный календарь на существующих QDateEdit ───────────
 
@@ -126,8 +129,10 @@ class PeriodDialog(QDialog):
                 self._field_popup_map[id(le)] = popup
 
     def eventFilter(self, obj, event):
-        if event.type() in (QEvent.Type.MouseButtonPress,
-                            QEvent.Type.MouseButtonDblClick):
+        if event.type() in (
+            QEvent.Type.MouseButtonPress,
+            QEvent.Type.MouseButtonDblClick,
+        ):
             if event.button() == Qt.MouseButton.LeftButton:
                 popup = self._field_popup_map.get(id(obj))
                 if popup is not None:
@@ -150,8 +155,6 @@ class PeriodDialog(QDialog):
             f"color: {_t.TEXT_PRIMARY}; font-size: 20px; font-weight: bold; "
             f"background: transparent; padding: 0 0 4px 0;"
         )
-
-
 
         for name in ("startLabel", "endLabel"):
             lbl = getattr(self, name, None)
@@ -204,8 +207,6 @@ class PeriodDialog(QDialog):
                     f"background: transparent; color: {_t.TEXT_PRIMARY}; "
                     f"border: none; padding: 0;"
                 )
-
-
 
         # «Применить»
         self.applyButton.setStyleSheet(f"""
@@ -284,9 +285,15 @@ class PeriodDialog(QDialog):
     def _connect_signals(self):
         self.applyButton.clicked.connect(self._on_apply)
 
-        self.weekButton.clicked.connect(lambda: self._apply_quick("weekButton", self._set_week))
-        self.monthButton.clicked.connect(lambda: self._apply_quick("monthButton", self._set_month))
-        self.quarterButton.clicked.connect(lambda: self._apply_quick("quarterButton", self._set_quarter))
+        self.weekButton.clicked.connect(
+            lambda: self._apply_quick("weekButton", self._set_week)
+        )
+        self.monthButton.clicked.connect(
+            lambda: self._apply_quick("monthButton", self._set_month)
+        )
+        self.quarterButton.clicked.connect(
+            lambda: self._apply_quick("quarterButton", self._set_quarter)
+        )
 
         self.startDateEdit.dateChanged.connect(self._on_date_changed)
         self.endDateEdit.dateChanged.connect(self._on_date_changed)
@@ -323,15 +330,21 @@ class PeriodDialog(QDialog):
     def _set_month(self):
         today = QDate.currentDate()
         self.startDateEdit.setDate(QDate(today.year(), today.month(), 1))
-        self.endDateEdit.setDate(QDate(today.year(), today.month(), today.daysInMonth()))
+        self.endDateEdit.setDate(
+            QDate(today.year(), today.month(), today.daysInMonth())
+        )
 
     def _set_quarter(self):
         today = QDate.currentDate()
         m = today.month()
-        if m <= 3:   sm, em = 1, 3
-        elif m <= 6: sm, em = 4, 6
-        elif m <= 9: sm, em = 7, 9
-        else:        sm, em = 10, 12
+        if m <= 3:
+            sm, em = 1, 3
+        elif m <= 6:
+            sm, em = 4, 6
+        elif m <= 9:
+            sm, em = 7, 9
+        else:
+            sm, em = 10, 12
         y = today.year()
         self.startDateEdit.setDate(QDate(y, sm, 1))
         self.endDateEdit.setDate(QDate(y, em, QDate(y, em, 1).daysInMonth()))
@@ -342,18 +355,21 @@ class PeriodDialog(QDialog):
         s = self.startDateEdit.date()
         e = self.endDateEdit.date()
         if s > e:
-            QMessageBox.warning(self, "Ошибка",
-                                "Дата начала не может быть позже даты окончания")
+            QMessageBox.warning(
+                self, "Ошибка", "Дата начала не может быть позже даты окончания"
+            )
             return
 
-        self.period_selected.emit({
-            "start_date": s,
-            "end_date": e,
-            "start_date_str": s.toString("dd.MM.yyyy"),
-            "end_date_str": e.toString("dd.MM.yyyy"),
-            "start_date_python": s.toPyDate(),
-            "end_date_python": e.toPyDate(),
-        })
+        self.period_selected.emit(
+            {
+                "start_date": s,
+                "end_date": e,
+                "start_date_str": s.toString("dd.MM.yyyy"),
+                "end_date_str": e.toString("dd.MM.yyyy"),
+                "start_date_python": s.toPyDate(),
+                "end_date_python": e.toPyDate(),
+            }
+        )
         self.accept()
 
     # ─────────── Тема ───────────

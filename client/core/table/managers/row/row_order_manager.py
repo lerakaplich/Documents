@@ -1,6 +1,7 @@
 """
 Управление порядком строк
 """
+
 from PyQt6.QtCore import QObject, pyqtSignal
 
 from client.core.settings.settings_manager import SettingsManager
@@ -40,17 +41,17 @@ class RowOrderManager(QObject):
             return documents
 
         # Разделяем на закрепленные и незакрепленные
-        pinned = [doc for doc in documents if doc.get('id') in pinned_ids]
-        unpinned = [doc for doc in documents if doc.get('id') not in pinned_ids]
+        pinned = [doc for doc in documents if doc.get("id") in pinned_ids]
+        unpinned = [doc for doc in documents if doc.get("id") not in pinned_ids]
 
         # Сортируем закрепленные по порядку
-        pinned_dict = {doc.get('id'): doc for doc in pinned}
+        pinned_dict = {doc.get("id"): doc for doc in pinned}
         pinned_sorted = [pinned_dict[pid] for pid in pinned_ids if pid in pinned_dict]
 
         # Восстанавливаем порядок незакрепленных
         saved_order = self.get_order()
         if saved_order:
-            unpinned_dict = {doc.get('id'): doc for doc in unpinned}
+            unpinned_dict = {doc.get("id"): doc for doc in unpinned}
             unpinned_sorted = []
             remaining = set(unpinned_dict.keys())
 

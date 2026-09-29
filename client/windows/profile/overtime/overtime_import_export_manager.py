@@ -15,7 +15,7 @@ class OvertimeImportExportManager:
 
     def _notify(self, message, duration=3000):
         parent = self.panel.parent
-        if hasattr(parent, 'notification_manager'):
+        if hasattr(parent, "notification_manager"):
             parent.notification_manager.show_notification(message, duration=duration)
 
     # ==================== ИМПОРТ ====================
@@ -26,7 +26,7 @@ class OvertimeImportExportManager:
                 self.panel.parent,
                 "Выберите файл выгрузки СКУД",
                 "",
-                "Excel files (*.xlsx *.xls)"
+                "Excel files (*.xlsx *.xls)",
             )
             if not file_path:
                 return
@@ -55,8 +55,9 @@ class OvertimeImportExportManager:
         except Exception as e:
             print(f"❌ Ошибка импорта переработок: {e}")
             import traceback
+
             traceback.print_exc()
-            self._notify(f"Ошибка импорта: {str(e)}", duration=5000)
+            self._notify(f"Ошибка импорта: {e!s}", duration=5000)
 
     # ==================== ЭКСПОРТ ====================
 
@@ -67,30 +68,38 @@ class OvertimeImportExportManager:
             period_manager = self.panel.period_manager
             if period_manager.all_period:
                 try:
-                    start_date = QDate.fromString(period_manager.all_period['start'], "dd.MM.yyyy")
-                    end_date = QDate.fromString(period_manager.all_period['end'], "dd.MM.yyyy")
+                    start_date = QDate.fromString(
+                        period_manager.all_period["start"], "dd.MM.yyyy"
+                    )
+                    end_date = QDate.fromString(
+                        period_manager.all_period["end"], "dd.MM.yyyy"
+                    )
                 except Exception:
                     pass
 
             if not start_date or not start_date.isValid():
                 default = period_manager.get_default_overtime_period()
-                start_date = QDate.fromString(default['start'], "dd.MM.yyyy")
-                end_date = QDate.fromString(default['end'], "dd.MM.yyyy")
+                start_date = QDate.fromString(default["start"], "dd.MM.yyyy")
+                end_date = QDate.fromString(default["end"], "dd.MM.yyyy")
 
-            dialog = PeriodDialog(self.panel.parent, start_date=start_date, end_date=end_date)
+            dialog = PeriodDialog(
+                self.panel.parent, start_date=start_date, end_date=end_date
+            )
             dialog.period_selected.connect(self.on_export_period_selected)
             dialog.exec()
         except Exception as e:
-            self._notify(f"Ошибка открытия окна экспорта: {str(e)}", duration=4000)
+            self._notify(f"Ошибка открытия окна экспорта: {e!s}", duration=4000)
 
     def on_export_period_selected(self, period_data):
         try:
-            start_date_str = period_data['start_date_str']
-            end_date_str = period_data['end_date_str']
+            start_date_str = period_data["start_date_str"]
+            end_date_str = period_data["end_date_str"]
             print(f"Экспорт данных за период: {start_date_str} - {end_date_str}")
 
             if not self.panel.overtime_service:
-                self._notify(f"Экспорт за период {start_date_str} - {end_date_str} (заглушка)")
+                self._notify(
+                    f"Экспорт за период {start_date_str} - {end_date_str} (заглушка)"
+                )
                 return
 
             try:
@@ -100,24 +109,25 @@ class OvertimeImportExportManager:
                 excel_data = self.panel.overtime_service.export_overtime(
                     dept_id=self.panel.data_manager.current_filter_department_id,
                     start_date=start_date,
-                    end_date=end_date
+                    end_date=end_date,
                 )
 
                 file_path, _ = QFileDialog.getSaveFileName(
                     self.panel.parent,
                     "Сохранить отчет",
                     f"Отчет_по_переработкам_{start_date_str}_{end_date_str}.xlsx",
-                    "Excel files (*.xlsx)"
+                    "Excel files (*.xlsx)",
                 )
                 if file_path:
-                    with open(file_path, 'wb') as f:
+                    with open(file_path, "wb") as f:
                         f.write(excel_data)
                     self._notify(f"Отчет сохранен: {file_path}")
             except Exception as e:
                 print(f"❌ Ошибка экспорта: {e}")
-                self._notify(f"Ошибка экспорта: {str(e)}", duration=4000)
+                self._notify(f"Ошибка экспорта: {e!s}", duration=4000)
         except Exception as e:
             print(f"Ошибка в on_export_period_selected: {e}")
             import traceback
+
             traceback.print_exc()
-            self._notify(f"Ошибка экспорта: {str(e)}", duration=4000)
+            self._notify(f"Ошибка экспорта: {e!s}", duration=4000)

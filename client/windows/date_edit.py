@@ -4,8 +4,9 @@ QDateEdit, у которого системный календарь замен�
 Клик в любом месте поля (цифры, пустое место, стрелка) открывает
 наш кастомный календарь.
 """
+
+from PyQt6.QtCore import QEvent, QPoint, Qt
 from PyQt6.QtWidgets import QDateEdit
-from PyQt6.QtCore import Qt, QDate, QPoint, QEvent
 
 from client.windows.calendar_popup import CalendarPopup
 

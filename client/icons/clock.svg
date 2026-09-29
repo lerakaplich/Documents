@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Внешний корпус (увеличенная толщина линии) -->
+  <circle cx="128" cy="128" r="104" stroke="#CCAB6E" stroke-width="24" fill="none"/>
+
+  <!-- Часовая стрелка (направление на 12 часов) -->
+  <line x1="128" y1="128" x2="128" y2="68" stroke="#CCAB6E" stroke-width="20" stroke-linecap="round"/>
+
+  <!-- Минутная стрелка (направление на 3 часа) -->
+  <line x1="128" y1="128" x2="188" y2="128" stroke="#CCAB6E" stroke-width="20" stroke-linecap="round"/>
+</svg>

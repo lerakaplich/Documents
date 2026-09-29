@@ -2,7 +2,9 @@
 """
 Репозиторий для работы с документами - ЕДИНЫЙ ИСТОЧНИК ДАННЫХ
 """
-from typing import List, Dict, Any, Optional
+
+from typing import Any
+
 from client.core.data.document_data import DocumentDataConfig
 
 
@@ -20,7 +22,7 @@ class DocumentRepository:
         return cls._instance
 
     def __init__(self):
-        if not hasattr(self, '_initialized'):
+        if not hasattr(self, "_initialized"):
             self._documents = DocumentDataConfig.TEST_DATA.copy()
             self._document_types = DocumentDataConfig.DOCUMENT_TYPES.copy()
             self._current_type_id = None  # Текущий выбранный тип
@@ -29,26 +31,26 @@ class DocumentRepository:
 
     # ========== ДОКУМЕНТЫ ==========
 
-    def get_all_documents(self) -> List[Dict[str, Any]]:
+    def get_all_documents(self) -> list[dict[str, Any]]:
         """Получить все документы"""
         return self._documents.copy()
 
-    def get_documents_by_type(self, type_id: int) -> List[Dict[str, Any]]:
+    def get_documents_by_type(self, type_id: int) -> list[dict[str, Any]]:
         """Получить документы по типу"""
-        return [doc for doc in self._documents if doc.get('type_id') == type_id]
+        return [doc for doc in self._documents if doc.get("type_id") == type_id]
 
-    def get_documents_by_direction(self, direction: str) -> List[Dict[str, Any]]:
+    def get_documents_by_direction(self, direction: str) -> list[dict[str, Any]]:
         """Получить документы по направлению"""
-        return [doc for doc in self._documents if doc.get('direction') == direction]
+        return [doc for doc in self._documents if doc.get("direction") == direction]
 
-    def get_document_by_id(self, doc_id: int) -> Optional[Dict[str, Any]]:
+    def get_document_by_id(self, doc_id: int) -> dict[str, Any] | None:
         """Получить документ по ID"""
         for doc in self._documents:
-            if doc.get('id') == doc_id:
+            if doc.get("id") == doc_id:
                 return doc.copy()
         return None
 
-    def search_documents(self, query: str) -> List[Dict[str, Any]]:
+    def search_documents(self, query: str) -> list[dict[str, Any]]:
         """Поиск документов"""
         if not query or len(query) < 3:
             return self._documents.copy()
@@ -57,52 +59,52 @@ class DocumentRepository:
         results = []
 
         for doc in self._documents:
-            searchable_fields = ['title', 'reg_number', 'about', 'type_name']
+            searchable_fields = ["title", "reg_number", "about", "type_name"]
             for field in searchable_fields:
-                value = doc.get(field, '')
+                value = doc.get(field, "")
                 if query_lower in str(value).lower():
                     results.append(doc)
                     break
 
         return results
 
-    def update_document(self, doc_id: int, data: Dict[str, Any]) -> bool:
+    def update_document(self, doc_id: int, data: dict[str, Any]) -> bool:
         """Обновить документ"""
         for i, doc in enumerate(self._documents):
-            if doc.get('id') == doc_id:
+            if doc.get("id") == doc_id:
                 self._documents[i].update(data)
                 return True
         return False
 
     # ========== ТИПЫ ДОКУМЕНТОВ ==========
 
-    def get_document_types(self) -> List[Dict[str, Any]]:
+    def get_document_types(self) -> list[dict[str, Any]]:
         """Получить все типы документов"""
         return self._document_types.copy()
 
-    def get_document_type_by_id(self, type_id: int) -> Optional[Dict[str, Any]]:
+    def get_document_type_by_id(self, type_id: int) -> dict[str, Any] | None:
         """Получить тип документа по ID"""
         for doc_type in self._document_types:
-            if doc_type.get('id') == type_id:
+            if doc_type.get("id") == type_id:
                 return doc_type.copy()
         return None
 
-    def get_types_by_direction(self, direction: str) -> List[Dict[str, Any]]:
+    def get_types_by_direction(self, direction: str) -> list[dict[str, Any]]:
         """Получить типы документов по направлению"""
         type_ids = DocumentDataConfig.TYPE_DIRECTION_MAPPING.get(direction, [])
-        return [t for t in self._document_types if t.get('id') in type_ids]
+        return [t for t in self._document_types if t.get("id") in type_ids]
 
-    def get_current_type_id(self) -> Optional[int]:
+    def get_current_type_id(self) -> int | None:
         """Получить текущий выбранный тип"""
         return self._current_type_id
 
-    def set_current_type_id(self, type_id: Optional[int]):
+    def set_current_type_id(self, type_id: int | None):
         """Установить текущий выбранный тип"""
         self._current_type_id = type_id
 
     # ========== ДЛЯ ЛЕВОЙ ПАНЕЛИ ==========
 
-    def get_directions_data(self) -> List[Dict[str, Any]]:
+    def get_directions_data(self) -> list[dict[str, Any]]:
         """Получить данные для левой панели"""
         return DocumentDataConfig.get_directions_data()
 
@@ -110,11 +112,11 @@ class DocumentRepository:
 
     # client/core/data/document_repository.py
 
-    def get_columns_for_type(self, type_id: int) -> Dict[int, str]:
+    def get_columns_for_type(self, type_id: int) -> dict[int, str]:
         """Получить конфигурацию колонок для типа"""
         return DocumentDataConfig.get_columns_for_type(type_id)
 
-    def get_default_columns(self) -> Dict[int, str]:
+    def get_default_columns(self) -> dict[int, str]:
         """Получить стандартные колонки"""
         return DocumentDataConfig.COLUMNS_CONFIG.copy()
 
@@ -129,9 +131,9 @@ class DocumentRepository:
         type_info = self.get_document_type_by_id(type_id)
         if type_info:
             # Используем имя типа как ключ, но заменяем пробелы и спецсимволы
-            name = type_info.get('name', f"type_{type_id}")
+            name = type_info.get("name", f"type_{type_id}")
             # Транслитерация или замена пробелов
-            return name.replace(' ', '_').replace('(', '').replace(')', '')
+            return name.replace(" ", "_").replace("(", "").replace(")", "")
         return f"type_{type_id}"
 
 

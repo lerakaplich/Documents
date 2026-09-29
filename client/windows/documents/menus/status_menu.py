@@ -15,7 +15,7 @@ class StatusesMenu(BaseMenu):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._status_actions = {}   # код статуса -> QAction
+        self._status_actions = {}  # код статуса -> QAction
         for code, label in DocumentDataConfig.STATUS_MAPPING.items():
             action = self.add_checkable_action(label)
             action.toggled.connect(lambda _checked: self.statusesChanged.emit())
@@ -27,7 +27,9 @@ class StatusesMenu(BaseMenu):
 
     def get_checked_statuses(self) -> list[str]:
         """Возвращает КОДЫ выбранных статусов (для параметра status_filters)."""
-        return [code for code, action in self._status_actions.items() if action.isChecked()]
+        return [
+            code for code, action in self._status_actions.items() if action.isChecked()
+        ]
 
     def clear_selection(self):
         """Снимает все галочки; statusesChanged срабатывает один раз."""

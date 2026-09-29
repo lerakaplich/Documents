@@ -1,12 +1,8 @@
-import os
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QApplication, QSizePolicy, QMessageBox
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.uic import loadUi
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
 
-from client.core.filtering.hierarchical_department_filter import HierarchicalDepartmentFilter
 from client.core.org_structure.employee.page.employee_data import EmployeeDataManager
 from client.core.state.data_events import get_data_events
-from client.windows.animations.floating_action_button import FloatingActionButton
 from client.windows.system.departments.api_task import ApiTask, TaskKeeper
 from client.windows.system.employees.employee_page_handlers import EmployeeHandlers
 from client.windows.system.employees.employee_page_ui import EmployeeUIInitializer
@@ -93,6 +89,7 @@ class EmployeesPage(QWidget):
             print("[WARN] фоновая перезагрузка не удалась — тестовые данные")
             self.data_manager.load_test_data(self)
         from PyQt6.QtCore import QTimer
+
         QTimer.singleShot(0, self.update_display)
 
     def _on_reload_error(self, err):
@@ -179,7 +176,7 @@ class EmployeesPage(QWidget):
             self.current_org_id,
             self.current_department_id,
             self.searchEdit.text(),
-            self.current_sort
+            self.current_sort,
         )
 
     def group_by_organization(self, employees):

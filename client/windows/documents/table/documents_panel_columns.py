@@ -7,18 +7,18 @@
 (panel.columnsBtn, panel.documents_table) напрямую — никакого отдельного
 состояния сверх ColumnViewSettings не хранит.
 """
-from client.windows.documents.menus.column_menu import ColumnsMenu
+
 from client.core.table.managers.column.column_view_settings import ColumnViewSettings
+from client.windows.documents.menus.column_menu import ColumnsMenu
 
 
 class DocumentsColumnController:
-
     def __init__(self, panel):
         self.panel = panel
         self.settings = ColumnViewSettings()
         self.menu = None
 
-        if hasattr(panel, 'columnsBtn'):
+        if hasattr(panel, "columnsBtn"):
             self.menu = ColumnsMenu(parent=panel)
             self.menu.columnToggled.connect(self._on_toggled)
             self.menu.resetRequested.connect(self._on_reset)
@@ -54,7 +54,7 @@ class DocumentsColumnController:
         names = self._column_names()
         hidden = set(self.settings.get_hidden(self._view_key())) & set(names)
         if names and len(hidden) >= len(names):
-            hidden = set()   # нельзя скрыть всё
+            hidden = set()  # нельзя скрыть всё
 
         for col, name in enumerate(names):
             table.setColumnHidden(col, name in hidden)
@@ -76,8 +76,10 @@ class DocumentsColumnController:
         col = names.index(name)
 
         if not visible:
-            visible_count = sum(1 for c in range(len(names)) if not table.isColumnHidden(c))
-            if visible_count <= 1:   # последний видимый столбец скрыть нельзя
+            visible_count = sum(
+                1 for c in range(len(names)) if not table.isColumnHidden(c)
+            )
+            if visible_count <= 1:  # последний видимый столбец скрыть нельзя
                 self.menu.set_column_checked_silent(name, True)
                 return
 

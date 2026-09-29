@@ -3,8 +3,9 @@
 """
 Сервис для работы с подразделениями через API
 """
+
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from client.core.http_client import HttpClient
 
@@ -18,7 +19,7 @@ class DepartmentService:
         self.http = http_client
         self.base_path = "/departments"
 
-    def get_department(self, dept_id: int) -> Optional[Dict[str, Any]]:
+    def get_department(self, dept_id: int) -> dict[str, Any] | None:
         """Получить подразделение по ID"""
         try:
             response = self.http.get(f"{self.base_path}/{dept_id}")
@@ -43,14 +44,11 @@ class DepartmentService:
             logger.error(f"❌ Ошибка удаления подразделения {dept_id}: {e}")
             return False
 
-    def move_department(self, dept_id: int, new_parent_id: Optional[int]) -> bool:
+    def move_department(self, dept_id: int, new_parent_id: int | None) -> bool:
         """Переместить подразделение"""
         try:
-            server_data = {'new_parent_id': new_parent_id}
-            self.http.patch(
-                f"{self.base_path}/{dept_id}/move",
-                json=server_data
-            )
+            server_data = {"new_parent_id": new_parent_id}
+            self.http.patch(f"{self.base_path}/{dept_id}/move", json=server_data)
             logger.info(f"✅ Подразделение {dept_id} перемещено")
             return True
         except Exception as e:
@@ -62,7 +60,7 @@ class DepartmentService:
         try:
             self.http.patch(
                 f"{self.base_path}/{dept_id}/head",
-                json={'new_head_id': head_id}  # ← теперь правильно
+                json={"new_head_id": head_id},  # ← теперь правильно
             )
             logger.info(f"✅ Назначен руководитель для подразделения {dept_id}")
             return True
@@ -80,7 +78,7 @@ class DepartmentService:
             logger.error(f"❌ Ошибка удаления руководителя {dept_id}: {e}")
             return False
 
-    def get_department_staff(self, dept_id: int) -> List[Dict[str, Any]]:
+    def get_department_staff(self, dept_id: int) -> list[dict[str, Any]]:
         """Сотрудники подразделения (GET /departments/{id}/staff)."""
         try:
             response = self.http.get(f"{self.base_path}/{dept_id}/staff")
@@ -89,8 +87,9 @@ class DepartmentService:
             logger.error(f"Ошибка получения сотрудников подразделения {dept_id}: {e}")
             return []
 
+
 # Синглтон
-_department_service_instance: Optional[DepartmentService] = None
+_department_service_instance: DepartmentService | None = None
 
 
 def get_department_service(http_client: HttpClient) -> DepartmentService:

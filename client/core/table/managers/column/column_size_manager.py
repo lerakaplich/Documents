@@ -1,5 +1,3 @@
-from typing import Dict
-
 from client.core.settings.settings_manager import SettingsManager
 
 
@@ -7,15 +5,33 @@ class ColumnSizeManager:
     """Управление размерами колонок"""
 
     DEFAULT_WIDTHS = {
-        "ID": 50, "Прочитано": 80, "Номер документа": 130,
-        "Тема": 250, "Тип": 100, "Дата создания": 120,
-        "Статус": 120, "Направление": 120, "Отправители": 150,
-        "Получатели": 150, "Исполнители": 150, "Делегаты": 150,
-        "Хэштеги": 180, "Комментарии": 200, "Вложение": 100,
-        "Ответ": 100, "Краткое содержание": 200, "Срок исполнения": 120
+        "ID": 50,
+        "Прочитано": 80,
+        "Номер документа": 130,
+        "Тема": 250,
+        "Тип": 100,
+        "Дата создания": 120,
+        "Статус": 120,
+        "Направление": 120,
+        "Отправители": 150,
+        "Получатели": 150,
+        "Исполнители": 150,
+        "Делегаты": 150,
+        "Хэштеги": 180,
+        "Комментарии": 200,
+        "Вложение": 100,
+        "Ответ": 100,
+        "Краткое содержание": 200,
+        "Срок исполнения": 120,
     }
 
-    def __init__(self, table_widget, settings: SettingsManager, doc_type: str, columns_config: Dict):
+    def __init__(
+        self,
+        table_widget,
+        settings: SettingsManager,
+        doc_type: str,
+        columns_config: dict,
+    ):
         self.table_widget = table_widget
         self.settings = settings
         self.doc_type = doc_type

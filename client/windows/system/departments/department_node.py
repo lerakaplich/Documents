@@ -1,12 +1,12 @@
 # client/windows/system/departments/department_node.py
 
 import os
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy, QLabel
-from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPropertyAnimation, QEasingCurve, QTimer
-from PyQt6.QtGui import QIcon
+
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, QTimer, pyqtSignal
+from PyQt6.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QWidget
 from PyQt6.uic import loadUi
 
-from client.core.themes import apply_theme_to_widget, T, get_manager
+from client.core.themes import apply_theme_to_widget, get_manager
 from client.core.themes.icon_utils import icon
 from client.windows.system.departments.department_card import DepartmentCard
 
@@ -21,6 +21,7 @@ class DepartmentNode(QWidget):
         * set_children_nodes([...]) — добавить дочерние узлы, ИЛИ
         * set_load_error("...")     — показать ошибку.
     """
+
     edit_clicked = pyqtSignal(dict)
     delete_clicked = pyqtSignal(int)
     expand_requested = pyqtSignal(object)  # передаёт self
@@ -40,9 +41,9 @@ class DepartmentNode(QWidget):
         self._loading_widget = None
 
         # Есть ли у узла потенциальные дети (иначе и не пытаемся грузить)
-        self.has_children = department_data.get('has_children', True)
+        self.has_children = department_data.get("has_children", True)
         # Если False — узел работает в «старом» режиме без lazy-загрузки
-        self.lazy_enabled = department_data.get('lazy', True)
+        self.lazy_enabled = department_data.get("lazy", True)
 
         self._setup_ui()
         self._fill_data()
@@ -63,18 +64,23 @@ class DepartmentNode(QWidget):
         else:
             self._setup_placeholder()
 
-        self.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Minimum
-        )
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        if hasattr(self, 'contentLayout'):
+        if hasattr(self, "contentLayout"):
             self.contentLayout.setContentsMargins(30, 4, 0, 0)
 
     def _get_ui_path(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui',
-                               'system', 'departments', 'department_node.ui')
+        ui_path = os.path.join(
+            current_dir,
+            "..",
+            "..",
+            "..",
+            "ui",
+            "system",
+            "departments",
+            "department_node.ui",
+        )
         return os.path.normpath(ui_path)
 
     def set_load_error(self, error_message: str):
@@ -90,18 +96,19 @@ class DepartmentNode(QWidget):
             f"background: {_t.BG_ERROR_SOFT}; border: 1px solid {_t.BORDER_ERROR_SOFT}; "
             f"border-radius: 4px; }}"
         )
-        if hasattr(self, 'contentLayout'):
+        if hasattr(self, "contentLayout"):
             self.contentLayout.addWidget(err)
 
         self.contentWidget.setVisible(True)
         self.contentWidget.setMaximumHeight(16777215)
         self._expanded = True
-        if hasattr(self, 'expandBtn'):
+        if hasattr(self, "expandBtn"):
             self.expandBtn.setIcon(self.up_icon)
         self.update_content_geometry()
 
     def _setup_placeholder(self):
-        from PyQt6.QtWidgets import QLabel, QVBoxLayout
+        from PyQt6.QtWidgets import QLabel
+
         layout = QVBoxLayout(self)
         label = QLabel("DepartmentNode (UI not found)")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -111,7 +118,7 @@ class DepartmentNode(QWidget):
         layout.addWidget(self.contentWidget)
 
     def _setup_expand_button(self):
-        if not hasattr(self, 'expandBtn'):
+        if not hasattr(self, "expandBtn"):
             return
 
         _t = get_manager().current
@@ -126,7 +133,7 @@ class DepartmentNode(QWidget):
     def reapply_theme(self):
         """Перекрасить иконки и перечитать тему после set_theme()."""
         # Иконки
-        if hasattr(self, 'expandBtn'):
+        if hasattr(self, "expandBtn"):
             _t = get_manager().current
             self.down_icon = icon("down_arrow", _t.ICON_COLOR)
             self.up_icon = icon("up_arrow", _t.ICON_COLOR)
@@ -152,7 +159,6 @@ class DepartmentNode(QWidget):
                 except Exception:
                     pass
 
-
     def _setup_animation(self):
         self.animation = QPropertyAnimation(self.contentWidget, b"maximumHeight")
         self.animation.setDuration(250)
@@ -161,19 +167,19 @@ class DepartmentNode(QWidget):
 
     def _fill_data(self):
         data = self.department_data
-        if hasattr(self, 'nameLabel'):
-            self.nameLabel.setText(data.get('name', 'Без названия'))
-        if hasattr(self, 'typeLabel'):
-            dept_type = data.get('type_display', data.get('department_type', ''))
-            self.typeLabel.setText(dept_type if dept_type else '')
-        if hasattr(self, 'codeLabel'):
-            code = data.get('code', data.get('id', ''))
-            self.codeLabel.setText(f"Код: {code}" if code else '')
+        if hasattr(self, "nameLabel"):
+            self.nameLabel.setText(data.get("name", "Без названия"))
+        if hasattr(self, "typeLabel"):
+            dept_type = data.get("type_display", data.get("department_type", ""))
+            self.typeLabel.setText(dept_type if dept_type else "")
+        if hasattr(self, "codeLabel"):
+            code = data.get("code", data.get("id", ""))
+            self.codeLabel.setText(f"Код: {code}" if code else "")
 
     def _connect_signals(self):
-        if hasattr(self, 'expandBtn'):
+        if hasattr(self, "expandBtn"):
             self.expandBtn.clicked.connect(self.toggle_expand)
-            if hasattr(self, 'headerFrame'):
+            if hasattr(self, "headerFrame"):
                 self.headerFrame.mousePressEvent = self._on_header_click
 
     def _on_header_click(self, event):
@@ -186,10 +192,12 @@ class DepartmentNode(QWidget):
         if self._loading:
             return  # уже грузимся
 
-        if (not self._children_loaded
-                and self.lazy_enabled
-                and not self._expanded
-                and self.has_children):
+        if (
+            not self._children_loaded
+            and self.lazy_enabled
+            and not self._expanded
+            and self.has_children
+        ):
             self._start_lazy_load()
             return
 
@@ -197,7 +205,7 @@ class DepartmentNode(QWidget):
 
     def _start_lazy_load(self):
         self._loading = True
-        if hasattr(self, 'expandBtn'):
+        if hasattr(self, "expandBtn"):
             self.expandBtn.setIcon(self.up_icon)
 
         self.contentWidget.setVisible(True)
@@ -210,7 +218,7 @@ class DepartmentNode(QWidget):
                 f"QLabel {{ color: {_t.TEXT_MUTED_ALT}; font-style: italic; padding: 8px 12px; "
                 f"background: transparent; border: none; }}"
             )
-            if hasattr(self, 'contentLayout'):
+            if hasattr(self, "contentLayout"):
                 self.contentLayout.addWidget(self._loading_widget)
 
         self.update_content_geometry()
@@ -233,7 +241,7 @@ class DepartmentNode(QWidget):
             self.add_child(child)
 
         self._expanded = True
-        if hasattr(self, 'expandBtn'):
+        if hasattr(self, "expandBtn"):
             self.expandBtn.setIcon(self.up_icon)
 
         # Раскрываем с анимацией
@@ -275,7 +283,7 @@ class DepartmentNode(QWidget):
         """Обычное разворачивание/сворачивание — данные уже загружены."""
         self._expanded = not self._expanded
 
-        if hasattr(self, 'expandBtn'):
+        if hasattr(self, "expandBtn"):
             self.expandBtn.setIcon(self.up_icon if self._expanded else self.down_icon)
 
         self.animation.stop()
@@ -303,12 +311,11 @@ class DepartmentNode(QWidget):
 
         self.animation.start()
 
-
     # ==================== ОБЩИЕ ====================
 
     def add_child(self, child_node):
         self.children_nodes.append(child_node)
-        if hasattr(self, 'contentLayout'):
+        if hasattr(self, "contentLayout"):
             self.contentLayout.addWidget(child_node)
             self.update_content_geometry()
 
@@ -316,13 +323,10 @@ class DepartmentNode(QWidget):
         if self.is_root:
             return
         self.card = DepartmentCard(card_data)
-        self.card.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Fixed
-        )
+        self.card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.card.edit_clicked.connect(self.edit_clicked.emit)
         self.card.delete_clicked.connect(self.delete_clicked.emit)
-        if hasattr(self, 'contentLayout'):
+        if hasattr(self, "contentLayout"):
             self.contentLayout.insertWidget(0, self.card)
 
     def update_data(self, new_data: dict):
@@ -340,7 +344,7 @@ class DepartmentNode(QWidget):
 
     def add_content_widget(self, widget):
         """Вставляет виджет (например, группу сотрудников) сразу после карточки."""
-        if hasattr(self, 'contentLayout'):
+        if hasattr(self, "contentLayout"):
             # Снимаем ограничение, иначе новый виджет может быть обрезан
             self.contentWidget.setMaximumHeight(16777215)
 

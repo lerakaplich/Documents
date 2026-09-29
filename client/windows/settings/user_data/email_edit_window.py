@@ -1,6 +1,7 @@
-from PyQt6 import QtWidgets, QtCore, uic
 import os
 import sys
+
+from PyQt6 import QtCore, QtWidgets, uic
 
 from client.core.themes import get_manager, get_message_box_style
 
@@ -86,7 +87,7 @@ class EmailEditWindow(QtWidgets.QDialog):
     def save_email(self):
         email = self.emailInput.text().strip()
 
-        if email and '@' not in email:
+        if email and "@" not in email:
             msg_box = QtWidgets.QMessageBox(self)
             msg_box.setWindowTitle("Ошибка")
             msg_box.setText("Введите корректный email адрес (с @)")

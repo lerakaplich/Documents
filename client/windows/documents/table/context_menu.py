@@ -1,8 +1,9 @@
 """
 Модуль контекстного меню для таблицы документов
 """
+
+from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QMenu, QMessageBox
-from PyQt6.QtCore import pyqtSignal, QObject
 
 from client.core.themes import get_menu_style
 
@@ -73,15 +74,15 @@ class ContextMenu(QObject):
 
         # 5. Редактировать документ
         edit_action = menu.addAction("Редактировать документ")
-        edit_action.triggered.connect(
-            lambda: self.edit_requested.emit(document_data)
-        )
+        edit_action.triggered.connect(lambda: self.edit_requested.emit(document_data))
 
         menu.addSeparator()
 
         # 6. Отметить как прочитанное/непрочитанное
         is_read = document_data.get("is_read", False)
-        read_status_text = "Отметить как прочитанное" if not is_read else "Отметить как непрочитанное"
+        read_status_text = (
+            "Отметить как прочитанное" if not is_read else "Отметить как непрочитанное"
+        )
         read_action = menu.addAction(read_status_text)
         read_action.triggered.connect(
             lambda: self.read_status_requested.emit(document_data, not is_read)
@@ -110,9 +111,7 @@ class ContextMenu(QObject):
 
         # 9. Удалить документ
         delete_action = menu.addAction("Удалить документ")
-        delete_action.triggered.connect(
-            lambda: self._confirm_delete(document_data)
-        )
+        delete_action.triggered.connect(lambda: self._confirm_delete(document_data))
 
         return menu
 
@@ -131,7 +130,7 @@ class ContextMenu(QObject):
             "Подтверждение удаления",
             f"Вы действительно хотите удалить документ '{doc_name}' (ID: {doc_id})?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:

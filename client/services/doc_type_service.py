@@ -11,8 +11,9 @@ attachment_service.py), где router монтируется под общим �
 голым "/doc-types". Если get_all_types()/get_type() будут возвращать 404 —
 в первую очередь проверьте это.
 """
+
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from client.core.http_client import HttpClient
 
@@ -26,7 +27,7 @@ class DocTypeService:
         self.http = http_client
         self.base_path = "/doc-types"
 
-    def get_all_types(self) -> List[Dict[str, Any]]:
+    def get_all_types(self) -> list[dict[str, Any]]:
         """Получить все типы документов"""
         try:
             logger.info("📥 Запрос на получение типов документов...")
@@ -34,7 +35,7 @@ class DocTypeService:
             # Пробуем отправить запрос с явными параметрами
             response = self.http.get(
                 f"{self.base_path}",
-                params={}  # Явно передаем пустые параметры
+                params={},  # Явно передаем пустые параметры
             )
 
             logger.info(f"📥 Получен ответ: {response}")
@@ -44,10 +45,11 @@ class DocTypeService:
         except Exception as e:
             logger.error(f"❌ Ошибка получения типов документов: {e}")
             import traceback
+
             traceback.print_exc()
             return []
 
-    def get_type(self, type_id: int) -> Optional[Dict[str, Any]]:
+    def get_type(self, type_id: int) -> dict[str, Any] | None:
         """Получить тип документа по ID"""
         try:
             response = self.http.get(f"{self.base_path}/{type_id}")
@@ -58,42 +60,38 @@ class DocTypeService:
 
     # client/services/doc_type_service.py
 
-    def create_type(self, type_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def create_type(self, type_data: dict[str, Any]) -> dict[str, Any] | None:
         """Создать новый тип документа"""
         try:
             # Убедимся, что отправляем правильные поля
             server_data = {
-                'name': type_data.get('name', ''),
-                'fields': type_data.get('fields', {}),
-                'auto_num': type_data.get('auto_num', False),
-                'smdo_code_type': type_data.get('smdo_code_type', '')
+                "name": type_data.get("name", ""),
+                "fields": type_data.get("fields", {}),
+                "auto_num": type_data.get("auto_num", False),
+                "smdo_code_type": type_data.get("smdo_code_type", ""),
             }
 
-            response = self.http.post(
-                f"{self.base_path}",
-                json=server_data
-            )
+            response = self.http.post(f"{self.base_path}", json=server_data)
             logger.info(f"✅ Тип документа создан: {response}")
             return response
         except Exception as e:
             logger.error(f"❌ Ошибка создания типа документа: {e}")
             return None
 
-    def update_type(self, type_id: int, type_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def update_type(
+        self, type_id: int, type_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Обновить тип документа"""
         try:
             # Убедимся, что отправляем правильные поля
             server_data = {
-                'name': type_data.get('name', ''),
-                'fields': type_data.get('fields', {}),
-                'auto_num': type_data.get('auto_num', False),
-                'smdo_code_type': type_data.get('smdo_code_type', '')
+                "name": type_data.get("name", ""),
+                "fields": type_data.get("fields", {}),
+                "auto_num": type_data.get("auto_num", False),
+                "smdo_code_type": type_data.get("smdo_code_type", ""),
             }
 
-            response = self.http.patch(
-                f"{self.base_path}/{type_id}",
-                json=server_data
-            )
+            response = self.http.patch(f"{self.base_path}/{type_id}", json=server_data)
             logger.info(f"✅ Тип документа обновлен: {response}")
             return response
         except Exception as e:
@@ -110,8 +108,9 @@ class DocTypeService:
             logger.error(f"❌ Ошибка удаления типа {type_id}: {e}")
             return False
 
+
 # Синглтон
-_doc_type_service_instance: Optional[DocTypeService] = None
+_doc_type_service_instance: DocTypeService | None = None
 
 
 def get_doc_type_service(http_client: HttpClient) -> DocTypeService:

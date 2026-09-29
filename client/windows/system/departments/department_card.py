@@ -1,9 +1,10 @@
 # department_card.py
-import sys
-from PyQt6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget, QSizePolicy
-from PyQt6.uic import loadUi
-from PyQt6.QtCore import pyqtSignal, Qt
 import os
+import sys
+
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QApplication, QFrame, QSizePolicy, QVBoxLayout
+from PyQt6.uic import loadUi
 
 from client.core.themes import apply_theme_to_widget
 
@@ -23,7 +24,7 @@ class DepartmentCard(QFrame):
         self.setMaximumHeight(150)
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Fixed  # Фиксированная высота
+            QSizePolicy.Policy.Fixed,  # Фиксированная высота
         )
 
         # Загружаем UI дизайн
@@ -38,21 +39,30 @@ class DepartmentCard(QFrame):
 
         # Сохраняем данные отдела
         self.department_data = department_data or {}
-        self.department_id = self.department_data.get('id', 0)
+        self.department_id = self.department_data.get("id", 0)
 
         # Настраиваем карточку
         self.setup_card()
 
         # Подключаем сигналы кнопок
-        if hasattr(self, 'editBtn'):
+        if hasattr(self, "editBtn"):
             self.editBtn.clicked.connect(self.on_edit_clicked)
-        if hasattr(self, 'deleteBtn'):
+        if hasattr(self, "deleteBtn"):
             self.deleteBtn.clicked.connect(self.on_delete_clicked)
 
     def get_ui_path(self):
         """Возвращает путь к UI файлу"""
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(current_dir, '..', '..', '..', 'ui', 'system', 'departments', 'department_card.ui')
+        ui_path = os.path.join(
+            current_dir,
+            "..",
+            "..",
+            "..",
+            "ui",
+            "system",
+            "departments",
+            "department_card.ui",
+        )
 
         return os.path.normpath(ui_path)
 
@@ -62,28 +72,38 @@ class DepartmentCard(QFrame):
             return
 
         # Заполняем все поля из UI
-        if hasattr(self, 'nameLabel'):
-            self.nameLabel.setText(self.department_data.get('name', 'Название не указано'))
+        if hasattr(self, "nameLabel"):
+            self.nameLabel.setText(
+                self.department_data.get("name", "Название не указано")
+            )
 
-        if hasattr(self, 'typeLabel'):
-            department_type = self.department_data.get('type', '')
-            self.typeLabel.setText(f"Тип: {department_type}" if department_type else "Тип: Не указан")
+        if hasattr(self, "typeLabel"):
+            department_type = self.department_data.get("type", "")
+            self.typeLabel.setText(
+                f"Тип: {department_type}" if department_type else "Тип: Не указан"
+            )
 
-        if hasattr(self, 'leaderLabel'):
-            leader = self.department_data.get('leader', '')
-            self.leaderLabel.setText(f"Руководитель: {leader}" if leader else "Руководитель: Не назначен")
+        if hasattr(self, "leaderLabel"):
+            leader = self.department_data.get("leader", "")
+            self.leaderLabel.setText(
+                f"Руководитель: {leader}" if leader else "Руководитель: Не назначен"
+            )
 
-        if hasattr(self, 'descriptionLabel'):
-            description = self.department_data.get('description', '')
-            self.descriptionLabel.setText(description if description else "Описание отсутствует")
+        if hasattr(self, "descriptionLabel"):
+            description = self.department_data.get("description", "")
+            self.descriptionLabel.setText(
+                description if description else "Описание отсутствует"
+            )
 
-        if hasattr(self, 'phoneLabel'):
-            phone = self.department_data.get('phone', '')
+        if hasattr(self, "phoneLabel"):
+            phone = self.department_data.get("phone", "")
             self.phoneLabel.setText(phone if phone else "Телефон не указан")
 
-        if hasattr(self, 'numberLabel'):
-            code = self.department_data.get('code', '')
-            self.numberLabel.setText(f"Код подразделения: {code}" if code else "Код подразделения: ---")
+        if hasattr(self, "numberLabel"):
+            code = self.department_data.get("code", "")
+            self.numberLabel.setText(
+                f"Код подразделения: {code}" if code else "Код подразделения: ---"
+            )
 
     def on_edit_clicked(self):
         """Обработчик кнопки редактирования"""
@@ -117,18 +137,18 @@ class DepartmentCard(QFrame):
 
 
 # Точка входа для тестирования карточки
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     # Тест отдельной карточки
     test_data = {
-        'id': 1,
-        'name': 'Отдел разработки и исследований',
-        'type': 'Функциональное подразделение',
-        'leader': 'Петров Сергей Алексеевич',
-        'description': 'Разработка нового ПО и сопровождение существующих систем',
-        'phone': '+375 29 987-65-43',
-        'code': 'RND-001'
+        "id": 1,
+        "name": "Отдел разработки и исследований",
+        "type": "Функциональное подразделение",
+        "leader": "Петров Сергей Алексеевич",
+        "description": "Разработка нового ПО и сопровождение существующих систем",
+        "phone": "+375 29 987-65-43",
+        "code": "RND-001",
     }
 
     card = DepartmentCard(test_data)

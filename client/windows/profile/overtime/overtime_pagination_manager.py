@@ -1,6 +1,6 @@
 # client/windows/profile/overtime/overtime_pagination_manager.py
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
 
 
 class OvertimePaginationManager:
@@ -27,15 +27,13 @@ class OvertimePaginationManager:
     def setup_bars(self, my_container, all_container, change_page_callback):
         """Создаёт панели пагинации под карточками.
         change_page_callback(tab, delta) вызывается при клике ◀/▶."""
-        (self.my_bar,
-         self.my_prev_btn,
-         self.my_next_btn,
-         self.my_page_label) = self._attach(my_container, 'my', change_page_callback)
+        (self.my_bar, self.my_prev_btn, self.my_next_btn, self.my_page_label) = (
+            self._attach(my_container, "my", change_page_callback)
+        )
 
-        (self.all_bar,
-         self.all_prev_btn,
-         self.all_next_btn,
-         self.all_page_label) = self._attach(all_container, 'all', change_page_callback)
+        (self.all_bar, self.all_prev_btn, self.all_next_btn, self.all_page_label) = (
+            self._attach(all_container, "all", change_page_callback)
+        )
 
     def _attach(self, container, tab_key, callback):
         if not container:
@@ -44,11 +42,14 @@ class OvertimePaginationManager:
         bar, prev_btn, next_btn, page_label = self._create_bar()
 
         # Панель идёт сразу после карточек
-        if hasattr(container, 'main_layout'):
+        if hasattr(container, "main_layout"):
             container.main_layout.addWidget(bar)
         else:
             tab = container.parentWidget()
-            while tab is not None and tab.objectName() not in ("tabMyOvertime", "tabAllOvertime"):
+            while tab is not None and tab.objectName() not in (
+                "tabMyOvertime",
+                "tabAllOvertime",
+            ):
                 tab = tab.parentWidget()
             if tab and tab.layout():
                 tab.layout().addWidget(bar)
@@ -62,6 +63,7 @@ class OvertimePaginationManager:
 
     def _create_bar(self):
         from client.core.themes import get_manager
+
         t = get_manager().current
 
         bar = QWidget()
@@ -121,10 +123,10 @@ class OvertimePaginationManager:
     # ==================== СОСТОЯНИЕ ====================
 
     def current_page(self, tab: str) -> int:
-        return self.my_current_page if tab == 'my' else self.all_current_page
+        return self.my_current_page if tab == "my" else self.all_current_page
 
     def set_page(self, tab: str, page: int):
-        if tab == 'my':
+        if tab == "my":
             self.my_current_page = page
         else:
             self.all_current_page = page
@@ -135,17 +137,27 @@ class OvertimePaginationManager:
     # ==================== ОБНОВЛЕНИЕ МЕТОК ====================
 
     def update_labels(self, my_pagination: dict, all_pagination: dict):
-        self._update_one(self.my_bar, self.my_page_label,
-                         self.my_prev_btn, self.my_next_btn, my_pagination)
-        self._update_one(self.all_bar, self.all_page_label,
-                         self.all_prev_btn, self.all_next_btn, all_pagination)
+        self._update_one(
+            self.my_bar,
+            self.my_page_label,
+            self.my_prev_btn,
+            self.my_next_btn,
+            my_pagination,
+        )
+        self._update_one(
+            self.all_bar,
+            self.all_page_label,
+            self.all_prev_btn,
+            self.all_next_btn,
+            all_pagination,
+        )
 
     def _update_one(self, bar, page_label, prev_btn, next_btn, p):
         if bar is None or page_label is None:
             return
 
-        pages = p.get('pages', 1) or 1
-        total = p.get('total', 0)
+        pages = p.get("pages", 1) or 1
+        total = p.get("total", 0)
 
         # Если страница одна (или данных нет) — прячем всю панель
         if pages <= 1:
@@ -153,15 +165,14 @@ class OvertimePaginationManager:
             return
 
         bar.setVisible(True)
-        page_label.setText(
-            f"Страница {p['page']} из {pages}  (всего: {total})"
-        )
-        prev_btn.setEnabled(p['page'] > 1)
-        next_btn.setEnabled(p['page'] < pages)
+        page_label.setText(f"Страница {p['page']} из {pages}  (всего: {total})")
+        prev_btn.setEnabled(p["page"] > 1)
+        next_btn.setEnabled(p["page"] < pages)
 
     def reapply_theme(self):
         """Перерисовать стили кнопок и метки под актуальную тему."""
         from client.core.themes import get_manager
+
         t = get_manager().current
 
         btn_style = f"""
@@ -187,8 +198,12 @@ class OvertimePaginationManager:
             }}
         """
 
-        for btn in (self.my_prev_btn, self.my_next_btn,
-                    self.all_prev_btn, self.all_next_btn):
+        for btn in (
+            self.my_prev_btn,
+            self.my_next_btn,
+            self.all_prev_btn,
+            self.all_next_btn,
+        ):
             if btn is not None:
                 btn.setStyleSheet(btn_style)
 
@@ -200,4 +215,3 @@ class OvertimePaginationManager:
         for label in (self.my_page_label, self.all_page_label):
             if label is not None:
                 label.setStyleSheet(label_style)
-

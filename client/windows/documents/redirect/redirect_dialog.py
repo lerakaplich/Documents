@@ -8,18 +8,18 @@
 
 Сигнал: redirect_confirmed(list_of_employee_ids, comment_text)
 """
+
 import os
-from typing import List, Dict, Any, Optional
 
-from PyQt6.QtWidgets import QDialog, QTreeWidgetItem, QMessageBox
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QDialog, QMessageBox
 
-from client.core.org_structure.hierarchy_builder import HierarchyBuilder
-from client.core.org_structure.selection_manager import SelectionManager
-from client.core.org_structure.tree_builder import TreeBuilder
 from client.core.org_structure.employee_selection_data_loader import (
     EmployeeSelectionDataLoader,
 )
+from client.core.org_structure.hierarchy_builder import HierarchyBuilder
+from client.core.org_structure.selection_manager import SelectionManager
+from client.core.org_structure.tree_builder import TreeBuilder
 from client.core.themes import apply_theme_to_widget, get_manager
 from client.core.themes.icon_utils import icon_path
 
@@ -37,11 +37,13 @@ class RedirectDialog(QDialog):
 
     redirect_confirmed = pyqtSignal(list, str)
 
-    def __init__(self,
-                 current_recipients: list,
-                 all_employees: Optional[list] = None,
-                 parent=None,
-                 http_client=None):
+    def __init__(
+        self,
+        current_recipients: list,
+        all_employees: list | None = None,
+        parent=None,
+        http_client=None,
+    ):
 
         super().__init__(parent)
 
@@ -52,9 +54,9 @@ class RedirectDialog(QDialog):
         self.preselected_ids = self._extract_ids(current_recipients)
 
         # ─── загрузка данных ───
-        self.organizations: List[Dict] = []
-        self.departments: List[Dict] = []
-        self.employees: List[Dict] = []
+        self.organizations: list[dict] = []
+        self.departments: list[dict] = []
+        self.employees: list[dict] = []
 
         self._load_data(all_employees)
 
@@ -73,20 +75,21 @@ class RedirectDialog(QDialog):
     def _resolve_http_client():
         try:
             from client.core.state.app_state import AppState
+
             return AppState().http_client
         except Exception:
             return None
 
     @staticmethod
-    def _extract_ids(current_recipients: list) -> List[int]:
+    def _extract_ids(current_recipients: list) -> list[int]:
         """Достаём ID из текущих делегатов (dict или строк)."""
-        ids: List[int] = []
+        ids: list[int] = []
         for emp in current_recipients or []:
             if isinstance(emp, dict) and emp.get("id") is not None:
                 ids.append(emp["id"])
         return ids
 
-    def _load_data(self, all_employees: Optional[list]):
+    def _load_data(self, all_employees: list | None):
         """Грузим организации / отделы / сотрудников."""
         if self.http_client:
             print("[RedirectDialog] Загрузка данных с сервера...")
@@ -103,13 +106,16 @@ class RedirectDialog(QDialog):
                 )
                 if self.employees:
                     emp0 = self.employees[0]
-                    print(f"[RedirectDialog] пример сотрудника: "
-                          f"id={emp0.get('id')}, "
-                          f"name={emp0.get('name')!r}, "
-                          f"positions={emp0.get('positions')}")
+                    print(
+                        f"[RedirectDialog] пример сотрудника: "
+                        f"id={emp0.get('id')}, "
+                        f"name={emp0.get('name')!r}, "
+                        f"positions={emp0.get('positions')}"
+                    )
             except Exception as e:
                 print(f"[RedirectDialog] Ошибка загрузки: {e}")
                 import traceback
+
                 traceback.print_exc()
         else:
             print("[RedirectDialog] http_client не задан — данные не загружены")
@@ -117,8 +123,7 @@ class RedirectDialog(QDialog):
         # Сотрудники снаружи — используем их, если с сервера ничего не пришло
         if all_employees and not self.employees:
             self.employees = list(all_employees)
-            print(f"[RedirectDialog] сотрудники взяты снаружи: "
-                  f"{len(self.employees)}")
+            print(f"[RedirectDialog] сотрудники взяты снаружи: {len(self.employees)}")
 
     # ─────────── Инициализация логики ───────────
 
@@ -162,12 +167,8 @@ class RedirectDialog(QDialog):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         # поднимаемся до client/
         # client/windows/documents/redirect/ → client/
-        client_dir = os.path.dirname(
-            os.path.dirname(os.path.dirname(current_dir))
-        )
-        return os.path.join(
-            client_dir, "ui", "documents", "redirect_dialog.ui"
-        )
+        client_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+        return os.path.join(client_dir, "ui", "documents", "redirect_dialog.ui")
 
     def _init_ui(self):
         from PyQt6.uic import loadUi
@@ -289,7 +290,7 @@ class RedirectDialog(QDialog):
             return
 
         new_state = item.checkState(column)
-        is_checked = (new_state == Qt.CheckState.Checked)
+        is_checked = new_state == Qt.CheckState.Checked
 
         data = item.data(0, Qt.ItemDataRole.UserRole)
         if not data:
@@ -321,7 +322,8 @@ class RedirectDialog(QDialog):
                 if cd and cd.get("id") and cd.get("id") > 0:
                     child_item.setCheckState(
                         0,
-                        Qt.CheckState.Checked if is_checked
+                        Qt.CheckState.Checked
+                        if is_checked
                         else Qt.CheckState.Unchecked,
                     )
 
@@ -345,8 +347,9 @@ class RedirectDialog(QDialog):
                     checked += 1
         if total == 0:
             return
-        new_state = (Qt.CheckState.Checked if checked == total
-                     else Qt.CheckState.Unchecked)
+        new_state = (
+            Qt.CheckState.Checked if checked == total else Qt.CheckState.Unchecked
+        )
         item.setCheckState(0, new_state)
         if item.parent():
             self._update_parent_checks_only(item.parent())
@@ -377,9 +380,12 @@ class RedirectDialog(QDialog):
 
         org_c = dept_c = emp_c = 0
         for t, _ in items:
-            if t == 1:   org_c += 1
-            elif t == 2: dept_c += 1
-            elif t == 3: emp_c += 1
+            if t == 1:
+                org_c += 1
+            elif t == 2:
+                dept_c += 1
+            elif t == 3:
+                emp_c += 1
 
         total = len(items)
         if total == 0:
@@ -387,9 +393,12 @@ class RedirectDialog(QDialog):
             return
 
         parts = [f"Выбрано: {total} элементов"]
-        if org_c:  parts.append(f"организаций: {org_c}")
-        if dept_c: parts.append(f"отделов: {dept_c}")
-        if emp_c:  parts.append(f"сотрудников: {emp_c}")
+        if org_c:
+            parts.append(f"организаций: {org_c}")
+        if dept_c:
+            parts.append(f"отделов: {dept_c}")
+        if emp_c:
+            parts.append(f"сотрудников: {emp_c}")
         self.selectionInfoLabel.setText(" (".join(parts) + ")")
 
     # ─────────── Отправка ───────────
@@ -406,13 +415,13 @@ class RedirectDialog(QDialog):
             for t, node_id in self.selection_manager.get_selected_items():
                 if t == 2:  # department
                     for emp_id, emp in self.builder.employees.items():
-                        for pos in (emp.get("positions") or []):
+                        for pos in emp.get("positions") or []:
                             if pos.get("department_id") == node_id:
                                 employee_ids.append(emp_id)
                                 break
                 elif t == 1:  # organization
                     for emp_id, emp in self.builder.employees.items():
-                        for pos in (emp.get("positions") or []):
+                        for pos in emp.get("positions") or []:
                             # отдел принадлежит этой организации?
                             dept_id = pos.get("department_id")
                             dept = self.builder.departments.get(dept_id)
@@ -422,13 +431,11 @@ class RedirectDialog(QDialog):
 
         # Убираем дубли, сохраняя порядок
         seen = set()
-        employee_ids = [x for x in employee_ids
-                        if not (x in seen or seen.add(x))]
+        employee_ids = [x for x in employee_ids if not (x in seen or seen.add(x))]
 
         if not employee_ids:
             QMessageBox.warning(
-                self, "Внимание",
-                "Не выбрано ни одного сотрудника для перенаправления."
+                self, "Внимание", "Не выбрано ни одного сотрудника для перенаправления."
             )
             return
 
@@ -436,8 +443,9 @@ class RedirectDialog(QDialog):
         if hasattr(self, "commentTextEdit"):
             comment = self.commentTextEdit.toPlainText().strip()
 
-        print(f"[RedirectDialog] ID сотрудников: {employee_ids}, "
-              f"комментарий: {comment!r}")
+        print(
+            f"[RedirectDialog] ID сотрудников: {employee_ids}, комментарий: {comment!r}"
+        )
 
         self.redirect_confirmed.emit(employee_ids, comment)
         self.accept()

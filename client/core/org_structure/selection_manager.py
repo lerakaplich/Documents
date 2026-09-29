@@ -1,23 +1,26 @@
-from typing import List, Dict, Any, Set, Optional, Tuple
-
 class SelectionManager:
     """Менеджер управления выбранными элементами"""
 
-    def __init__(self, organizations: Dict[int, Dict], departments: Dict[int, Dict], employees: Dict[int, Dict]):
+    def __init__(
+        self,
+        organizations: dict[int, dict],
+        departments: dict[int, dict],
+        employees: dict[int, dict],
+    ):
         self.organizations = organizations
         self.departments = departments
         self.employees = employees
         # Используем составной ключ (type, id) для уникальной идентификации
-        self.selected_items: Set[Tuple[int, int]] = set()  # (type, id)
+        self.selected_items: set[tuple[int, int]] = set()  # (type, id)
 
-    def set_selected(self, items: List[Tuple[int, int]]):
+    def set_selected(self, items: list[tuple[int, int]]):
         """Устанавливает выбранные элементы по списку (type, id)"""
         self.selected_items.clear()
         for type_id, node_id in items:
             if self._is_valid_item(type_id, node_id):
                 self.selected_items.add((type_id, node_id))
 
-    def set_selected_by_ids(self, ids: List[int], node_type: int = None):
+    def set_selected_by_ids(self, ids: list[int], node_type: int = None):
         """Устанавливает выбранные элементы по списку ID (с определением типа)"""
         self.selected_items.clear()
         for node_id in ids:
@@ -51,14 +54,20 @@ class SelectionManager:
             node_type = self._get_node_type(node_id)
 
         if node_type is None:
-            print(f"[SelectionManager] Ошибка: не удалось определить тип для id={node_id}")
+            print(
+                f"[SelectionManager] Ошибка: не удалось определить тип для id={node_id}"
+            )
             return
 
         if not self._is_valid_item(node_type, node_id):
-            print(f"[SelectionManager] Ошибка: элемент не найден type={node_type}, id={node_id}")
+            print(
+                f"[SelectionManager] Ошибка: элемент не найден type={node_type}, id={node_id}"
+            )
             return
 
-        print(f"[SelectionManager] toggle: type={node_type}, id={node_id}, selected={selected}")
+        print(
+            f"[SelectionManager] toggle: type={node_type}, id={node_id}, selected={selected}"
+        )
 
         if selected:
             self.selected_items.add((node_type, node_id))
@@ -67,13 +76,13 @@ class SelectionManager:
 
         print(f"[SelectionManager] selected_items: {self.selected_items}")
 
-    def get_selected_ids(self) -> List[int]:
+    def get_selected_ids(self) -> list[int]:
         """Возвращает список выбранных ID (без учета типов)"""
         result = [item_id for _, item_id in self.selected_items]
         print(f"[SelectionManager] get_selected_ids: {result}")
         return result
 
-    def get_selected_items(self) -> Set[Tuple[int, int]]:
+    def get_selected_items(self) -> set[tuple[int, int]]:
         """Возвращает набор выбранных элементов (type, id)"""
         return self.selected_items
 
@@ -87,7 +96,7 @@ class SelectionManager:
 
         return (node_type, node_id) in self.selected_items
 
-    def get_selected_organizations(self) -> List[Dict]:
+    def get_selected_organizations(self) -> list[dict]:
         """Возвращает выбранные организации"""
         result = []
         for type_id, org_id in self.selected_items:
@@ -97,7 +106,7 @@ class SelectionManager:
                     result.append(org)
         return result
 
-    def get_selected_departments(self) -> List[Dict]:
+    def get_selected_departments(self) -> list[dict]:
         """Возвращает выбранные отделы"""
         result = []
         for type_id, dept_id in self.selected_items:
@@ -107,7 +116,7 @@ class SelectionManager:
                     result.append(dept)
         return result
 
-    def get_selected_employees(self) -> List[Dict]:
+    def get_selected_employees(self) -> list[dict]:
         """Возвращает выбранных сотрудников"""
         result = []
         for type_id, emp_id in self.selected_items:
@@ -117,7 +126,7 @@ class SelectionManager:
                     result.append(emp)
         return result
 
-    def get_selection_stats(self) -> Dict[str, int]:
+    def get_selection_stats(self) -> dict[str, int]:
         """Возвращает статистику выбранных элементов"""
         org_count = 0
         dept_count = 0
@@ -132,13 +141,13 @@ class SelectionManager:
                 emp_count += 1
 
         return {
-            'total': len(self.selected_items),
-            'organizations': org_count,
-            'departments': dept_count,
-            'employees': emp_count
+            "total": len(self.selected_items),
+            "organizations": org_count,
+            "departments": dept_count,
+            "employees": emp_count,
         }
 
-    def _get_node_type(self, node_id: int) -> Optional[int]:
+    def _get_node_type(self, node_id: int) -> int | None:
         """Определяет тип узла по ID"""
         # Проверяем все возможные типы
         if node_id in self.organizations:

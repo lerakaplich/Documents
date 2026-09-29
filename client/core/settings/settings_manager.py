@@ -2,10 +2,10 @@
 
 import json
 import os
+from datetime import datetime  # в начале файла
 from typing import Any
 
 from .settings_keys import SettingsKeys
-from datetime import datetime  # в начале файла
 
 
 class SettingsManager:
@@ -36,7 +36,7 @@ class SettingsManager:
         """Загрузка настроек из JSON файла"""
         try:
             if os.path.exists(self.settings_file):
-                with open(self.settings_file, 'r', encoding='utf-8') as f:
+                with open(self.settings_file, "r", encoding="utf-8") as f:
                     return json.load(f)
         except Exception as e:
             print(f"[SettingsManager] Error loading settings: {e}")
@@ -45,7 +45,7 @@ class SettingsManager:
     def _save_settings(self):
         """Сохранение настроек в JSON файл"""
         try:
-            with open(self.settings_file, 'w', encoding='utf-8') as f:
+            with open(self.settings_file, "w", encoding="utf-8") as f:
                 json.dump(self._settings, f, indent=2, ensure_ascii=False)
         except Exception as e:
             print(f"[SettingsManager] Error saving settings: {e}")
@@ -247,10 +247,17 @@ class SettingsManager:
         # Настройки по типам
         print("\n  === Settings by document type ===")
         for key, value in sorted(self._settings.items()):
-            if key.startswith((
-                "column_widths_", "hidden_columns_", "column_order_",
-                "row_heights_", "row_order_", "pinned_", "hidden_rows_"
-            )):
+            if key.startswith(
+                (
+                    "column_widths_",
+                    "hidden_columns_",
+                    "column_order_",
+                    "row_heights_",
+                    "row_order_",
+                    "pinned_",
+                    "hidden_rows_",
+                )
+            ):
                 print(f"    {key}: {value}")
 
         print(f"  Settings file: {self.settings_file}")
@@ -366,8 +373,6 @@ class SettingsManager:
         if key in self._settings:
             del self._settings[key]
             self._save_settings()
-
-
 
     def save_auth_session(self, refresh_token: str, phone: str = None):
         """Сохраняет refresh_token и телефон для авто-входа."""

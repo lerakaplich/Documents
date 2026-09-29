@@ -1,10 +1,11 @@
-import os
-from PyQt6.QtWidgets import QWidget, QLineEdit
-from PyQt6.QtGui import QIcon
-from PyQt6.QtCore import pyqtSignal, QThread, QObject
-from PyQt6.uic import loadUi
 import logging
+import os
 import re
+
+from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QLineEdit, QWidget
+from PyQt6.uic import loadUi
 
 from client.core.state.app_state import AppState
 
@@ -25,17 +26,23 @@ class ResetPasswordWorker(QObject):
         try:
             app_state = AppState()
             # Нормализуем номер телефона
-            clean_phone = re.sub(r'[^\d+]', '', self.phone_number)
-            if clean_phone.startswith('375'):
-                clean_phone = f'+{clean_phone}'
+            clean_phone = re.sub(r"[^\d+]", "", self.phone_number)
+            if clean_phone.startswith("375"):
+                clean_phone = f"+{clean_phone}"
 
-            logger.info(f"📤 Отправка запроса на сброс пароля для номера: {clean_phone}")
+            logger.info(
+                f"📤 Отправка запроса на сброс пароля для номера: {clean_phone}"
+            )
             # Сначала сбрасываем пароль
-            app_state.auth_service.reset_password(clean_phone, self.code, self.new_password)
+            app_state.auth_service.reset_password(
+                clean_phone, self.code, self.new_password
+            )
 
             # Затем выполняем вход с новым паролем
             logger.info(f"🔐 Выполняем вход с новым паролем для {clean_phone}")
-            login_result = app_state.auth_service.login(clean_phone, self.new_password, True)
+            login_result = app_state.auth_service.login(
+                clean_phone, self.new_password, True
+            )
 
             # Получаем данные пользователя
             try:
@@ -60,7 +67,9 @@ class NewPasswordWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.root_dir = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
         ui_path = os.path.join(self.root_dir, "ui", "login", "new_password_widget.ui")
         print(f"Загрузка NewPasswordWidget UI: {ui_path}")
 
@@ -80,22 +89,28 @@ class NewPasswordWidget(QWidget):
         self.worker = None
 
         # Настройка переключения видимости пароля
-        if hasattr(self, 'togglePasswordButton') and hasattr(self, 'newPasswordInput'):
+        if hasattr(self, "togglePasswordButton") and hasattr(self, "newPasswordInput"):
             self.togglePasswordButton.clicked.connect(
-                lambda: self._toggle_password_visibility('newPasswordInput', 'togglePasswordButton')
+                lambda: self._toggle_password_visibility(
+                    "newPasswordInput", "togglePasswordButton"
+                )
             )
-            self._update_eye_icon('newPasswordInput', 'togglePasswordButton')
+            self._update_eye_icon("newPasswordInput", "togglePasswordButton")
 
-        if hasattr(self, 'toggleConfirmPasswordButton') and hasattr(self, 'confirmPasswordInput'):
+        if hasattr(self, "toggleConfirmPasswordButton") and hasattr(
+            self, "confirmPasswordInput"
+        ):
             self.toggleConfirmPasswordButton.clicked.connect(
-                lambda: self._toggle_password_visibility('confirmPasswordInput', 'toggleConfirmPasswordButton')
+                lambda: self._toggle_password_visibility(
+                    "confirmPasswordInput", "toggleConfirmPasswordButton"
+                )
             )
-            self._update_eye_icon('confirmPasswordInput', 'toggleConfirmPasswordButton')
+            self._update_eye_icon("confirmPasswordInput", "toggleConfirmPasswordButton")
 
-        if hasattr(self, 'createPasswordButton'):
+        if hasattr(self, "createPasswordButton"):
             self.createPasswordButton.clicked.connect(self._on_create_password)
 
-        if hasattr(self, 'backToLoginButton'):
+        if hasattr(self, "backToLoginButton"):
             self.backToLoginButton.clicked.connect(self._on_back_to_login)
 
     def set_notification_manager(self, manager):
@@ -106,16 +121,18 @@ class NewPasswordWidget(QWidget):
         """Устанавливает номер телефона и код для сброса пароля"""
         self.phone_number = phone_number
         self.reset_code = code
-        logger.info(f"📱 Установлены данные для сброса: номер {phone_number}, код {code}")
+        logger.info(
+            f"📱 Установлены данные для сброса: номер {phone_number}, код {code}"
+        )
 
         # Очищаем поля ввода пароля
-        if hasattr(self, 'newPasswordInput'):
+        if hasattr(self, "newPasswordInput"):
             self.newPasswordInput.clear()
-        if hasattr(self, 'confirmPasswordInput'):
+        if hasattr(self, "confirmPasswordInput"):
             self.confirmPasswordInput.clear()
 
         # Устанавливаем фокус на поле нового пароля
-        if hasattr(self, 'newPasswordInput'):
+        if hasattr(self, "newPasswordInput"):
             self.newPasswordInput.setFocus()
 
     def _toggle_password_visibility(self, input_name, button_name):
@@ -159,17 +176,22 @@ class NewPasswordWidget(QWidget):
         return True, ""
 
     def _on_create_password(self):
-        new_password = self.newPasswordInput.text() if hasattr(self, 'newPasswordInput') else ""
-        confirm_password = self.confirmPasswordInput.text() if hasattr(self, 'confirmPasswordInput') else ""
+        new_password = (
+            self.newPasswordInput.text() if hasattr(self, "newPasswordInput") else ""
+        )
+        confirm_password = (
+            self.confirmPasswordInput.text()
+            if hasattr(self, "confirmPasswordInput")
+            else ""
+        )
 
         # Проверка, что пароль введен
         if not new_password:
             if self.notification_manager:
                 self.notification_manager.show_notification(
-                    "Введите новый пароль!",
-                    duration=3000
+                    "Введите новый пароль!", duration=3000
                 )
-            if hasattr(self, 'newPasswordInput'):
+            if hasattr(self, "newPasswordInput"):
                 self.newPasswordInput.setFocus()
             return
 
@@ -177,10 +199,9 @@ class NewPasswordWidget(QWidget):
         if not confirm_password:
             if self.notification_manager:
                 self.notification_manager.show_notification(
-                    "Подтвердите пароль!",
-                    duration=3000
+                    "Подтвердите пароль!", duration=3000
                 )
-            if hasattr(self, 'confirmPasswordInput'):
+            if hasattr(self, "confirmPasswordInput"):
                 self.confirmPasswordInput.setFocus()
             return
 
@@ -188,10 +209,9 @@ class NewPasswordWidget(QWidget):
         if new_password != confirm_password:
             if self.notification_manager:
                 self.notification_manager.show_notification(
-                    "Пароли не совпадают!",
-                    duration=3000
+                    "Пароли не совпадают!", duration=3000
                 )
-            if hasattr(self, 'confirmPasswordInput'):
+            if hasattr(self, "confirmPasswordInput"):
                 self.confirmPasswordInput.clear()
                 self.confirmPasswordInput.setFocus()
             return
@@ -201,27 +221,30 @@ class NewPasswordWidget(QWidget):
         if not is_valid:
             if self.notification_manager:
                 self.notification_manager.show_notification(
-                    error_message,
-                    duration=4000
+                    error_message, duration=4000
                 )
-            if hasattr(self, 'newPasswordInput'):
+            if hasattr(self, "newPasswordInput"):
                 self.newPasswordInput.clear()
                 self.newPasswordInput.setFocus()
-            if hasattr(self, 'confirmPasswordInput'):
+            if hasattr(self, "confirmPasswordInput"):
                 self.confirmPasswordInput.clear()
             return
 
         # Проверка наличия номера телефона и кода
-        logger.info(f"🔍 Проверка данных: phone='{self.phone_number}', code='{self.reset_code}'")
+        logger.info(
+            f"🔍 Проверка данных: phone='{self.phone_number}', code='{self.reset_code}'"
+        )
 
         if not self.phone_number or not self.reset_code:
-            error_msg = f"Отсутствуют данные: phone={self.phone_number}, code={self.reset_code}"
+            error_msg = (
+                f"Отсутствуют данные: phone={self.phone_number}, code={self.reset_code}"
+            )
             logger.error(f"❌ {error_msg}")
             if self.notification_manager:
                 try:
                     self.notification_manager.show_notification(
                         "Ошибка: отсутствуют данные для сброса пароля. Попробуйте заново.",
-                        duration=4000
+                        duration=4000,
                     )
                 except Exception as e:
                     logger.error(f"Ошибка при показе уведомления: {e}")
@@ -232,22 +255,23 @@ class NewPasswordWidget(QWidget):
 
     def _send_reset_password(self, new_password: str):
         """Отправляет запрос на сброс пароля"""
-        if hasattr(self, 'createPasswordButton'):
+        if hasattr(self, "createPasswordButton"):
             self.createPasswordButton.setEnabled(False)
             self.createPasswordButton.setText("Сохранение...")
 
         if self.notification_manager:
             try:
                 self.notification_manager.show_notification(
-                    "Отправка запроса...",
-                    duration=2000
+                    "Отправка запроса...", duration=2000
                 )
             except Exception as e:
                 logger.error(f"Ошибка при показе уведомления: {e}")
 
         try:
             self.thread = QThread()
-            self.worker = ResetPasswordWorker(self.phone_number, self.reset_code, new_password)
+            self.worker = ResetPasswordWorker(
+                self.phone_number, self.reset_code, new_password
+            )
             self.worker.moveToThread(self.thread)
 
             self.thread.started.connect(self.worker.run)
@@ -264,24 +288,23 @@ class NewPasswordWidget(QWidget):
 
     def _on_reset_password_success(self, login_result):
         """Успешный сброс пароля и вход"""
-        if hasattr(self, 'createPasswordButton'):
+        if hasattr(self, "createPasswordButton"):
             self.createPasswordButton.setEnabled(True)
             self.createPasswordButton.setText("Создать пароль")
 
         if self.notification_manager:
             try:
                 self.notification_manager.show_notification(
-                    "✅ Пароль успешно изменен! Выполняется вход...",
-                    duration=3000
+                    "✅ Пароль успешно изменен! Выполняется вход...", duration=3000
                 )
             except Exception as e:
                 logger.error(f"Ошибка при показе уведомления: {e}")
 
         logger.info("✅ Пароль успешно изменен и выполнена авторизация")
 
-        if hasattr(self, 'newPasswordInput'):
+        if hasattr(self, "newPasswordInput"):
             self.newPasswordInput.clear()
-        if hasattr(self, 'confirmPasswordInput'):
+        if hasattr(self, "confirmPasswordInput"):
             self.confirmPasswordInput.clear()
 
         # Эмитим сигнал с данными пользователя
@@ -289,7 +312,7 @@ class NewPasswordWidget(QWidget):
 
     def _on_reset_password_error(self, error_msg):
         """Ошибка при сбросе пароля"""
-        if hasattr(self, 'createPasswordButton'):
+        if hasattr(self, "createPasswordButton"):
             self.createPasswordButton.setEnabled(True)
             self.createPasswordButton.setText("Создать пароль")
 
@@ -299,30 +322,26 @@ class NewPasswordWidget(QWidget):
             try:
                 if "404" in error_msg:
                     self.notification_manager.show_notification(
-                        "❌ Пользователь не найден",
-                        duration=3000
+                        "❌ Пользователь не найден", duration=3000
                     )
                 elif "400" in error_msg or "Invalid" in error_msg:
                     self.notification_manager.show_notification(
-                        "❌ Неверный код подтверждения",
-                        duration=3000
+                        "❌ Неверный код подтверждения", duration=3000
                     )
                 elif "Connection" in error_msg:
                     self.notification_manager.show_notification(
-                        "❌ Не удалось подключиться к серверу",
-                        duration=3000
+                        "❌ Не удалось подключиться к серверу", duration=3000
                     )
                 else:
                     self.notification_manager.show_notification(
-                        f"❌ Ошибка: {error_msg[:50]}...",
-                        duration=3000
+                        f"❌ Ошибка: {error_msg[:50]}...", duration=3000
                     )
             except Exception as e:
                 logger.error(f"Ошибка при показе уведомления: {e}")
 
-        if hasattr(self, 'newPasswordInput'):
+        if hasattr(self, "newPasswordInput"):
             self.newPasswordInput.clear()
-        if hasattr(self, 'confirmPasswordInput'):
+        if hasattr(self, "confirmPasswordInput"):
             self.confirmPasswordInput.clear()
             self.confirmPasswordInput.setFocus()
 
@@ -334,10 +353,10 @@ class NewPasswordWidget(QWidget):
     def _cleanup_thread(self):
         """Очистка потока"""
         try:
-            if hasattr(self, 'thread') and self.thread:
+            if hasattr(self, "thread") and self.thread:
                 self.thread.deleteLater()
                 self.thread = None
-            if hasattr(self, 'worker') and self.worker:
+            if hasattr(self, "worker") and self.worker:
                 self.worker.deleteLater()
                 self.worker = None
         except Exception as e:

@@ -1,7 +1,8 @@
 """
 Настройка поведения строк
 """
-from PyQt6.QtCore import QObject, Qt
+
+from PyQt6.QtCore import QObject
 from PyQt6.QtWidgets import QAbstractItemView, QHeaderView
 
 

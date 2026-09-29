@@ -1,10 +1,11 @@
 """
 Менеджер для работы с иконками (с поддержкой перекраски под тему).
 """
+
 import os
 
-from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QIcon, QPixmap
 
 
 class IconManager:
@@ -27,8 +28,7 @@ class IconManager:
 
     # ── публичное API ────────────────────────────────────────────────
 
-    def get_icon(self, icon_name: str, size: QSize = None,
-                 color: str = None) -> QIcon:
+    def get_icon(self, icon_name: str, size: QSize = None, color: str = None) -> QIcon:
         """
         Получить иконку по имени.
 
@@ -49,7 +49,8 @@ class IconManager:
         pixmap = QPixmap(path)
         if size:
             pixmap = pixmap.scaled(
-                size.width(), size.height(),
+                size.width(),
+                size.height(),
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
@@ -58,8 +59,9 @@ class IconManager:
         self._icons[cache_key] = ic
         return ic
 
-    def get_pixmap(self, icon_name: str, size: QSize = None,
-                   color: str = None) -> QPixmap:
+    def get_pixmap(
+        self, icon_name: str, size: QSize = None, color: str = None
+    ) -> QPixmap:
         if color is None:
             color = self._default_color_for(icon_name)
         path = self._resolve_path(icon_name, color)
@@ -69,7 +71,8 @@ class IconManager:
         pixmap = QPixmap(path)
         if size:
             pixmap = pixmap.scaled(
-                size.width(), size.height(),
+                size.width(),
+                size.height(),
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
@@ -80,6 +83,7 @@ class IconManager:
         """Цвет по умолчанию из активной темы."""
         try:
             from client.core.themes import get_manager
+
             t = get_manager().current
             if icon_name == "pin":
                 return t.ICON_PIN_COLOR
@@ -104,6 +108,7 @@ class IconManager:
         if color:
             try:
                 from client.core.themes.icon_utils import _recolored_svg_path
+
                 return _recolored_svg_path(icon_name, color)
             except Exception as e:
                 print(f"[IconManager] перекраска не удалась: {e}")

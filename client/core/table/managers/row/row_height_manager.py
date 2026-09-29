@@ -1,6 +1,7 @@
 """
 Управление высотой строк
 """
+
 from PyQt6.QtCore import QObject, QTimer
 
 from client.core.settings.settings_manager import SettingsManager
@@ -31,7 +32,7 @@ class RowHeightManager(QObject):
         """
         self._document_id_map = {}
         for row, doc in enumerate(documents):
-            doc_id = doc.get('id')
+            doc_id = doc.get("id")
             if doc_id is not None:
                 self._document_id_map[row] = doc_id
 
@@ -54,7 +55,9 @@ class RowHeightManager(QObject):
 
             if heights_by_id:
                 self._settings.set_row_heights_by_id(heights_by_id, self._doc_type)
-                print(f"[RowHeightManager] Saved {len(heights_by_id)} heights by ID for '{self._doc_type}'")
+                print(
+                    f"[RowHeightManager] Saved {len(heights_by_id)} heights by ID for '{self._doc_type}'"
+                )
         except Exception as e:
             print(f"[RowHeightManager] Error saving heights: {e}")
 
@@ -83,7 +86,9 @@ class RowHeightManager(QObject):
                         restored_count += 1
 
             if restored_count > 0:
-                print(f"[RowHeightManager] Restored {restored_count} heights by ID for '{self._doc_type}'")
+                print(
+                    f"[RowHeightManager] Restored {restored_count} heights by ID for '{self._doc_type}'"
+                )
         except Exception as e:
             print(f"[RowHeightManager] Error restoring heights: {e}")
 
@@ -123,4 +128,6 @@ class RowHeightManager(QObject):
             self._settings.set_row_heights_by_id(heights_by_id, self._doc_type)
             # Удаляем старые данные
             self._settings.remove_row_heights_by_type(self._doc_type)
-            print(f"[RowHeightManager] Migrated {len(heights_by_id)} heights from old format")
+            print(
+                f"[RowHeightManager] Migrated {len(heights_by_id)} heights from old format"
+            )

@@ -1,7 +1,5 @@
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QSizePolicy, QApplication
-)
-from PyQt6.QtCore import Qt, QEasingCurve, QPropertyAnimation, QTimer
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt, QTimer
+from PyQt6.QtWidgets import QPushButton, QSizePolicy, QVBoxLayout, QWidget
 
 from client.core.themes import get_manager
 
@@ -48,8 +46,7 @@ class CollapsibleGroup(QWidget):
         self.content_area = QWidget()
         self.content_area.setStyleSheet("background-color: transparent;")
         self.content_area.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Minimum
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )
 
         self.content_area_layout = QVBoxLayout(self.content_area)
@@ -120,7 +117,9 @@ class CollapsibleGroup(QWidget):
                     widget.updateGeometry()
                     widget_height = widget.sizeHint().height()
                     if widget_height > 0:
-                        total_height += widget_height + self.content_area_layout.spacing()
+                        total_height += (
+                            widget_height + self.content_area_layout.spacing()
+                        )
             height = total_height if total_height > 0 else 100  # Минимальная высота
 
         # Восстанавливаем состояние
@@ -179,7 +178,11 @@ class CollapsibleGroup(QWidget):
                 self.content_area.setMaximumHeight(self._content_height)
                 self.content_area.updateGeometry()
         else:
-            if animated and self.content_area.isVisible() and self.content_area.height() > 0:
+            if (
+                animated
+                and self.content_area.isVisible()
+                and self.content_area.height() > 0
+            ):
                 self._is_animating = True
                 current_height = self.content_area.height()
                 if current_height <= 0:
@@ -223,7 +226,7 @@ class CollapsibleGroup(QWidget):
         # Устанавливаем правильную политику размера
         widget.setSizePolicy(
             QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Preferred  # Изменено с Fixed на Minimum
+            QSizePolicy.Policy.Preferred,  # Изменено с Fixed на Minimum
         )
 
         self.content_area_layout.addWidget(widget)
@@ -297,6 +300,7 @@ class CollapsibleGroup(QWidget):
 
     def reapply_theme(self):
         from client.core.themes import get_manager
+
         _t = get_manager().current
         self.header.setStyleSheet(f"""
             QPushButton {{

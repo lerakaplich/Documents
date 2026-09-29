@@ -1,22 +1,19 @@
 # client/main.py (или где у тебя точка входа)
 
-import sys
-import os
 import logging
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
+import sys
 
-from client.core.themes import set_theme, apply_theme_to_all_windows, apply_saved_theme
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication
+
+from client.core.themes import apply_saved_theme, set_theme
 from client.core.themes.dark.pink_dark import PinkDarkTheme
-from client.core.themes.light.blue import BlueTheme
-from client.core.themes.light.green import GreenTheme
-from client.core.themes.light.pink import PinkTheme
 from client.windows.login.login_window import LoginWindow
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 
 
@@ -38,6 +35,7 @@ def main():
     except Exception as e:
         logging.error(f"Ошибка при запуске приложения: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

@@ -1,5 +1,5 @@
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QHBoxLayout, QWidget, QComboBox
+from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QWidget
 
 
 class HierarchicalDepartmentFilter(QWidget):
@@ -8,6 +8,7 @@ class HierarchicalDepartmentFilter(QWidget):
     При выборе элемента на одном уровне автоматически появляется комбобокс следующего уровня.
     При изменении родительского уровня все дочерние уровни удаляются.
     """
+
     selectionChanged = pyqtSignal(object)  # передаёт выбранный department_id или None
 
     def __init__(self, parent=None, get_children_func=None):

@@ -24,8 +24,9 @@
   это несоответствие на сервере, использовать его как "путь для открытия"
   нельзя.
 """
+
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Any
 
 from client.core.http_client import HttpClient
 
@@ -39,7 +40,7 @@ class AttachmentService:
         self.client = http_client
         self.base_path = "/documents/attachments"
 
-    def get_attachments(self, document_id: int) -> List[Dict[str, Any]]:
+    def get_attachments(self, document_id: int) -> list[dict[str, Any]]:
         """
         GET /documents/attachments/{doc_id}/attachments — список вложений документа.
 
@@ -59,7 +60,9 @@ class AttachmentService:
             print(f"❌ get_attachments(document_id={document_id}): {e}")
             return []
 
-    def upload_attachment(self, document_id: int, file_path: str) -> Optional[Dict[str, Any]]:
+    def upload_attachment(
+        self, document_id: int, file_path: str
+    ) -> dict[str, Any] | None:
         """POST /documents/attachments/{doc_id}/attachments — загрузить файл как вложение."""
         try:
             return self.client.post_file(
@@ -75,14 +78,18 @@ class AttachmentService:
     def delete_attachment(self, document_id: int, attachment_id: int) -> bool:
         """DELETE /documents/attachments/{doc_id}/attachments/{attach_id}."""
         try:
-            self.client.delete(f"{self.base_path}/{document_id}/attachments/{attachment_id}")
+            self.client.delete(
+                f"{self.base_path}/{document_id}/attachments/{attachment_id}"
+            )
             return True
         except Exception as e:
-            logger.error(f"❌ delete_attachment(document_id={document_id}, attachment_id={attachment_id}): {e}")
+            logger.error(
+                f"❌ delete_attachment(document_id={document_id}, attachment_id={attachment_id}): {e}"
+            )
             print(f"❌ delete_attachment: {e}")
             return False
 
-    def get_page_count(self, attachment_id: int) -> Optional[int]:
+    def get_page_count(self, attachment_id: int) -> int | None:
         """
         GET /documents/attachments/{attach_id}/info — число страниц вложения
         (для TIFF/сканов). Полный постраничный просмотр не реализован — см.
@@ -97,7 +104,7 @@ class AttachmentService:
 
 
 # Синглтон — по аналогии с get_doc_type_service
-_attachment_service_instance: Optional[AttachmentService] = None
+_attachment_service_instance: AttachmentService | None = None
 
 
 def get_attachment_service(http_client: HttpClient) -> AttachmentService:

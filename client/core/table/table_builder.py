@@ -1,11 +1,10 @@
 """
 Модуль настройки таблицы документов - строитель
 """
-from PyQt6.QtWidgets import QHeaderView, QAbstractItemView
-from PyQt6.QtCore import Qt, QTimer
 
-from client.core.table.managers.column.column_manager import ColumnManager
-from client.core.table.managers.row.row_manager import RowManager
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QAbstractItemView, QHeaderView
+
 from client.core.table.managers.table_data_manager import TableDataManager
 from client.core.table.table_facade import TableFacade
 
@@ -16,7 +15,13 @@ class TableBuilder:
     Использует паттерн Builder для пошаговой сборки.
     """
 
-    def __init__(self, table_widget, columns_config: dict, doc_type: str = None, view_mode: str = "all"):
+    def __init__(
+        self,
+        table_widget,
+        columns_config: dict,
+        doc_type: str = None,
+        view_mode: str = "all",
+    ):
         self._table_widget = table_widget
         self._columns_config = columns_config
         self._doc_type = doc_type or "default"
@@ -36,10 +41,7 @@ class TableBuilder:
 
         # Создаем фасад
         self._facade = TableFacade(
-            self._table_widget,
-            self._columns_config,
-            self._doc_type,
-            self._view_mode
+            self._table_widget, self._columns_config, self._doc_type, self._view_mode
         ).build(data_manager, updater)
 
         return self._facade

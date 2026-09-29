@@ -13,25 +13,38 @@
 ради простоты (как у RowManager/ColumnManager, которые так же координируют
 свои под-менеджеры).
 """
+
 import os
 import sys
-from PyQt6.QtWidgets import QWidget, QApplication, QMessageBox
-from PyQt6.QtCore import pyqtSignal, QTimer
+
+from PyQt6.QtCore import QTimer, pyqtSignal
+from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
 from PyQt6.uic import loadUi
 
 from client.core.state.app_state import AppState
-from client.core.themes import apply_theme_to_widget
-from client.windows.documents.table.documents_table import DocumentsTable
-from client.windows.documents.table.documents_pagination_manager import DocumentsPaginationManager
-from client.windows.documents.table.documents_panel_columns import DocumentsColumnController
-from client.windows.documents.table.documents_panel_filters import DocumentsFilterController
-from client.windows.documents.table.documents_panel_crud import DocumentsCrudController
-from client.windows.documents.table.documents_panel_row_actions import DocumentsRowActionController
 from client.core.table.documents_panel_controller import DocumentsPanelController
-
+from client.core.themes import apply_theme_to_widget
 from client.windows.animations.floating_action_button import FloatingActionButton
+from client.windows.documents.table.documents_pagination_manager import (
+    DocumentsPaginationManager,
+)
+from client.windows.documents.table.documents_panel_columns import (
+    DocumentsColumnController,
+)
+from client.windows.documents.table.documents_panel_crud import DocumentsCrudController
+from client.windows.documents.table.documents_panel_filters import (
+    DocumentsFilterController,
+)
+from client.windows.documents.table.documents_panel_row_actions import (
+    DocumentsRowActionController,
+)
+from client.windows.documents.table.documents_table import DocumentsTable
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+ROOT_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
+)
 
 
 class DocumentsPanel(QWidget):
@@ -77,9 +90,9 @@ class DocumentsPanel(QWidget):
         self.crud = DocumentsCrudController(self)
         self.row_actions = DocumentsRowActionController(self)
 
-        if hasattr(self, 'statsBtn'):
+        if hasattr(self, "statsBtn"):
             self.statsBtn.clicked.connect(self._show_unanswered_stats)
-        if hasattr(self, 'searchEdit'):
+        if hasattr(self, "searchEdit"):
             self.searchEdit.textChanged.connect(self.on_search_changed)
 
         self._connect_signals()
@@ -92,17 +105,19 @@ class DocumentsPanel(QWidget):
     # ========== UI ==========
 
     def _init_ui(self):
-        ui_path = os.path.join(ROOT_DIR, "client", "ui", "documents", "table", "documents_panel.ui")
+        ui_path = os.path.join(
+            ROOT_DIR, "client", "ui", "documents", "table", "documents_panel.ui"
+        )
         loadUi(ui_path, self)
         apply_theme_to_widget(self)
 
     def _init_table(self):
         self.documents_table = DocumentsTable(http_client=self.http_client)
-        if hasattr(self, 'contentFrame'):
+        if hasattr(self, "contentFrame"):
             target_layout = self.contentLayout
-        elif hasattr(self, 'horizontalLayoutHeader'):
+        elif hasattr(self, "horizontalLayoutHeader"):
             target_layout = self.verticalLayout
-        elif hasattr(self, 'panelLayout'):
+        elif hasattr(self, "panelLayout"):
             target_layout = self.panelLayout
         else:
             target_layout = self.layout()
@@ -115,7 +130,7 @@ class DocumentsPanel(QWidget):
     def _init_floating_button(self):
         self.floating_btn = FloatingActionButton(self)
         self.floating_btn.clicked.connect(self.crud.open_create_dialog)
-        if hasattr(self.documents_table, 'tableWidget'):
+        if hasattr(self.documents_table, "tableWidget"):
             scrollbar = self.documents_table.tableWidget.verticalScrollBar()
             scrollbar.valueChanged.connect(self.on_scroll)
         self.position_floating_button()
@@ -123,7 +138,9 @@ class DocumentsPanel(QWidget):
     def _show_unanswered_stats(self):
         """Открывает диалог со статистикой по неотвеченным документам."""
         from client.services.document_service import DocumentService
-        from client.windows.documents.stats.unanswered_stats_dialog import UnansweredStatsDialog
+        from client.windows.documents.stats.unanswered_stats_dialog import (
+            UnansweredStatsDialog,
+        )
 
         try:
             service = DocumentService(self.http_client)
@@ -133,7 +150,9 @@ class DocumentsPanel(QWidget):
             QMessageBox.warning(self, "Ошибка", f"Не удалось загрузить статистику: {e}")
 
     def _connect_signals(self):
-        self.documents_table.document_action_triggered.connect(self.document_action_triggered.emit)
+        self.documents_table.document_action_triggered.connect(
+            self.document_action_triggered.emit
+        )
         self.documents_table.read_status_changed.connect(
             lambda doc_id, is_read: print(f"Document {doc_id} read: {is_read}")
         )
@@ -143,7 +162,7 @@ class DocumentsPanel(QWidget):
     # ========== ЛОГИКА ПЛАВАЮЩЕЙ КНОПКИ ==========
 
     def position_floating_button(self):
-        if hasattr(self, 'floating_btn'):
+        if hasattr(self, "floating_btn"):
             margin = 30
             x = self.width() - self.floating_btn.width() - margin
             y = self.height() - self.floating_btn.height() - margin
@@ -151,7 +170,7 @@ class DocumentsPanel(QWidget):
             self.floating_btn.raise_()
 
     def on_scroll(self, value):
-        if hasattr(self, 'floating_btn'):
+        if hasattr(self, "floating_btn"):
             self.floating_btn.hide_with_animation()
             self.floating_btn.start_hide_timer()
 
@@ -176,15 +195,20 @@ class DocumentsPanel(QWidget):
         self._update_table(documents, doc_type, title, view_mode)
         self.data_loaded.emit(len(documents))
 
-    def load_documents_by_type(self, type_id: int, type_name: str = None, direction: str = None):
+    def load_documents_by_type(
+        self, type_id: int, type_name: str = None, direction: str = None
+    ):
         documents, title, view_mode, doc_type = self.controller.load_documents_by_type(
-            type_id, type_name, direction)
+            type_id, type_name, direction
+        )
         self._update_table(documents, doc_type, title, view_mode)
         self.type_changed.emit(type_id)
         self.data_loaded.emit(len(documents))
 
     def load_documents_by_direction(self, direction: str, title: str = None):
-        documents, title, view_mode, doc_type = self.controller.load_documents_by_direction(direction, title)
+        documents, title, view_mode, doc_type = (
+            self.controller.load_documents_by_direction(direction, title)
+        )
         self._update_table(documents, doc_type, title, view_mode)
         self.direction_changed.emit(direction)
         self.data_loaded.emit(len(documents))
@@ -196,7 +220,13 @@ class DocumentsPanel(QWidget):
         self._update_table(documents, doc_type, "Архив", view_mode)
         self.data_loaded.emit(len(documents))
 
-    def _update_table(self, documents: list, doc_type: str = None, title: str = None, view_mode: str = None):
+    def _update_table(
+        self,
+        documents: list,
+        doc_type: str = None,
+        title: str = None,
+        view_mode: str = None,
+    ):
         """Обновить UI-компонент таблицы. Вызывается и помощниками
         (columns/filters), поэтому остаётся в самой панели, а не переезжает
         вместе с ними — это единственная точка, которая реально трогает
@@ -205,9 +235,11 @@ class DocumentsPanel(QWidget):
             doc_type = doc_type or "default"
             view_mode = view_mode or self.controller.current_view_mode or "all"
 
-            self.documents_table._controller.switch_doc_type(doc_type, documents, view_mode)
+            self.documents_table._controller.switch_doc_type(
+                doc_type, documents, view_mode
+            )
 
-            if title and hasattr(self, 'labelTitle'):
+            if title and hasattr(self, "labelTitle"):
                 self.labelTitle.setText(title)
 
             self.pagination.update(self.controller.pagination)
@@ -216,12 +248,13 @@ class DocumentsPanel(QWidget):
         except Exception as e:
             print(f"[DocumentsPanel] Error updating table: {e}")
             import traceback
+
             traceback.print_exc()
 
     def _change_page(self, delta: int):
         """◀ / ▶ в панели пагинации."""
         p = self.controller.pagination
-        if not 1 <= p['page'] + delta <= p['pages']:
+        if not 1 <= p["page"] + delta <= p["pages"]:
             return
         documents, title, view_mode, doc_type = self.controller.change_page(delta)
         self._update_table(documents, doc_type, title, view_mode)
@@ -240,7 +273,9 @@ class DocumentsPanel(QWidget):
         self._search_timer.start()  # перезапуск: запрос уйдёт после паузы в наборе
 
     def _run_search(self):
-        documents, title, view_mode, doc_type = self.controller.search_documents(self._pending_search)
+        documents, title, view_mode, doc_type = self.controller.search_documents(
+            self._pending_search
+        )
         self._update_table(documents, doc_type, title, view_mode)
 
     # ========== ТЕМА / ПРОЧЕЕ ==========
@@ -250,7 +285,7 @@ class DocumentsPanel(QWidget):
         self.pagination.reapply_theme()
 
     def update_title(self, title):
-        if hasattr(self, 'labelTitle'):
+        if hasattr(self, "labelTitle"):
             self.labelTitle.setText(title)
         self.controller.current_title = title
 
