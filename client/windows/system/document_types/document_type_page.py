@@ -27,6 +27,10 @@ from client.windows.system.delete_dialog import DeleteDialog
 from client.windows.system.document_types.document_type_card import DocumentTypeCard
 from client.windows.system.document_types.document_type_dialog import DocumentTypeDialog
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class DocumentTypesPage(QWidget):
     """Страница типов документов с поиском, сортировкой и отображением в 1 колонку"""
@@ -213,9 +217,8 @@ class DocumentTypesPage(QWidget):
 
         except Exception as e:
             self.is_loading = False
-            import logging
 
-            logging.exception(f"Ошибка загрузки типов документов: {e}")
+            logger.exception(f"Ошибка загрузки типов документов: {e}")
 
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
@@ -463,9 +466,8 @@ class DocumentTypesPage(QWidget):
                 self.show_error_notification("Не удалось создать тип")
 
         except Exception as e:
-            import logging
 
-            logging.exception(f"Ошибка создания типа: {e}")
+            logger.exception(f"Ошибка создания типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
@@ -531,9 +533,8 @@ class DocumentTypesPage(QWidget):
                 self.show_error_notification("Не удалось обновить тип")
 
         except Exception as e:
-            import logging
 
-            logging.exception(f"Ошибка обновления типа: {e}")
+            logger.exception(f"Ошибка обновления типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
@@ -591,10 +592,9 @@ class DocumentTypesPage(QWidget):
                 self._update_type(type_id, updated_data)
 
         except Exception as e:
-            import logging
             import traceback
 
-            logging.exception(f"Ошибка загрузки типа для редактирования: {e}")
+            logger.exception(f"Ошибка загрузки типа для редактирования: {e}")
             traceback.print_exc()
             self.show_error_notification("Не удалось загрузить данные типа")
 
@@ -622,9 +622,8 @@ class DocumentTypesPage(QWidget):
                 self.show_error_notification("Не удалось удалить тип")
 
         except Exception as e:
-            import logging
 
-            logging.exception(f"Ошибка удаления типа: {e}")
+            logger.exception(f"Ошибка удаления типа: {e}")
             if "401" in str(e) or "AuthError" in str(e):
                 self.show_error_notification("Сессия истекла. Войдите заново.")
             else:
