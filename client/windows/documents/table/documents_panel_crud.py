@@ -89,8 +89,13 @@ class DocumentsCrudController:
 
     def open_create_dialog(self):
         panel = self.panel
+        controller = panel.controller
+
+        # В архив документы не добавляются
+        if controller.current_view_mode == "archive":
+            return
+
         try:
-            controller = panel.controller
             dialog = DocumentDialog(
                 parent=panel,
                 mode="create",
@@ -101,6 +106,7 @@ class DocumentsCrudController:
                 tags=self._tags(),
                 document_types=controller.get_document_types(),
                 initial_type_id=controller.current_type_id,
+                initial_direction=controller.current_direction,
                 http_client=panel.http_client,
             )
             dialog.document_created.connect(self._on_created)

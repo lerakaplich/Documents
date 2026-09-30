@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 )
 
 from client.core.state.app_state import AppState
+from client.services.doc_type_service import doc_type_events
 from client.windows.documents.table.documents_panel import DocumentsPanel
 from client.windows.left_panel.left_panel import LeftPanel
 from client.windows.profile.profile_window import ProfileForm
@@ -170,11 +171,26 @@ class MainWindow(QMainWindow):
                 self.settings_tab.logout_requested.connect(self.on_logout_clicked)
                 print("✓ settings logout_requested подключен")
 
+            doc_type_events.types_changed.connect(self.on_doc_types_changed)
             print("✓ Все сигналы настроены успешно")
 
         except Exception as e:
             print(f"✗ Ошибка при настройке сигналов: {e}")
             traceback.print_exc()
+
+    def on_doc_types_changed(self):
+        """Типы или их поля изменились в «Системе» — обновляем навигацию, таблицу и кэш для диалога."""
+        try:
+            self.left_panel.reload_doc_types()
+        except Exception as e:
+            print(f"[MainWindow] Не удалось обновить навигацию по типам: {e}")
+
+        try:
+            self.documents_panel.on_doc_types_changed()
+        except Exception as e:
+            print(f"[MainWindow] Не удалось обновить таблицу после изменения типов: {e}")
+
+
 
     # ========== НАВИГАЦИЯ ==========
 
@@ -265,10 +281,13 @@ class MainWindow(QMainWindow):
         self.content_stack.setCurrentWidget(self.system_tab)
         self.statusBar().showMessage("Системные настройки", 3000)
 
-    def on_type_selected(self, type_id: int, type_name: str):
-        """Выбор типа документа"""
+    def on_type_selected(self, type_id: int, type_name: str, group_name: str = ""):
+        """Выбор типа документа внутри группы «Внешние»/«Внутренние»"""
         self.content_stack.setCurrentWidget(self.documents_panel)
-        self.documents_panel.load_documents_by_type(type_id, type_name)
+        direction_key = None
+        if group_name:
+            direction_key = "internal" if "внутр" in group_name.lower() else "external"
+        self.documents_panel.load_documents_by_type(type_id, type_name, direction_key)
 
     def on_direction_selected(self, direction_name: str, group_name: str = ""):
         """Выбор направления"""

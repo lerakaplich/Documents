@@ -114,7 +114,8 @@ class OvertimeCrudManager:
             self._notify("Запись не найдена")
             return
 
-        dialog = OvertimeDialog(self._parent, readonly=True)
+        # Свои переработки: можно менять только описание
+        dialog = OvertimeDialog(self._parent, readonly=False, note_only=True)
         dialog.set_data(data)
 
         if dialog.exec() != QDialog.DialogCode.Accepted or dialog.result_data is None:

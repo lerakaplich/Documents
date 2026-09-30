@@ -132,17 +132,27 @@ class DocumentsPanel(QWidget):
         header.setSectionsClickable(True)
         header.sectionClicked.connect(self._on_header_clicked)
 
+    def _update_floating_button(self):
+        """«+» (создание документа) недоступна в архиве."""
+        if hasattr(self, "floating_btn"):
+            self.floating_btn.setVisible(self.controller.current_view_mode != "archive")
+
+    def on_scroll(self, value):
+        if self.controller.current_view_mode == "archive":
+            return
+        if hasattr(self, "floating_btn"):
+            self.floating_btn.hide_with_animation()
+            self.floating_btn.start_hide_timer()
+
     def _update_table(
-            self,
-            documents: list,
-            doc_type: str | None = None,
-            title: str | None = None,
-            view_mode: str | None = None,
+        self,
+        documents: list,
+        doc_type: str | None = None,
+        title: str | None = None,
+        view_mode: str | None = None,
     ):
         """Обновить UI-компонент таблицы. Вызывается и помощниками
-        (columns/filters), поэтому остаётся в самой панели, а не переезжает
-        вместе с ними — это единственная точка, которая реально трогает
-        таблицу, пагинацию и раскладку столбцов разом."""
+        (columns/filters), поэтому остаётся в самой панели."""
         try:
             doc_type = doc_type or "default"
             view_mode = view_mode or self.controller.current_view_mode or "all"
@@ -155,6 +165,7 @@ class DocumentsPanel(QWidget):
             self.pagination.update(self.controller.pagination)
             self.columns.apply_layout()
             self._update_sort_indicator()
+            self._update_floating_button()
 
         except Exception as e:
             print(f"[DocumentsPanel] Error updating table: {e}")

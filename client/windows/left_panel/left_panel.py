@@ -33,7 +33,7 @@ class LeftPanel(QWidget):
 
     # Сигналы
     direction_clicked = pyqtSignal(str, str)  # (direction_name, group_name)
-    type_clicked = pyqtSignal(int, str)  # (type_id, type_name)
+    type_clicked = pyqtSignal(int, str, str)  # (type_id, type_name, group_name)
     profile_clicked = pyqtSignal()
     all_documents_clicked = pyqtSignal()
     system_clicked = pyqtSignal()
@@ -444,6 +444,15 @@ class LeftPanel(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
+    def reload_doc_types(self):
+        """Перезагружает типы, сохраняя, какие группы были развёрнуты."""
+        expanded = {name: g.is_expanded for name, g in self.groups.items()}
+        self.load_doc_types()
+        for name, was_expanded in expanded.items():
+            g = self.groups.get(name)
+            if g is not None and g.is_expanded != was_expanded:
+                g.toggle_content()
+
     def load_doc_types(self):
         """
         Загружает типы документов с сервера и раскладывает их
@@ -545,7 +554,7 @@ class LeftPanel(QWidget):
         print(f"Выбрано направление: {direction_name} (группа: {group_name}, type_id: {type_id})")
 
         if type_id is not None:
-            self.type_clicked.emit(type_id, direction_name)
+            self.type_clicked.emit(type_id, direction_name, group_name)
         else:
             self.direction_clicked.emit(direction_name, group_name)
 

@@ -23,30 +23,37 @@ class OvertimeDialog(QDialog):
         readonly=False,
         overtime_service=None,
         current_employee_id=None,
+        note_only=False,
     ):
         super().__init__(parent)
         self.readonly = readonly
+        self.note_only = note_only  # можно менять только описание (свои переработки)
         self.result_data = None
         self.overtime_service = overtime_service
         self.current_employee_id = current_employee_id
         self.overtime_id = None
-        # в __init__ OvertimeDialog
         self._employee_id_by_name = {}
         self._employee_id_to_name = {}
 
         root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
         ui_path = os.path.join(root_dir, "ui", "profile", "overtime", "overtime_dialog.ui")
 
-        # Если UI файл не найден, создаем диалог программно
-
         uic.loadUi(ui_path, self)
         apply_theme_to_widget(self)
 
         # ── Заменяем стандартный календарь на кастомный ──
         self._replace_date_edits()
+        # Тема применяется ещё раз: новый календарь создан уже после первого применения
+        apply_theme_to_widget(self)
+        date_edit = getattr(self, "dateEdit", None)
+        if date_edit is not None and hasattr(date_edit, "reapply_theme"):
+            date_edit.reapply_theme()
 
         self.setModal(True)
-        self.setWindowTitle("Оформление переработки" if not readonly else "Просмотр переработки")
+        if note_only:
+            self.setWindowTitle("Редактирование описания")
+        else:
+            self.setWindowTitle("Просмотр переработки" if readonly else "Оформление переработки")
         self._setup_time_edits()
         # Подключаем сигналы
         self.btnSave.clicked.connect(self.accept)
@@ -58,34 +65,32 @@ class OvertimeDialog(QDialog):
         if self.overtime_service and not readonly:
             self._load_employees()
 
-    # ─────────────────── ЗАМЕНА КАЛЕНДАРЯ ───────────────────
-
     def _replace_date_edits(self):
         """
-        Программно заменяет QDateEdit (dateEdit) на CustomCalendarDateEdit —
-        тот же QDateEdit, но с нашим попапом (по аналогии с document_dialog.py).
+        Программно заменяет QDateEdit (dateEdit) на CustomCalendarDateEdit.
 
-        ВАЖНО: в overtime_dialog.ui dateEdit находится прямо в главном
-        verticalLayout (не в отдельном вложенном лейауте), поэтому
-        replaceWidget делаем через self.verticalLayout.
+        replaceWidget вызывается на корневом layout диалога и ищет виджет
+        рекурсивно во всех вложенных layout'ах; если виджета в layout'ах нет
+        (вернёт None), оставляем стандартный календарь, а не теряем поле.
         """
         if not _HAS_CUSTOM_DATE:
             print("[OvertimeDialog] Пропускаем замену календаря — CustomCalendarDateEdit нет")
             return
 
         old_widget = getattr(self, "dateEdit", None)
-        layout = getattr(self, "verticalLayout", None)
+        root_layout = self.layout()
 
-        if old_widget is None or layout is None:
-            print("[OvertimeDialog] dateEdit: не найден widget или layout verticalLayout")
+        if old_widget is None or root_layout is None:
+            print("[OvertimeDialog] dateEdit или корневой layout не найден — оставляем стандартный календарь")
             return
 
         new_widget = CustomCalendarDateEdit(parent=self)
 
-        # ── переносим размеры/поведение из .ui ──
+        # ── переносим размеры/поведение/стиль из .ui ──
         new_widget.setMinimumSize(old_widget.minimumSize())
         new_widget.setMaximumSize(old_widget.maximumSize())
         new_widget.setSizePolicy(old_widget.sizePolicy())
+        new_widget.setStyleSheet(old_widget.styleSheet())
 
         # ── переносим формат и значение ──
         try:
@@ -99,12 +104,64 @@ class OvertimeDialog(QDialog):
             new_widget.setDate(QDate.currentDate())
 
         # ── заменяем в layout ──
-        layout.replaceWidget(old_widget, new_widget)
+        if root_layout.replaceWidget(old_widget, new_widget) is None:
+            print("[OvertimeDialog] dateEdit не найден в layout — календарь не заменён")
+            new_widget.deleteLater()
+            return
+
         old_widget.setParent(None)
         old_widget.deleteLater()
 
-        setattr(self, "dateEdit", new_widget)
+        self.dateEdit = new_widget
         print("[OvertimeDialog] dateEdit → CustomCalendarDateEdit")
+
+    def set_edit_mode(self, readonly):
+        """readonly=True — только просмотр; note_only — редактируется одно описание."""
+        fields_editable = not readonly and not self.note_only
+        self.comboEmployee.setEnabled(fields_editable)
+        self.dateEdit.setEnabled(fields_editable)
+        self.timeStart.setEnabled(fields_editable)
+        self.timeEnd.setEnabled(fields_editable)
+        self.descriptionEdit.setReadOnly(readonly)
+        self.btnSave.setEnabled(not readonly)
+
+        if readonly:
+            self.btnSave.setText("Закрыть")
+            self.btnSave.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {T.BTN_GRAY_BG};
+                    color: {T.TEXT_ON_ACCENT};
+                    border: none;
+                    border-radius: 4px;
+                    padding: 8px 20px;
+                    font-size: 13px;
+                    min-width: 80px;
+                }}
+                QPushButton:hover {{ background-color: {T.BTN_GRAY_HOVER_BG}; }}
+                QPushButton:pressed {{ background-color: {T.BTN_GRAY_PRESSED_BG}; }}
+            """)
+
+    def accept(self):
+        """Обработчик сохранения"""
+        if self.readonly:
+            super().accept()
+            return
+
+        data = self.get_data_from_ui()
+
+        if self.note_only:
+            # меняется только описание — остальные поля не проверяем
+            self.result_data = data
+            super().accept()
+            return
+
+        if not self.validate_data(data):
+            return
+
+        self.result_data = data
+        super().accept()
+
+    # ─────────────────── ЗАМЕНА КАЛЕНДАРЯ ───────────────────
 
     def _setup_time_edits(self):
         """Перенастраивает QTimeEdit: стрелки шагают на 30 минут, дефолты и дата = сегодня."""
@@ -346,32 +403,6 @@ class OvertimeDialog(QDialog):
         name = self.comboEmployee.currentText()
         return self._employee_id_by_name.get(name, self.current_employee_id)
 
-    def set_edit_mode(self, readonly):
-        """Устанавливает режим редактирования"""
-        self.comboEmployee.setEnabled(not readonly)
-        self.dateEdit.setEnabled(not readonly)
-        self.timeStart.setEnabled(not readonly)
-        self.timeEnd.setEnabled(not readonly)
-        self.descriptionEdit.setReadOnly(readonly)
-        self.btnSave.setEnabled(not readonly)
-
-        if readonly:
-            self.btnSave.setText("Закрыть")
-            self.btnSave.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {T.BTN_GRAY_BG};
-                    color: {T.TEXT_ON_ACCENT};
-                    border: none;
-                    border-radius: 4px;
-                    padding: 8px 20px;
-                    font-size: 13px;
-                    min-width: 80px;
-                }}
-                QPushButton:hover {{ background-color: {T.BTN_GRAY_HOVER_BG}; }}
-                QPushButton:pressed {{ background-color: {T.BTN_GRAY_PRESSED_BG}; }}
-            """)
-            self.btnCancel.setVisible(False)
-
     def set_data(self, data):
         self.overtime_id = data.get("id")
 
@@ -464,20 +495,6 @@ class OvertimeDialog(QDialog):
             return False
 
         return True
-
-    def accept(self):
-        """Обработчик сохранения"""
-        if self.readonly:
-            super().accept()
-            return
-
-        data = self.get_data_from_ui()
-
-        if not self.validate_data(data):
-            return
-
-        self.result_data = data
-        super().accept()
 
     def reject(self):
         """Обработчик отмены"""

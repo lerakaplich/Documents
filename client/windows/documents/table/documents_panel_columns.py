@@ -38,7 +38,9 @@ class DocumentsColumnController:
         c = self.panel.controller
         if c.current_view_mode == "archive":
             return "archive"  # ← отдельный ключ для настроек архива
-        return ColumnViewSettings.make_key(c.current_type_id, c.current_direction)
+        # у типа настройки общие для обеих групп — направление в ключ не входит
+        direction = None if c.current_type_id is not None else c.current_direction
+        return ColumnViewSettings.make_key(c.current_type_id, direction)
 
     def _column_names(self) -> list:
         table = self.panel.documents_table.tableWidget

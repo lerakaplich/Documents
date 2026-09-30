@@ -19,6 +19,16 @@ from client.core.http_client import HttpClient
 
 logger = logging.getLogger(__name__)
 
+from PyQt6.QtCore import QObject, pyqtSignal
+
+
+class _DocTypeEvents(QObject):
+    """Общий канал: типы документов (список или поля) изменились."""
+
+    types_changed = pyqtSignal()
+
+
+doc_type_events = _DocTypeEvents()
 
 class DocTypeService:
     """Сервис для управления типами документов"""
@@ -62,7 +72,6 @@ class DocTypeService:
     def create_type(self, type_data: dict[str, Any]) -> dict[str, Any] | None:
         """Создать новый тип документа"""
         try:
-            # Убедимся, что отправляем правильные поля
             server_data = {
                 "name": type_data.get("name", ""),
                 "fields": type_data.get("fields", {}),
@@ -72,6 +81,8 @@ class DocTypeService:
 
             response = self.http.post(f"{self.base_path}", json=server_data)
             logger.info(f"✅ Тип документа создан: {response}")
+            if response:
+                doc_type_events.types_changed.emit()
             return response
         except Exception as e:
             logger.exception(f"❌ Ошибка создания типа документа: {e}")
@@ -80,7 +91,6 @@ class DocTypeService:
     def update_type(self, type_id: int, type_data: dict[str, Any]) -> dict[str, Any] | None:
         """Обновить тип документа"""
         try:
-            # Убедимся, что отправляем правильные поля
             server_data = {
                 "name": type_data.get("name", ""),
                 "fields": type_data.get("fields", {}),
@@ -90,6 +100,8 @@ class DocTypeService:
 
             response = self.http.patch(f"{self.base_path}/{type_id}", json=server_data)
             logger.info(f"✅ Тип документа обновлен: {response}")
+            if response:
+                doc_type_events.types_changed.emit()
             return response
         except Exception as e:
             logger.exception(f"❌ Ошибка обновления типа {type_id}: {e}")
@@ -100,6 +112,7 @@ class DocTypeService:
         try:
             self.http.delete(f"{self.base_path}/{type_id}")
             logger.info(f"✅ Тип документа {type_id} удален")
+            doc_type_events.types_changed.emit()
             return True
         except Exception as e:
             logger.exception(f"❌ Ошибка удаления типа {type_id}: {e}")

@@ -602,16 +602,6 @@ border: none;
 
 </string>
                  </property>
-                 <item>
-                  <property name="text">
-                   <string>Светлая</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>Тёмная</string>
-                  </property>
-                 </item>
                 </widget>
                </item>
                <item>

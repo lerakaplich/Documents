@@ -79,10 +79,12 @@ class SettingsTab(QWidget):
         self.logoutBtn.clicked.connect(self.logout_requested.emit)
 
     def _load_palettes(self):
+        self.paletteCombo.clear()  # ← убрать предзаполненные из .ui
         for key, (_, _, label) in AVAILABLE_PALETTES.items():
             self.paletteCombo.addItem(label, userData=key)
 
     def _load_modes(self):
+        self.modeCombo.clear()  # ← убрать предзаполненные из .ui
         for key, label in AVAILABLE_MODES.items():
             self.modeCombo.addItem(label, userData=key)
 

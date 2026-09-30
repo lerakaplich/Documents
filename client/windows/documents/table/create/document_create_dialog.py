@@ -65,6 +65,20 @@ HEADER_BLOCKS = {
     "labelTags": ("tag_ids",),
 }
 
+# Ключ поля в диалоге документа → ключи в types.fields (серверные и из диалога типа)
+FIELD_ALIASES = {
+    "title": ("title", "subject"),
+    "about": ("about", "regarding"),
+    "sender_id": ("sender_id", "from_who"),
+    "recipients": ("recipients", "to_who"),
+    "executors": ("executors", "executor"),
+    "tag_ids": ("tag_ids", "tag_id"),
+    "sent_date": ("sent_date", "send_date"),
+    "deadline": ("deadline",),
+    "reg_number": ("reg_number", "number"),
+    "sequence_number": ("sequence_number", "index_number"),
+}
+
 # Кастомный календарь
 try:
     _HAS_CUSTOM_DATE = True
@@ -95,6 +109,7 @@ class DocumentDialog(QWidget):
         tags: list[dict] | None = None,
         document_types: list[dict[str, Any]] | None = None,
         initial_type_id: int | None = None,
+        initial_direction: str | None = None,
         http_client=None,
         document_service=None,
         doc_type_service=None,
@@ -148,19 +163,26 @@ class DocumentDialog(QWidget):
         self._base_height: int | None = None
         self._full_min_height = 0
         self._type_pinned = False  # тип задан вкладкой → type_box скрыт
+        self._direction_pinned = False  # направление задано группой → direction_box скрыт
 
         # Настройка UI
         self._load_ui()
         self._replace_date_edits()  # ← заменяем календари на кастомные
         self._setup_widgets()
 
-        # Тип с активной вкладки: предвыбираем и прячем type_box.
-        # Если такого типа нет в списке, поле остаётся видимым, чтобы можно было выбрать вручную.
+        # Тип и направление с активной вкладки: предвыбираем и прячем поля.
+        # Если значения нет в списке, поле остаётся видимым для ручного выбора.
         if self.mode == "create" and initial_type_id is not None and hasattr(self, "type_box"):
             idx = self.type_box.findData(initial_type_id)
             if idx >= 0:
                 self.type_box.setCurrentIndex(idx)
                 self._type_pinned = True
+
+        if self.mode == "create" and initial_direction and hasattr(self, "direction_box"):
+            idx = self.direction_box.findData(initial_direction)
+            if idx >= 0:
+                self.direction_box.setCurrentIndex(idx)
+                self._direction_pinned = True
 
         # Если режим редактирования - загружаем данные
         if self.mode == "edit" and self.document_data:
@@ -490,8 +512,12 @@ class DocumentDialog(QWidget):
         return None
 
     def _field_enabled(self, key: str) -> bool:
-        """Поле скрыто только если в конфиге типа оно явно false."""
-        return bool(self._active_fields.get(key, True))
+        """Поле показывается, если тип его включает. Конфиг типа хранит только
+        включённые поля (или явные false), поэтому отсутствие ключа = поле выключено.
+        Пустой конфиг (тип не выбран или не настроен) — показываем всё."""
+        if not self._active_fields:
+            return True
+        return any(bool(self._active_fields.get(k)) for k in FIELD_ALIASES.get(key, (key,)))
 
     def _apply_type_fields(self, *_):
         root = self.layout()
@@ -499,7 +525,7 @@ class DocumentDialog(QWidget):
             return
         self._active_fields = self._current_type_fields() or {}
 
-        # Эталон снимаем один раз, пока ничего не скрыто (включая type_box)
+        # Эталон снимаем один раз, пока ничего не скрыто (включая type_box/direction_box)
         if self._base_height is None:
             self.ensurePolished()
             root.invalidate()
@@ -523,9 +549,11 @@ class DocumentDialog(QWidget):
         for label_name, keys in HEADER_BLOCKS.items():
             set_visible((label_name,), any(self._field_enabled(k) for k in keys))
 
-        # Тип задан вкладкой — выбор типа не показываем
-        if hasattr(self, "type_box"):
-            self.type_box.setVisible(not self._type_pinned)
+        # Тип и направление заданы вкладкой — эти поля не показываем;
+        # если скрыты оба, заголовок «Основные реквизиты» тоже не нужен
+        set_visible(("type_box",), not self._type_pinned)
+        set_visible(("direction_box",), not self._direction_pinned)
+        set_visible(("labelBasic",), not (self._type_pinned and self._direction_pinned))
 
         self._arrange_cell_rows()
         self._fit_height()

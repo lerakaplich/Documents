@@ -6,6 +6,17 @@ from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 
 from client.core.table.table_builder import TableBuilder
 from client.core.table.table_icon_updater import TableIconUpdater
+# Столбец → ключи поля типа (серверные и из диалога типа), которые его включают
+FIELD_COLUMNS = {
+    "Тема": ("title", "subject"),
+    "Краткое содержание": ("about", "regarding"),
+    "Отправители": ("sender_id", "from_who"),
+    "Получатели": ("recipients", "to_who"),
+    "Исполнители": ("executors", "executor"),
+    "Хэштеги": ("tag_ids", "tag_id"),
+    "Дата создания": ("sent_date", "send_date"),
+    "Срок исполнения": ("deadline",),
+}
 
 
 class TableController(QObject):
@@ -33,6 +44,7 @@ class TableController(QObject):
 
             self._doc_type_service = DocTypeService(http_client)
         self._type_fields_cache = {}
+        self._force_rebuild = False
 
         self._current_doc_type = "default"
         self._current_view_mode = "all"
@@ -84,64 +96,45 @@ class TableController(QObject):
             16: "Краткое содержание",
             17: "Срок исполнения",
         }
-        FIELD_LABELS = {
-            "about": "Краткое содержание",
-            "title": "Тема",
-            "tag_ids": "Хэштеги",
-            "deadline": "Срок исполнения",
-            "executors": "Исполнители",
-            "sender_id": "Отправитель",
-            "sent_date": "Дата отправки",
-            "recipients": "Получатели",
-        }
 
         columns_config = dict(sorted(base_columns.items()))
 
-        try:
-            # doc_type — ключ вида: число = id типа, остальное (default, archive,
-            # external, internal, search) — обычные колонки без полей типа
-            type_id = int(doc_type) if str(doc_type).isdigit() else None
-            if type_id:
-                fields = self._get_type_fields(type_id)  # ← уже dict, не list
-                if isinstance(fields, dict):
-                    for idx, (key, enabled) in enumerate(fields.items(), start=20):
-                        if not enabled:
-                            continue
-                        label = FIELD_LABELS.get(key, key)
-                        columns_config[idx] = label
-                elif isinstance(fields, list):
-                    # на всякий случай — вдруг когда-то станет списком
-                    for idx, field in enumerate(fields, start=20):
-                        if isinstance(field, dict):
-                            label = field.get("label") or field.get("name") or f"Поле_{idx}"
-                        else:
-                            label = str(field)
-                        columns_config[idx] = label
-        except (ValueError, TypeError) as e:
-            print(f"[TableController] _get_columns_config error: {e}")
+        # doc_type — ключ вида: число = id типа; остальное (default, archive,
+        # external, internal, search) — полный набор столбцов
+        if str(doc_type).isdigit():
+            fields = self._get_type_fields(int(doc_type))
+            if isinstance(fields, dict) and fields:
+                columns_config = {
+                    idx: name
+                    for idx, name in columns_config.items()
+                    if name not in FIELD_COLUMNS or any(fields.get(k) for k in FIELD_COLUMNS[name])
+                }
 
         return columns_config
 
-    def _get_type_fields(self, type_id: int) -> list:
-        """Доп. поля типа документа, для колонок 20+. Кэшируется на время жизни контроллера."""
+    def _get_type_fields(self, type_id: int) -> dict:
+        """Поля типа документа (dict). Кэшируется; неудачный запрос (например,
+        тип уже удалён) не кэшируется и даёт пустой набор — показываем все столбцы."""
         if type_id in self._type_fields_cache:
             return self._type_fields_cache[type_id]
 
-        fields = []
+        fields = None
         if self._doc_type_service is not None:
             try:
                 type_info = self._doc_type_service.get_type(type_id)
-                fields = (type_info or {}).get("fields") or []
+                if type_info is not None:
+                    fields = type_info.get("fields") or {}
             except Exception as e:
                 print(f"[TableController] Не удалось получить поля типа {type_id}: {e}")
-                fields = []
         else:
             # Нет http_client (напр. автономный запуск __main__) — тестовые метаданные
             from client.core.data.document_repository import document_repository
 
             type_info = document_repository.get_document_type_by_id(type_id)
-            fields = (type_info or {}).get("fields") or []
+            fields = (type_info or {}).get("fields") or {}
 
+        if fields is None:
+            return {}
         self._type_fields_cache[type_id] = fields
         return fields
 
@@ -181,9 +174,14 @@ class TableController(QObject):
         QTimer.singleShot(300, self._restore_heights_after_load)
         self.data_loaded.emit(len(documents))
 
+    def invalidate_type_fields(self):
+        """Поля типов изменились: сбрасываем кэш и пересобираем колонки при следующей отрисовке."""
+        self._type_fields_cache = {}
+        self._force_rebuild = True
+
     def switch_doc_type(self, doc_type: str, documents: list, view_mode: str | None = None):
         """
-        Переключить тип документа с сохранением настроек.
+        Переключить вид (ключ настроек) с сохранением настроек.
         """
         doc_type = str(doc_type) if doc_type else "default"
         view_mode = view_mode or self._current_view_mode or "all"
@@ -191,23 +189,20 @@ class TableController(QObject):
         old_doc_type = self._current_doc_type
         old_view_mode = self._current_view_mode
 
-        # Если тип или режим изменились
-        if old_doc_type != doc_type or old_view_mode != view_mode:
-            # Сохраняем старые настройки (только через facade, без дублирования)
+        # Перестраиваем, если сменился вид или изменились поля типов
+        if old_doc_type != doc_type or old_view_mode != view_mode or self._force_rebuild:
             if self._facade:
                 self._facade.save_state()
 
             self._current_doc_type = doc_type
             self._current_view_mode = view_mode
+            self._force_rebuild = False
 
-            # Перестраиваем таблицу
             self._build_table()
         else:
-            # Если тип не изменился, просто обновляем данные
             self._current_doc_type = doc_type
             self._current_view_mode = view_mode
 
-        # Загружаем данные
         self._data_manager.load_data(documents, doc_type)
 
         if self._row_manager:
