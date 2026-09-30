@@ -11,6 +11,8 @@
 from client.core.table.managers.column.column_view_settings import ColumnViewSettings
 from client.windows.documents.menus.column_menu import ColumnsMenu
 
+# Служебные столбцы: всегда скрыты и не показываются в меню «Столбцы»
+ALWAYS_HIDDEN = {"ID"}
 
 class DocumentsColumnController:
     def __init__(self, panel):
@@ -34,6 +36,8 @@ class DocumentsColumnController:
 
     def _view_key(self) -> str:
         c = self.panel.controller
+        if c.current_view_mode == "archive":
+            return "archive"  # ← отдельный ключ для настроек архива
         return ColumnViewSettings.make_key(c.current_type_id, c.current_direction)
 
     def _column_names(self) -> list:
@@ -52,20 +56,22 @@ class DocumentsColumnController:
         столбцов явно, поэтому состояние прошлого вида не «протекает»."""
         table = self.panel.documents_table.tableWidget
         names = self._column_names()
-        hidden = set(self.settings.get_hidden(self._view_key())) & set(names)
-        if names and len(hidden) >= len(names):
+        user_names = [n for n in names if n not in ALWAYS_HIDDEN]
+
+        hidden = (set(self.settings.get_hidden(self._view_key())) & set(names)) - ALWAYS_HIDDEN
+        if user_names and len(hidden) >= len(user_names):
             hidden = set()  # нельзя скрыть всё
 
         for col, name in enumerate(names):
-            table.setColumnHidden(col, name in hidden)
+            table.setColumnHidden(col, name in hidden or name in ALWAYS_HIDDEN)
 
         if self.menu is not None:
-            self.menu.populate(names, hidden)
+            self.menu.populate(user_names, hidden)
 
     def _save_hidden(self):
         table = self.panel.documents_table.tableWidget
         names = self._column_names()
-        hidden = [names[c] for c in range(len(names)) if table.isColumnHidden(c)]
+        hidden = [names[c] for c in range(len(names)) if table.isColumnHidden(c) and names[c] not in ALWAYS_HIDDEN]
         self.settings.set_hidden(self._view_key(), hidden)
 
     def _on_toggled(self, name: str, visible: bool):

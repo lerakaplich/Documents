@@ -21,6 +21,7 @@ class ContextMenu(QObject):
     reply_attachment_requested = pyqtSignal(dict)
     delete_requested = pyqtSignal(dict)
     pin_toggle_requested = pyqtSignal(dict)
+    archive_toggle_requested = pyqtSignal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -57,6 +58,12 @@ class ContextMenu(QObject):
         pin_text = "Закрепить" if not is_pinned else "Открепить"
         pin_action = menu.addAction(pin_text)
         pin_action.triggered.connect(lambda: self.pin_toggle_requested.emit(document_data))
+
+        # 3.5. Архивировать / Восстановить из архива (персональный архив юзера)
+        is_archived = document_data.get("is_archived", False)
+        archive_text = "Восстановить из архива" if is_archived else "Архивировать"
+        archive_action = menu.addAction(archive_text)
+        archive_action.triggered.connect(lambda: self.archive_toggle_requested.emit(document_data))
 
         menu.addSeparator()
 

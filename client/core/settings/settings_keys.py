@@ -26,6 +26,7 @@ class SettingsKeys:
     PINNED_TYPE = "pinned"
     HIDDEN_ROWS_TYPE = "hidden_rows"
 
+    ARCHIVE_TYPE = "archive"
     DEFAULT_TYPE = "default"
     EMPTY_TYPE = "{}"
 

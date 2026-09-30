@@ -535,7 +535,6 @@ class HistoryDialog(QDialog):
 
         base["type"] = et or "unknown"
         return base
-        return base
 
     def _add_event_to_list(self, event: dict, show_separator: bool = True):
         """Добавление события в список"""

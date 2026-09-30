@@ -73,12 +73,8 @@ class EmployeeEditDialog(EmployeeDialog):
             else:
                 self.setWindowTitle("Редактирование сотрудника")
 
-            # Обновляем заголовок в UI
             if hasattr(self, "titleLabel"):
-                if full_name:
-                    self.titleLabel.setText("Редактирование сотрудника")
-                else:
-                    self.titleLabel.setText("Редактирование сотрудника")
+                self.titleLabel.setText("Редактирование сотрудника")
         else:
             self.setWindowTitle("Редактирование сотрудника")
             if hasattr(self, "titleLabel"):

@@ -181,9 +181,7 @@ class MainWindow(QMainWindow):
     def on_archive_clicked(self):
         """Переключение на архивные документы"""
         self.content_stack.setCurrentWidget(self.documents_panel)
-        self.documents_panel.controller.set_filters(scope="archive")
-        docs, _title, view_mode, doc_type = self.documents_panel.controller._load_current(1)
-        self.documents_panel._update_table(docs, doc_type, "Архив", view_mode)
+        self.documents_panel.load_archived_documents()
         self.statusBar().showMessage("Архив", 3000)
 
     def on_settings_clicked(self):

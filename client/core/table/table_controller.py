@@ -98,7 +98,9 @@ class TableController(QObject):
         columns_config = dict(sorted(base_columns.items()))
 
         try:
-            type_id = int(doc_type) if doc_type != "default" else None
+            # doc_type — ключ вида: число = id типа, остальное (default, archive,
+            # external, internal, search) — обычные колонки без полей типа
+            type_id = int(doc_type) if str(doc_type).isdigit() else None
             if type_id:
                 fields = self._get_type_fields(type_id)  # ← уже dict, не list
                 if isinstance(fields, dict):

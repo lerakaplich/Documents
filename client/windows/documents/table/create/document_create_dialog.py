@@ -31,6 +31,40 @@ DIRECTIONS = [
     ("external", "Внешний документ"),
 ]
 
+import json  # к остальным импортам
+
+# ключ поля из types.fields → виджеты, которые он включает/выключает
+SIMPLE_FIELDS = {
+    "title": ("topic_edit",),
+    "about": ("regarding_edit",),
+    "sender_id": ("btn_sender", "btnAddSender"),
+    "recipients": ("btn_receiver", "btnAddReceiver"),
+    "executors": ("btnExecutor", "btnAddExecutor"),
+    "tag_ids": ("btn_tag", "btnAddTag"),
+}
+
+# Две строки по две «ячейки»: (ключ поля, layout ячейки, её виджеты).
+# Имена layout'ов в .ui обманчивы: в verticalLayoutDate_2 лежит порядковый номер,
+# в verticalLayoutDeadline_2 — номер документа.
+CELL_ROWS = (
+    (
+        ("sequence_number", "verticalLayoutDate_2", ("labelIndexNumber", "index_number_edit")),
+        ("reg_number", "verticalLayoutDeadline_2", ("labelNumber", "number_edit")),
+    ),
+    (
+        ("sent_date", "verticalLayoutDate", ("labelDate", "date_edit")),
+        ("deadline", "verticalLayoutDeadline", ("labelDeadline", "date_deadline")),
+    ),
+)
+ROW_LAYOUTS = ("horizontalLayoutDates_2", "horizontalLayoutDates")
+
+# Заголовок блока виден, только если виден хотя бы один его пункт
+HEADER_BLOCKS = {
+    "labelContent": ("about", "title"),
+    "labelParticipants": ("sender_id", "recipients", "executors"),
+    "labelTags": ("tag_ids",),
+}
+
 # Кастомный календарь
 try:
     _HAS_CUSTOM_DATE = True
@@ -60,6 +94,7 @@ class DocumentDialog(QWidget):
         employees: list[dict] | None = None,
         tags: list[dict] | None = None,
         document_types: list[dict[str, Any]] | None = None,
+        initial_type_id: int | None = None,
         http_client=None,
         document_service=None,
         doc_type_service=None,
@@ -109,10 +144,23 @@ class DocumentDialog(QWidget):
             except Exception as e:
                 print(f"[DocumentDialog] Не удалось загрузить типы документов: {e}")
 
+        self._active_fields: dict[str, Any] = {}
+        self._base_height: int | None = None
+        self._full_min_height = 0
+        self._type_pinned = False  # тип задан вкладкой → type_box скрыт
+
         # Настройка UI
         self._load_ui()
         self._replace_date_edits()  # ← заменяем календари на кастомные
         self._setup_widgets()
+
+        # Тип с активной вкладки: предвыбираем и прячем type_box.
+        # Если такого типа нет в списке, поле остаётся видимым, чтобы можно было выбрать вручную.
+        if self.mode == "create" and initial_type_id is not None and hasattr(self, "type_box"):
+            idx = self.type_box.findData(initial_type_id)
+            if idx >= 0:
+                self.type_box.setCurrentIndex(idx)
+                self._type_pinned = True
 
         # Если режим редактирования - загружаем данные
         if self.mode == "edit" and self.document_data:
@@ -123,6 +171,7 @@ class DocumentDialog(QWidget):
 
         self._connect_signals()
         self._set_default_dates()
+        self._apply_type_fields()
 
     # ─────────────────── UI ───────────────────
 
@@ -339,6 +388,9 @@ class DocumentDialog(QWidget):
         if hasattr(self, "select_box"):
             self.select_box.currentIndexChanged.connect(self._on_create_method_changed)
 
+        if hasattr(self, "type_box"):
+            self.type_box.currentIndexChanged.connect(self._apply_type_fields)
+
     def _set_default_dates(self):
         """Установка дефолтных дат"""
         today = QDate.currentDate()
@@ -416,6 +468,102 @@ class DocumentDialog(QWidget):
             else:
                 self.selected_tags = tags_data
             self._update_tag_button_text()
+
+    # ─────────────────── ПОЛЯ ПО ТИПУ ДОКУМЕНТА ───────────────────
+
+    def _current_type_fields(self) -> dict | None:
+        """types.fields выбранного типа (dict или JSON-строка) либо None."""
+        if not hasattr(self, "type_box"):
+            return None
+        type_id = self.type_box.currentData()
+        if type_id is None:
+            return None
+        for t in self.document_types_data:
+            if t.get("id") == type_id:
+                fields = t.get("fields")
+                if isinstance(fields, str):
+                    try:
+                        fields = json.loads(fields)
+                    except ValueError:
+                        return None
+                return fields if isinstance(fields, dict) else None
+        return None
+
+    def _field_enabled(self, key: str) -> bool:
+        """Поле скрыто только если в конфиге типа оно явно false."""
+        return bool(self._active_fields.get(key, True))
+
+    def _apply_type_fields(self, *_):
+        root = self.layout()
+        if root is None:
+            return
+        self._active_fields = self._current_type_fields() or {}
+
+        # Эталон снимаем один раз, пока ничего не скрыто (включая type_box)
+        if self._base_height is None:
+            self.ensurePolished()
+            root.invalidate()
+            root.activate()
+            self._full_min_height = root.minimumSize().height()
+            self._base_height = max(self.height(), self._full_min_height)
+
+        def set_visible(names, flag):
+            for name in names:
+                w = getattr(self, name, None)
+                if w is not None:
+                    w.setVisible(flag)
+
+        for key, names in SIMPLE_FIELDS.items():
+            set_visible(names, self._field_enabled(key))
+
+        for row in CELL_ROWS:
+            for key, _layout_name, names in row:
+                set_visible(names, self._field_enabled(key))
+
+        for label_name, keys in HEADER_BLOCKS.items():
+            set_visible((label_name,), any(self._field_enabled(k) for k in keys))
+
+        # Тип задан вкладкой — выбор типа не показываем
+        if hasattr(self, "type_box"):
+            self.type_box.setVisible(not self._type_pinned)
+
+        self._arrange_cell_rows()
+        self._fit_height()
+
+    def _arrange_cell_rows(self):
+        """Раскладывает видимые ячейки по двум строкам; если в каждой строке
+        осталось по одной ячейке — сливает их в одну строку."""
+        hboxes = [getattr(self, n, None) for n in ROW_LAYOUTS]
+        if any(h is None for h in hboxes):
+            return  # fallback-UI без этих layout'ов
+
+        for hbox in hboxes:
+            while hbox.count():
+                hbox.takeAt(0)  # parent у вынутого layout'а сбрасывается
+
+        rows = []
+        for row in CELL_ROWS:
+            cells = [getattr(self, layout_name) for key, layout_name, _ in row if self._field_enabled(key)]
+            if cells:
+                rows.append(cells)
+
+        if len(rows) == 2 and len(rows[0]) == 1 and len(rows[1]) == 1:
+            rows = [[rows[0][0], rows[1][0]]]
+
+        for hbox, cells in zip(hboxes, rows):
+            for cell in cells:
+                hbox.addLayout(cell)
+
+    def _fit_height(self):
+        """Уменьшает высоту окна ровно на высоту скрытых блоков + их отступы."""
+        root = self.layout()
+        root.invalidate()
+        root.activate()  # у top-level окна это же обновляет minimumSize
+        new_min = root.minimumSize().height()
+        freed = max(0, self._full_min_height - new_min)
+        target = max(new_min, self._base_height - freed)
+        if self.height() != target:
+            self.resize(self.width(), target)
 
     # ─────────────────── ОТПРАВИТЕЛЬ ───────────────────
 
@@ -781,6 +929,18 @@ class DocumentDialog(QWidget):
     # ─────────────────── СОХРАНЕНИЕ ───────────────────
 
     def save_document(self):
+        """
+        Сбор данных формы и (в режиме 'create') реальная отправка на сервер
+        через DocumentService.create_document → POST /documents.
+
+        Ключи в doc_data соответствуют тому, что ожидает
+        DocumentService._build_create_payload: type_id, direction,
+        sender_id, global_msg_id, receiver_ids/executor_ids (+ справочники
+        _orgs/_depts/_emps для разбора получателей по типу узла).
+
+        Поля, скрытые конфигом типа (types.fields), не валидируются
+        и на сервер не отправляются.
+        """
         print("🚨 save_document вызван!")
         print(f"   mode={self.mode}")
         print(f"   type_box currentIndex={getattr(self, 'type_box', None) and self.type_box.currentIndex()}")
@@ -791,15 +951,9 @@ class DocumentDialog(QWidget):
         print(f"   receivers={self.selected_receivers}")
         print(f"   document_service={self.document_service}")
         print(f"   http_client={self.http_client}")
-        """
-        Сбор данных формы и (в режиме 'create') реальная отправка на сервер
-        через DocumentService.create_document → POST /documents.
 
-        Ключи в doc_data соответствуют тому, что ожидает
-        DocumentService._build_create_payload: type_id, direction,
-        sender_id, global_msg_id, receiver_ids/executor_ids (+ справочники
-        _orgs/_depts/_emps для разбора получателей по типу узла).
-        """
+        en = self._field_enabled
+
         # ── Валидация на уровне формы ──
         if not hasattr(self, "type_box") or self.type_box.currentIndex() < 0:
             QMessageBox.warning(self, "Внимание", "Выберите тип документа")
@@ -809,11 +963,12 @@ class DocumentDialog(QWidget):
             QMessageBox.warning(self, "Внимание", "Выберите направление документа")
             return
 
-        if not hasattr(self, "topic_edit") or not self.topic_edit.toPlainText().strip():
+        # Тему и получателей проверяем, только если эти поля включены у типа
+        if en("title") and (not hasattr(self, "topic_edit") or not self.topic_edit.toPlainText().strip()):
             QMessageBox.warning(self, "Внимание", "Введите тему документа")
             return
 
-        if not self.selected_receivers:
+        if en("recipients") and not self.selected_receivers:
             QMessageBox.warning(self, "Внимание", "Выберите получателей документа")
             return
 
@@ -839,13 +994,13 @@ class DocumentDialog(QWidget):
             {
                 "type_id": type_id,
                 "direction": direction,
-                "title": self.topic_edit.toPlainText().strip(),
-                "about": self.regarding_edit.toPlainText().strip() if hasattr(self, "regarding_edit") else "",
-                "reg_number": self.number_edit.toPlainText().strip() if hasattr(self, "number_edit") else "",
-                "sender_id": sender_id,
-                "receiver_ids": self.selected_receivers,
-                "executor_ids": self.selected_executors,
-                "tags": self.selected_tags,
+                "title": self.topic_edit.toPlainText().strip() if en("title") else "",
+                "about": self.regarding_edit.toPlainText().strip() if en("about") else "",
+                "reg_number": self.number_edit.toPlainText().strip() if en("reg_number") else "",
+                "sender_id": sender_id if en("sender_id") else None,
+                "receiver_ids": self.selected_receivers if en("recipients") else [],
+                "executor_ids": self.selected_executors if en("executors") else [],
+                "tags": self.selected_tags if en("tag_ids") else [],
                 "global_msg_id": global_msg_id,
                 "needs_response": bool(
                     getattr(self, "needs_response_check", None) and self.needs_response_check.isChecked()
@@ -862,7 +1017,7 @@ class DocumentDialog(QWidget):
             }
         )
 
-        if hasattr(self, "date_deadline"):
+        if hasattr(self, "date_deadline") and en("deadline"):
             doc_data["deadline"] = self.date_deadline.date().toString("yyyy-MM-dd")
 
         print(f"[DocumentDialog] {self.mode} документ: {doc_data}")
@@ -926,8 +1081,6 @@ class DocumentDialog(QWidget):
 
         self.document_created.emit(created)
         self.close()
-
-    # ─────────────────── ПУБЛИЧНЫЕ СЕТТЕРЫ ───────────────────
 
     def set_organizations_data(self, organizations: list[dict]):
         self.organizations = organizations

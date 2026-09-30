@@ -100,6 +100,9 @@ class DocumentsTable(QWidget):
         self.context_menu_manager.delete_requested.connect(
             lambda doc: self.document_action_triggered.emit("delete", doc)
         )
+        self.context_menu_manager.archive_toggle_requested.connect(
+            lambda doc: self.document_action_triggered.emit("archive_toggle", doc)
+        )
         self.context_menu_manager.pin_toggle_requested.connect(lambda doc: self._controller.toggle_pin(doc.get("id")))
 
         self.read_status_changed.connect(self._controller.change_read_status)

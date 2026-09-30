@@ -6,6 +6,15 @@ from PyQt6.QtWidgets import QDialog, QMessageBox, QTimeEdit
 
 from client.core.themes import T, apply_theme_to_widget
 
+# ── Кастомный календарь (по аналогии с document_dialog.py) ──
+try:
+    from client.windows.date_edit import CustomCalendarDateEdit
+
+    _HAS_CUSTOM_DATE = True
+except ImportError as _e:
+    _HAS_CUSTOM_DATE = False
+    print(f"[OvertimeDialog] CustomCalendarDateEdit недоступен: {_e}")
+
 
 class OvertimeDialog(QDialog):
     def __init__(
@@ -32,6 +41,10 @@ class OvertimeDialog(QDialog):
 
         uic.loadUi(ui_path, self)
         apply_theme_to_widget(self)
+
+        # ── Заменяем стандартный календарь на кастомный ──
+        self._replace_date_edits()
+
         self.setModal(True)
         self.setWindowTitle("Оформление переработки" if not readonly else "Просмотр переработки")
         self._setup_time_edits()
@@ -44,6 +57,54 @@ class OvertimeDialog(QDialog):
         # Загружаем сотрудников для выбора (если есть сервис)
         if self.overtime_service and not readonly:
             self._load_employees()
+
+    # ─────────────────── ЗАМЕНА КАЛЕНДАРЯ ───────────────────
+
+    def _replace_date_edits(self):
+        """
+        Программно заменяет QDateEdit (dateEdit) на CustomCalendarDateEdit —
+        тот же QDateEdit, но с нашим попапом (по аналогии с document_dialog.py).
+
+        ВАЖНО: в overtime_dialog.ui dateEdit находится прямо в главном
+        verticalLayout (не в отдельном вложенном лейауте), поэтому
+        replaceWidget делаем через self.verticalLayout.
+        """
+        if not _HAS_CUSTOM_DATE:
+            print("[OvertimeDialog] Пропускаем замену календаря — CustomCalendarDateEdit нет")
+            return
+
+        old_widget = getattr(self, "dateEdit", None)
+        layout = getattr(self, "verticalLayout", None)
+
+        if old_widget is None or layout is None:
+            print("[OvertimeDialog] dateEdit: не найден widget или layout verticalLayout")
+            return
+
+        new_widget = CustomCalendarDateEdit(parent=self)
+
+        # ── переносим размеры/поведение из .ui ──
+        new_widget.setMinimumSize(old_widget.minimumSize())
+        new_widget.setMaximumSize(old_widget.maximumSize())
+        new_widget.setSizePolicy(old_widget.sizePolicy())
+
+        # ── переносим формат и значение ──
+        try:
+            new_widget.setDisplayFormat(old_widget.displayFormat())
+        except Exception:
+            new_widget.setDisplayFormat("dd.MM.yyyy")
+
+        try:
+            new_widget.setDate(old_widget.date())
+        except Exception:
+            new_widget.setDate(QDate.currentDate())
+
+        # ── заменяем в layout ──
+        layout.replaceWidget(old_widget, new_widget)
+        old_widget.setParent(None)
+        old_widget.deleteLater()
+
+        setattr(self, "dateEdit", new_widget)
+        print("[OvertimeDialog] dateEdit → CustomCalendarDateEdit")
 
     def _setup_time_edits(self):
         """Перенастраивает QTimeEdit: стрелки шагают на 30 минут, дефолты и дата = сегодня."""
@@ -69,6 +130,7 @@ class OvertimeDialog(QDialog):
             self.timeEnd.setTime(QTime(17, 0))
 
         if hasattr(self, "dateEdit"):
+            # dateEdit уже заменён на CustomCalendarDateEdit — setDate работает
             self.dateEdit.setDate(QDate.currentDate())
 
     def _create_ui_programmatically(self):
@@ -421,3 +483,11 @@ class OvertimeDialog(QDialog):
         """Обработчик отмены"""
         self.result_data = None
         super().reject()
+
+    # ─────────────────── ТЕМА ───────────────────
+
+    def reapply_theme(self):
+        """Переприменить тему (в т.ч. кастомный календарь)."""
+        apply_theme_to_widget(self)
+        if hasattr(self, "dateEdit") and hasattr(self.dateEdit, "reapply_theme"):
+            self.dateEdit.reapply_theme()

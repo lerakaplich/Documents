@@ -38,10 +38,34 @@ class DocumentsRowActionController:
             self._read_status(document_data, not is_read)
         elif action_type == "pin_toggle":
             self._pin_toggle(document_data)
+        elif action_type == "archive_toggle":
+            self._archive_toggle(document_data)
         else:
             print(f"[DocumentsPanel] Неизвестное действие: {action_type}")
 
     # ---------- удаление ----------
+
+    def _archive_toggle(self, document_data: dict):
+        """Архивирует или разархивирует документ в зависимости от текущего флага."""
+        panel = self.panel
+        doc_id = document_data.get("id")
+        if not doc_id:
+            return
+
+        is_archived = document_data.get("is_archived", False)
+
+        if is_archived:
+            success = panel.controller.unarchive_document(doc_id)
+            done_text = "восстановлен из архива"
+        else:
+            success = panel.controller.archive_document(doc_id)
+            done_text = "перемещён в архив"
+
+        if success:
+            panel.refresh()
+            QMessageBox.information(panel, "Успешно", f"Документ {done_text}")
+        else:
+            QMessageBox.warning(panel, "Ошибка", "Не удалось изменить статус архива")
 
     def _delete(self, document_data: dict):
         panel = self.panel

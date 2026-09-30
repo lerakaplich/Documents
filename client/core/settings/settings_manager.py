@@ -295,17 +295,22 @@ class SettingsManager:
         self.set(key, heights)
 
     def get_row_order_by_doc_type(self, doc_type: str | None = None) -> list:
-        """Получить порядок строк для типа документа"""
+        """Получить порядок строк для вида (без подстановки данных из default)"""
         doc_type = doc_type or self.get_current_document_type()
-
         key = self._get_type_key(SettingsKeys.ROW_ORDER_TYPE, doc_type)
-        order = self.get(key, None)
+        return self.get(key, [])
 
-        if order is not None:
-            return order
+    def get_pinned_by_doc_type(self, doc_type: str | None = None) -> list:
+        """Получить закреплённые документы вида (без подстановки данных из default)"""
+        doc_type = doc_type or self.get_current_document_type()
+        key = self._get_type_key(SettingsKeys.PINNED_TYPE, doc_type)
+        return self.get(key, [])
 
-        default_key = self._get_type_key(SettingsKeys.ROW_ORDER_TYPE, "default")
-        return self.get(default_key, [])
+    def get_hidden_rows_by_doc_type(self, doc_type: str | None = None) -> list:
+        """Получить скрытые строки вида (без подстановки данных из default)"""
+        doc_type = doc_type or self.get_current_document_type()
+        key = self._get_type_key(SettingsKeys.HIDDEN_ROWS_TYPE, doc_type)
+        return self.get(key, [])
 
     def set_row_order_by_doc_type(self, order: list, doc_type: str | None = None):
         """Сохранить порядок строк для типа документа"""
@@ -313,37 +318,11 @@ class SettingsManager:
         key = self._get_type_key(SettingsKeys.ROW_ORDER_TYPE, doc_type)
         self.set(key, order)
 
-    def get_pinned_by_doc_type(self, doc_type: str | None = None) -> list:
-        """Получить закрепленные документы для типа"""
-        doc_type = doc_type or self.get_current_document_type()
-
-        key = self._get_type_key(SettingsKeys.PINNED_TYPE, doc_type)
-        pinned = self.get(key, None)
-
-        if pinned is not None:
-            return pinned
-
-        default_key = self._get_type_key(SettingsKeys.PINNED_TYPE, "default")
-        return self.get(default_key, [])
-
     def set_pinned_by_doc_type(self, ids: list, doc_type: str | None = None):
         """Сохранить закрепленные документы для типа"""
         doc_type = doc_type or self.get_current_document_type()
         key = self._get_type_key(SettingsKeys.PINNED_TYPE, doc_type)
         self.set(key, ids)
-
-    def get_hidden_rows_by_doc_type(self, doc_type: str | None = None) -> list:
-        """Получить скрытые строки для типа документа"""
-        doc_type = doc_type or self.get_current_document_type()
-
-        key = self._get_type_key(SettingsKeys.HIDDEN_ROWS_TYPE, doc_type)
-        hidden = self.get(key, None)
-
-        if hidden is not None:
-            return hidden
-
-        default_key = self._get_type_key(SettingsKeys.HIDDEN_ROWS_TYPE, "default")
-        return self.get(default_key, [])
 
     def set_hidden_rows_by_doc_type(self, rows: list, doc_type: str | None = None):
         """Сохранить скрытые строки для типа документа"""

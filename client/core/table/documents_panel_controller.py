@@ -5,9 +5,26 @@ import math
 from client.core.data.document_data import DocumentDataConfig
 from client.core.data.document_mapper import map_documents_response
 from client.core.data.document_repository import document_repository
+from client.core.settings.settings_keys import SettingsKeys
+from client.core.settings.settings_manager import SettingsManager
+from client.services.doc_type_service import get_doc_type_service
 from client.services.document_service import DocumentService
 
 PAGE_SIZE = 50
+
+# Заголовок столбца → значение sort_by для GET /documents/documents/.
+# Столбцы, которых здесь нет (списки, теги, вложения…), не сортируются.
+# ⚠ Swagger не перечисляет допустимые значения sort_by — проверьте каждое
+# в Swagger и уберите те, что сервер не принимает.
+SORT_FIELDS = {
+    "Номер документа": "reg_number",
+    "Тема": "title",
+    "Дата создания": "created_at",
+    "Статус": "status",
+    "Срок исполнения": "deadline",
+    "Краткое содержание": "about",
+    "Направление": "direction",
+}
 
 
 class DocumentsPanelController:
@@ -47,10 +64,11 @@ class DocumentsPanelController:
         # Фильтры из меню «Фильтр»/«Статусы» — применяются на сервере и
         # сохраняются при переходе между типами/направлениями.
         self.filters = {
-            "scope": "all",  # "all" — все документы в БД, "my" — где я участник
-            "is_completed": None,  # True — только прочитанные, False — только непрочитанные
-            "status_filters": [],  # коды DocStatus
-            "date_from": None,  # ISO-строки yyyy-MM-dd
+            "scope": "all",
+            "is_completed": None,
+            "is_archived": None,  # ← НОВОЕ
+            "status_filters": [],
+            "date_from": None,
             "date_to": None,
         }
 
@@ -58,6 +76,25 @@ class DocumentsPanelController:
         self.page_size = PAGE_SIZE
         self.current_page = 1
         self.pagination = {"page": 1, "pages": 1, "total": 0}
+        # Сортировка (по умолчанию как на сервере: новые сверху)
+        self.sort_by = "created_at"
+        self.sort_order = "desc"
+
+        self.doc_type_service = get_doc_type_service(http_client)
+        self._doc_types: list[dict] = []
+
+    # ========== ТИПЫ ДОКУМЕНТОВ (для диалога создания) ==========
+
+    def refresh_doc_types(self) -> list[dict]:
+        """Перезагружает типы с сервером (id, name, fields, ...). Если запрос
+        не удался (сервис вернёт []), остаётся прежний кэш."""
+        types = self.doc_type_service.get_all_types()
+        if types:
+            self._doc_types = types
+        return self._doc_types
+
+    def get_document_types(self) -> list[dict]:
+        return self._doc_types or self.refresh_doc_types()
 
     # ========== ЗАГРУЗКА СПИСКА ДОКУМЕНТОВ (реальный API, постранично) ==========
 
@@ -67,6 +104,8 @@ class DocumentsPanelController:
 
         params = dict(filters)
         params.update(self._filter_params())
+        params["sort_by"] = self.sort_by
+        params["sort_order"] = self.sort_order
 
         def _request(p):
             return self.service.get_documents(
@@ -87,12 +126,24 @@ class DocumentsPanelController:
 
         self.current_page = page
         self.pagination = {"page": page, "pages": pages, "total": total}
-        return map_documents_response(response)
+
+        documents = map_documents_response(response)
+        # Сервер уже отфильтровал по is_archived, поэтому флаг известен точно
+        is_archive_view = params["is_archived"]
+        for d in documents:
+            d["is_archived"] = is_archive_view
+        return documents
 
     def _filter_params(self) -> dict:
-        """Параметры GET /documents/documents/ из текущих фильтров меню."""
+        """Архивные документы видны ТОЛЬКО в режиме архива, везде больше скрыты."""
         f = self.filters
-        params = {"scope": f["scope"]}
+        archive_mode = self.current_view_mode == "archive"
+
+        scope = "archive" if archive_mode else f["scope"]
+        if not archive_mode and scope == "archive":
+            scope = "all"
+
+        params = {"scope": scope, "is_archived": archive_mode}
         if f["is_completed"] is not None:
             params["is_completed"] = f["is_completed"]
         if f["status_filters"]:
@@ -103,15 +154,10 @@ class DocumentsPanelController:
             params["date_to"] = f["date_to"]
         return params
 
-    def set_filters(
-        self,
-        scope: str = "all",
-        is_completed=None,
-        status_filters=None,
-        date_from=None,
-        date_to=None,
-    ):
-        """Применяет фильтры и загружает страницу 1 текущего режима."""
+    def set_filters(self, scope="all", is_completed=None, status_filters=None,
+                    date_from=None, date_to=None, is_archived=None):
+        """is_archived оставлен в сигнатуре для совместимости и игнорируется:
+        архив определяется режимом просмотра (current_view_mode)."""
         self.filters = {
             "scope": scope or "all",
             "is_completed": is_completed,
@@ -124,28 +170,67 @@ class DocumentsPanelController:
     def _search_active(self) -> bool:
         return bool(self.current_query) and len(self.current_query) >= 3
 
+    def settings_key(self) -> str:
+        """Ключ локальных настроек таблицы (ширины, высоты строк, закрепления,
+        порядок строк). Свой у каждого вида:
+        «Все документы» → default, «Все типы» → external / internal,
+        тип → его id, архив → archive, поиск → search."""
+        if self._search_active():
+            return "search"
+        if self.current_view_mode == "archive":
+            return "archive"
+        if self.current_type_id is not None:
+            return str(self.current_type_id)
+        if self.current_direction is not None:
+            return self.current_direction
+        return "default"
+
     def _load_current(self, page: int):
-        """Загружает страницу текущего режима (поиск > тип > направление > все).
-        Возвращает (documents, title, view_mode, doc_type)."""
+        """Загружает страницу текущего режима.
+        Приоритет: поиск > архив > тип > направление > все.
+        Возвращает (documents, title, view_mode, doc_type), где doc_type — ключ
+        настроек вида (см. settings_key)."""
+        key = self.settings_key()
+
         if self._search_active():
             documents = self._fetch(page, search=self.current_query)
-            return documents, f"Поиск: {self.current_query}", "search", "default"
+            return documents, f"Поиск: {self.current_query}", "search", key
+
+        if self.current_view_mode == "archive":
+            documents = self._fetch(page)
+            return documents, self.current_title, "archive", key
 
         if self.current_type_id is not None:
             documents = self._fetch(page, type_id=self.current_type_id, direction=self.current_direction)
-            return documents, self.current_title, "type", str(self.current_type_id)
+            return documents, self.current_title, "type", key
 
         if self.current_direction is not None:
             documents = self._fetch(page, direction=self.current_direction)
-            direction = self.current_direction
-            doc_type = direction if direction in ["incoming", "outgoing", "internal"] else "default"
-            return documents, self.current_title, "direction", doc_type
+            return documents, self.current_title, "direction", key
 
         documents = self._fetch(page)
-        return documents, self.current_title, "all", "default"
+        return documents, self.current_title, "all", key
+
+    def toggle_sort(self, column_title: str):
+        """Клик по заголовку: тот же столбец — меняем направление, другой —
+        сортируем по возрастанию. Возвращает то же, что _load_current, либо
+        None, если по этому столбцу сортировка не поддерживается."""
+        field = SORT_FIELDS.get(column_title)
+        if field is None:
+            return None
+
+        # Ручной порядок строк (перетаскивание) не должен перебивать новую сортировку
+        SettingsManager().set_row_order_by_type([], self.settings_key())
+
+        if self.sort_by == field:
+            self.sort_order = "asc" if self.sort_order == "desc" else "desc"
+        else:
+            self.sort_by = field
+            self.sort_order = "asc"
+        return self._load_current(1)
 
     def load_all_documents(self):
-        """Загружает все документы (страница 1), обновляет состояние."""
+        self.filters["scope"] = "all"
         self.current_type_id = None
         self.current_direction = None
         self.current_query = ""
@@ -154,14 +239,9 @@ class DocumentsPanelController:
         return self._load_current(1)
 
     def load_documents_by_type(self, type_id: int, title: str | None = None, direction: str | None = None):
-        """Загружает документы по типу (страница 1).
-
-        `title` — имя типа, если оно уже известно вызывающей стороне (LeftPanel
-        передаёт его вместе с type_id). Иначе f"Тип {type_id}".
-        `direction` — "internal"/"external", если тип выбран внутри группы
-        направления: тогда показываются только документы этого направления,
-        а набор столбцов запоминается отдельно для пары «тип + направление».
-        """
+        self.refresh_doc_types()  # ← подгружаем типы вместе с полями при переходе на вкладку
+        self.filters["scope"] = "all"
+        self.filters["is_archived"] = None  # ← НОВОЕ
         self.current_type_id = type_id
         self.current_direction = direction
         self.current_query = ""
@@ -170,7 +250,8 @@ class DocumentsPanelController:
         return self._load_current(1)
 
     def load_documents_by_direction(self, direction: str, title: str | None = None):
-        """Загружает документы по направлению (internal/external), страница 1."""
+        self.filters["scope"] = "all"  # ← НОВОЕ
+        self.filters["is_archived"] = None  # ← НОВОЕ
         self.current_direction = direction
         self.current_type_id = None
         self.current_query = ""
@@ -178,6 +259,17 @@ class DocumentsPanelController:
         if title is None:
             title = DocumentDataConfig.DIRECTION_MAPPING.get(direction, direction)
         self.current_title = title
+        return self._load_current(1)
+
+    def load_archived_documents(self):
+        """Загружает персональный архив текущего пользователя (scope='archive')."""
+        self.filters["scope"] = "archive"
+        self.filters["is_archived"] = True
+        self.current_type_id = None
+        self.current_direction = None
+        self.current_query = ""
+        self.current_title = "Архив"
+        self.current_view_mode = "archive"
         return self._load_current(1)
 
     def search_documents(self, query: str):
@@ -256,6 +348,24 @@ class DocumentsPanelController:
         """Бизнес-логика выполнения перенаправления документа"""
         print(f"[Controller] Redirecting doc {document_id} to {recipient_ids} with comment: {comment}")
         return True
+
+    def archive_document(self, document_id: int) -> bool:
+        """Архивирует документ для текущего пользователя."""
+        try:
+            self.service.archive_document(document_id)
+            return True
+        except Exception as e:
+            print(f"[Controller] Error archiving document {document_id}: {e}")
+            return False
+
+    def unarchive_document(self, document_id: int) -> bool:
+        """Разархивирует документ для текущего пользователя."""
+        try:
+            self.service.unarchive_document(document_id)
+            return True
+        except Exception as e:
+            print(f"[Controller] Error unarchiving document {document_id}: {e}")
+            return False
 
     def get_full_document_for_comment(self, document_data: dict) -> dict:
         """Готовит полную информацию о документе для диалога комментариев"""

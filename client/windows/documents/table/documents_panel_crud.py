@@ -90,14 +90,17 @@ class DocumentsCrudController:
     def open_create_dialog(self):
         panel = self.panel
         try:
+            controller = panel.controller
             dialog = DocumentDialog(
                 parent=panel,
                 mode="create",
-                current_user=panel.controller.get_current_user(),
+                current_user=controller.get_current_user(),
                 organizations=self._organizations(),
                 departments=self._departments(),
                 employees=self._employees(),
                 tags=self._tags(),
+                document_types=controller.get_document_types(),
+                initial_type_id=controller.current_type_id,
                 http_client=panel.http_client,
             )
             dialog.document_created.connect(self._on_created)

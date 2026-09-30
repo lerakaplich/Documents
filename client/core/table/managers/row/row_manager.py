@@ -147,7 +147,8 @@ class RowManager(QObject):
             doc_id = doc.get("id")
             doc["is_pinned"] = doc_id in pinned_ids
 
-        # Применяем порядок
+        # Применяем порядок (закреплённые сверху, остальные — как пришли с сервера
+        # либо в порядке, заданном пользователем вручную)
         sorted_documents = self._order_manager.apply_order(documents, pinned_ids)
 
         # Обновляем данные
@@ -158,10 +159,6 @@ class RowManager(QObject):
 
         if self._updater:
             self._updater.force_update()
-
-        # Сохраняем порядок
-        order_ids = [d.get("id") for d in sorted_documents if d.get("id") is not None]
-        self._order_manager.save_order(order_ids)
 
     # В методе set_doc_type:
 

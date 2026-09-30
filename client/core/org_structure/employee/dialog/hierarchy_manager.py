@@ -424,25 +424,21 @@ class HierarchyManager:
                     self.leader_checkbox.setText(f"Является руководителем {level_name}")
             else:
                 prev_level = len(self.hierarchy_combos) - 2
-                if prev_level >= 0:
-                    level_name = self.get_level_name(prev_level).lower()
-                    if prev_level < len(self.current_hierarchy_path):
-                        prev_id = self.current_hierarchy_path[prev_level]
-                        item_name = self.get_item_name(prev_id)
-                        if item_name:
-                            self.leader_checkbox.setText(
-                                f"Является руководителем «{item_name}»"
-                            )
-                        else:
-                            self.leader_checkbox.setText(
-                                f"Является руководителем {level_name}"
-                            )
-                    else:
-                        self.leader_checkbox.setText(
-                            f"Является руководителем {level_name}"
-                        )
+                level_name = self.get_level_name(prev_level).lower()
+                prev_id = (
+                    self.current_hierarchy_path[prev_level]
+                    if prev_level < len(self.current_hierarchy_path)
+                    else None
+                )
+                item_name = self.get_item_name(prev_id) if prev_id else None
+                if item_name:
+                    self.leader_checkbox.setText(
+                        f"Является руководителем «{item_name}»"
+                    )
                 else:
-                    self.leader_checkbox.setText("Является руководителем организации")
+                    self.leader_checkbox.setText(
+                        f"Является руководителем {level_name}"
+                    )
         else:
             org_id = self.current_hierarchy_path[0]
             org_name = self.get_item_name(org_id)

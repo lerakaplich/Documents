@@ -19,9 +19,6 @@
         fill="none" stroke="white" stroke-width="2.5"/>
   <rect x="44" y="64" width="8" height="8" rx="1.5"
         fill="none" stroke="white" stroke-width="2.5"/>
-  <!-- Дверь -->
-  <rect x="50" y="73" width="10" height="12" rx="1.5"
-        fill="none" stroke="white" stroke-width="2.5"/>
   <!-- Окна пристройки -->
   <rect x="68" y="55" width="7" height="7" rx="1.5"
         fill="none" stroke="white" stroke-width="2.5"/>

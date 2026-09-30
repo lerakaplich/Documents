@@ -54,7 +54,7 @@ class DocumentService:
         tag_ids: list[int] | None = None,
         status_filters: list[str] | None = None,
         is_completed: bool | None = None,
-        is_archived: bool | None = None,
+        is_archived: bool | None = False,
         date_from: str | None = None,
         date_to: str | None = None,
         sort_by: str = "created_at",
@@ -294,6 +294,14 @@ class DocumentService:
             f"/documents/workflow/{document_id}/toggle-completion",
             json={"is_completed": is_completed},
         )
+
+    def archive_document(self, document_id: int) -> None:
+        """POST /documents/workflow/{id}/archive — в персональный архив."""
+        self.client.post(f"/documents/workflow/{document_id}/archive")
+
+    def unarchive_document(self, document_id: int) -> None:
+        """DELETE /documents/workflow/{id}/archive — из персонального архива."""
+        self.client.delete(f"/documents/workflow/{document_id}/archive")
 
     def get_document_history(self, document_id: int) -> list:
         """GET /documents/{document_id}/history — сквозная история документа."""

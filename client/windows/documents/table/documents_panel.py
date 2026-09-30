@@ -17,13 +17,14 @@
 import os
 import sys
 
-from PyQt6.QtCore import QTimer, pyqtSignal
+from PyQt6.QtCore import QTimer, pyqtSignal, Qt
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
 from PyQt6.uic import loadUi
 
 from client.core.state.app_state import AppState
-from client.core.table.documents_panel_controller import DocumentsPanelController
-from client.core.themes import apply_theme_to_widget
+from client.core.table.documents_panel_controller import DocumentsPanelController, SORT_FIELDS
+from client.core.themes import apply_theme_to_widget, get_manager
 from client.windows.animations.floating_action_button import FloatingActionButton
 from client.windows.documents.table.documents_pagination_manager import (
     DocumentsPaginationManager,
@@ -39,6 +40,7 @@ from client.windows.documents.table.documents_panel_row_actions import (
     DocumentsRowActionController,
 )
 from client.windows.documents.table.documents_table import DocumentsTable
+from client.windows.documents.table.sort_icons import sort_icon
 
 ROOT_DIR = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -123,6 +125,82 @@ class DocumentsPanel(QWidget):
         self.pagination = DocumentsPaginationManager()
         self.pagination.setup_bar(target_layout, self._change_page)
 
+        # Сортировка по клику на заголовок — на сервере, локальную выключаем
+        table = self.documents_table.tableWidget
+        table.setSortingEnabled(False)
+        header = table.horizontalHeader()
+        header.setSectionsClickable(True)
+        header.sectionClicked.connect(self._on_header_clicked)
+
+    def _update_table(
+            self,
+            documents: list,
+            doc_type: str | None = None,
+            title: str | None = None,
+            view_mode: str | None = None,
+    ):
+        """Обновить UI-компонент таблицы. Вызывается и помощниками
+        (columns/filters), поэтому остаётся в самой панели, а не переезжает
+        вместе с ними — это единственная точка, которая реально трогает
+        таблицу, пагинацию и раскладку столбцов разом."""
+        try:
+            doc_type = doc_type or "default"
+            view_mode = view_mode or self.controller.current_view_mode or "all"
+
+            self.documents_table._controller.switch_doc_type(doc_type, documents, view_mode)
+
+            if title and hasattr(self, "labelTitle"):
+                self.labelTitle.setText(title)
+
+            self.pagination.update(self.controller.pagination)
+            self.columns.apply_layout()
+            self._update_sort_indicator()
+
+        except Exception as e:
+            print(f"[DocumentsPanel] Error updating table: {e}")
+            import traceback
+
+            traceback.print_exc()
+
+    def _on_header_clicked(self, col: int):
+        """Клик по заголовку столбца → серверная сортировка."""
+        item = self.documents_table.tableWidget.horizontalHeaderItem(col)
+        if item is None:
+            return
+        result = self.controller.toggle_sort(item.text())
+        if result is None:
+            return  # по этому столбцу сортировка не поддерживается
+        documents, title, view_mode, doc_type = result
+        self._update_table(documents, doc_type, title, view_mode)
+        self.documents_table.tableWidget.scrollToTop()
+
+    def _update_sort_indicator(self):
+        """Иконки сортировки в заголовках: ⇅ у сортируемых, ▲/▼ у активного."""
+        table = self.documents_table.tableWidget
+        header = table.horizontalHeader()
+        header.setSortIndicatorShown(False)  # системная стрелка не нужна
+
+        color = get_manager().current.TABLE_HEADER_TEXT
+        active = self.controller.sort_by
+        asc = self.controller.sort_order == "asc"
+
+        for col in range(table.columnCount()):
+            item = table.horizontalHeaderItem(col)
+            if item is None:
+                continue
+            field = SORT_FIELDS.get(item.text())
+            if field is None:
+                item.setIcon(QIcon())
+                continue
+            kind = ("asc" if asc else "desc") if field == active else "none"
+            item.setIcon(sort_icon(kind, color))
+        header.viewport().update()
+
+    def reapply_theme(self):
+        apply_theme_to_widget(self)
+        self.pagination.reapply_theme()
+        self._update_sort_indicator()
+
     def _init_floating_button(self):
         self.floating_btn = FloatingActionButton(self)
         self.floating_btn.clicked.connect(self.crud.open_create_dialog)
@@ -203,39 +281,11 @@ class DocumentsPanel(QWidget):
 
     def load_archived_documents(self):
         """Загружает архивные документы текущего пользователя (scope='archive')."""
-        self.controller.set_filters(scope="archive")
-        documents, _title, view_mode, doc_type = self.controller._load_current(1)
-        self._update_table(documents, doc_type, "Архив", view_mode)
+        documents, title, view_mode, doc_type = self.controller.load_archived_documents()
+        self._update_table(documents, doc_type, title, view_mode)
         self.data_loaded.emit(len(documents))
 
-    def _update_table(
-        self,
-        documents: list,
-        doc_type: str | None = None,
-        title: str | None = None,
-        view_mode: str | None = None,
-    ):
-        """Обновить UI-компонент таблицы. Вызывается и помощниками
-        (columns/filters), поэтому остаётся в самой панели, а не переезжает
-        вместе с ними — это единственная точка, которая реально трогает
-        таблицу, пагинацию и раскладку столбцов разом."""
-        try:
-            doc_type = doc_type or "default"
-            view_mode = view_mode or self.controller.current_view_mode or "all"
 
-            self.documents_table._controller.switch_doc_type(doc_type, documents, view_mode)
-
-            if title and hasattr(self, "labelTitle"):
-                self.labelTitle.setText(title)
-
-            self.pagination.update(self.controller.pagination)
-            self.columns.apply_layout()
-
-        except Exception as e:
-            print(f"[DocumentsPanel] Error updating table: {e}")
-            import traceback
-
-            traceback.print_exc()
 
     def _change_page(self, delta: int):
         """◀ / ▶ в панели пагинации."""
@@ -264,9 +314,6 @@ class DocumentsPanel(QWidget):
 
     # ========== ТЕМА / ПРОЧЕЕ ==========
 
-    def reapply_theme(self):
-        apply_theme_to_widget(self)
-        self.pagination.reapply_theme()
 
     def update_title(self, title):
         if hasattr(self, "labelTitle"):
