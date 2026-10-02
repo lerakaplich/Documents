@@ -239,5 +239,43 @@ class SettingsTab(QWidget):
     # ─────────────────────────────────────────────
     # Смена пароля (заглушка)
 
+    # ─────────────────────────────────────────────
+    # Смена пароля
+
     def on_change_password(self):
-        self.notification_manager.show_notification("Смена пароля будет добавлена позже", duration=3000)
+        """Открывает диалог смены пароля."""
+        from client.windows.settings.user_data.new_password_window import NewPasswordWindow
+
+        self._relogin_ok = True
+        dialog = NewPasswordWindow(self._change_password_request, parent=self)
+        if not dialog.exec():
+            return
+
+        if self._relogin_ok:
+            self.notification_manager.show_notification("Пароль изменён", duration=3000)
+        else:
+            self.notification_manager.show_notification("Пароль изменён. Войдите в систему заново", duration=4000)
+            self.logout_requested.emit()
+
+    def _change_password_request(self, old_password: str, new_password: str):
+        """Меняет пароль на сервере. Исключение → диалог покажет ошибку и останется открытым."""
+        from client.core.settings.settings_manager import SettingsManager
+        from client.core.state.app_state import AppState
+
+        auth = AppState().auth_service
+        auth.change_password(old_password, new_password)
+
+        # Сервер после смены пароля закрывает ВСЕ сессии пользователя,
+        # включая текущую, поэтому входим заново, чтобы получить свежие токены.
+        session = SettingsManager().get_auth_session()
+        digits = "".join(filter(str.isdigit, self.phoneValue.text()))
+        phone = session.get("phone") or (f"+{digits}" if digits else "")
+        remember_me = bool(session.get("phone"))
+
+        try:
+            if not phone:
+                raise RuntimeError("не удалось определить номер телефона")
+            auth.login(phone, new_password, remember_me)
+        except Exception:
+            logger.exception("Не удалось перелогиниться после смены пароля")
+            self._relogin_ok = False

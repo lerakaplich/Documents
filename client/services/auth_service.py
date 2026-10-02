@@ -134,7 +134,7 @@ class AuthService:
             self.client.post(
                 "/auth/change-password",
                 json={
-                    "current_password": current_password,
+                    "old_password": current_password,  # ← было current_password
                     "new_password": new_password,
                 },
             )
