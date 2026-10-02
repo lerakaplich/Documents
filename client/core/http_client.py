@@ -62,7 +62,7 @@ class HttpClient:
         self.base_url = _normalize_base_url(base_url)
         self.session = requests.Session()
         # Пул соединений: клиент ходит параллельно (ThreadPoolExecutor в загрузчиках)
-        adapter = HTTPAdapter(pool_connections=4, pool_maxsize=16)
+        adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 

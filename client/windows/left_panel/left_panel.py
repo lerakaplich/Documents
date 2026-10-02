@@ -67,6 +67,8 @@ class LeftPanel(QWidget):
             _t = get_manager().current
             self.setStyleSheet(f"QWidget#LeftPanel {{ background-color: {_t.SIDEBAR_BG}; }}")
 
+        self.setFixedWidth(self.EXPANDED_WIDTH)
+
         # Настройка иконок для всех кнопок (унифицированный размер 20x20)
         self.setup_icons()
         self._apply_button_styles()

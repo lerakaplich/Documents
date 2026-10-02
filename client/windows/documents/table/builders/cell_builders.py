@@ -351,9 +351,7 @@ class AttachmentCellBuilder:
             file_name = attachment.get("file_name") or attachment.get("name") or "Без имени"
             file_icon = "📄" if not file_name.lower().endswith(".pdf") else "📕"
             action = QAction(f"{file_icon} {file_name}", menu)
-            action.triggered.connect(
-                lambda checked, a=attachment, d=document: self.signals.attachment_clicked.emit(d, a)
-            )
+            action.triggered.connect(lambda checked, a=attachment, d=document: self._open_attachment(d, a))
             menu.addAction(action)
 
         menu.addSeparator()
@@ -362,6 +360,23 @@ class AttachmentCellBuilder:
         menu.addAction(add_action)
 
         menu.exec(button.mapToGlobal(button.rect().bottomLeft()))
+
+    def _open_attachment(self, document: dict, attachment: dict):
+        """TIFF/PDF открываем в окне просмотра (каждое вложение — своё окно, можно несколько
+        сразу); остальные типы и работа без сервиса — прежним сигналом attachment_clicked."""
+        from client.windows.documents.table.widgets.attachment_viewer import (
+            is_viewable,
+            open_attachment_viewer,
+        )
+
+        file_name = attachment.get("file_name") or attachment.get("name")
+        if self.attachment_service is not None and is_viewable(file_name):
+            try:
+                open_attachment_viewer(self.attachment_service, document, attachment)
+                return
+            except Exception as e:  # noqa: BLE001
+                logger.exception(f"Не удалось открыть просмотрщик: {e}")
+        self.signals.attachment_clicked.emit(document, attachment)
 
     def _fetch_attachments(self, document: dict) -> list:
         """Получить реальный список вложений документа (по клику, не заранее)."""

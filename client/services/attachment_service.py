@@ -8,15 +8,10 @@
 тем, как router documents.py с prefix="/documents" превращается в
 итоговый "/documents/documents"). Отсюда base_path = "/documents/attachments".
 
-ВАЖНО — то, что сервер УМЕЕТ, но клиент пока не использует:
-  GET  /{attach_id}/page/{page_num} — отдаёт JPEG-страницу (StreamingResponse),
-  а не JSON. Текущий HttpClient._request() всегда делает response.json(),
-  поэтому вызвать этот эндпоинт им нельзя как есть — нужен отдельный метод
-  вроде HttpClient.get_binary(), которого сейчас нет. Полноценный просмотр
-  многостраничных TIFF/PDF вложений (постранично) поэтому не реализован —
-  сделан только список вложений и получение числа страниц (get_page_count),
-  этого достаточно, чтобы показать пользователю, что вложение есть и сколько
-  в нём страниц, без самого превью.
+Просмотр вложений: GET /{attach_id}/page/{page_num} отдаёт JPEG-страницу
+  (нумерация с 1), get_page_image() забирает её байтами через
+  HttpClient.get_binary(); число страниц — get_page_count(). Окно просмотра —
+  client/windows/documents/table/widgets/attachment_viewer.py.
 
   У ответа get_attachments() поле "preview_url" (см. AttachmentService.
   get_attachments_info на сервере: f"/attachments/{{id}}/preview") ссылается
@@ -86,8 +81,7 @@ class AttachmentService:
     def get_page_count(self, attachment_id: int) -> int | None:
         """
         GET /documents/attachments/{attach_id}/info — число страниц вложения
-        (для TIFF/сканов). Полный постраничный просмотр не реализован — см.
-        предупреждение вверху файла.
+        (для TIFF/PDF). None — если получить не удалось.
         """
         try:
             r = self.client.get(f"{self.base_path}/{attachment_id}/info")
@@ -95,6 +89,14 @@ class AttachmentService:
         except Exception as e:
             logger.exception(f"❌ get_page_count(attachment_id={attachment_id}): {e}")
             return None
+
+
+    def get_page_image(self, attachment_id: int, page: int) -> bytes:
+        """
+        GET /documents/attachments/{attach_id}/page/{page} — JPEG страницы (page с 1).
+        Бросает исключение при ошибке: окно просмотра показывает её пользователю.
+        """
+        return self.client.get_binary(f"{self.base_path}/{attachment_id}/page/{page}")
 
 
 # Синглтон — по аналогии с get_doc_type_service
