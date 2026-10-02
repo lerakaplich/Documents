@@ -14,6 +14,10 @@ from client.windows.documents.menus.column_menu import ColumnsMenu
 # Служебные столбцы: всегда скрыты и не показываются в меню «Столбцы»
 ALWAYS_HIDDEN = {"ID"}
 
+# «Направление» показываем только на страницах «Все документы» и «Архив»
+DIRECTION_COLUMN = "Направление"
+DIRECTION_VIEWS = {"all", "archive"}
+
 class DocumentsColumnController:
     def __init__(self, panel):
         self.panel = panel
@@ -53,9 +57,13 @@ class DocumentsColumnController:
     # ---------- публичное API, вызывается из DocumentsPanel ----------
 
     def _forced_hidden(self) -> set:
-        """Столбцы, скрытые всегда: служебные + выключенные у текущего типа."""
+        """Столбцы, скрытые всегда: служебные + выключенные у текущего типа +
+        «Направление» везде, кроме «Все документы» и «Архив»."""
         table_controller = self.panel.documents_table._controller
-        return ALWAYS_HIDDEN | table_controller.get_type_hidden_columns()
+        forced = ALWAYS_HIDDEN | table_controller.get_type_hidden_columns()
+        if self.panel.controller.current_view_mode not in DIRECTION_VIEWS:
+            forced = forced | {DIRECTION_COLUMN}
+        return forced
 
     def apply_layout(self):
         """Применяет видимость столбцов текущего вида и обновляет меню «Столбцы».

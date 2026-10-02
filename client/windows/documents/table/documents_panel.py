@@ -25,6 +25,7 @@ from PyQt6.uic import loadUi
 from client.core.state.app_state import AppState
 from client.core.table.documents_panel_controller import DocumentsPanelController, SORT_FIELDS
 from client.core.themes import apply_theme_to_widget, get_manager
+from client.services.doc_type_service import doc_type_events
 from client.windows.animations.floating_action_button import FloatingActionButton
 from client.windows.documents.table.documents_pagination_manager import (
     DocumentsPaginationManager,
@@ -89,6 +90,9 @@ class DocumentsPanel(QWidget):
         self.filters = DocumentsFilterController(self)
         self.crud = DocumentsCrudController(self)
         self.row_actions = DocumentsRowActionController(self)
+
+        # Тип документа создан/изменён/удалён → перечитать типы и перестроить таблицу
+        doc_type_events.types_changed.connect(self._on_types_changed)
 
         if hasattr(self, "statsBtn"):
             self.statsBtn.clicked.connect(self._show_unanswered_stats)
@@ -252,11 +256,6 @@ class DocumentsPanel(QWidget):
             self.floating_btn.update_base_position(x, y)
             self.floating_btn.raise_()
 
-    def on_scroll(self, value):
-        if hasattr(self, "floating_btn"):
-            self.floating_btn.hide_with_animation()
-            self.floating_btn.start_hide_timer()
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.position_floating_button()
@@ -306,6 +305,14 @@ class DocumentsPanel(QWidget):
         documents, title, view_mode, doc_type = self.controller.change_page(delta)
         self._update_table(documents, doc_type, title, view_mode)
         self.documents_table.tableWidget.scrollToTop()
+
+    def _on_types_changed(self):
+        """Типы документов изменились (поля, список) — обновляем кэш типов и таблицу."""
+        try:
+            self.controller.refresh_doc_types()
+            self.refresh()
+        except Exception as e:
+            print(f"[DocumentsPanel] Error on types_changed: {e}")
 
     def refresh(self):
         """Перезагрузить текущую страницу через контроллер"""
