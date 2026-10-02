@@ -3,7 +3,8 @@ import sys
 
 from PyQt6 import QtCore, QtWidgets, uic
 
-from client.core.themes import get_manager, get_message_box_style
+from client.core.themes import get_manager
+from client.windows.animations.animated_notification import NotificationManager
 
 
 class PhoneEditWindow(QtWidgets.QDialog):
@@ -21,6 +22,9 @@ class PhoneEditWindow(QtWidgets.QDialog):
         uic.loadUi(ui_path, self)
 
         self._apply_styles()
+
+        # Всплывающие уведомления: внизу главного окна по центру
+        self.notification_manager = NotificationManager.for_dialog(self)
 
         # Жёсткая маска: '+' зафиксирован, разрешены только 12 цифр
         self.phoneInput.setInputMask("+375 (99) 999-99-99;_")
@@ -96,11 +100,8 @@ class PhoneEditWindow(QtWidgets.QDialog):
         cleaned = "".join(filter(str.isdigit, raw_phone))
 
         if len(cleaned) != 12:
-            msg_box = QtWidgets.QMessageBox(self)
-            msg_box.setWindowTitle("Ошибка")
-            msg_box.setText("Номер телефона должен содержать ровно 12 цифр")
-            msg_box.setStyleSheet(get_message_box_style())
-            msg_box.exec()
+            self.notification_manager.show_notification("Номер телефона должен содержать ровно 12 цифр", duration=3000)
+            self.phoneInput.setFocus()
             return
 
         # Отправляем С ПЛЮСОМ — так сервер принимает

@@ -3,7 +3,8 @@ import sys
 
 from PyQt6 import QtCore, QtWidgets, uic
 
-from client.core.themes import get_manager, get_message_box_style
+from client.core.themes import get_manager
+from client.windows.animations.animated_notification import NotificationManager
 
 
 class EmailEditWindow(QtWidgets.QDialog):
@@ -21,6 +22,9 @@ class EmailEditWindow(QtWidgets.QDialog):
         uic.loadUi(ui_path, self)
 
         self._apply_styles()
+
+        # Всплывающие уведомления: внизу главного окна по центру
+        self.notification_manager = NotificationManager.for_dialog(self)
 
         self.emailInput.setText(current_email)
 
@@ -87,11 +91,8 @@ class EmailEditWindow(QtWidgets.QDialog):
         email = self.emailInput.text().strip()
 
         if email and "@" not in email:
-            msg_box = QtWidgets.QMessageBox(self)
-            msg_box.setWindowTitle("Ошибка")
-            msg_box.setText("Введите корректный email адрес (с @)")
-            msg_box.setStyleSheet(get_message_box_style())
-            msg_box.exec()
+            self.notification_manager.show_notification("Введите корректный email адрес (с @)", duration=3000)
+            self.emailInput.setFocus()
             return
 
         self.email_updated.emit(email)

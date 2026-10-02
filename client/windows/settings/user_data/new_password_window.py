@@ -7,7 +7,8 @@ from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtCore import QByteArray, Qt
 from PyQt6.QtSvg import QSvgRenderer
 
-from client.core.themes import get_manager, get_message_box_style
+from client.core.themes import get_manager
+from client.windows.animations.animated_notification import NotificationManager
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,9 @@ class NewPasswordWindow(QtWidgets.QDialog):
 
         self._apply_styles()
         self._update_eye_icons()
+
+        # Всплывающие уведомления: внизу главного окна по центру
+        self.notification_manager = NotificationManager.for_dialog(self)
 
         self.saveButton.setDefault(True)  # Enter = «Сохранить»
         self.saveButton.clicked.connect(self.save_password)
@@ -200,11 +204,7 @@ class NewPasswordWindow(QtWidgets.QDialog):
         return None
 
     def _show_error(self, text: str):
-        msg_box = QtWidgets.QMessageBox(self)
-        msg_box.setWindowTitle("Ошибка")
-        msg_box.setText(text)
-        msg_box.setStyleSheet(get_message_box_style())
-        msg_box.exec()
+        self.notification_manager.show_notification(text, duration=4000)
 
     def save_password(self):
         old = self.oldPasswordInput.text()
