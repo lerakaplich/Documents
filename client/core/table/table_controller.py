@@ -6,17 +6,11 @@ from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 
 from client.core.table.table_builder import TableBuilder
 from client.core.table.table_icon_updater import TableIconUpdater
+from client.core.table.type_columns import disabled_columns
+
+
 # Столбец → ключи поля типа (серверные и из диалога типа), которые его включают
-FIELD_COLUMNS = {
-    "Тема": ("title", "subject"),
-    "Краткое содержание": ("about", "regarding"),
-    "Отправители": ("sender_id", "from_who"),
-    "Получатели": ("recipients", "to_who"),
-    "Исполнители": ("executors", "executor"),
-    "Хэштеги": ("tag_ids", "tag_id"),
-    "Дата создания": ("sent_date", "send_date"),
-    "Срок исполнения": ("deadline",),
-}
+
 
 
 class TableController(QObject):
@@ -78,39 +72,37 @@ class TableController(QObject):
         self._icon_updater.update_pin_icon(document_id, is_pinned, self._find_reg_number_column())
 
     def _get_columns_config(self, doc_type: str, view_mode: str) -> dict:
-        base_columns = {
-            0: "ID",
-            # 1: "Прочитано",   ← УДАЛЕНО
-            2: "Номер документа",
-            3: "Тема",
-            5: "Дата создания",
-            6: "Статус",
-            8: "Отправители",
-            9: "Получатели",
-            10: "Исполнители",
-            11: "Делегаты",
-            12: "Хэштеги",
-            13: "Комментарии",
-            14: "Вложение",
-            15: "Ответ",
-            16: "Краткое содержание",
-            17: "Срок исполнения",
-        }
+        """Набор столбцов одинаков для всех видов — у типа меняется только видимость
+        (см. get_type_hidden_columns). Новые столбцы добавлены в конец, чтобы
+        сохранённые ширины и порядок остались на своих местах."""
+        names = [
+            "ID",
+            "Номер документа",
+            "Тема",
+            "Дата создания",
+            "Статус",
+            "Отправители",
+            "Получатели",
+            "Исполнители",
+            "Делегаты",
+            "Хэштеги",
+            "Комментарии",
+            "Вложение",
+            "Ответ",
+            "Краткое содержание",
+            "Срок исполнения",
+            "Порядковый номер",
+            "Направление",
+        ]
+        return dict(enumerate(names))
 
-        columns_config = dict(sorted(base_columns.items()))
-
-        # doc_type — ключ вида: число = id типа; остальное (default, archive,
-        # external, internal, search) — полный набор столбцов
-        if str(doc_type).isdigit():
-            fields = self._get_type_fields(int(doc_type))
-            if isinstance(fields, dict) and fields:
-                columns_config = {
-                    idx: name
-                    for idx, name in columns_config.items()
-                    if name not in FIELD_COLUMNS or any(fields.get(k) for k in FIELD_COLUMNS[name])
-                }
-
-        return columns_config
+    def get_type_hidden_columns(self) -> set:
+        """Столбцы, выключенные в настройках текущего типа документа.
+        В таблице они остаются (нужны для данных строки), но скрыты и в меню
+        «Столбцы» не показываются."""
+        if not str(self._current_doc_type).isdigit():
+            return set()
+        return disabled_columns(self._get_type_fields(int(self._current_doc_type)))
 
     def _get_type_fields(self, type_id: int) -> dict:
         """Поля типа документа (dict). Кэшируется; неудачный запрос (например,

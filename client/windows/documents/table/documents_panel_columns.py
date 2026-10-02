@@ -52,20 +52,26 @@ class DocumentsColumnController:
 
     # ---------- публичное API, вызывается из DocumentsPanel ----------
 
+    def _forced_hidden(self) -> set:
+        """Столбцы, скрытые всегда: служебные + выключенные у текущего типа."""
+        table_controller = self.panel.documents_table._controller
+        return ALWAYS_HIDDEN | table_controller.get_type_hidden_columns()
+
     def apply_layout(self):
-        """Применяет сохранённую видимость столбцов текущего вида и обновляет меню.
+        """Применяет видимость столбцов текущего вида и обновляет меню «Столбцы».
         Вызывается после каждой перестройки таблицы; выставляет видимость ВСЕХ
         столбцов явно, поэтому состояние прошлого вида не «протекает»."""
         table = self.panel.documents_table.tableWidget
         names = self._column_names()
-        user_names = [n for n in names if n not in ALWAYS_HIDDEN]
+        forced = self._forced_hidden()
+        user_names = [n for n in names if n not in forced]
 
-        hidden = (set(self.settings.get_hidden(self._view_key())) & set(names)) - ALWAYS_HIDDEN
+        hidden = (set(self.settings.get_hidden(self._view_key())) & set(names)) - forced
         if user_names and len(hidden) >= len(user_names):
             hidden = set()  # нельзя скрыть всё
 
         for col, name in enumerate(names):
-            table.setColumnHidden(col, name in hidden or name in ALWAYS_HIDDEN)
+            table.setColumnHidden(col, name in hidden or name in forced)
 
         if self.menu is not None:
             self.menu.populate(user_names, hidden)
@@ -73,7 +79,10 @@ class DocumentsColumnController:
     def _save_hidden(self):
         table = self.panel.documents_table.tableWidget
         names = self._column_names()
-        hidden = [names[c] for c in range(len(names)) if table.isColumnHidden(c) and names[c] not in ALWAYS_HIDDEN]
+        forced = self._forced_hidden()
+        # скрытые типом/служебные столбцы в настройки пользователя не пишем —
+        # иначе они не вернулись бы, когда тип снова включит поле
+        hidden = [names[c] for c in range(len(names)) if table.isColumnHidden(c) and names[c] not in forced]
         self.settings.set_hidden(self._view_key(), hidden)
 
     def _on_toggled(self, name: str, visible: bool):

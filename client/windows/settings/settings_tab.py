@@ -1,8 +1,10 @@
 # client/windows/settings/settings_tab.py
 
+import logging
 import os
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import QSize, QUrl, pyqtSignal
+from PyQt6.QtGui import QDesktopServices, QIcon, QPixmap
 from PyQt6.QtWidgets import QWidget
 from PyQt6.uic import loadUi
 
@@ -15,7 +17,11 @@ from client.core.themes import (
 )
 from client.windows.animations.animated_notification import NotificationManager
 
+logger = logging.getLogger(__name__)
+
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+TELEGRAM_BOT_URL = "https://t.me/Documents2035_bot"
 
 
 class SettingsTab(QWidget):
@@ -40,6 +46,7 @@ class SettingsTab(QWidget):
         self.notification_manager = NotificationManager(self, max_visible=3)
 
         self._connect_signals()
+        self._setup_qr_button()
         self._load_palettes()
         self._load_modes()
 
@@ -77,6 +84,25 @@ class SettingsTab(QWidget):
         self.paletteCombo.currentIndexChanged.connect(self._on_theme_changed)
         self.modeCombo.currentIndexChanged.connect(self._on_theme_changed)
         self.logoutBtn.clicked.connect(self.logout_requested.emit)
+
+    def _setup_qr_button(self):
+        """QR-код Telegram-бота (icons/qr.png): клик открывает бота."""
+        qr_path = os.path.join(ROOT_DIR, "icons", "qr.png")
+        pixmap = QPixmap(qr_path)
+
+        if pixmap.isNull():
+            logger.warning(f"QR-код не найден или не читается: {qr_path}")
+            self.qrButton.setText("Открыть бота\nв Telegram")
+        else:
+            self.qrButton.setIcon(QIcon(pixmap))
+            self.qrButton.setIconSize(QSize(140, 140))
+
+        self.qrButton.clicked.connect(self._open_telegram_bot)
+
+    def _open_telegram_bot(self):
+        if not QDesktopServices.openUrl(QUrl(TELEGRAM_BOT_URL)):
+            logger.error(f"Не удалось открыть ссылку: {TELEGRAM_BOT_URL}")
+            self.notification_manager.show_notification("Не удалось открыть ссылку на бота", duration=3000)
 
     def _load_palettes(self):
         self.paletteCombo.clear()  # ← убрать предзаполненные из .ui

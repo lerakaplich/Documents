@@ -16,7 +16,6 @@ class ContextMenu(QObject):
     comment_requested = pyqtSignal(dict)
     history_requested = pyqtSignal(dict)
     edit_requested = pyqtSignal(dict)
-    read_status_requested = pyqtSignal(dict, bool)
     attachment_requested = pyqtSignal(dict)
     reply_attachment_requested = pyqtSignal(dict)
     delete_requested = pyqtSignal(dict)
@@ -77,19 +76,11 @@ class ContextMenu(QObject):
 
         menu.addSeparator()
 
-        # 6. Отметить как прочитанное/непрочитанное
-        is_read = document_data.get("is_read", False)
-        read_status_text = "Отметить как прочитанное" if not is_read else "Отметить как непрочитанное"
-        read_action = menu.addAction(read_status_text)
-        read_action.triggered.connect(lambda: self.read_status_requested.emit(document_data, not is_read))
-
-        menu.addSeparator()
-
-        # 7. Прикрепить вложение
+        # 6. Прикрепить вложение
         attachment_action = menu.addAction("Прикрепить вложение")
         attachment_action.triggered.connect(lambda: self.attachment_requested.emit(document_data))
 
-        # 8. Добавить ответное вложение
+        # 7. Добавить ответное вложение
         reply_attachment_action = menu.addAction("Добавить ответное вложение")
         reply_attachment_action.triggered.connect(lambda: self.reply_attachment_requested.emit(document_data))
 
@@ -100,7 +91,7 @@ class ContextMenu(QObject):
 
         menu.addSeparator()
 
-        # 9. Удалить документ
+        # 8. Удалить документ
         delete_action = menu.addAction("Удалить документ")
         delete_action.triggered.connect(lambda: self._confirm_delete(document_data))
 

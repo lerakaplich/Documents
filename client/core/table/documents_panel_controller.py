@@ -66,10 +66,11 @@ class DocumentsPanelController:
         self.filters = {
             "scope": "all",
             "is_completed": None,
-            "is_archived": None,  # ← НОВОЕ
+            "is_archived": None,
             "status_filters": [],
             "date_from": None,
             "date_to": None,
+            "tag_ids": [],
         }
 
         # Пагинация: сервер отдаёт total/limit/offset, лимит ≤ 100
@@ -152,10 +153,20 @@ class DocumentsPanelController:
             params["date_from"] = f["date_from"]
         if f["date_to"]:
             params["date_to"] = f["date_to"]
+        if f.get("tag_ids"):
+            params["tag_ids"] = list(f["tag_ids"])[:5]  # максимум 5 тегов
         return params
 
-    def set_filters(self, scope="all", is_completed=None, status_filters=None,
-                    date_from=None, date_to=None, is_archived=None):
+    def set_filters(
+        self,
+        scope: str = "all",
+        is_completed=None,
+        status_filters=None,
+        date_from=None,
+        date_to=None,
+        is_archived=None,
+        tag_ids=None,
+    ):
         """is_archived оставлен в сигнатуре для совместимости и игнорируется:
         архив определяется режимом просмотра (current_view_mode)."""
         self.filters = {
@@ -164,6 +175,7 @@ class DocumentsPanelController:
             "status_filters": list(status_filters or []),
             "date_from": date_from,
             "date_to": date_to,
+            "tag_ids": list(tag_ids or []),
         }
         return self._load_current(1)
 

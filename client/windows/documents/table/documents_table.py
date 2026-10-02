@@ -88,9 +88,6 @@ class DocumentsTable(QWidget):
             lambda doc: self.document_action_triggered.emit("history", doc)
         )
         self.context_menu_manager.edit_requested.connect(lambda doc: self.document_action_triggered.emit("edit", doc))
-        self.context_menu_manager.read_status_requested.connect(
-            lambda doc, status: self.document_action_triggered.emit("read_status", {**doc, "is_read": status})
-        )
         self.context_menu_manager.attachment_requested.connect(
             lambda doc: self.document_action_triggered.emit("attachment", doc)
         )
@@ -112,7 +109,6 @@ class DocumentsTable(QWidget):
         # Подписываемся на сигналы контроллера
         self._controller.pin_status_changed.connect(self.pin_status_changed.emit)
         self._controller.data_loaded.connect(self.data_loaded.emit)
-
     # ========== ПУБЛИЧНЫЕ МЕТОДЫ - только делегирование ==========
 
     def load_documents(

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>900</width>
-    <height>600</height>
+    <height>766</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -147,7 +147,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
            <x>0</x>
            <y>0</y>
            <width>850</width>
-           <height>554</height>
+           <height>611</height>
           </rect>
          </property>
          <layout class="QVBoxLayout" name="scrollLayout">
@@ -167,583 +167,819 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
            <number>0</number>
           </property>
           <item>
-           <widget class="QFrame" name="contactsCard">
-            <property name="styleSheet">
-             <string notr="true">QFrame#contactsCard {
-    background-color: {BG_CARD};
-    border: 1px solid {BORDER_DEFAULT};
-    border-radius: 12px;
-}</string>
+           <layout class="QHBoxLayout" name="columnsLayout" stretch="0,1">
+            <property name="spacing">
+             <number>16</number>
             </property>
-            <layout class="QVBoxLayout" name="contactsLayout">
-             <property name="spacing">
-              <number>14</number>
-             </property>
-             <property name="leftMargin">
-              <number>24</number>
-             </property>
-             <property name="topMargin">
-              <number>20</number>
-             </property>
-             <property name="rightMargin">
-              <number>24</number>
-             </property>
-             <property name="bottomMargin">
-              <number>20</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="contactsTitle">
-               <property name="styleSheet">
-                <string notr="true">font-size: 18px; font-weight: bold; color: {TEXT_PRIMARY}; background-color: transparent;</string>
-               </property>
-               <property name="text">
-                <string>Контактные данные</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <layout class="QHBoxLayout" name="phoneRow">
+            <item>
+             <widget class="QFrame" name="supportCard">
+              <property name="minimumSize">
+               <size>
+                <width>280</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>430</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">QFrame#supportCard {
+      background-color: {BG_CARD};
+      border: 1px solid {BORDER_DEFAULT};
+      border-radius: 12px;
+  }</string>
+              </property>
+              <layout class="QVBoxLayout" name="supportLayout">
                <property name="spacing">
-                <number>12</number>
+                <number>14</number>
+               </property>
+               <property name="leftMargin">
+                <number>24</number>
+               </property>
+               <property name="topMargin">
+                <number>20</number>
+               </property>
+               <property name="rightMargin">
+                <number>24</number>
+               </property>
+               <property name="bottomMargin">
+                <number>20</number>
                </property>
                <item>
-                <widget class="QLabel" name="phoneLabel">
-                 <property name="minimumSize">
-                  <size>
-                   <width>120</width>
-                   <height>0</height>
-                  </size>
-                 </property>
+                <widget class="QLabel" name="supportTitle">
                  <property name="styleSheet">
-                  <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                  <string notr="true">font-size: 18px; font-weight: bold; color: {TEXT_PRIMARY}; background-color: transparent;</string>
                  </property>
                  <property name="text">
-                  <string>Телефон:</string>
+                  <string>Поддержка</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
                  </property>
                 </widget>
                </item>
                <item>
-                <widget class="QLabel" name="phoneValue">
+                <layout class="QVBoxLayout" name="supportPhoneRow">
+                 <property name="spacing">
+                  <number>2</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="supportPhoneLabel">
+                   <property name="styleSheet">
+                    <string notr="true">font-size: 13px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                   </property>
+                   <property name="text">
+                    <string>Тел. для справок:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="supportPhoneValue">
+                   <property name="styleSheet">
+                    <string notr="true">font-size: 15px; color: {TEXT_PRIMARY}; background-color: transparent;</string>
+                   </property>
+                   <property name="text">
+                    <string>+375 (17) 217-20-72</string>
+                   </property>
+                   <property name="textInteractionFlags">
+                    <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QVBoxLayout" name="supportEmailRow">
+                 <property name="spacing">
+                  <number>2</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="supportEmailLabel">
+                   <property name="styleSheet">
+                    <string notr="true">font-size: 13px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                   </property>
+                   <property name="text">
+                    <string>Эл. почта:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="supportEmailValue">
+                   <property name="styleSheet">
+                    <string notr="true">font-size: 15px; color: {TEXT_PRIMARY}; background-color: transparent;</string>
+                   </property>
+                   <property name="text">
+                    <string>tm.rnd@maz.by</string>
+                   </property>
+                   <property name="textInteractionFlags">
+                    <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <widget class="QLabel" name="supportHintLabel">
                  <property name="styleSheet">
-                  <string notr="true">font-size: 14px; color: {TEXT_PRIMARY}; background-color: transparent;</string>
+                  <string notr="true">font-size: 13px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
                  </property>
                  <property name="text">
-                  <string>—</string>
+                  <string>Возникли вопросы по работе системы? Позвоните, напишите на почту или в Телеграм-бот.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
                <item>
-                <widget class="QPushButton" name="changePhoneBtn">
+                <widget class="QFrame" name="supportSeparator">
                  <property name="minimumSize">
                   <size>
-                   <width>130</width>
-                   <height>36</height>
-                  </size>
-                 </property>
-                 <property name="cursor">
-                  <cursorShape>PointingHandCursor</cursorShape>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">QPushButton {
-    background-color: {BTN_SECONDARY_BG};
-    color: {TEXT_PRIMARY};
-    border: 1px solid {BORDER_DEFAULT};
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-}
-QPushButton:hover {
-    background-color: {BTN_SECONDARY_HOVER_BG};
-    border-color: {ACCENT_PRIMARY};
-}
-QPushButton:pressed {
-    background-color: {ACCENT_PRESSED_SOFT};
-}</string>
-                 </property>
-                 <property name="text">
-                  <string>Изменить</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="phoneSpacer">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <layout class="QHBoxLayout" name="emailRow">
-               <property name="spacing">
-                <number>12</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="emailLabel">
-                 <property name="minimumSize">
-                  <size>
-                   <width>120</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
-                 </property>
-                 <property name="text">
-                  <string>Email:</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLabel" name="emailValue">
-                 <property name="styleSheet">
-                  <string notr="true">font-size: 14px; color: {TEXT_PRIMARY}; background-color: transparent;</string>
-                 </property>
-                 <property name="text">
-                  <string>—</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QPushButton" name="changeEmailBtn">
-                 <property name="minimumSize">
-                  <size>
-                   <width>130</width>
-                   <height>36</height>
-                  </size>
-                 </property>
-                 <property name="cursor">
-                  <cursorShape>PointingHandCursor</cursorShape>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">QPushButton {
-    background-color: {BTN_SECONDARY_BG};
-    color: {TEXT_PRIMARY};
-    border: 1px solid {BORDER_DEFAULT};
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-}
-QPushButton:hover {
-    background-color: {BTN_SECONDARY_HOVER_BG};
-    border-color: {ACCENT_PRIMARY};
-}
-QPushButton:pressed {
-    background-color: {ACCENT_PRESSED_SOFT};
-}</string>
-                 </property>
-                 <property name="text">
-                  <string>Изменить</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="emailSpacer">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-              </layout>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QFrame" name="themeCard">
-            <property name="styleSheet">
-             <string notr="true">QFrame#themeCard {
-    background-color: {BG_CARD};
-    border: 1px solid {BORDER_DEFAULT};
-    border-radius: 12px;
-}</string>
-            </property>
-            <layout class="QVBoxLayout" name="themeLayout">
-             <property name="spacing">
-              <number>14</number>
-             </property>
-             <property name="leftMargin">
-              <number>24</number>
-             </property>
-             <property name="topMargin">
-              <number>20</number>
-             </property>
-             <property name="rightMargin">
-              <number>24</number>
-             </property>
-             <property name="bottomMargin">
-              <number>20</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="themeTitle">
-               <property name="styleSheet">
-                <string notr="true">font-size: 18px; font-weight: bold; color: {TEXT_PRIMARY}; background-color: transparent;</string>
-               </property>
-               <property name="text">
-                <string>Оформление</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <layout class="QHBoxLayout" name="paletteRow">
-               <property name="spacing">
-                <number>12</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="paletteLabel">
-                 <property name="minimumSize">
-                  <size>
-                   <width>160</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
-                 </property>
-                 <property name="text">
-                  <string>Цветовая гамма:</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QComboBox" name="paletteCombo">
-                 <property name="minimumSize">
-                  <size>
-                   <width>220</width>
-                   <height>36</height>
-                  </size>
-                 </property>
-                 <property name="cursor">
-                  <cursorShape>PointingHandCursor</cursorShape>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">
-QComboBox, QTextEdit, QDateEdit, QTextBrowser {
-border-radius: 10px;
-border: 1px solid {ACCENT_PRIMARY};
-padding: 5px;
-background-color: {BG_INPUT};
-color: {TEXT_PRIMARY};
-}
-QComboBox:hover, QTextEdit:hover, QDateEdit:hover, QTextBrowser:hover {
-border: 1px solid {ACCENT_HOVER_SOFT};
-}
-QComboBox:focus, QTextEdit:focus, QDateEdit:focus, QTextBrowser:focus {
-border: 2px solid {ACCENT_PRIMARY};
-}
-
-/* Стили для выпадающего контейнера QComboBox */
-QComboBox::drop-down {
-subcontrol-origin: padding;
-subcontrol-position: top right;
-width: 30px;
-border: none;
-}
-
-QComboBox::down-arrow {
-image: url({ICON_ARROW_DOWN_PATH});
-width: 16px;
-height: 16px;
-margin-right: 6px;
-}
-
-/* ===== ВЫПАДАЮЩИЕ СПИСКИ QComboBox ===== */
-QComboBox QAbstractItemView {
-border-radius: 6px;
-background-color: {BG_CARD};
-color: {TEXT_PRIMARY};
-padding: 4px;
-outline: none;
-border: 1px solid {ACCENT_PRIMARY};
-}
-QComboBox QAbstractItemView::item {
-padding: 8px;
-color: {TEXT_PRIMARY};
-border: none;
-outline: none;
-}
-QComboBox QAbstractItemView::item:hover {
-background-color: {ACCENT_SELECTION_BG};
-color: {TEXT_PRIMARY};
-}
-QComboBox QAbstractItemView::item:selected {
-background-color: {ACCENT_SELECTION_BG};
-color: {TEXT_PRIMARY};
-}
-QComboBox QAbstractItemView::item:focus {
-outline: none;
-border: none;
-}
-
-
-</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="paletteSpacer">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <layout class="QHBoxLayout" name="modeRow">
-               <property name="spacing">
-                <number>12</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="modeLabel">
-                 <property name="minimumSize">
-                  <size>
-                   <width>160</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
-                 </property>
-                 <property name="text">
-                  <string>Режим:</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QComboBox" name="modeCombo">
-                 <property name="minimumSize">
-                  <size>
-                   <width>220</width>
-                   <height>36</height>
-                  </size>
-                 </property>
-                 <property name="cursor">
-                  <cursorShape>PointingHandCursor</cursorShape>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">
-QComboBox, QTextEdit, QDateEdit, QTextBrowser {
-border-radius: 10px;
-border: 1px solid {ACCENT_PRIMARY};
-padding: 5px;
-background-color: {BG_INPUT};
-color: {TEXT_PRIMARY};
-}
-QComboBox:hover, QTextEdit:hover, QDateEdit:hover, QTextBrowser:hover {
-border: 1px solid {ACCENT_HOVER_SOFT};
-}
-QComboBox:focus, QTextEdit:focus, QDateEdit:focus, QTextBrowser:focus {
-border: 2px solid {ACCENT_PRIMARY};
-}
-
-/* Стили для выпадающего контейнера QComboBox */
-QComboBox::drop-down {
-subcontrol-origin: padding;
-subcontrol-position: top right;
-width: 30px;
-border: none;
-}
-
-QComboBox::down-arrow {
-image: url({ICON_ARROW_DOWN_PATH});
-width: 16px;
-height: 16px;
-margin-right: 6px;
-}
-
-/* ===== ВЫПАДАЮЩИЕ СПИСКИ QComboBox ===== */
-QComboBox QAbstractItemView {
-border-radius: 6px;
-background-color: {BG_CARD};
-color: {TEXT_PRIMARY};
-padding: 4px;
-outline: none;
-border: 1px solid {ACCENT_PRIMARY};
-}
-QComboBox QAbstractItemView::item {
-padding: 8px;
-color: {TEXT_PRIMARY};
-border: none;
-outline: none;
-}
-QComboBox QAbstractItemView::item:hover {
-background-color: {ACCENT_SELECTION_BG};
-color: {TEXT_PRIMARY};
-}
-QComboBox QAbstractItemView::item:selected {
-background-color: {ACCENT_SELECTION_BG};
-color: {TEXT_PRIMARY};
-}
-QComboBox QAbstractItemView::item:focus {
-outline: none;
-border: none;
-}
-
-
-</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="modeSpacer">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-              </layout>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QFrame" name="securityCard">
-            <property name="styleSheet">
-             <string notr="true">QFrame#securityCard {
-    background-color: {BG_CARD};
-    border: 1px solid {BORDER_DEFAULT};
-    border-radius: 12px;
-}</string>
-            </property>
-            <layout class="QVBoxLayout" name="securityLayout">
-             <property name="spacing">
-              <number>14</number>
-             </property>
-             <property name="leftMargin">
-              <number>24</number>
-             </property>
-             <property name="topMargin">
-              <number>20</number>
-             </property>
-             <property name="rightMargin">
-              <number>24</number>
-             </property>
-             <property name="bottomMargin">
-              <number>20</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="securityTitle">
-               <property name="styleSheet">
-                <string notr="true">font-size: 18px; font-weight: bold; color: {TEXT_PRIMARY}; background-color: transparent;</string>
-               </property>
-               <property name="text">
-                <string>Безопасность</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <layout class="QHBoxLayout" name="passwordRow">
-               <property name="spacing">
-                <number>12</number>
-               </property>
-               <item>
-                <widget class="QLabel" name="passwordLabel">
-                 <property name="minimumSize">
-                  <size>
-                   <width>70</width>
-                   <height>0</height>
+                   <width>0</width>
+                   <height>1</height>
                   </size>
                  </property>
                  <property name="maximumSize">
                   <size>
-                   <width>70</width>
-                   <height>16777215</height>
+                   <width>16777215</width>
+                   <height>1</height>
                   </size>
                  </property>
                  <property name="styleSheet">
-                  <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                  <string notr="true">background-color: {BORDER_DEFAULT};
+  border: none;</string>
                  </property>
-                 <property name="text">
-                  <string>Пароль:</string>
+                 <property name="frameShape">
+                  <enum>QFrame::Shape::HLine</enum>
                  </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLabel" name="passwordValue">
-                 <property name="styleSheet">
-                  <string notr="true">font-size: 14px; color: {TEXT_PRIMARY}; background-color: transparent;</string>
-                 </property>
-                 <property name="text">
-                  <string>••••••••</string>
+                 <property name="frameShadow">
+                  <enum>QFrame::Shadow::Plain</enum>
                  </property>
                 </widget>
                </item>
-               <item>
-                <widget class="QPushButton" name="changePasswordBtn">
+               <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                <widget class="QPushButton" name="qrButton">
                  <property name="minimumSize">
                   <size>
                    <width>160</width>
-                   <height>36</height>
+                   <height>160</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>160</width>
+                   <height>160</height>
                   </size>
                  </property>
                  <property name="cursor">
                   <cursorShape>PointingHandCursor</cursorShape>
                  </property>
+                 <property name="toolTip">
+                  <string>Открыть бота в Telegram</string>
+                 </property>
                  <property name="styleSheet">
                   <string notr="true">QPushButton {
-    background-color: {BTN_SECONDARY_BG};
-    color: {TEXT_PRIMARY};
-    border: 1px solid {BORDER_DEFAULT};
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-}
-QPushButton:hover {
-    background-color: {BTN_SECONDARY_HOVER_BG};
-    border-color: {ACCENT_PRIMARY};
-}
-QPushButton:pressed {
-    background-color: {ACCENT_PRESSED_SOFT};
-}</string>
+      background-color: white;
+      color: {TEXT_PRIMARY};
+      border: 1px solid {BORDER_DEFAULT};
+      border-radius: 12px;
+      padding: 8px;
+      font-size: 13px;
+  }
+  QPushButton:hover {
+      border: 2px solid {ACCENT_PRIMARY};
+  }</string>
                  </property>
                  <property name="text">
-                  <string>Сменить пароль</string>
+                  <string/>
+                 </property>
+                 <property name="flat">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
                <item>
-                <spacer name="passwordSpacer">
+                <widget class="QLabel" name="qrCaption">
+                 <property name="styleSheet">
+                  <string notr="true">font-size: 12px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                 </property>
+                 <property name="text">
+                  <string>Телеграм-бот @Documents2035_bot</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignmentFlag::AlignCenter</set>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="supportBottomSpacer">
                  <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
+                  <enum>Qt::Orientation::Vertical</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
-                   <width>40</width>
+                   <width>20</width>
                    <height>20</height>
                   </size>
                  </property>
                 </spacer>
                </item>
               </layout>
-             </item>
-            </layout>
-           </widget>
+             </widget>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="leftColumnLayout">
+              <property name="spacing">
+               <number>16</number>
+              </property>
+              <item>
+               <widget class="QFrame" name="contactsCard">
+                <property name="styleSheet">
+                 <string notr="true">QFrame#contactsCard {
+        background-color: {BG_CARD};
+        border: 1px solid {BORDER_DEFAULT};
+        border-radius: 12px;
+    }</string>
+                </property>
+                <layout class="QVBoxLayout" name="contactsLayout">
+                 <property name="spacing">
+                  <number>14</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>24</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>20</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>24</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>20</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="contactsTitle">
+                   <property name="styleSheet">
+                    <string notr="true">font-size: 18px; font-weight: bold; color: {TEXT_PRIMARY}; background-color: transparent;</string>
+                   </property>
+                   <property name="text">
+                    <string>Контактные данные</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="phoneRow">
+                   <property name="spacing">
+                    <number>12</number>
+                   </property>
+                   <item>
+                    <widget class="QLabel" name="phoneLabel">
+                     <property name="minimumSize">
+                      <size>
+                       <width>120</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                     </property>
+                     <property name="text">
+                      <string>Телефон:</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="phoneValue">
+                     <property name="styleSheet">
+                      <string notr="true">font-size: 14px; color: {TEXT_PRIMARY}; background-color: transparent;</string>
+                     </property>
+                     <property name="text">
+                      <string>—</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="changePhoneBtn">
+                     <property name="minimumSize">
+                      <size>
+                       <width>130</width>
+                       <height>36</height>
+                      </size>
+                     </property>
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true">QPushButton {
+        background-color: {BTN_SECONDARY_BG};
+        color: {TEXT_PRIMARY};
+        border: 1px solid {BORDER_DEFAULT};
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    QPushButton:hover {
+        background-color: {BTN_SECONDARY_HOVER_BG};
+        border-color: {ACCENT_PRIMARY};
+    }
+    QPushButton:pressed {
+        background-color: {ACCENT_PRESSED_SOFT};
+    }</string>
+                     </property>
+                     <property name="text">
+                      <string>Изменить</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="phoneSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="emailRow">
+                   <property name="spacing">
+                    <number>12</number>
+                   </property>
+                   <item>
+                    <widget class="QLabel" name="emailLabel">
+                     <property name="minimumSize">
+                      <size>
+                       <width>120</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                     </property>
+                     <property name="text">
+                      <string>Email:</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="emailValue">
+                     <property name="styleSheet">
+                      <string notr="true">font-size: 14px; color: {TEXT_PRIMARY}; background-color: transparent;</string>
+                     </property>
+                     <property name="text">
+                      <string>—</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="changeEmailBtn">
+                     <property name="minimumSize">
+                      <size>
+                       <width>130</width>
+                       <height>36</height>
+                      </size>
+                     </property>
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true">QPushButton {
+        background-color: {BTN_SECONDARY_BG};
+        color: {TEXT_PRIMARY};
+        border: 1px solid {BORDER_DEFAULT};
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    QPushButton:hover {
+        background-color: {BTN_SECONDARY_HOVER_BG};
+        border-color: {ACCENT_PRIMARY};
+    }
+    QPushButton:pressed {
+        background-color: {ACCENT_PRESSED_SOFT};
+    }</string>
+                     </property>
+                     <property name="text">
+                      <string>Изменить</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="emailSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="themeCard">
+                <property name="styleSheet">
+                 <string notr="true">QFrame#themeCard {
+        background-color: {BG_CARD};
+        border: 1px solid {BORDER_DEFAULT};
+        border-radius: 12px;
+    }</string>
+                </property>
+                <layout class="QVBoxLayout" name="themeLayout">
+                 <property name="spacing">
+                  <number>14</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>24</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>20</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>24</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>20</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="themeTitle">
+                   <property name="styleSheet">
+                    <string notr="true">font-size: 18px; font-weight: bold; color: {TEXT_PRIMARY}; background-color: transparent;</string>
+                   </property>
+                   <property name="text">
+                    <string>Оформление</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="paletteRow">
+                   <property name="spacing">
+                    <number>12</number>
+                   </property>
+                   <item>
+                    <widget class="QLabel" name="paletteLabel">
+                     <property name="minimumSize">
+                      <size>
+                       <width>160</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                     </property>
+                     <property name="text">
+                      <string>Цветовая гамма:</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="paletteCombo">
+                     <property name="minimumSize">
+                      <size>
+                       <width>220</width>
+                       <height>36</height>
+                      </size>
+                     </property>
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true">
+    QComboBox, QTextEdit, QDateEdit, QTextBrowser {
+    border-radius: 10px;
+    border: 1px solid {ACCENT_PRIMARY};
+    padding: 5px;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
+    }
+    QComboBox:hover, QTextEdit:hover, QDateEdit:hover, QTextBrowser:hover {
+    border: 1px solid {ACCENT_HOVER_SOFT};
+    }
+    QComboBox:focus, QTextEdit:focus, QDateEdit:focus, QTextBrowser:focus {
+    border: 2px solid {ACCENT_PRIMARY};
+    }
+
+    /* Стили для выпадающего контейнера QComboBox */
+    QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+    }
+
+    QComboBox::down-arrow {
+    image: url({ICON_ARROW_DOWN_PATH});
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    }
+
+    /* ===== ВЫПАДАЮЩИЕ СПИСКИ QComboBox ===== */
+    QComboBox QAbstractItemView {
+    border-radius: 6px;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+    padding: 4px;
+    outline: none;
+    border: 1px solid {ACCENT_PRIMARY};
+    }
+    QComboBox QAbstractItemView::item {
+    padding: 8px;
+    color: {TEXT_PRIMARY};
+    border: none;
+    outline: none;
+    }
+    QComboBox QAbstractItemView::item:hover {
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
+    }
+    QComboBox QAbstractItemView::item:selected {
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
+    }
+    QComboBox QAbstractItemView::item:focus {
+    outline: none;
+    border: none;
+    }
+
+
+    </string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="paletteSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="modeRow">
+                   <property name="spacing">
+                    <number>12</number>
+                   </property>
+                   <item>
+                    <widget class="QLabel" name="modeLabel">
+                     <property name="minimumSize">
+                      <size>
+                       <width>160</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                     </property>
+                     <property name="text">
+                      <string>Режим:</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="modeCombo">
+                     <property name="minimumSize">
+                      <size>
+                       <width>220</width>
+                       <height>36</height>
+                      </size>
+                     </property>
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true">
+    QComboBox, QTextEdit, QDateEdit, QTextBrowser {
+    border-radius: 10px;
+    border: 1px solid {ACCENT_PRIMARY};
+    padding: 5px;
+    background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
+    }
+    QComboBox:hover, QTextEdit:hover, QDateEdit:hover, QTextBrowser:hover {
+    border: 1px solid {ACCENT_HOVER_SOFT};
+    }
+    QComboBox:focus, QTextEdit:focus, QDateEdit:focus, QTextBrowser:focus {
+    border: 2px solid {ACCENT_PRIMARY};
+    }
+
+    /* Стили для выпадающего контейнера QComboBox */
+    QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+    }
+
+    QComboBox::down-arrow {
+    image: url({ICON_ARROW_DOWN_PATH});
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    }
+
+    /* ===== ВЫПАДАЮЩИЕ СПИСКИ QComboBox ===== */
+    QComboBox QAbstractItemView {
+    border-radius: 6px;
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+    padding: 4px;
+    outline: none;
+    border: 1px solid {ACCENT_PRIMARY};
+    }
+    QComboBox QAbstractItemView::item {
+    padding: 8px;
+    color: {TEXT_PRIMARY};
+    border: none;
+    outline: none;
+    }
+    QComboBox QAbstractItemView::item:hover {
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
+    }
+    QComboBox QAbstractItemView::item:selected {
+    background-color: {ACCENT_SELECTION_BG};
+    color: {TEXT_PRIMARY};
+    }
+    QComboBox QAbstractItemView::item:focus {
+    outline: none;
+    border: none;
+    }
+
+
+    </string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="modeSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="securityCard">
+                <property name="styleSheet">
+                 <string notr="true">QFrame#securityCard {
+        background-color: {BG_CARD};
+        border: 1px solid {BORDER_DEFAULT};
+        border-radius: 12px;
+    }</string>
+                </property>
+                <layout class="QVBoxLayout" name="securityLayout">
+                 <property name="spacing">
+                  <number>14</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>24</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>20</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>24</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>20</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="securityTitle">
+                   <property name="styleSheet">
+                    <string notr="true">font-size: 18px; font-weight: bold; color: {TEXT_PRIMARY}; background-color: transparent;</string>
+                   </property>
+                   <property name="text">
+                    <string>Безопасность</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="passwordRow">
+                   <property name="spacing">
+                    <number>12</number>
+                   </property>
+                   <item>
+                    <widget class="QLabel" name="passwordLabel">
+                     <property name="minimumSize">
+                      <size>
+                       <width>70</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="maximumSize">
+                      <size>
+                       <width>70</width>
+                       <height>16777215</height>
+                      </size>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true">font-size: 14px; color: {TEXT_MUTED_ALT}; background-color: transparent;</string>
+                     </property>
+                     <property name="text">
+                      <string>Пароль:</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="passwordValue">
+                     <property name="styleSheet">
+                      <string notr="true">font-size: 14px; color: {TEXT_PRIMARY}; background-color: transparent;</string>
+                     </property>
+                     <property name="text">
+                      <string>••••••••</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="changePasswordBtn">
+                     <property name="minimumSize">
+                      <size>
+                       <width>160</width>
+                       <height>36</height>
+                      </size>
+                     </property>
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true">QPushButton {
+        background-color: {BTN_SECONDARY_BG};
+        color: {TEXT_PRIMARY};
+        border: 1px solid {BORDER_DEFAULT};
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    QPushButton:hover {
+        background-color: {BTN_SECONDARY_HOVER_BG};
+        border-color: {ACCENT_PRIMARY};
+    }
+    QPushButton:pressed {
+        background-color: {ACCENT_PRESSED_SOFT};
+    }</string>
+                     </property>
+                     <property name="text">
+                      <string>Сменить пароль</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="passwordSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
           </item>
           <item>
            <layout class="QHBoxLayout" name="logoutRow">

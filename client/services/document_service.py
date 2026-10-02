@@ -3,6 +3,8 @@
 from datetime import datetime
 from typing import Any
 
+from fastapi import params
+
 from client.core.http_client import HttpClient, logger
 
 # Поля, обязательные по контракту POST /documents (DocumentCreateForm).
@@ -116,7 +118,8 @@ class DocumentService:
     def get_all_documents(self) -> list[dict[str, Any]]:
         """Оставлено для обратной совместимости. Предпочитайте get_documents()."""
         try:
-            r = self.client.get(f"{self.base_path}/")
+            print(f"[DocumentService] GET {self.base_path}/ params={params}")
+            r = self.client.get(f"{self.base_path}/", params=params)
             return r.get("items", []) if isinstance(r, dict) else r
         except Exception as e:
             print(f"❌ get_all_documents: {e}")

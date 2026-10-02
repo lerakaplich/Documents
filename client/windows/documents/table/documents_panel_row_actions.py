@@ -33,16 +33,14 @@ class DocumentsRowActionController:
             self._attachment(document_data)
         elif action_type == "reply_attachment":
             self._reply_attachment(document_data)
-        elif action_type == "read_status":
-            is_read = document_data.get("is_read", False)
-            self._read_status(document_data, not is_read)
         elif action_type == "pin_toggle":
             self._pin_toggle(document_data)
         elif action_type == "archive_toggle":
             self._archive_toggle(document_data)
+        elif action_type == "tag_filter":
+            panel.filters.toggle_tag(document_data)
         else:
             print(f"[DocumentsPanel] Неизвестное действие: {action_type}")
-
     # ---------- удаление ----------
 
     def _archive_toggle(self, document_data: dict):

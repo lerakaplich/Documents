@@ -42,6 +42,7 @@ class RowRenderer:
         self.cell_signals.redirect_requested.connect(self._on_redirect_requested)
         # В __init__ добавь подключение сигнала (после других подключений):
         self.cell_signals.comment_clicked.connect(self._on_comment_clicked)
+        self.cell_signals.tag_clicked.connect(self._on_tag_clicked)
 
         # Создаем все билдеры как обычно
         from client.windows.documents.table.builders.cell_builders import (
@@ -50,7 +51,7 @@ class RowRenderer:
             TagsCellBuilder,
         )
 
-        self._tags_builder = TagsCellBuilder(config.get_even_row_color, config.get_odd_row_color)
+        self._tags_builder = TagsCellBuilder(config.get_even_row_color, config.get_odd_row_color, self.cell_signals)
         self._attachment_builder = AttachmentCellBuilder(
             config.get_even_row_color,
             config.get_odd_row_color,
@@ -86,17 +87,6 @@ class RowRenderer:
 
         # Флаг использования кастомных ячеек
         self._use_custom_cells = True  # Можно переключать для тестирования
-
-    def _on_redirect_requested(self, doc_id: int, delegates: list):
-        """Срабатывает при клике на делегатов в ячейке"""
-        document_data = {"id": doc_id, "delegates": delegates}
-        if hasattr(self._signals, "document_action_triggered"):
-            self._signals.document_action_triggered.emit("redirect", document_data)
-
-    def _on_comment_clicked(self, document: dict):
-        """Открытие диалога комментариев"""
-        if hasattr(self._signals, "document_action_triggered"):
-            self._signals.document_action_triggered.emit("comment", document)
 
     def update_columns_config(self, columns_config: dict):
         """Обновить конфигурацию колонок"""
@@ -157,6 +147,7 @@ class RowRenderer:
             "Краткое содержание": "about",
             "Срок исполнения": "deadline",
             "Направление": "direction",
+            "Порядковый номер": "sequence_number",
         }
 
         for col_name, key in text_fields.items():
@@ -355,3 +346,19 @@ class RowRenderer:
             "Загрузка ответа",
             f"Файл ответа загружен: {os.path.basename(file_path)}",
         )
+
+    def _on_redirect_requested(self, doc_id: int, delegates: list):
+        """Срабатывает при клике на делегатов в ячейке"""
+        document_data = {"id": doc_id, "delegates": delegates}
+        if hasattr(self._signals, "document_action_triggered"):
+            self._signals.document_action_triggered.emit("redirect", document_data)
+
+    def _on_comment_clicked(self, document: dict):
+        """Открытие диалога комментариев"""
+        if hasattr(self._signals, "document_action_triggered"):
+            self._signals.document_action_triggered.emit("comment", document)
+
+    def _on_tag_clicked(self, tag: dict):
+        """Клик по хэштегу в ячейке → фильтр по тегу"""
+        if hasattr(self._signals, "document_action_triggered"):
+            self._signals.document_action_triggered.emit("tag_filter", tag)

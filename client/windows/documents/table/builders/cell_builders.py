@@ -33,14 +33,39 @@ class CellBuilderSignals(QObject):
     comment_clicked = pyqtSignal(dict)  # document_data
     delegate_added = pyqtSignal(dict)
     redirect_requested = pyqtSignal(int, list)
+    tag_clicked = pyqtSignal(dict)  # tag: {"id", "name", "color", ...}
+
+
+class ClickableHashtag(HashtagWidget):
+    """Хэштег в ячейке: клик → фильтр по этому тегу."""
+
+    def __init__(self, tag: dict, signals=None):
+        super().__init__(tag["name"], tag.get("color") or "#808080")
+        self._tag = tag
+        self._signals = signals
+        if signals is not None:
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.setToolTip("Нажмите, чтобы отфильтровать по тегу")
+
+    def mousePressEvent(self, event):
+        if (
+            self._signals is not None
+            and event.button() == Qt.MouseButton.LeftButton
+            and self._tag.get("id") is not None
+        ):
+            self._signals.tag_clicked.emit(dict(self._tag))
+            event.accept()
+            return
+        super().mousePressEvent(event)
 
 
 class TagsCellBuilder:
     """Построитель ячейки с хэштегами"""
 
-    def __init__(self, even_color, odd_color):
+    def __init__(self, even_color, odd_color, signals=None):
         self.even_color = even_color
         self.odd_color = odd_color
+        self._signals = signals
 
     def build(self, row, tags):
         """Создание виджета с хэштегами"""
@@ -63,7 +88,7 @@ class TagsCellBuilder:
 
         if tags:
             for tag in tags:
-                tag_widget = HashtagWidget(tag["name"], tag["color"])
+                tag_widget = ClickableHashtag(tag, self._signals)
                 layout.addWidget(tag_widget)
                 tag_widget.update_style()
 
