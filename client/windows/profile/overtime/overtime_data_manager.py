@@ -45,8 +45,14 @@ class OvertimeDataManager:
         api_all_end = self._to_iso(all_end) or "2100-01-01"
 
         try:
-            my_resp = self.overtime_service.get_my_overtime(api_my_start, api_my_end, page=my_page, size=page_size)
-            all_resp = self.overtime_service.get_all_overtime(api_all_start, api_all_end, page=all_page, size=page_size)
+            from concurrent.futures import ThreadPoolExecutor  # в начало файла
+
+            with ThreadPoolExecutor(max_workers=2) as ex:
+                f_my = ex.submit(self.overtime_service.get_my_overtime, api_my_start, api_my_end, page=my_page,
+                                 size=page_size)
+                f_all = ex.submit(self.overtime_service.get_all_overtime, api_all_start, api_all_end, page=all_page,
+                                  size=page_size)
+                my_resp, all_resp = f_my.result(), f_all.result()
 
             # ─── Сохраняем метаданные пагинации ───
             self._my_pagination = {

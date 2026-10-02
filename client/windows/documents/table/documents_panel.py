@@ -17,7 +17,7 @@
 import os
 import sys
 
-from PyQt6.QtCore import QTimer, pyqtSignal, Qt
+from PyQt6.QtCore import QObject, QRunnable, QThreadPool, QTimer, pyqtSignal, Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
 from PyQt6.uic import loadUi
@@ -46,6 +46,48 @@ from client.windows.documents.table.sort_icons import sort_icon
 ROOT_DIR = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 )
+
+
+class _LoadSignals(QObject):
+    """Сигналы фоновой загрузки (доставляются в поток интерфейса)."""
+
+    done = pyqtSignal(int, object)  # token, результат контроллера
+    failed = pyqtSignal(int, str)  # token, текст ошибки
+
+
+class _LoadTask(QRunnable):
+    """Блокирующий вызов контроллера (HTTP) — вне потока интерфейса."""
+
+    def __init__(self, token, fn, is_current, signals):
+        super().__init__()
+        self._token = token
+        self._fn = fn
+        self._is_current = is_current
+        self._signals = signals
+
+    def run(self):
+        if not self._is_current(self._token):
+            return  # пока задача стояла в очереди, пользователь запросил другое
+        try:
+            result = self._fn()
+        except Exception as e:  # noqa: BLE001
+            self._signals.failed.emit(self._token, str(e))
+            return
+        self._signals.done.emit(self._token, result)
+
+
+class _FuncTask(QRunnable):
+    """Фоновая задача «выстрелил и забыл» (без результата)."""
+
+    def __init__(self, fn):
+        super().__init__()
+        self._fn = fn
+
+    def run(self):
+        try:
+            self._fn()
+        except Exception as e:  # noqa: BLE001
+            print(f"[DocumentsPanel] фоновая задача: {e}")
 
 
 class DocumentsPanel(QWidget):
@@ -81,6 +123,20 @@ class DocumentsPanel(QWidget):
         self._search_timer.setSingleShot(True)
         self._search_timer.setInterval(350)
         self._search_timer.timeout.connect(self._run_search)
+
+        # Загрузка списков идёт в фоне. Поток один: контроллер хранит состояние
+        # (тип/страница/сортировка), поэтому запросы выстраиваются в очередь,
+        # а результаты устаревших запросов отбрасываются (см. _load_async).
+        self._load_pool = QThreadPool(self)
+        self._load_pool.setMaxThreadCount(1)
+        self._aux_pool = QThreadPool(self)  # типы документов — отдельно, не задерживая таблицу
+        self._aux_pool.setMaxThreadCount(1)
+        self._load_token = 0
+        self._load_after = None
+        self._load_signals = _LoadSignals(self)
+        self._load_signals.done.connect(self._on_load_done)
+        self._load_signals.failed.connect(self._on_load_failed)
+        self._sort_icon_cache = {}
 
         self._init_ui()
         self._init_table()
@@ -182,12 +238,13 @@ class DocumentsPanel(QWidget):
         item = self.documents_table.tableWidget.horizontalHeaderItem(col)
         if item is None:
             return
-        result = self.controller.toggle_sort(item.text())
-        if result is None:
+        column_title = item.text()
+        if column_title not in SORT_FIELDS:
             return  # по этому столбцу сортировка не поддерживается
-        documents, title, view_mode, doc_type = result
-        self._update_table(documents, doc_type, title, view_mode)
-        self.documents_table.tableWidget.scrollToTop()
+        self._load_async(
+            lambda: self.controller.toggle_sort(column_title),
+            after=lambda docs: self.documents_table.tableWidget.scrollToTop(),
+        )
 
     def _update_sort_indicator(self):
         """Иконки сортировки в заголовках: ⇅ у сортируемых, ▲/▼ у активного."""
@@ -208,7 +265,11 @@ class DocumentsPanel(QWidget):
                 item.setIcon(QIcon())
                 continue
             kind = ("asc" if asc else "desc") if field == active else "none"
-            item.setIcon(sort_icon(kind, color))
+            key = (kind, str(color))
+            icon = self._sort_icon_cache.get(key)
+            if icon is None:
+                icon = self._sort_icon_cache[key] = sort_icon(kind, color)
+            item.setIcon(icon)
         header.viewport().update()
 
     def reapply_theme(self):
@@ -271,46 +332,103 @@ class DocumentsPanel(QWidget):
 
     # ========== ЗАГРУЗКА И ОТОБРАЖЕНИЕ ДАННЫХ ==========
 
+    def _load_async(self, fn, after=None):
+        """Выполняет fn (вызов контроллера, возвращает (documents, title, view_mode,
+        doc_type) или None) в фоне и обновляет таблицу, когда ответ пришёл.
+        Если за время ожидания пользователь запросил другое — результат отбрасывается."""
+        self._load_token += 1
+        token = self._load_token
+        self._load_after = after
+        self.setCursor(Qt.CursorShape.BusyCursor)
+
+        def job():
+            result = fn()
+            if result is not None:
+                self._warm_type_fields(result[3])  # поля типа — тоже в фоне, а не при отрисовке
+            return result
+
+        self._load_pool.start(_LoadTask(token, job, lambda t: t == self._load_token, self._load_signals))
+
+    def _warm_type_fields(self, settings_key):
+        """Подгружает поля типа в кэш таблицы (иначе GET на каждый новый тип
+        уходит из потока интерфейса при построении столбцов)."""
+        if str(settings_key).isdigit():
+            try:
+                self.documents_table._controller._get_type_fields(int(settings_key))
+            except Exception as e:  # noqa: BLE001
+                print(f"[DocumentsPanel] не удалось прогреть поля типа: {e}")
+
+    def _on_load_done(self, token: int, result):
+        if token != self._load_token:
+            return  # устаревший ответ
+        self.unsetCursor()
+        after, self._load_after = self._load_after, None
+        if result is None:
+            return
+        documents, title, view_mode, doc_type = result
+        self._update_table(documents, doc_type, title, view_mode)
+        if after is not None:
+            after(documents)
+
+    def _on_load_failed(self, token: int, message: str):
+        if token != self._load_token:
+            return
+        self.unsetCursor()
+        self._load_after = None
+        print(f"[DocumentsPanel] Ошибка загрузки: {message}")
+
     def load_all_documents(self):
         """Запросить данные у контроллера и отобразить их"""
-        documents, title, view_mode, doc_type = self.controller.load_all_documents()
-        self._update_table(documents, doc_type, title, view_mode)
-        self.data_loaded.emit(len(documents))
+        self._load_async(
+            self.controller.load_all_documents,
+            after=lambda docs: self.data_loaded.emit(len(docs)),
+        )
 
     def load_documents_by_type(self, type_id: int, type_name: str | None = None, direction: str | None = None):
-        documents, title, view_mode, doc_type = self.controller.load_documents_by_type(type_id, type_name, direction)
-        self._update_table(documents, doc_type, title, view_mode)
-        self.type_changed.emit(type_id)
-        self.data_loaded.emit(len(documents))
+        # Типы с полями обновляем фоном (для диалога создания) — таблицу это не задерживает
+        self._aux_pool.start(_FuncTask(self.controller.refresh_doc_types))
+
+        def after(docs):
+            self.type_changed.emit(type_id)
+            self.data_loaded.emit(len(docs))
+
+        self._load_async(
+            lambda: self.controller.load_documents_by_type(type_id, type_name, direction),
+            after=after,
+        )
 
     def load_documents_by_direction(self, direction: str, title: str | None = None):
-        documents, title, view_mode, doc_type = self.controller.load_documents_by_direction(direction, title)
-        self._update_table(documents, doc_type, title, view_mode)
-        self.direction_changed.emit(direction)
-        self.data_loaded.emit(len(documents))
+        def after(docs):
+            self.direction_changed.emit(direction)
+            self.data_loaded.emit(len(docs))
+
+        self._load_async(
+            lambda: self.controller.load_documents_by_direction(direction, title),
+            after=after,
+        )
 
     def load_archived_documents(self):
         """Загружает архивные документы текущего пользователя (scope='archive')."""
-        documents, title, view_mode, doc_type = self.controller.load_archived_documents()
-        self._update_table(documents, doc_type, title, view_mode)
-        self.data_loaded.emit(len(documents))
-
-
+        self._load_async(
+            self.controller.load_archived_documents,
+            after=lambda docs: self.data_loaded.emit(len(docs)),
+        )
 
     def _change_page(self, delta: int):
         """◀ / ▶ в панели пагинации."""
         p = self.controller.pagination
         if not 1 <= p["page"] + delta <= p["pages"]:
             return
-        documents, title, view_mode, doc_type = self.controller.change_page(delta)
-        self._update_table(documents, doc_type, title, view_mode)
-        self.documents_table.tableWidget.scrollToTop()
+        self._load_async(
+            lambda: self.controller.change_page(delta),
+            after=lambda docs: self.documents_table.tableWidget.scrollToTop(),
+        )
 
     def _on_types_changed(self):
         """Типы документов изменились (поля, список) — обновляем кэш типов и таблицу."""
         try:
-            self.controller.refresh_doc_types()
-            self.refresh()
+            # типы и страница — один фоновый запрос, интерфейс не замирает
+            self._load_async(lambda: (self.controller.refresh_doc_types(), self.controller.refresh())[1])
         except Exception as e:
             print(f"[DocumentsPanel] Error on types_changed: {e}")
 
@@ -318,6 +436,10 @@ class DocumentsPanel(QWidget):
         """Перезагрузить текущую страницу через контроллер"""
         documents, title, view_mode, doc_type = self.controller.refresh()
         self._update_table(documents, doc_type, title, view_mode)
+
+    def refresh_async(self):
+        """То же, что refresh(), но без блокировки интерфейса."""
+        self._load_async(self.controller.refresh)
 
     # ========== ПОИСК ==========
 
@@ -327,8 +449,8 @@ class DocumentsPanel(QWidget):
         self._search_timer.start()  # перезапуск: запрос уйдёт после паузы в наборе
 
     def _run_search(self):
-        documents, title, view_mode, doc_type = self.controller.search_documents(self._pending_search)
-        self._update_table(documents, doc_type, title, view_mode)
+        query = self._pending_search
+        self._load_async(lambda: self.controller.search_documents(query))
 
     # ========== ТЕМА / ПРОЧЕЕ ==========
 

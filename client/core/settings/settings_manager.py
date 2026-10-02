@@ -1,7 +1,8 @@
 # client/core/settings/settings_manager.py
-
+import atexit
 import json
 import os
+import threading
 from datetime import datetime  # в начале файла
 from typing import Any
 
@@ -31,6 +32,7 @@ class SettingsManager:
         os.makedirs(self.settings_dir, exist_ok=True)
         self._settings = self._load_settings()
         print(f"[SettingsManager] Settings file: {self.settings_file}")
+        atexit.register(self._flush_settings)
 
     def _load_settings(self) -> dict:
         """Загрузка настроек из JSON файла"""
@@ -42,8 +44,18 @@ class SettingsManager:
             print(f"[SettingsManager] Error loading settings: {e}")
         return {}
 
+    import atexit, threading  # в начало файла
+
     def _save_settings(self):
-        """Сохранение настроек в JSON файл"""
+        """Отложенная запись: серия set() даёт одну запись на диск."""
+        t = getattr(self, "_save_timer", None)
+        if t:
+            t.cancel()
+        self._save_timer = threading.Timer(0.5, self._flush_settings)
+        self._save_timer.daemon = True
+        self._save_timer.start()
+
+    def _flush_settings(self):
         try:
             with open(self.settings_file, "w", encoding="utf-8") as f:
                 json.dump(self._settings, f, indent=2, ensure_ascii=False)

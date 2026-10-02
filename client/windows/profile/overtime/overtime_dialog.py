@@ -15,6 +15,7 @@ except ImportError as _e:
     _HAS_CUSTOM_DATE = False
     print(f"[OvertimeDialog] CustomCalendarDateEdit недоступен: {_e}")
 
+_EMPLOYEES_CACHE = None
 
 class OvertimeDialog(QDialog):
     def __init__(
@@ -358,8 +359,11 @@ class OvertimeDialog(QDialog):
         try:
             from client.services.employee_service import EmployeeService
 
+            global _EMPLOYEES_CACHE
             service = EmployeeService(self.overtime_service.client)
-            employees = service.get_all_employees()
+            if _EMPLOYEES_CACHE is None:
+                _EMPLOYEES_CACHE = service.get_all_employees()
+            employees = _EMPLOYEES_CACHE
 
             print(f"🔍 Получено {len(employees)} сотрудников")
             if employees:

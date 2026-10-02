@@ -47,14 +47,18 @@ class TableDataManager(QObject):
         self.data_changed.emit()
 
     def _update_table(self):
-        """Обновление таблицы - единственное место взаимодействия с UI"""
-        self._table_widget.setRowCount(0)
-        self._table_widget.setRowCount(len(self._documents))
-
-        for row, doc in enumerate(self._documents):
-            self._row_renderer.render_row(row, doc)
-
-        self._table_widget.resizeRowsToContents()
+        tw = self._table_widget
+        tw.setUpdatesEnabled(False)
+        tw.blockSignals(True)
+        try:
+            tw.setRowCount(0)
+            tw.setRowCount(len(self._documents))
+            for row, doc in enumerate(self._documents):
+                self._row_renderer.render_row(row, doc)
+            tw.resizeRowsToContents()
+        finally:
+            tw.blockSignals(False)
+            tw.setUpdatesEnabled(True)
 
     def get_documents(self) -> list[dict[str, Any]]:
         """Получить все документы"""

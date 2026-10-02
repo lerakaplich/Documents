@@ -251,7 +251,9 @@ class DocumentsPanelController:
         return self._load_current(1)
 
     def load_documents_by_type(self, type_id: int, title: str | None = None, direction: str | None = None):
-        self.refresh_doc_types()  # ← подгружаем типы вместе с полями при переходе на вкладку
+        # Типы с полями при переходе на вкладку подгружает панель в фоне
+        # (DocumentsPanel.load_documents_by_type) — отдельный GET здесь задерживал каждую вкладку.
+        # Если кэш пуст, get_document_types() всё равно загрузит их сам.
         self.filters["scope"] = "all"
         self.filters["is_archived"] = None  # ← НОВОЕ
         self.current_type_id = type_id

@@ -78,8 +78,15 @@ class DocumentsColumnController:
         if user_names and len(hidden) >= len(user_names):
             hidden = set()  # нельзя скрыть всё
 
-        for col, name in enumerate(names):
-            table.setColumnHidden(col, name in hidden or name in forced)
+        # Одна перерисовка вместо перерисовки на каждый столбец; менять только то, что изменилось
+        table.setUpdatesEnabled(False)
+        try:
+            for col, name in enumerate(names):
+                target = name in hidden or name in forced
+                if table.isColumnHidden(col) != target:
+                    table.setColumnHidden(col, target)
+        finally:
+            table.setUpdatesEnabled(True)
 
         if self.menu is not None:
             self.menu.populate(user_names, hidden)

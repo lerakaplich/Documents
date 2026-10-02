@@ -107,7 +107,10 @@ class OvertimeCardContainer:
                 item = grid_layout.takeAt(0)
                 if item and item.widget():
                     widget = item.widget()
+                    widget.hide()
+                    widget.setParent(None)
                     widget.deleteLater()
+
 
             if not hasattr(container, "cards"):
                 container.cards = []
@@ -115,6 +118,7 @@ class OvertimeCardContainer:
                 container.cards.clear()
 
             # Добавляем карточки
+            container.setUpdatesEnabled(False)
             for i, data in enumerate(data_list):
                 real_id = data.get("id")
                 if real_id is None:
@@ -133,9 +137,11 @@ class OvertimeCardContainer:
             # Пересчитываем размер контейнера после перерисовки
             container.updateGeometry()
             container.adjustSize()
+            container.setUpdatesEnabled(True)
             if hasattr(container, "main_layout"):
                 container.main_layout.activate()
                 container.main_layout.update()
+                container.setUpdatesEnabled(True)
 
             # После пересчёта контейнера — попросить родителя обновить высоту вкладки
             p = self.parent
