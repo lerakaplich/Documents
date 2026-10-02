@@ -34,7 +34,10 @@ class OvertimeDataManager:
         my_page=1,
         all_page=1,
         page_size=100,
+        scope="both",
     ):
+        """scope: "my" | "all" | "both" — какие выборки запрашивать с сервера.
+        Не запрошенная сторона возвращается из кэша (её данные не трогаются)."""
         if not self.overtime_service:
             print("⚠️ OvertimeService не установлен, используем тестовые данные")
             return self.get_test_data()
@@ -45,36 +48,47 @@ class OvertimeDataManager:
         api_all_end = self._to_iso(all_end) or "2100-01-01"
 
         try:
-            from concurrent.futures import ThreadPoolExecutor  # в начало файла
+            want_my = scope in ("my", "both")
+            want_all = scope in ("all", "both")
+            my_resp = all_resp = None
 
-            with ThreadPoolExecutor(max_workers=2) as ex:
-                f_my = ex.submit(self.overtime_service.get_my_overtime, api_my_start, api_my_end, page=my_page,
-                                 size=page_size)
-                f_all = ex.submit(self.overtime_service.get_all_overtime, api_all_start, api_all_end, page=all_page,
-                                  size=page_size)
-                my_resp, all_resp = f_my.result(), f_all.result()
+            if want_my and want_all:
+                from concurrent.futures import ThreadPoolExecutor
 
-            # ─── Сохраняем метаданные пагинации ───
-            self._my_pagination = {
-                "page": my_resp.get("page", 1),
-                "pages": my_resp.get("pages", 1),
-                "total": my_resp.get("total", 0),
-                "size": my_resp.get("size", page_size),
-            }
-            self._all_pagination = {
-                "page": all_resp.get("page", 1),
-                "pages": all_resp.get("pages", 1),
-                "total": all_resp.get("total", 0),
-                "size": all_resp.get("size", page_size),
-            }
+                with ThreadPoolExecutor(max_workers=2) as ex:
+                    f_my = ex.submit(
+                        self.overtime_service.get_my_overtime, api_my_start, api_my_end, page=my_page, size=page_size
+                    )
+                    f_all = ex.submit(
+                        self.overtime_service.get_all_overtime, api_all_start, api_all_end, page=all_page, size=page_size
+                    )
+                    my_resp, all_resp = f_my.result(), f_all.result()
+            elif want_my:
+                my_resp = self.overtime_service.get_my_overtime(api_my_start, api_my_end, page=my_page, size=page_size)
+            else:
+                all_resp = self.overtime_service.get_all_overtime(
+                    api_all_start, api_all_end, page=all_page, size=page_size
+                )
 
-            my_formatted = self._format_overtime_data(my_resp.get("items", []))
-            all_formatted = self._format_overtime_data(all_resp.get("items", []))
+            # ─── Метаданные пагинации и кэш — только для запрошенных сторон ───
+            if my_resp is not None:
+                self._my_pagination = {
+                    "page": my_resp.get("page", 1),
+                    "pages": my_resp.get("pages", 1),
+                    "total": my_resp.get("total", 0),
+                    "size": my_resp.get("size", page_size),
+                }
+                self._cache_my_data = self._format_overtime_data(my_resp.get("items", []))
+            if all_resp is not None:
+                self._all_pagination = {
+                    "page": all_resp.get("page", 1),
+                    "pages": all_resp.get("pages", 1),
+                    "total": all_resp.get("total", 0),
+                    "size": all_resp.get("size", page_size),
+                }
+                self._cache_all_data = self._format_overtime_data(all_resp.get("items", []))
 
-            self._cache_my_data = my_formatted
-            self._cache_all_data = all_formatted
-
-            return my_formatted, all_formatted
+            return self._cache_my_data, self._cache_all_data
         except Exception as e:
             print(f"❌ Ошибка загрузки переработок: {e}")
             return self.get_test_data()

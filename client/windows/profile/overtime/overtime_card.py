@@ -4,7 +4,7 @@ import os
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QFrame, QLabel, QPushButton
-from PyQt6.uic import loadUi
+from PyQt6.uic import loadUi, loadUiType
 
 from client.core.themes import T, apply_theme_to_widget
 from client.windows.delete_dialog import DeleteDialog
@@ -12,6 +12,10 @@ from client.windows.delete_dialog import DeleteDialog
 # Пути к иконкам — как в left_panel.py / direction_group.py
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ICONS_PATH = "D:/Documents/client/icons"
+
+
+# .ui разбирается ОДИН раз: loadUi заново парсил XML на каждую карточку (до 100 на вкладку)
+_FORM_CACHE: dict = {}
 
 
 class OvertimeCard(QFrame):
@@ -65,9 +69,46 @@ class OvertimeCard(QFrame):
             # Если файл не найден — создаём карточку программно
             self._create_ui_programmatically()
         else:
-            loadUi(ui_path, self)
+            self._setup_ui_from_cache(ui_path)
             apply_theme_to_widget(self)
             # Подстраховка: если iconset из .qrc не подтянулся — ставим SVG вручную
+
+    def _setup_ui_from_cache(self, ui_path: str):
+        """Собирает карточку из .ui, разобранного один раз (loadUiType + setupUi).
+        Если разбор не удался — прежний путь через loadUi."""
+        form_class = _FORM_CACHE.get(ui_path)
+        if form_class is None:
+            prev_cwd = os.getcwd()
+            try:
+                os.chdir(os.path.dirname(ui_path))  # относительные пути иконок — от папки .ui, как у loadUi
+                form_class, _base = loadUiType(ui_path)
+                _FORM_CACHE[ui_path] = form_class
+            except Exception as e:  # noqa: BLE001
+                print(f"[OvertimeCard] loadUiType не удался ({e}), используем loadUi")
+                form_class = None
+            finally:
+                os.chdir(prev_cwd)
+
+        if form_class is None:
+            loadUi(ui_path, self)
+            return
+
+        prev_cwd = os.getcwd()
+        try:
+            os.chdir(os.path.dirname(ui_path))
+            form = form_class()
+            form.setupUi(self)
+        finally:
+            os.chdir(prev_cwd)
+
+        # loadUi клал виджеты атрибутами на саму карточку — делаем так же
+        for name, value in vars(form).items():
+            if name.startswith("_"):
+                continue
+            existing = getattr(self, name, None)
+            if existing is not None and callable(existing):
+                continue  # не затираем методы QFrame
+            setattr(self, name, value)
 
     def _create_ui_programmatically(self):
         """Создание UI программно (если файл .ui не найден)"""

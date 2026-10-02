@@ -1,4 +1,6 @@
 # client/windows/profile/overtime/overtime_panel.py
+from PyQt6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Qt, pyqtSignal, pyqtSlot
+
 from client.core.filtering.hierarchical_department_filter import (
     HierarchicalDepartmentFilter,
 )
@@ -17,6 +19,44 @@ from client.windows.profile.overtime.overtime_pagination_manager import (
 from client.windows.profile.overtime.overtime_period_manager import (
     OvertimePeriodManager,
 )
+
+
+class _OvertimeLoadSignals(QObject):
+    """Доставляет результат фоновой загрузки в поток интерфейса."""
+
+    done = pyqtSignal(int, object)  # request_id, (my_data, all_data)
+    failed = pyqtSignal(int, str)
+
+    def __init__(self, on_done, on_failed):
+        super().__init__()
+        self._on_done = on_done
+        self._on_failed = on_failed
+        self.done.connect(self._handle_done)
+        self.failed.connect(self._handle_failed)
+
+    @pyqtSlot(int, object)
+    def _handle_done(self, request_id, result):
+        self._on_done(request_id, result)
+
+    @pyqtSlot(int, str)
+    def _handle_failed(self, request_id, message):
+        self._on_failed(request_id, message)
+
+
+class _OvertimeLoadTask(QRunnable):
+    def __init__(self, request_id, fn, signals):
+        super().__init__()
+        self._request_id = request_id
+        self._fn = fn
+        self._signals = signals
+
+    def run(self):
+        try:
+            result = self._fn()
+        except Exception as e:  # noqa: BLE001
+            self._signals.failed.emit(self._request_id, str(e))
+            return
+        self._signals.done.emit(self._request_id, result)
 
 
 class OvertimePanel:
@@ -53,6 +93,16 @@ class OvertimePanel:
         self.department_filter = None
         self.btnAddOvertime = None
         self.btnImport = None
+
+        # Фоновая загрузка: один поток (кэши менеджера данных не гоняются), устаревшие
+        # ответы по каждой вкладке отбрасываются по номеру запроса
+        self._load_signals = _OvertimeLoadSignals(self._on_loaded, self._on_load_failed)
+        self._load_pool = QThreadPool()
+        self._load_pool.setMaxThreadCount(1)
+        self._request_seq = 0
+        self._side_tokens = {"my": 0, "all": 0}
+        self._requests = {}
+        self._pending_loads = 0
 
     # ==================== ИНИЦИАЛИЗАЦИЯ ====================
 
@@ -109,7 +159,10 @@ class OvertimePanel:
         new_page = self.pagination.current_page(tab) + delta
         if 1 <= new_page <= p["pages"]:
             self.pagination.set_page(tab, new_page)
-            self.load_overtime_data(for_my=(tab == "my"))
+            self.load_overtime_data(
+                filter_department_id=self.data_manager.current_filter_department_id if tab == "all" else None,
+                scope=tab,
+            )
 
     def _update_pagination_labels(self):
         self.pagination.update_labels(
@@ -119,57 +172,103 @@ class OvertimePanel:
 
     # ==================== ЗАГРУЗКА ДАННЫХ ====================
 
-    def load_overtime_data(self, filter_department_id=None, for_my=False):
+    def load_overtime_data(self, filter_department_id=None, for_my=False, scope=None):
+        """Загружает данные В ФОНЕ и перерисовывает карточки, когда ответ пришёл.
+
+        scope: "my" | "all" | "both" — какие вкладки запросить и перерисовать.
+        По умолчанию как раньше: for_my=True → только «Мои», иначе обе."""
+        if scope is None:
+            scope = "my" if for_my else "both"
         try:
-            if not self.card_container.myOvertimeContainer:
-                self.card_container.setup_card_containers()
-            if not self.card_container.allOvertimeContainer:
+            if not self.card_container.myOvertimeContainer or not self.card_container.allOvertimeContainer:
                 self.card_container.setup_card_containers()
 
             my_period = self.period_manager.my_period
             all_period = self.period_manager.all_period
+            args = {
+                "my_start": my_period["start"] if my_period else None,
+                "my_end": my_period["end"] if my_period else None,
+                "all_start": all_period["start"] if all_period else None,
+                "all_end": all_period["end"] if all_period else None,
+                "my_page": self.pagination.my_current_page,
+                "all_page": self.pagination.all_current_page,
+                "page_size": self.pagination.page_size,
+                "scope": scope,
+            }
 
-            if self.overtime_service:
-                my_data, all_data = self.data_manager.load_overtime_from_api(
-                    my_start=my_period["start"] if my_period else None,
-                    my_end=my_period["end"] if my_period else None,
-                    all_start=all_period["start"] if all_period else None,
-                    all_end=all_period["end"] if all_period else None,
-                    my_page=self.pagination.my_current_page,
-                    all_page=self.pagination.all_current_page,
-                    page_size=self.pagination.page_size,
+            sides = ("my", "all") if scope == "both" else (scope,)
+            self._request_seq += 1
+            request_id = self._request_seq
+            for side in sides:
+                self._side_tokens[side] = request_id
+            self._requests[request_id] = sides
+            self._set_busy(1)
+
+            self._load_pool.start(
+                _OvertimeLoadTask(
+                    request_id,
+                    lambda: self._fetch(args, filter_department_id),
+                    self._load_signals,
                 )
-            else:
-                my_data, all_data = self.data_manager.get_test_data()
+            )
+        except Exception as e:
+            print(f"Ошибка в load_overtime_data: {e}")
+            import traceback
 
-            my_data, all_data = self.data_manager.filter_data(my_data, all_data, filter_department_id)
+            traceback.print_exc()
+            self._notify(f"Ошибка загрузки данных: {e!s}", duration=4000)
 
-            if for_my:
-                print(f"Обновление только 'Моих переработок' с {len(my_data)} записями")
-                self.card_container.populate_card_container(
-                    self.card_container.myOvertimeContainer,
-                    my_data,
-                    self.crud.edit_overtime_my,
-                    self.crud.delete_overtime,
-                )
-                self.card_container.update_total_hours(self.labelTotalHoursMy, my_data)
+    def _fetch(self, args, filter_department_id):
+        """Блокирующая часть (HTTP + форматирование + фильтр по отделу) — в фоновом потоке."""
+        if self.overtime_service:
+            my_data, all_data = self.data_manager.load_overtime_from_api(**args)
+        else:
+            my_data, all_data = self.data_manager.get_test_data()
+        return self.data_manager.filter_data(my_data, all_data, filter_department_id)
+
+    def _set_busy(self, delta):
+        self._pending_loads = max(0, self._pending_loads + delta)
+        widget = self.parent
+        if widget is not None and hasattr(widget, "setCursor"):
+            if self._pending_loads:
+                widget.setCursor(Qt.CursorShape.BusyCursor)
             else:
-                print(f"Обновление 'Всех переработок' с {len(all_data)} записями")
-                print(f"Обновление 'Моих переработок' с {len(my_data)} записями")
+                widget.unsetCursor()
+
+    def _on_load_failed(self, request_id, message):
+        self._set_busy(-1)
+        self._requests.pop(request_id, None)
+        print(f"Ошибка загрузки переработок: {message}")
+        self._notify(f"Ошибка загрузки данных: {message}", duration=4000)
+
+    def _on_loaded(self, request_id, result):
+        """В потоке интерфейса: рисуем только те вкладки, чей запрос ещё актуален."""
+        self._set_busy(-1)
+        sides = self._requests.pop(request_id, ("my", "all"))
+        my_data, all_data = result
+        try:
+            applied = False
+            if "all" in sides and self._side_tokens["all"] == request_id:
                 self.card_container.populate_card_container(
                     self.card_container.allOvertimeContainer,
                     all_data,
                     self.crud.edit_overtime_all,
                     self.crud.delete_overtime,
                 )
+                self.card_container.update_total_hours(self.labelTotalHoursAll, all_data)
+                applied = True
+            if "my" in sides and self._side_tokens["my"] == request_id:
                 self.card_container.populate_card_container(
                     self.card_container.myOvertimeContainer,
                     my_data,
                     self.crud.edit_overtime_my,
                     self.crud.delete_overtime,
                 )
-                self.card_container.update_total_hours(self.labelTotalHoursAll, all_data)
                 self.card_container.update_total_hours(self.labelTotalHoursMy, my_data)
+                applied = True
+
+            if not applied:
+                return  # пришёл устаревший ответ
 
             self._update_pagination_labels()
             # Форсируем пересчёт размеров вкладки и QTabWidget
@@ -183,12 +282,10 @@ class OvertimePanel:
 
             # Пересчитываем высоту вкладки после подгрузки карточек
             if self.parent and hasattr(self.parent, "_resize_tab_widget"):
-                from PyQt6.QtCore import QTimer
-
                 QTimer.singleShot(0, self.parent._resize_tab_widget)
 
         except Exception as e:
-            print(f"Ошибка в load_overtime_data: {e}")
+            print(f"Ошибка в _on_loaded: {e}")
             import traceback
 
             traceback.print_exc()
@@ -224,9 +321,10 @@ class OvertimePanel:
             )
 
         self.pagination.reset("my" if is_my else "all")
+        # Период меняется только у одной вкладки — запрашиваем и рисуем только её
         self.load_overtime_data(
-            filter_department_id=self.data_manager.current_filter_department_id,
-            for_my=False,
+            filter_department_id=None if is_my else self.data_manager.current_filter_department_id,
+            scope="my" if is_my else "all",
         )
 
     def _apply_initial_periods(self):
@@ -276,7 +374,7 @@ class OvertimePanel:
         print(f"Фильтр по отделу ID: {department_id}")
         self.data_manager.current_filter_department_id = department_id
         self.show_reset_button("all")
-        self.load_overtime_data(filter_department_id=department_id, for_my=False)
+        self.load_overtime_data(filter_department_id=department_id, scope="all")
 
     # ==================== КНОПКИ СБРОСА ====================
 
@@ -322,7 +420,7 @@ class OvertimePanel:
         self.period_manager.update_period_button_text(self.btnSelectPeriodAll, None)
         self.load_overtime_data(
             filter_department_id=self.data_manager.current_filter_department_id,
-            for_my=False,
+            scope="all",
         )
 
     def reset_my_filters(self):

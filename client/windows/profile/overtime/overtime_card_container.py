@@ -152,6 +152,8 @@ class OvertimeCardContainer:
 
         except Exception as e:
             print(f"Ошибка в populate_card_container: {e}")
+            if container is not None:
+                container.setUpdatesEnabled(True)  # не оставляем контейнер «замороженным»
             import traceback
 
             traceback.print_exc()

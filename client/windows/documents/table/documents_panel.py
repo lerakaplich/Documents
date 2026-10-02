@@ -161,6 +161,7 @@ class DocumentsPanel(QWidget):
         # Загружаем все документы по умолчанию
         self.load_all_documents()
         self.documents_table.document_action_triggered.connect(self._on_document_action)
+        self._prefetch_directories()
 
     # ========== UI ==========
 
@@ -348,6 +349,26 @@ class DocumentsPanel(QWidget):
             return result
 
         self._load_pool.start(_LoadTask(token, job, lambda t: t == self._load_token, self._load_signals))
+
+    def _prefetch_directories(self):
+        """Прогрев справочников (организации/отделы/сотрудники) в фоне, пока пользователь
+        смотрит на таблицу. Кэш общий (EmployeeSelectionDataLoader), поэтому диалог
+        создания документа и выбор получателей открываются без ожидания запросов."""
+        http = self.http_client
+        if http is None:
+            return
+
+        def job():
+            from client.core.org_structure.employee_selection_data_loader import (
+                EmployeeSelectionDataLoader,
+            )
+
+            loader = EmployeeSelectionDataLoader(http)
+            loader.load_organizations()
+            loader.load_departments_flat()
+            loader.load_employees()
+
+        QThreadPool.globalInstance().start(_FuncTask(job))
 
     def _warm_type_fields(self, settings_key):
         """Подгружает поля типа в кэш таблицы (иначе GET на каждый новый тип
