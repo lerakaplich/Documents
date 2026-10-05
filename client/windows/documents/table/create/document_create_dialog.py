@@ -113,10 +113,14 @@ class DocumentDialog(QWidget):
         http_client=None,
         document_service=None,
         doc_type_service=None,
+        reply_to: dict[str, Any] | None = None,
     ):
         super().__init__(parent)
 
         self.mode = mode
+        # Ответ на документ: при сохранении в документ пишется parent_document_id = id исходного
+        self.reply_to = reply_to
+        self.parent_document_id = reply_to.get("id") if reply_to else None
         self.document_data = document_data or {}
         self.current_user = current_user or {}
         self.organizations = organizations or []
@@ -368,11 +372,20 @@ class DocumentDialog(QWidget):
     def _setup_mode_ui(self):
         """Настройка UI в зависимости от режима"""
         if self.mode == "create":
-            self.setWindowTitle("Создание нового документа")
-            if hasattr(self, "btn_attach"):
-                self.btn_attach.setText("Создать документ")
-            if hasattr(self, "titleLabel"):
-                self.titleLabel.setText("Создание нового документа")
+            if self.parent_document_id is not None:
+                ref = (self.reply_to or {}).get("reg_number") or f"#{self.parent_document_id}"
+                title = f"Ответ на документ №{ref}" if (self.reply_to or {}).get("reg_number") else f"Ответ на документ {ref}"
+                self.setWindowTitle(title)
+                if hasattr(self, "btn_attach"):
+                    self.btn_attach.setText("Отправить ответ")
+                if hasattr(self, "titleLabel"):
+                    self.titleLabel.setText(title)
+            else:
+                self.setWindowTitle("Создание нового документа")
+                if hasattr(self, "btn_attach"):
+                    self.btn_attach.setText("Создать документ")
+                if hasattr(self, "titleLabel"):
+                    self.titleLabel.setText("Создание нового документа")
         else:
             self.setWindowTitle("Редактирование документа")
             if hasattr(self, "btn_attach"):
@@ -401,8 +414,22 @@ class DocumentDialog(QWidget):
         if hasattr(self, "btn_attach"):
             self.btn_attach.clicked.connect(self.save_document)
 
-        if hasattr(self, "btnAddSender"):
-            self.btnAddSender.clicked.connect(self.add_sender)
+        # «+» у отправителя / получателей / исполнителей — меню «Сотрудник / Организация / Отдел»
+        # и соответствующий диалог создания; «+» у тегов — диалог тега
+        from client.windows.documents.table.create.quick_add import QuickAddController
+
+        self._quick_add = QuickAddController(self)
+        for button_name, role in (
+            ("btnAddSender", "sender"),
+            ("btnAddReceiver", "receiver"),
+            ("btnAddExecutor", "executor"),
+        ):
+            button = getattr(self, button_name, None)
+            if button is not None:
+                button.clicked.connect(lambda checked=False, b=button, r=role: self._quick_add.show_menu(b, r))
+
+        if hasattr(self, "btnAddTag"):
+            self.btnAddTag.clicked.connect(lambda checked=False: self._quick_add.create_tag())
 
         if hasattr(self, "direction_box"):
             self.direction_box.currentIndexChanged.connect(self._on_direction_changed)
@@ -1047,6 +1074,9 @@ class DocumentDialog(QWidget):
 
         if hasattr(self, "date_deadline") and en("deadline"):
             doc_data["deadline"] = self.date_deadline.date().toString("yyyy-MM-dd")
+
+        if self.parent_document_id is not None:
+            doc_data["parent_document_id"] = self.parent_document_id  # связь «ответ → исходный документ»
 
         print(f"[DocumentDialog] {self.mode} документ: {doc_data}")
 

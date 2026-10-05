@@ -17,6 +17,7 @@ from client.core.org_structure.employee.dialog.employee_data_manager import (
     EmployeeDataManager,
 )
 from client.core.org_structure.employee.dialog.hierarchy_manager import HierarchyManager
+from client.core.utils.window_size import restore_window_size, save_window_size
 from client.windows.system.employees.employee_dialog_ui import EmployeeUI
 
 
@@ -55,20 +56,17 @@ class EmployeeDialog(QtWidgets.QDialog):
 
         self.ui_builder.load_ui()
         self.ui_builder.setup_window(employee, current_user_rights)
+        self._apply_size()  # раньше нигде не вызывался — окно открывалось с размером из .ui
         self._connect_signals()
         self._load_initial_data()
 
     def _apply_size(self):
         """Явный размер — иначе QDialog с parent'ом внутри QStackedWidget/Tab
         считает sizeHint от родителя и получается то крошечным, то огромным."""
-        from PyQt6.QtWidgets import QApplication
-
         self.setMinimumWidth(675)
         self.setMinimumHeight(600)
-
-        screen = QApplication.primaryScreen()
-        max_h = (screen.availableGeometry().height() - 80) if screen else 820
-        self.resize(675, min(820, max_h))
+        # сохранённый размер (или 675×820 по умолчанию), не больше экрана
+        restore_window_size(self, "employee_dialog", default=(675, 820))
 
     def reapply_theme(self):
         """Переприменить тему после set_theme()."""
@@ -128,6 +126,11 @@ class EmployeeDialog(QtWidgets.QDialog):
             self.async_ops.start_async_update(data)
         else:
             self.async_ops.start_async_create(data)
+
+    def done(self, result):
+        """Закрытие любым способом (Сохранить / Отмена / крестик) — запоминаем размер окна."""
+        save_window_size(self, "employee_dialog")
+        super().done(result)
 
     def closeEvent(self, event):
         """Обработчик закрытия окна"""

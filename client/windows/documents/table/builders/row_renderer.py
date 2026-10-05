@@ -38,6 +38,7 @@ class RowRenderer:
         self.cell_signals.attachment_clicked.connect(self._on_attachment_clicked)
         self.cell_signals.attachment_upload.connect(self._on_attachment_upload)
         self.cell_signals.reply_clicked.connect(self._on_reply_clicked)
+        self.cell_signals.reply_requested.connect(self._on_reply_requested)
         self.cell_signals.reply_upload.connect(self._on_reply_upload)
         self.cell_signals.redirect_requested.connect(self._on_redirect_requested)
         # В __init__ добавь подключение сигнала (после других подключений):
@@ -335,6 +336,11 @@ class RowRenderer:
         from PyQt6.QtWidgets import QMessageBox
 
         QMessageBox.information(None, "Открытие ответа", f"Открывается: {reply_file.get('name')}")
+
+    def _on_reply_requested(self, document: dict):
+        """Кнопка «Ответить» в ячейке → панель откроет диалог документа с parent_document_id"""
+        if hasattr(self._signals, "document_action_triggered"):
+            self._signals.document_action_triggered.emit("reply", document)
 
     def _on_reply_upload(self, document_id, file_path):
         import os

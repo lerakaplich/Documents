@@ -122,11 +122,39 @@ class DocumentsCrudController:
 
             traceback.print_exc()
 
+    def open_reply_dialog(self, document: dict):
+        """Ответ на документ: обычный диалог создания, но с parent_document_id."""
+        panel = self.panel
+        controller = panel.controller
+        try:
+            dialog = DocumentDialog(
+                parent=panel,
+                mode="create",
+                current_user=controller.get_current_user(),
+                organizations=self._organizations(),
+                departments=self._departments(),
+                employees=self._employees(),
+                tags=self._tags(),
+                document_types=controller.get_document_types(),
+                http_client=panel.http_client,
+                reply_to=document,
+            )
+            dialog.document_created.connect(self._on_created)
+            panel.document_dialog = dialog
+            dialog.setWindowFlags(Qt.WindowType.Window)
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+        except Exception as e:
+            print(f"[DocumentsPanel] Ошибка при открытии диалога ответа: {e}")
+
     def _on_created(self, document_data: dict):
         print(f"[DocumentsPanel] Документ успешно создан: {document_data}")
         self.panel.refresh()
         if hasattr(self.panel, "create_doc_window"):
             self.panel.create_doc_window.close()
+
+
 
     def create_document(self, document_data: dict):
         """Путь через DocumentsPanelController.create_document — оставлен для

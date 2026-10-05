@@ -488,6 +488,9 @@ class DocumentsPanel(QWidget):
 
     def _on_document_action(self, action_type: str, document_data: dict):
         """Диспетчеризация — вся реальная логика в DocumentsRowActionController."""
+        if action_type == "reply":
+            self.crud.open_reply_dialog(document_data)
+            return
         self.row_actions.handle(action_type, document_data)
 
 

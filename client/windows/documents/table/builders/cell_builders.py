@@ -29,6 +29,7 @@ class CellBuilderSignals(QObject):
     attachment_clicked = pyqtSignal(dict, dict)  # document_data, attachment
     attachment_upload = pyqtSignal(int, str)  # document_id, file_path
     reply_clicked = pyqtSignal(dict)  # reply_file
+    reply_requested = pyqtSignal(dict)  # document_data: нажали «Ответить» на документ
     reply_upload = pyqtSignal(int, str)  # document_id, file_path
     comment_clicked = pyqtSignal(dict)  # document_data
     delegate_added = pyqtSignal(dict)
@@ -510,15 +511,23 @@ class ReplyCellBuilder:
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         reply_file = document.get("reply_file")
+        reply_id = document.get("reply_id")
 
         if reply_file:
             btn = QPushButton("Открыть")
             btn.setStyleSheet(self._open_style())
             btn.clicked.connect(lambda checked, rf=reply_file: self.signals.reply_clicked.emit(rf))
+        elif reply_id:
+            # ответ уже есть (документ с parent_document_id = этот документ)
+            btn = QPushButton("Открыть")
+            btn.setStyleSheet(self._open_style())
+            btn.clicked.connect(
+                lambda checked, rid=reply_id: self.signals.reply_clicked.emit({"id": rid, "name": f"документ #{rid}"})
+            )
         else:
-            btn = QPushButton("Загрузить")
+            btn = QPushButton("Ответить")
             btn.setStyleSheet(self._upload_style())
-            btn.clicked.connect(lambda checked, did=document.get("id"): self._upload_reply(did))
+            btn.clicked.connect(lambda checked, d=document: self.signals.reply_requested.emit(d))
 
         layout.addWidget(btn)
         return container
