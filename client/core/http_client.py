@@ -5,9 +5,11 @@ import json
 import logging
 import os
 import threading
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
+from uuid import UUID
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -21,6 +23,31 @@ UPLOAD_TIMEOUT = (5, 60)
 
 class AuthError(Exception):
     """Ошибка авторизации"""
+
+
+class _ApiJSONEncoder(json.JSONEncoder):
+    """
+    Сериализатор для JSON-тела запросов.
+
+    requests умеет сам сериализовать dict, но `date`, `datetime`, `Decimal`,
+    `UUID` он не знает и падает с TypeError: Object of type date is not JSON
+    serializable. Здесь приводим их к ISO-строкам/числам, которые ожидает
+    Pydantic на сервере.
+    """
+
+    def default(self, obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, UUID):
+            return str(obj)
+        return super().default(obj)
+
+
+def _json_dumps(obj: Any) -> str:
+    """Дамп в JSON с поддержкой date/datetime/Decimal/UUID."""
+    return json.dumps(obj, cls=_ApiJSONEncoder, ensure_ascii=False)
 
 
 def _normalize_base_url(base_url: str) -> str:
@@ -172,7 +199,12 @@ class HttpClient:
         url = f"{self.base_url}{endpoint}"
         headers = self._get_headers()
 
-        # Заголовки (там Bearer-токен) в лог не пишем; подробности — только в DEBUG
+        # ── Превращаем json=payload в data=<строка>, чтобы поддержать date/datetime ──
+        if "json" in kwargs and kwargs["json"] is not None:
+            payload = kwargs.pop("json")
+            kwargs["data"] = _json_dumps(payload)
+            # Content-Type уже стоит в headers (_get_headers)
+
         logger.debug("📤 %s %s", method, url)
         if kwargs.get("params"):
             logger.debug("📋 Params: %s", kwargs["params"])

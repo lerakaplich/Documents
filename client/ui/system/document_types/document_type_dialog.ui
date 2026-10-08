@@ -184,9 +184,9 @@ QLabel#paramNameLabel {
     font-size: 13px;
 }
 
-QLabel[required="true"] { color: {ACCENT_PRIMARY}; }
-QLabel[required="true"]::after {
-    content: " *";
+QLabel[required=&quot;true&quot;] { color: {ACCENT_PRIMARY}; }
+QLabel[required=&quot;true&quot;]::after {
+    content: &quot; *&quot;;
     color: {ACCENT_REQUIRED};
     font-weight: bold;
 }</string>
@@ -210,7 +210,7 @@ QLabel[required="true"]::after {
    <item>
     <widget class="QLabel" name="titleLabel">
      <property name="styleSheet">
-      <string>font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px;</string>
+      <string notr="true">font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px;</string>
      </property>
      <property name="text">
       <string>Новый тип документа</string>
@@ -302,7 +302,7 @@ QScrollBar::sub-page:horizontal {
         <x>0</x>
         <y>0</y>
         <width>581</width>
-        <height>475</height>
+        <height>470</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="scrollLayout">
@@ -534,7 +534,7 @@ QScrollBar::sub-page:horizontal {
                <x>0</x>
                <y>0</y>
                <width>549</width>
-               <height>147</height>
+               <height>165</height>
               </rect>
              </property>
              <layout class="QVBoxLayout" name="paramsScrollLayout">
@@ -569,7 +569,7 @@ QScrollBar::sub-page:horizontal {
      <property name="minimumSize">
       <size>
        <width>120</width>
-       <height>0</height>
+       <height>40</height>
       </size>
      </property>
      <property name="maximumSize">
@@ -580,6 +580,22 @@ QScrollBar::sub-page:horizontal {
      </property>
      <property name="cursor">
       <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    border: none;
+}
+QPushButton:hover {
+    background-color: {ACCENT_HOVER};
+}
+QPushButton:pressed {
+    background-color: {ACCENT_PRESSED};
+}</string>
      </property>
      <property name="text">
       <string>Сохранить</string>

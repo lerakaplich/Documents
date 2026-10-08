@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>675</width>
-    <height>820</height>
+    <height>865</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -26,7 +26,10 @@
    <string>Сотрудник</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">QScrollArea {
+   <string notr="true">QScrollArea &gt; QWidget &gt; QWidget {
+    background: transparent;
+}
+QScrollArea {
  border: none;
  background-color: transparent;
 }
@@ -676,7 +679,7 @@ QPushButton#saveButton:pressed {
    <item>
     <widget class="QLabel" name="titleLabel">
      <property name="styleSheet">
-      <string>font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px;</string>
+      <string notr="true">font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px; background-color: transparent;</string>
      </property>
      <property name="text">
       <string>Новый сотрудник</string>
@@ -768,7 +771,7 @@ QScrollBar::sub-page:horizontal {
         <x>0</x>
         <y>0</y>
         <width>635</width>
-        <height>670</height>
+        <height>715</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="scrollLayout">
@@ -817,7 +820,7 @@ QScrollBar::sub-page:horizontal {
           <item row="0" column="0">
            <widget class="QLabel" name="lastNameLabel">
             <property name="styleSheet">
-             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+             <string notr="true">color: {TEXT_PRIMARY}; font-weight: 500;  background-color: transparent;</string>
             </property>
             <property name="text">
              <string>Фамилия *:</string>
@@ -829,13 +832,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -846,7 +849,7 @@ QScrollBar::sub-page:horizontal {
           <item row="1" column="0">
            <widget class="QLabel" name="firstNameLabel">
             <property name="styleSheet">
-             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+             <string notr="true">color: {TEXT_PRIMARY}; font-weight: 500;  background-color: transparent;</string>
             </property>
             <property name="text">
              <string>Имя *:</string>
@@ -858,13 +861,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -875,7 +878,7 @@ QScrollBar::sub-page:horizontal {
           <item row="2" column="0">
            <widget class="QLabel" name="patronymicLabel">
             <property name="styleSheet">
-             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+             <string notr="true">color: {TEXT_PRIMARY}; font-weight: 500;  background-color: transparent;</string>
             </property>
             <property name="text">
              <string>Отчество:</string>
@@ -887,13 +890,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -904,7 +907,7 @@ QScrollBar::sub-page:horizontal {
           <item row="3" column="0">
            <widget class="QLabel" name="serviceNumberLabel">
             <property name="styleSheet">
-             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+             <string notr="true">color: {TEXT_PRIMARY}; font-weight: 500;  background-color: transparent;</string>
             </property>
             <property name="text">
              <string>Табельный номер:</string>
@@ -916,13 +919,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -933,7 +936,7 @@ QScrollBar::sub-page:horizontal {
           <item row="4" column="0">
            <widget class="QLabel" name="birthDateLabel">
             <property name="styleSheet">
-             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+             <string notr="true">color: {TEXT_PRIMARY}; font-weight: 500;  background-color: transparent;</string>
             </property>
             <property name="text">
              <string>Дата рождения:</string>
@@ -941,17 +944,17 @@ QScrollBar::sub-page:horizontal {
            </widget>
           </item>
           <item row="4" column="1">
-           <widget class="QDateEdit" name="birthDateEdit">
+           <widget class="CustomCalendarDateEdit" name="birthDateEdit">
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="displayFormat">
@@ -995,7 +998,7 @@ QScrollBar::sub-page:horizontal {
           <item row="2" column="0">
            <widget class="QLabel" name="emailLabel">
             <property name="styleSheet">
-             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+             <string notr="true">color: {TEXT_PRIMARY}; font-weight: 500;  background-color: transparent;</string>
             </property>
             <property name="text">
              <string>Email:</string>
@@ -1005,7 +1008,7 @@ QScrollBar::sub-page:horizontal {
           <item row="1" column="0">
            <widget class="QLabel" name="workPhoneLabel">
             <property name="styleSheet">
-             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+             <string notr="true">color: {TEXT_PRIMARY}; font-weight: 500;  background-color: transparent;</string>
             </property>
             <property name="text">
              <string>Рабочий телефон:</string>
@@ -1015,7 +1018,7 @@ QScrollBar::sub-page:horizontal {
           <item row="0" column="0">
            <widget class="QLabel" name="phoneLabel">
             <property name="styleSheet">
-             <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+             <string notr="true">color: {TEXT_PRIMARY}; font-weight: 500;  background-color: transparent;</string>
             </property>
             <property name="text">
              <string>Личный телефон:</string>
@@ -1027,13 +1030,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -1046,13 +1049,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -1065,13 +1068,13 @@ QScrollBar::sub-page:horizontal {
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>36</height>
+              <height>32</height>
              </size>
             </property>
             <property name="placeholderText">
@@ -1167,7 +1170,7 @@ QScrollBar::sub-page:horizontal {
                </size>
               </property>
               <property name="styleSheet">
-               <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+               <string notr="true">color: {TEXT_PRIMARY}; font-weight: 500;  background-color: transparent;</string>
               </property>
               <property name="text">
                <string>Должность *:</string>
@@ -1179,13 +1182,13 @@ QScrollBar::sub-page:horizontal {
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>36</height>
+                <height>32</height>
                </size>
               </property>
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
-                <height>36</height>
+                <height>32</height>
                </size>
               </property>
               <property name="placeholderText">
@@ -1212,7 +1215,7 @@ QScrollBar::sub-page:horizontal {
                </size>
               </property>
               <property name="styleSheet">
-               <string>color: {TEXT_PRIMARY}; font-weight: 500;</string>
+               <string notr="true">color: {TEXT_PRIMARY}; font-weight: 500;  background-color: transparent;</string>
               </property>
               <property name="text">
                <string>Права доступа:</string>
@@ -1224,13 +1227,13 @@ QScrollBar::sub-page:horizontal {
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>34</height>
+                <height>32</height>
                </size>
               </property>
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
-                <height>36</height>
+                <height>32</height>
                </size>
               </property>
               <property name="styleSheet">
@@ -1258,6 +1261,22 @@ QScrollBar::sub-page:horizontal {
      <property name="cursor">
       <cursorShape>PointingHandCursor</cursorShape>
      </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    border: none;
+}
+QPushButton:hover {
+    background-color: {ACCENT_HOVER};
+}
+QPushButton:pressed {
+    background-color: {ACCENT_PRESSED};
+}</string>
+     </property>
      <property name="text">
       <string>Сохранить</string>
      </property>
@@ -1265,6 +1284,13 @@ QScrollBar::sub-page:horizontal {
    </item>
   </layout>
  </widget>
+  <customwidgets>
+  <customwidget>
+   <class>CustomCalendarDateEdit</class>
+   <extends>QDateEdit</extends>
+   <header>client.windows.date_edit</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

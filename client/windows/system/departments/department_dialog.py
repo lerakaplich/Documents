@@ -8,7 +8,7 @@ import os
 import sys
 
 from PyQt6 import uic
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox
 
 from client.core.themes import apply_theme_to_widget
@@ -18,6 +18,13 @@ class DepartmentDialog(QDialog):
     """
     Диалог для создания/редактирования отдела
     """
+
+    # организация в комбобоксе изменена (id или None) — родитель подгружает её отделы и сотрудников
+    organization_changed = pyqtSignal(object)
+
+    # нажата «+» и в диалоге нового типа введены данные ({"name": ...}) —
+    # родитель сохраняет тип на сервере и вызывает add_department_type({id, name})
+    department_type_add_requested = pyqtSignal(dict)
 
     # Серверный маппинг id → название. Используется, если родитель
     # не передал department_types (например, при вызове из теста).
@@ -54,7 +61,7 @@ class DepartmentDialog(QDialog):
         self.organizations = organizations or []
         self.departments = departments or []
         self.employees = employees or []
-        self.department_types = department_types or self.FALLBACK_TYPES
+        self.department_types = list(department_types or self.FALLBACK_TYPES)
 
         self._load_ui()
         self._setup_window()
@@ -88,6 +95,7 @@ class DepartmentDialog(QDialog):
             "organization_combo": "organizationCombo",
             "parent_department_combo": "parentDepartmentCombo",
             "type_combo": "typeCombo",
+            "type_add_button": "typeAddButton",
             "department_number_edit": "departmentNumberEdit",
             "phone_edit": "phoneEdit",
             "head_combo": "headCombo",
@@ -402,9 +410,59 @@ class DepartmentDialog(QDialog):
                 else:
                     print(f"[WARN] head_employee_id={head_id!r} не найден в combo")
 
+    def set_parent_departments(self, departments):
+        """
+        Публичный метод: перезаполнить список родительских отделов (например, после смены организации).
+        Выбор сохраняется, если такой отдел есть в новом списке.
+        """
+        if not hasattr(self, "parent_department_combo"):
+            return
+        current = self.parent_department_combo.currentData()
+        self.departments = departments or []
+        self.parent_department_combo.clear()
+        self.parent_department_combo.addItem("Нет (корневой отдел)", None)
+        for dept in self.departments:
+            if self.is_edit_mode and dept.get("id") == self.department_data.get("id"):
+                continue
+            self.parent_department_combo.addItem(dept.get("name", ""), dept.get("id"))
+        if current is not None:
+            idx = self.parent_department_combo.findData(current)
+            if idx >= 0:
+                self.parent_department_combo.setCurrentIndex(idx)
+
     def _connect_signals(self):
         if hasattr(self, "save_button"):
             self.save_button.clicked.connect(self._on_save_clicked)
+        if hasattr(self, "type_add_button"):
+            self.type_add_button.clicked.connect(self._on_add_type_clicked)
+        if hasattr(self, "organization_combo"):
+            self.organization_combo.currentIndexChanged.connect(
+                lambda _i: self.organization_changed.emit(self.organization_combo.currentData())
+            )
+
+    def _on_add_type_clicked(self):
+        """Открывает диалог нового типа отдела и отдаёт данные родителю."""
+        from client.windows.system.departments.department_type_dialog import (
+            DepartmentTypeDialog,
+        )
+
+        if self.receivers(self.department_type_add_requested) == 0:
+            QMessageBox.warning(self, "Недоступно", "Создание типов отделов из этого окна не подключено.")
+            return
+
+        dialog = DepartmentTypeDialog(self)
+        if dialog.exec():
+            self.department_type_add_requested.emit(dialog.get_data())
+
+    def add_department_type(self, dept_type, select=True):
+        """Добавляет созданный на сервере тип ({id, name}) в комбобокс и выбирает его."""
+        if not dept_type or dept_type.get("id") is None:
+            return
+        self.department_types.append(dept_type)
+        if hasattr(self, "type_combo"):
+            self.type_combo.addItem(dept_type.get("name", ""), dept_type.get("id"))
+            if select:
+                self.type_combo.setCurrentIndex(self.type_combo.count() - 1)
 
     def _on_save_clicked(self):
         errors = self.validate()

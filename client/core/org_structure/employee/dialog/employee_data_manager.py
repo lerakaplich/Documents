@@ -2,7 +2,7 @@
 Модуль управления данными сотрудника
 """
 
-from datetime import date
+from datetime import date, datetime
 
 from PyQt6.QtCore import QTimer
 
@@ -43,8 +43,6 @@ class EmployeeDataManager:
         birth_date = self.employee.get("birth_date")
         if birth_date and hasattr(self.parent, "birthDateEdit"):
             if isinstance(birth_date, str):
-                from datetime import datetime
-
                 try:
                     birth_date = datetime.strptime(birth_date, "%Y-%m-%d").date()
                 except (ValueError, TypeError):
@@ -132,70 +130,115 @@ class EmployeeDataManager:
             if is_leader and self.hierarchy_manager.leader_checkbox:
                 self.hierarchy_manager.leader_checkbox.setChecked(True)
 
-    def get_data(self):
-        """Возвращает данные из формы"""
-        rights_index = self.parent.rightsCombo.currentIndex() if hasattr(self.parent, "rightsCombo") else -1
-        rights = self.parent.rightsCombo.itemData(rights_index) or "user" if rights_index >= 0 else "user"
+    # ────────────────────────────────────────────────────────────────
+    #                          GET DATA
+    # ────────────────────────────────────────────────────────────────
 
-        assignment_index = (
-            self.parent.assignmentTypeCombo.currentIndex() if hasattr(self.parent, "assignmentTypeCombo") else -1
-        )
-        assignment_kind = (
-            self.parent.assignmentTypeCombo.itemData(assignment_index) or "primary"
-            if assignment_index >= 0
-            else "primary"
-        )
+    def _get_rights(self) -> str:
+        """Права доступа из combo."""
+        if not hasattr(self.parent, "rightsCombo"):
+            return "user"
+        idx = self.parent.rightsCombo.currentIndex()
+        if idx < 0:
+            return "user"
+        return self.parent.rightsCombo.itemData(idx) or "user"
 
+    def _get_department_id(self, hierarchy_path: list, is_leader: bool):
+        """Определяет department_id для position (учитывает флаг руководителя)."""
+        if not is_leader:
+            return hierarchy_path[-1] if hierarchy_path else None
+
+        # Руководитель: подразделение — уровень выше последнего выбранного
+        if len(self.hierarchy_manager.hierarchy_combos) > 1:
+            last_combo = self.hierarchy_manager.hierarchy_combos[-1][0]
+            last_selected = last_combo.currentData()
+            if last_selected:
+                return last_selected
+            if len(self.hierarchy_manager.hierarchy_combos) > 2:
+                return self.hierarchy_manager.hierarchy_combos[-2][0].currentData()
+            return None
+        return None
+
+    def _get_service_number(self) -> str:
+        """
+        Табельный номер.
+
+        Если редактируем — берём существующий. Если создаём и поле пустое —
+        генерируем EMP_<timestamp>. Схема EmployeeCreate требует поле обязательным.
+        """
+        if self.employee and self.employee.get("service_number"):
+            return self.employee["service_number"]
+
+        if hasattr(self.parent, "serviceNumberEdit"):
+            text = self.parent.serviceNumberEdit.text().strip()
+            if text:
+                return text
+
+        # Генерируем временный табельный — бэкенд примет, потом админ поправит
+        return f"EMP_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+    def _get_birth_date_iso(self):
+        """Дата рождения в ISO-формате (YYYY-MM-DD) или None."""
+        if not hasattr(self.parent, "birthDateEdit"):
+            return None
+        qdate = self.parent.birthDateEdit.date()
+        if not qdate.isValid():
+            return None
+        return qdate.toString("yyyy-MM-dd")
+
+    def get_data(self) -> dict:
+        """
+        Возвращает данные формы в формате, который ждёт сервер (схема EmployeeCreate).
+
+        Структура:
+            {
+              service_number, last_name, first_name, patronymic,
+              phone_number, work_number, email, birth_date, chat_id,
+              rights,
+              position: {department_id, position_name, is_leader, start_date, end_date}
+            }
+        """
         hierarchy_path = self.hierarchy_manager.get_current_hierarchy_path()
-
         is_leader = (
             self.hierarchy_manager.leader_checkbox.isChecked() if self.hierarchy_manager.leader_checkbox else False
         )
-
-        if is_leader:
-            if len(self.hierarchy_manager.hierarchy_combos) > 1:
-                last_combo = self.hierarchy_manager.hierarchy_combos[-1][0]
-                last_selected = last_combo.currentData()
-
-                if last_selected:
-                    department_id = last_selected
-                else:
-                    if len(self.hierarchy_manager.hierarchy_combos) > 2:
-                        prev_combo = self.hierarchy_manager.hierarchy_combos[-2][0]
-                        department_id = prev_combo.currentData()
-                    else:
-                        department_id = None
-            else:
-                department_id = None
-        else:
-            department_id = hierarchy_path[-1] if hierarchy_path else None
-
-        organization_id = hierarchy_path[0] if hierarchy_path else None
+        department_id = self._get_department_id(hierarchy_path, is_leader)
 
         chat_id_text = self.parent.chatIdEdit.text().strip() if hasattr(self.parent, "chatIdEdit") else ""
         chat_id = int(chat_id_text) if chat_id_text and chat_id_text.isdigit() else None
 
+        def _val(attr_name: str) -> str | None:
+            if not hasattr(self.parent, attr_name):
+                return None
+            text = getattr(self.parent, attr_name).text().strip()
+            return text or None
+
         data = {
-            "last_name": self.parent.lastNameEdit.text().strip() if hasattr(self.parent, "lastNameEdit") else "",
-            "first_name": self.parent.firstNameEdit.text().strip() if hasattr(self.parent, "firstNameEdit") else "",
-            "patronymic": self.parent.patronymicEdit.text().strip() if hasattr(self.parent, "patronymicEdit") else "",
-            "phone_number": self.parent.phoneEdit.text().strip() if hasattr(self.parent, "phoneEdit") else "",
-            "work_number": self.parent.workPhoneEdit.text().strip() if hasattr(self.parent, "workPhoneEdit") else "",
-            "email": self.parent.emailEdit.text().strip() if hasattr(self.parent, "emailEdit") else "",
-            "birth_date": self.parent.birthDateEdit.date().toPyDate()
-            if hasattr(self.parent, "birthDateEdit")
-            else date(1980, 1, 1),
+            # ── EmployeeBase ──
+            "service_number": self._get_service_number(),
+            "last_name": _val("lastNameEdit") or "",
+            "first_name": _val("firstNameEdit") or "",
+            "patronymic": _val("patronymicEdit"),
+            "phone_number": _val("phoneEdit"),
+            "work_number": _val("workPhoneEdit"),
+            "email": _val("emailEdit"),
+            "birth_date": self._get_birth_date_iso(),
             "chat_id": chat_id,
-            "organization_id": organization_id,
-            "department_id": department_id,
-            "hierarchy_path": hierarchy_path,
-            "position_name": self.parent.positionEdit.text().strip() if hasattr(self.parent, "positionEdit") else "",
-            "assignment_kind": assignment_kind,
-            "is_leader": is_leader,
-            "rights": rights,
-            "is_active": True,
+            # ── EmployeeCreate ──
+            "rights": self._get_rights(),
+            # ── PositionCreate (вложенный) ──
+            "position": {
+                "department_id": department_id,
+                "position_name": _val("positionEdit") or "",
+                "is_leader": is_leader,
+                "start_date": date.today().isoformat(),
+                "end_date": None,
+            },
         }
 
+        # При редактировании сервер может ожидать поле id отдельно — оставляем на случай,
+        # если в схеме EmployeeFullUpdate оно когда-нибудь понадобится. Для создания
+        # сервер его игнорирует (нет в EmployeeCreate).
         if self.employee and self.employee.get("id"):
             data["id"] = self.employee["id"]
 

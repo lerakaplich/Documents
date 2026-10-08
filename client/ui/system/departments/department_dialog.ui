@@ -26,7 +26,11 @@
    <string>Отдел</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">QScrollArea {
+   <string notr="true">QScrollArea &gt; QWidget &gt; QWidget {
+    background: transparent;
+}
+
+QScrollArea {
  border: none;
  background-color: transparent;
 }
@@ -472,6 +476,23 @@ QGroupBox::title {
     color: {TEXT_PRIMARY};
 }
 
+/* ===== Кнопка «+» (новый тип отдела) ===== */
+QPushButton#typeAddButton {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border: none;
+    border-radius: 6px;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 0px;
+}
+QPushButton#typeAddButton:hover {
+    background-color: {ACCENT_HOVER};
+}
+QPushButton#typeAddButton:pressed {
+    background-color: {ACCENT_PRESSED};
+}
+
 /* ===== СТИЛИ ДЛЯ QPushButton (Сохранить) ===== */
 QPushButton#saveButton {
     background-color: {ACCENT_PRIMARY};
@@ -519,7 +540,9 @@ QPushButton#saveButton:pressed {
       </size>
      </property>
      <property name="styleSheet">
-      <string>font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px;</string>
+      <string notr="true">font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px; background-color: transparent;
+
+</string>
      </property>
      <property name="text">
       <string>Новый отдел</string>
@@ -532,7 +555,12 @@ QPushButton#saveButton:pressed {
    <item>
     <widget class="QScrollArea" name="scrollArea">
      <property name="styleSheet">
-      <string notr="true">QScrollBar::vertical {
+      <string notr="true">QScrollArea {
+ border: none;
+ background-color: transparent;
+}
+
+QScrollBar::vertical {
     background: {SCROLLBAR_BG};
     width: 8px;
     border-radius: 4px;
@@ -755,23 +783,55 @@ QScrollBar::sub-page:horizontal {
            </widget>
           </item>
           <item row="3" column="1">
-           <widget class="QComboBox" name="typeCombo">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>36</height>
-             </size>
+           <layout class="QHBoxLayout" name="typeRowLayout">
+            <property name="spacing">
+             <number>8</number>
             </property>
-            <property name="maximumSize">
-             <size>
-              <width>16777215</width>
-              <height>32</height>
-             </size>
-            </property>
-            <property name="placeholderText">
-             <string>Выберите тип отдела</string>
-            </property>
-           </widget>
+            <item>
+               <widget class="QComboBox" name="typeCombo">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>36</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>32</height>
+                 </size>
+                </property>
+                <property name="placeholderText">
+                 <string>Выберите тип отдела</string>
+                </property>
+               </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="typeAddButton">
+              <property name="minimumSize">
+               <size>
+                <width>36</width>
+                <height>36</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>36</width>
+                <height>36</height>
+               </size>
+              </property>
+              <property name="cursor">
+               <cursorShape>PointingHandCursor</cursorShape>
+              </property>
+              <property name="toolTip">
+               <string>Добавить новый тип отдела</string>
+              </property>
+              <property name="text">
+               <string>+</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
           <item row="4" column="0">
            <widget class="QLabel" name="departmentNumberLabel">

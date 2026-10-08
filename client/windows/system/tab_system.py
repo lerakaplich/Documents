@@ -91,6 +91,10 @@ class SystemTab(QWidget):
         self.structure_page = StructurePage(parent=self, http_client=self.http_client)
         self.tabWidget.addTab(self.structure_page, "Структура")
 
+        # вкладки «Сотрудники» и «Структура» показывают одни и те же данные — держим их в синхроне
+        self.employees_page.employees_changed.connect(self.structure_page.reload_employees)
+        self.structure_page.structure_changed.connect(lambda: self.employees_page.load_employees(notify=False))
+
 
 class MainWindow(QMainWindow):
     """Главное окно приложения"""

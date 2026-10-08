@@ -24,7 +24,7 @@ from client.core.themes import T, apply_theme_to_widget, get_menu_style
 from client.services.org_service import get_org_service
 from client.windows.animations.animated_notification import NotificationManager
 from client.windows.animations.floating_action_button import FloatingActionButton
-from client.windows.system.departments.api_task import TaskKeeper
+from client.windows.system.organizations.api_task import TaskKeeper
 from client.windows.system.organizations.organization_card import OrganizationCard
 from client.windows.system.organizations.organization_dialog import OrganizationDialog
 

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>580</width>
-    <height>338</height>
+    <height>333</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -26,7 +26,9 @@
    <string>Хэштег</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">
+   <string notr="true">QScrollArea &gt; QWidget &gt; QWidget {
+    background: transparent;
+}
 QDialog {
     background-color: {BG_DIALOG};
 }
@@ -203,7 +205,7 @@ QComboBox QAbstractItemView::item:selected {
         <x>0</x>
         <y>0</y>
         <width>538</width>
-        <height>184</height>
+        <height>181</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="scrollLayout">
@@ -480,23 +482,18 @@ QFrame:hover {
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="buttonLayout">
-     <property name="spacing">
-      <number>15</number>
+    <widget class="QPushButton" name="btnSave">
+     <property name="minimumSize">
+      <size>
+       <width>120</width>
+       <height>40</height>
+      </size>
      </property>
-     <item>
-      <widget class="QPushButton" name="btnSave">
-       <property name="minimumSize">
-        <size>
-         <width>120</width>
-         <height>40</height>
-        </size>
-       </property>
-       <property name="cursor">
-        <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="styleSheet">
-        <string>QPushButton {
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="styleSheet">
+      <string>QPushButton {
     background-color: {ACCENT_PRIMARY};
     color: {TEXT_ON_ACCENT};
     border-radius: 8px;
@@ -510,13 +507,11 @@ QPushButton:hover {
 QPushButton:pressed {
     background-color: {ACCENT_PRESSED};
 }</string>
-       </property>
-       <property name="text">
-        <string>Сохранить</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+     </property>
+     <property name="text">
+      <string>Сохранить</string>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

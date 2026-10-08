@@ -26,7 +26,10 @@
    <string>Организация</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">QScrollArea {
+   <string notr="true">QScrollArea &gt; QWidget &gt; QWidget {
+    background: transparent;
+}
+QScrollArea {
  border: none;
  background-color: transparent;
 }
@@ -242,7 +245,7 @@ QLineEdit:disabled {
     border-color: {BORDER_DEFAULT};
 }
 
-QLineEdit[readOnly="true"] {
+QLineEdit[readOnly=&quot;true&quot;] {
     background-color: {BG_DIALOG};
     color: {TEXT_SECONDARY};
 }
@@ -347,17 +350,17 @@ QCalendarWidget QToolButton#qt_calendar_day:disabled {
     color: {TEXT_DISABLED};
 }
 
-QCalendarWidget QToolButton#qt_calendar_day[property="isToday"] {
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;] {
     background-color: {ACCENT_DANGER};
     color: {TEXT_ON_ACCENT};
     border-radius: 4px;
 }
 
-QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:hover {
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:hover {
     background-color: {ACCENT_DANGER_HOVER};
 }
 
-QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checked {
+QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked {
     background-color: {ACCENT_PRIMARY};
     color: {TEXT_ON_ACCENT};
 }
@@ -440,17 +443,17 @@ QDateEdit QCalendarWidget QToolButton#qt_calendar_day:disabled {
     color: {TEXT_DISABLED};
 }
 
-QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"] {
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;] {
     background-color: {ACCENT_DANGER};
     color: {TEXT_ON_ACCENT};
     border-radius: 4px;
 }
 
-QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:hover {
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:hover {
     background-color: {ACCENT_DANGER_HOVER};
 }
 
-QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property="isToday"]:checked {
+QDateEdit QCalendarWidget QToolButton#qt_calendar_day[property=&quot;isToday&quot;]:checked {
     background-color: {ACCENT_PRIMARY};
     color: {TEXT_ON_ACCENT};
 }
@@ -507,7 +510,7 @@ QPushButton#saveButton:pressed {
    <item>
     <widget class="QLabel" name="titleLabel">
      <property name="styleSheet">
-      <string>font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px;</string>
+      <string notr="true">font-size: 22px; font-weight: bold; color: {TEXT_PRIMARY}; margin-bottom: 10px;  background-color: transparent;</string>
      </property>
      <property name="text">
       <string>Новая организация</string>
@@ -520,7 +523,12 @@ QPushButton#saveButton:pressed {
    <item>
     <widget class="QScrollArea" name="scrollArea">
      <property name="styleSheet">
-      <string notr="true">QScrollBar::vertical {
+      <string notr="true">QScrollArea {
+ border: none;
+ background-color: transparent;
+}
+
+QScrollBar::vertical {
     background: {SCROLLBAR_BG};
     width: 8px;
     border-radius: 4px;
@@ -891,6 +899,22 @@ QScrollBar::sub-page:horizontal {
      </property>
      <property name="cursor">
       <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    border: none;
+}
+QPushButton:hover {
+    background-color: {ACCENT_HOVER};
+}
+QPushButton:pressed {
+    background-color: {ACCENT_PRESSED};
+}</string>
      </property>
      <property name="text">
       <string>Сохранить</string>

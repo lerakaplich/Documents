@@ -24,14 +24,20 @@ from client.core.config import config
 from client.core.http_client import HttpClient
 from client.core.state.app_state import AppState
 from client.core.themes import T, apply_theme_to_widget
+from client.core.utils.context_menu import SEPARATOR, attach_context_menu, show_menu_above
 from client.services.org_service import get_org_service
 from client.windows.animations.animated_notification import NotificationManager
 from client.windows.animations.floating_action_button import FloatingActionButton
 from client.windows.system.common import badge_style, normalize_employee
+from client.windows.system.system_actions import SystemActions
+from client.windows.system.system_utils import PATH_SEP, org_label, to_tree, work_phone
+from client.windows.system.table_utils import ResizableColumns, header_label
 
 logger = logging.getLogger(__name__)
 
 ID_ROLE = Qt.ItemDataRole.UserRole
+EMP_HEADERS = ["ФИО", "Должность", "Отдел", "Рабочий телефон"]
+EMP_SETTINGS_KEY = "system_structure_employees"  # ключ раскладки (ширина/порядок столбцов) в настройках
 
 
 class _LeaveFilter(QObject):
@@ -59,6 +65,7 @@ class StructurePage(QWidget):
     """
 
     data_loaded = pyqtSignal()
+    structure_changed = pyqtSignal()  # отдел / тип / организация / сотрудник изменены
 
     def __init__(self, parent=None, http_client: HttpClient | None = None):
         super().__init__(parent)
@@ -85,6 +92,10 @@ class StructurePage(QWidget):
         # Состояние
         self.is_loading = False
         self._hover_key = ""
+        self._emp_sort_col = 0  # сортировка таблицы сотрудников кликом по заголовку
+        self._emp_sort_asc = True
+        self._rows_count = 0
+        self._detail_rows: list[dict[str, Any]] = []  # строки таблицы сотрудников выбранного узла
 
         # Инициализация
         self.init_ui()
@@ -92,6 +103,12 @@ class StructurePage(QWidget):
 
         # Создаем менеджер уведомлений
         self.notification_manager = NotificationManager(self, max_visible=3)
+
+        # Действия (диалоги + сервисы)
+        self.system_actions = SystemActions(self, self.http_client)
+        self.system_actions.message.connect(self._on_action_message)
+        self.system_actions.structure_changed.connect(self._on_changed)
+        self.system_actions.employees_changed.connect(self._on_changed)
 
         # Загружаем данные
         QTimer.singleShot(100, self.load_data)
@@ -114,7 +131,7 @@ class StructurePage(QWidget):
 
         # Создаем плавающую кнопку
         self.floating_btn = FloatingActionButton(self)
-        self.floating_btn.clicked.connect(lambda: self.on_add_node(self._current_key()))
+        self.floating_btn.clicked.connect(self._show_add_menu)
 
         # Подключаемся к скроллу
         self.scrollArea.verticalScrollBar().valueChanged.connect(self.on_scroll)
@@ -152,7 +169,7 @@ class StructurePage(QWidget):
 
     # ==================== ЗАГРУЗКА ДАННЫХ ====================
 
-    def load_data(self):
+    def load_data(self, notify: bool = True):
         """Загрузить организации из API и построить корни дерева"""
         if self.is_loading:
             return
@@ -168,7 +185,7 @@ class StructurePage(QWidget):
             self.update_display()
             self.data_loaded.emit()
 
-            if self.organizations:
+            if notify and self.organizations:
                 self.show_success_notification(f"Загружено организаций: {len(self.organizations)}")
 
         except Exception as e:
@@ -203,23 +220,7 @@ class StructurePage(QWidget):
 
         self._add_children(org_item, org_key, org_id, self._to_tree(raw), depth=1)
 
-    @staticmethod
-    def _to_tree(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Приводит ответ API к дереву. Понимает и вложенный (children), и плоский (parent_id) вид."""
-        if not items:
-            return []
-
-        nested = any(i.get("children") or i.get("departments") for i in items)
-        has_parent = any("parent_id" in i for i in items)
-        if nested or not has_parent:
-            return items
-
-        by_id = {i["id"]: {**i, "children": []} for i in items}
-        roots = []
-        for i in items:
-            parent = by_id.get(i.get("parent_id"))
-            (parent["children"] if parent else roots).append(by_id[i["id"]])
-        return roots
+    _to_tree = staticmethod(to_tree)  # понимает вложенный (children) и плоский (parent_id) ответ API
 
     def _add_children(self, parent_item, parent_key, org_id, tree_items, depth):
         for raw in tree_items:
@@ -258,6 +259,7 @@ class StructurePage(QWidget):
         t.verticalScrollBar().valueChanged.connect(lambda _v: self._hide_node_actions())
         self._leave_filter = _LeaveFilter(self)
         t.viewport().installEventFilter(self._leave_filter)
+        attach_context_menu(t, self._tree_menu_items)
 
     def _setup_node_actions(self):
         """Плавающая панель ＋ ✎ ✕ — появляется у узла под курсором."""
@@ -408,7 +410,7 @@ class StructurePage(QWidget):
     def _setup_employees_table(self):
         t = self.employeesTable
         t.setColumnCount(4)
-        t.setHorizontalHeaderLabels(["ФИО", "Должность", "Подразделение", "Телефон"])
+        t.setHorizontalHeaderLabels(EMP_HEADERS)
         t.verticalHeader().setVisible(False)
         t.verticalHeader().setDefaultSectionSize(38)
         t.setShowGrid(False)
@@ -417,10 +419,51 @@ class StructurePage(QWidget):
         t.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         h = t.horizontalHeader()
         h.setHighlightSections(False)
-        h.setSectionsClickable(False)
-        for col in range(3):
-            h.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
-        h.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        h.setSectionsClickable(True)
+        h.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        h.sectionClicked.connect(self._on_emp_header_clicked)
+        # столбцы тянутся мышью и переставляются; раскладка запоминается; последний столбец занимает остаток
+        self._columns = ResizableColumns(t, [30, 25, 28, 17], settings_key=EMP_SETTINGS_KEY)
+        attach_context_menu(t, self._emp_menu_items)
+        t.cellDoubleClicked.connect(lambda row, _col: self._edit_detail_row(row))
+        t.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        # если пользователь растянул столбцы шире панели — учитываем полосу прокрутки в высоте
+        t.horizontalScrollBar().rangeChanged.connect(lambda *_: self._fit_table_height())
+        self._refresh_emp_headers()
+
+    def _refresh_emp_headers(self):
+        self.employeesTable.setHorizontalHeaderLabels(
+            [header_label(title, col, self._emp_sort_col, self._emp_sort_asc) for col, title in enumerate(EMP_HEADERS)]
+        )
+
+    def _on_emp_header_clicked(self, col: int):
+        if self._emp_sort_col == col:
+            self._emp_sort_asc = not self._emp_sort_asc
+        else:
+            self._emp_sort_col, self._emp_sort_asc = col, True
+        self._refresh_emp_headers()
+        self._show_detail(self._current_key())
+
+    def _sort_rows(self, rows):
+        """Сортировка строк таблицы по выбранному столбцу, пустые значения — в конце"""
+        col, asc = self._emp_sort_col, self._emp_sort_asc
+
+        def value(r):
+            return r["values"][col] or ""
+
+        filled = [r for r in rows if value(r)]
+        empty = [r for r in rows if not value(r)]
+        filled.sort(key=lambda r: str(value(r)).lower(), reverse=not asc)
+        return filled + empty
+
+    def _fit_table_height(self):
+        """Таблица лежит внутри прокручиваемой панели — подгоняем высоту под строки"""
+        t = self.employeesTable
+        height = t.horizontalHeader().height() + 38 * self._rows_count + 4
+        sb = t.horizontalScrollBar()
+        if sb.maximum() > 0:
+            height += sb.sizeHint().height()
+        t.setFixedHeight(height)
 
     def _org_employees(self, org_id: int) -> list[dict[str, Any]]:
         """Сотрудники организации (кэшируются, чтобы не дёргать API при каждом клике)"""
@@ -431,8 +474,16 @@ class StructurePage(QWidget):
                 logger.exception(f"Ошибка загрузки сотрудников организации {org_id}: {e}")
                 self.show_error_notification("Не удалось загрузить сотрудников")
                 return []
-            self._employees_cache[org_id] = [normalize_employee(e) for e in raw]
+            self._employees_cache[org_id] = [self._prepare_employee(e) for e in raw]
         return self._employees_cache[org_id]
+
+    @staticmethod
+    def _prepare_employee(raw: dict[str, Any]) -> dict[str, Any]:
+        """Данные сотрудника для таблицы: нормализация + исходные данные (для диалога) + рабочий телефон"""
+        emp = dict(normalize_employee(raw))  # копия: исходный dict с сервера не трогаем
+        emp["_raw"] = raw
+        emp["work_phone"] = work_phone(emp)
+        return emp
 
     def _subtree(self, key: str) -> tuple[set, set]:
         """id и названия подразделения вместе со всеми вложенными"""
@@ -497,7 +548,18 @@ class StructurePage(QWidget):
         self.fieldHeadValue.setText(head or "Не назначен")
         self.fieldPhoneValue.setText(raw.get("phone_number") or raw.get("phone") or "Не указан")
 
-        rows = sorted(self._node_rows(key), key=lambda r: r[0]["full_name"].lower())
+        if is_org:
+            self._ensure_structure(key)  # для путей «МАЗ / НТЦ / Телематика» нужны все отделы организации
+
+        rows = [
+            {
+                "emp": emp,
+                "values": (emp["full_name"], pos.get("position", ""), self._row_path(pos, node), emp.get("work_phone", "")),
+            }
+            for emp, pos in self._node_rows(key)
+        ]
+        rows = self._sort_rows(rows)
+        self._detail_rows = rows
         self.employeesTitle.setText(f"Сотрудники ({len(rows)})")
         self.noEmployeesLabel.setVisible(not rows)
         self.employeesTable.setVisible(bool(rows))
@@ -505,27 +567,134 @@ class StructurePage(QWidget):
         t = self.employeesTable
         t.clearContents()
         t.setRowCount(len(rows))
-        for row, (emp, pos) in enumerate(rows):
-            values = (emp["full_name"], pos.get("position", ""), pos.get("department", ""), emp.get("phone", ""))
-            for col, text in enumerate(values):
+        for row, r in enumerate(rows):
+            for col, text in enumerate(r["values"]):
                 item = QTableWidgetItem(text or "—")
                 item.setToolTip(text or "")
                 t.setItem(row, col, item)
-        # таблица лежит внутри прокручиваемой панели — подгоняем высоту под строки
-        t.setFixedHeight(t.horizontalHeader().height() + 38 * len(rows) + 4)
+        self._rows_count = len(rows)
+        self._fit_table_height()
 
-    # ==================== РАБОТА С ПОДРАЗДЕЛЕНИЯМИ (CRUD) ====================
-    # TODO: для подразделений нет сервиса (create/update/delete) и диалога.
-    # Когда будут — по аналогии с DocumentTypesPage (Dialog + DeleteDialog + service).
+    # ==================== ПУТЬ ОТДЕЛА ====================
+
+    @staticmethod
+    def _node_label(node: dict[str, Any]) -> str:
+        return (org_label(node["raw"]) or node["name"]) if node["kind"] == "org" else node["name"]
+
+    def _path_of(self, key: str) -> str:
+        """«МАЗ / НТЦ / Телематика» — от организации до узла"""
+        parts = []
+        while key and key in self._nodes:
+            node = self._nodes[key]
+            parts.append(self._node_label(node))
+            key = node["parent"]
+        return PATH_SEP.join(reversed(parts))
+
+    def _row_path(self, pos: dict[str, Any], node: dict[str, Any]) -> str:
+        """Путь отдела для строки сотрудника (по должности pos)"""
+        dep_id = pos.get("department_id")
+        if dep_id is not None and f"d:{dep_id}" in self._nodes:
+            return self._path_of(f"d:{dep_id}")
+        return PATH_SEP.join(p for p in (self._path_of(f"o:{node['org_id']}"), pos.get("department")) if p)
+
+    # ==================== КОНТЕКСТНЫЕ МЕНЮ И «+» ====================
+
+    def _tree_menu_items(self, pos):
+        """ПКМ по узлу дерева"""
+        item = self.treeWidget.itemAt(pos)
+        key = item.data(0, ID_ROLE) if item else ""
+        node = self._nodes.get(key)
+        if not node:
+            return None
+        self.treeWidget.setCurrentItem(item)
+        if node["kind"] == "org":
+            return [
+                ("Добавить отдел", lambda: self.on_add_node(key)),
+                ("Добавить сотрудника", self.system_actions.add_employee),
+            ]
+        return [
+            ("Редактировать", lambda: self.on_edit_node(key)),
+            ("Добавить подотдел", lambda: self.on_add_node(key)),
+            SEPARATOR,
+            ("Удалить", lambda: self.on_delete_node(key)),
+        ]
+
+    def _emp_menu_items(self, pos):
+        """ПКМ по строке таблицы сотрудников"""
+        row = self.employeesTable.rowAt(pos.y())
+        if not 0 <= row < len(self._detail_rows):
+            return None
+        emp = self._detail_rows[row]["emp"]
+        return [
+            ("Редактировать", lambda: self.system_actions.edit_employee(emp)),
+            SEPARATOR,
+            ("Удалить", lambda: self.system_actions.delete_employee(emp)),
+        ]
+
+    def _edit_detail_row(self, row: int):
+        if 0 <= row < len(self._detail_rows):
+            self.system_actions.edit_employee(self._detail_rows[row]["emp"])
+
+    def _show_add_menu(self, *_):
+        """Плавающая «+»: сотрудник, отдел, тип отдела, организация"""
+        show_menu_above(
+            self.floating_btn,
+            [
+                ("Сотрудник", self.system_actions.add_employee),
+                ("Отдел", lambda: self.on_add_node(self._current_key())),
+                ("Тип отдела", self.system_actions.add_department_type),
+                ("Организация", self.system_actions.add_organization),
+            ],
+        )
+
+    def _on_action_message(self, kind: str, text: str):
+        {"success": self.show_success_notification, "error": self.show_error_notification}.get(
+            kind, self.show_info_notification
+        )(text)
+
+    def _on_changed(self):
+        """Отдел / тип / организация / сотрудник изменены — перезагружаем структуру, сохраняя выбранный узел"""
+        node = self._nodes.get(self._current_key())
+        keep = node["key"] if node else ""
+        org_key = f"o:{node['org_id']}" if node else ""
+        self.load_data(notify=False)
+        if org_key:  # после перезагрузки подразделения снова нужно подгрузить и вернуть выбор
+            self._ensure_structure(org_key)
+            if org_key in self._items:
+                self._items[org_key].setExpanded(True)
+            if keep in self._items:
+                self.treeWidget.setCurrentItem(self._items[keep])
+        self.structure_changed.emit()
+
+    def reload_employees(self):
+        """Сотрудников изменили на другой вкладке — обновляем кэш и панель справа"""
+        self._employees_cache.clear()
+        self._show_detail(self._current_key())
+
+    # ==================== РАБОТА С ОТДЕЛАМИ (CRUD) ====================
 
     def on_add_node(self, parent_key: str):
-        self.show_info_notification("Добавление подразделения пока не подключено")
+        """Добавить отдел: внутрь выбранного отдела / организации (или без привязки, если ничего не выбрано)"""
+        node = self._nodes.get(parent_key) or self._nodes.get(self._current_key())
+        if not node:
+            self.system_actions.add_department()
+            return
+        self.system_actions.add_department(node["org_id"], node["id"] if node["kind"] == "dep" else None)
 
     def on_edit_node(self, key: str):
-        self.show_info_notification("Редактирование подразделения пока не подключено")
+        node = self._nodes.get(key)
+        if not node or node["kind"] != "dep":
+            return
+        data = dict(node["raw"])
+        parent = self._nodes.get(node["parent"])
+        data["organization_id"] = node["org_id"]
+        data["parent_id"] = parent["id"] if parent and parent["kind"] == "dep" else None
+        self.system_actions.edit_department(data)
 
     def on_delete_node(self, key: str):
-        self.show_info_notification("Удаление подразделения пока не подключено")
+        node = self._nodes.get(key)
+        if node and node["kind"] == "dep":
+            self.system_actions.delete_department(node["id"], node["name"])
 
     # ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 

@@ -1,8 +1,23 @@
 """
-Модуль управления иерархической структурой организаций и подразделений
+Модуль управления иерархической структурой организаций и подразделений.
+
+Схема выбора в диалоге сотрудника:
+
+    Организация:      [ комбобокс организаций ]
+    Цех/Подразделение:[ комбобокс отделов 1-го уровня ]      <- появляется после выбора организации
+    Отдел:            [ комбобокс отделов 2-го уровня ]      <- после выбора отдела 1-го уровня
+    ...
+                      [x] Является руководителем «...»       <- всегда под последним уровнем
+
+Структура БД:
+  * отдел без parent_id — «нулевой» отдел организации, в нём числится руководитель организации;
+  * отделы 1-го уровня — прямые потомки этого нулевого отдела;
+  * подпись уровня — названия ТИПОВ отделов, которые на этом уровне встречаются
+    (если их несколько — «Цех/Подразделение»), в комбобоксе — названия самих отделов.
 """
 
-from PyQt6.QtWidgets import QCheckBox, QComboBox, QHBoxLayout, QLabel
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QCheckBox, QComboBox, QHBoxLayout, QLabel, QMessageBox
 
 from client.core.themes import get_manager
 
@@ -10,6 +25,7 @@ from client.core.themes import get_manager
 class HierarchyManager:
     """Управляет динамической иерархией организаций и подразделений"""
 
+    # запасные названия уровней, если у отделов не удалось определить тип
     LEVEL_NAMES = {
         0: "Организация",
         1: "Подразделение",
@@ -19,33 +35,69 @@ class HierarchyManager:
         5: "Участок",
     }
 
+    LABEL_WIDTH = 160
+    ROW_HEIGHT = 36
+
     def __init__(self, parent_dialog):
         self.parent = parent_dialog
-        self.hierarchy_combos = []  # Список [(combo_widget, label_widget, level), ...]
-        self.current_hierarchy_path = []  # Текущий путь [org_id, dep1_id, dep2_id, ...]
+        self.hierarchy_combos = []  # [(combo_widget, label_widget, level), ...]
+        self._row_layouts = []  # QHBoxLayout каждого уровня, параллельно hierarchy_combos
+        self.current_hierarchy_path = []  # [org_id, dep1_id, dep2_id, ...] — только выбранные
         self.leader_checkbox = None
+        self.leader_checkbox_label = None
         self.leader_checkbox_layout = None
 
         # Данные справочников
         self.organizations = {}
+        self.department_types = {}  # {type_id: name}
         self.departments_tree = {}
         self.all_departments = {}
         self.departments_by_org = {}
         self.root_departments = {}
+        self._structure_loaded = set()  # организации, чьё дерево уже подгружено из /org/{id}/structure
+
+    # ==================== ДАННЫЕ ====================
+
+    @staticmethod
+    def _key(value):
+        """id из API/комбобокса могут прийти как int или как str — приводим к int, если возможно."""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return value
+
+    def set_department_types(self, types):
+        """types — список {id, name}; нужен, если у отделов приходит только department_type_id."""
+        self.department_types = {t.get("id"): t.get("name", "") for t in (types or [])}
+
+    @staticmethod
+    def _extract_type_name(dept):
+        name = dept.get("department_type_name") or dept.get("type_name")
+        if name:
+            return name
+        dtype = dept.get("department_type")
+        if isinstance(dtype, dict):
+            return dtype.get("name")
+        if isinstance(dtype, str):
+            return dtype
+        return None
 
     def build_departments_tree(self, departments):
         """Строит дерево подразделений из плоского списка"""
-        print("[DEBUG] build_departments_tree() вызван")
         self.departments_tree = {}
         self.all_departments = {}
+        self._structure_loaded = set()
 
         for dept in departments:
-            dept_id = dept["id"]
+            dept_id = self._key(dept["id"])
+            parent_raw = dept.get("parent_id")
             self.departments_tree[dept_id] = {
                 "id": dept_id,
                 "name": dept["name"],
-                "parent_id": dept.get("parent_id"),
-                "organization_id": dept.get("organization_id"),
+                "parent_id": None if parent_raw in (None, "") else self._key(parent_raw),
+                "organization_id": self._key(dept.get("organization_id")),
+                "type_id": dept.get("department_type_id", dept.get("type_id")),
+                "type_name": self._extract_type_name(dept),
                 "children": [],
             }
             self.all_departments[dept_id] = dept["name"]
@@ -56,153 +108,535 @@ class HierarchyManager:
                 self.departments_tree[parent_id]["children"].append(dept_id)
 
     def group_departments_by_organization(self):
-        """Группирует подразделения по организациям и находит корневые"""
-        print("[DEBUG] group_departments_by_organization() вызван")
+        """Группирует подразделения по организациям и находит корневые (parent_id is None)"""
         self.departments_by_org = {}
         self.root_departments = {}
 
         for dept_id, dept_data in self.departments_tree.items():
             org_id = dept_data["organization_id"]
-
-            if org_id not in self.departments_by_org:
-                self.departments_by_org[org_id] = []
-            self.departments_by_org[org_id].append(dept_id)
-
+            self.departments_by_org.setdefault(org_id, []).append(dept_id)
             if dept_data["parent_id"] is None:
-                if org_id not in self.root_departments:
-                    self.root_departments[org_id] = []
-                self.root_departments[org_id].append(dept_id)
+                self.root_departments.setdefault(org_id, []).append(dept_id)
 
-    def get_children_for_parent(self, parent_id, organization_id=None):
-        """Получает дочерние подразделения для указанного родителя"""
-        if parent_id is None:
-            return [
-                (dept_id, self.departments_tree[dept_id]["name"])
-                for dept_id in self.root_departments.get(organization_id, [])
-                if dept_id in self.departments_tree
-            ]
-        parent = self.departments_tree.get(parent_id, {})
+    def _ensure_structure_loaded(self, organization_id):
+        """Подгружает дерево отделов организации из GET /org/{org_id}/structure.
+
+        Общий список отделов приходит без parent_id/organization_id, а структура — это
+        вложенное дерево [{id, name, type_name, children: [...]}], где верхний уровень —
+        корневые отделы организации (без parent_id).
+        """
+        org_key = self._key(organization_id)
+        if org_key in self._structure_loaded:
+            return
+
+        http = getattr(self.parent, "http_client", None)
+        if http is None:
+            print("[HIER] нет http_client — структуру организации подгрузить нельзя")
+            return
+
+        try:
+            from client.services.org_service import get_org_service
+
+            nodes = get_org_service(http).get_org_structure(org_key)
+        except Exception as e:
+            print(f"[HIER] ошибка загрузки структуры организации {org_key}: {e}")
+            return
+
+        if not nodes:
+            print(f"[HIER] структура организации {org_key} пуста или не получена")
+            return
+
+        self._merge_structure(org_key, nodes)
+        self._structure_loaded.add(org_key)
+        print(f"[HIER] структура организации {org_key} загружена, корневых отделов: {len(nodes)}")
+
+    def _merge_structure(self, org_key, nodes):
+        """Вливает вложенное дерево в departments_tree с корректными parent_id/organization_id."""
+
+        def walk(node, parent_id):
+            dept_id = self._key(node["id"])
+            self.departments_tree[dept_id] = {
+                "id": dept_id,
+                "name": node.get("name", ""),
+                "parent_id": parent_id,
+                "organization_id": org_key,
+                "type_id": self.departments_tree.get(dept_id, {}).get("type_id"),
+                "type_name": node.get("type_name"),
+                "children": [],
+            }
+            self.all_departments[dept_id] = node.get("name", "")
+            if parent_id is not None and parent_id in self.departments_tree:
+                self.departments_tree[parent_id]["children"].append(dept_id)
+            for child in node.get("children") or []:
+                walk(child, dept_id)
+
+        for root in nodes:
+            walk(root, None)
+
+        self.group_departments_by_organization()
+
+    @staticmethod
+    def _is_root_parent(parent_id):
+        """parent_id корневого отдела: None / пусто / 0."""
+        return parent_id in (None, "", 0, "0")
+
+    def _roots_of(self, organization_id):
+        """Корневые отделы организации (без parent_id) — считаем прямо по дереву."""
+        org_key = self._key(organization_id)
         return [
-            (child_id, self.departments_tree[child_id]["name"])
-            for child_id in parent.get("children", [])
-            if child_id in self.departments_tree
+            dept_id
+            for dept_id, node in self.departments_tree.items()
+            if self._key(node.get("organization_id")) == org_key and self._is_root_parent(node.get("parent_id"))
         ]
 
+    def _children_of(self, parent_id):
+        """Прямые потомки отдела — считаем прямо по дереву."""
+        parent_key = self._key(parent_id)
+        return [
+            dept_id
+            for dept_id, node in self.departments_tree.items()
+            if not self._is_root_parent(node.get("parent_id")) and self._key(node.get("parent_id")) == parent_key
+        ]
+
+    def get_children_for_parent(self, parent_id, organization_id=None):
+        """Дочерние отделы. parent_id=None → корневые отделы организации (руководство организации)."""
+        ids = self._roots_of(organization_id) if parent_id is None else self._children_of(parent_id)
+        return [(dept_id, self.departments_tree[dept_id]["name"]) for dept_id in ids]
+
+    def get_first_level_departments(self, organization_id):
+        """Отделы 1-го уровня: потомки корневого отдела (без parent_id) организации."""
+        items = []
+        for root_id in self._roots_of(organization_id):
+            items.extend(self.get_children_for_parent(root_id))
+        return items
+
+    def get_root_department_id(self, organization_id):
+        """Отдел без parent_id — туда попадает руководитель организации."""
+        roots = self._roots_of(organization_id)
+        return roots[0] if roots else None
+
+    def _type_name_of(self, dept_id):
+        node = self.departments_tree.get(dept_id)
+        if not node:
+            return None
+        return node.get("type_name") or self.department_types.get(node.get("type_id"))
+
     def get_level_name(self, level):
-        """Возвращает название уровня"""
+        """Запасное название уровня"""
         return self.LEVEL_NAMES.get(level, f"Уровень {level}")
 
+    def get_level_label(self, level, items):
+        """Подпись уровня: типы отделов уровня через «/» («Цех/Подразделение»)."""
+        if level == 0:
+            return self.get_level_name(0)
+        names = []
+        for dept_id, _name in items:
+            type_name = self._type_name_of(dept_id)
+            if type_name and type_name not in names:
+                names.append(type_name)
+        return "/".join(names) if names else self.get_level_name(level)
+
     def get_item_name(self, item_id):
-        """Возвращает название элемента по его ID"""
-        if item_id in self.organizations:
-            return self.organizations[item_id]
-        if item_id in self.all_departments:
-            return self.all_departments[item_id]
+        """Название организации или отдела по ID"""
+        for variant in (item_id, self._key(item_id), str(item_id)):
+            if variant in self.organizations:
+                return self.organizations[variant]
+        key = self._key(item_id)
+        if key in self.all_departments:
+            return self.all_departments[key]
         return None
 
-    def clear_hierarchy_layout(self):
-        """Очищает динамические комбобоксы и их лейблы"""
-        print("[DEBUG] clear_hierarchy_layout() вызван")
-        print(
-            f"[DEBUG] Количество элементов в hierarchyLayout до очистки: {self.parent.hierarchyLayout.count()}"
-        )
+    # ==================== ПОСТРОЕНИЕ UI ====================
 
-        while self.parent.hierarchyLayout.count():
-            item = self.parent.hierarchyLayout.takeAt(0)
+    def clear_hierarchy_layout(self):
+        """Очищает динамические комбобоксы, их лейблы и чекбокс"""
+        layout = self.parent.hierarchyLayout
+        while layout.count():
+            item = layout.takeAt(0)
             if item.layout():
-                while item.layout().count():
-                    child = item.layout().takeAt(0)
-                    if child.widget():
-                        child.widget().deleteLater()
-                item.layout().deleteLater()
+                self._delete_layout(item.layout())
             elif item.widget():
                 item.widget().deleteLater()
 
         self.hierarchy_combos = []
+        self._row_layouts = []
         self.current_hierarchy_path = []
         self.leader_checkbox = None
+        self.leader_checkbox_label = None
         self.leader_checkbox_layout = None
 
-        print(
-            f"[DEBUG] hierarchyLayout очищен, элементов: {self.parent.hierarchyLayout.count()}"
-        )
+    @staticmethod
+    def _delete_layout(row):
+        while row.count():
+            child = row.takeAt(0)
+            widget = child.widget()
+            if widget:
+                widget.hide()
+                widget.deleteLater()
+        row.deleteLater()
 
     def build_initial_hierarchy(self, filter_external_only=False, employee=None):
-        """Строит начальную иерархию: Организация -> ... -> Руководитель в конце"""
-        print("[DEBUG] build_initial_hierarchy() вызван")
-        print(f"[DEBUG] Организаций для отображения: {len(self.organizations)}")
-
+        """Строит начальную иерархию: Организация → (отделы по мере выбора) → чекбокс руководителя"""
         self.clear_hierarchy_layout()
 
-        # Добавляем организации
-        org_items = [
-            (org_id, org_name) for org_id, org_name in self.organizations.items()
-        ]
+        # чекбокс создаём первым — все уровни вставляются перед ним
+        self.add_leader_checkbox()
+
+        org_items = list(self.organizations.items())
         if filter_external_only:
-            org_items = [
-                (org_id, org_name) for org_id, org_name in org_items if org_id != 1
-            ]
+            org_items = [(org_id, name) for org_id, name in org_items if org_id != 1]
 
         if org_items:
-            print("[DEBUG] Добавляем уровень 0 (Организация)")
             self.add_hierarchy_level(0, org_items)
         else:
             print("[WARNING] Список организаций пуст! Уровень 0 не добавлен")
 
-        # Если редактируем сотрудника, устанавливаем выбранную организацию
-        if employee and employee.get("organization_id"):
-            org_id = employee.get("organization_id")
-            if self.hierarchy_combos:
-                combo = self.hierarchy_combos[0][0]
-                index = combo.findData(org_id)
-                if index >= 0:
-                    combo.setCurrentIndex(index)
-                    self.update_label_text(0, org_id)
+        # редактирование: выставляем организацию (дальше — как при ручном выборе)
+        if employee and employee.get("organization_id") and self.hierarchy_combos:
+            combo = self.hierarchy_combos[0][0]
+            index = combo.findData(employee.get("organization_id"))
+            if index >= 0:
+                combo.setCurrentIndex(index)
 
-        # Добавляем чекбокс руководителя
-        self.add_leader_checkbox()
+        self._refresh_path()
         self.update_leader_checkbox()
 
     def add_leader_checkbox(self):
-        """Добавляет чекбокс руководителя после организации"""
-        get_manager().current
-
+        """Строка с чекбоксом руководителя — всегда под последним уровнем"""
         row_layout = QHBoxLayout()
         row_layout.setSpacing(10)
 
         label = QLabel("")
-        label.setMinimumSize(120, 0)
-        label.setMaximumSize(120, 16777215)
-        self.leader_checkbox_label = label  # ← сохраняем ссылку
+        label.setFixedWidth(self.LABEL_WIDTH)
+        self.leader_checkbox_label = label
 
         self.leader_checkbox = QCheckBox("Является руководителем организации")
-        self.leader_checkbox.setMinimumSize(350, 0)
-        self.leader_checkbox.setMaximumSize(350, 16777215)
         self.leader_checkbox.setEnabled(False)
+        self.leader_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
         self.leader_checkbox.toggled.connect(self.on_leader_toggled)
         self._apply_leader_checkbox_style()
 
         row_layout.addWidget(label)
-        row_layout.addWidget(self.leader_checkbox)
-        row_layout.addStretch()
+        row_layout.addWidget(self.leader_checkbox, 1)
 
         self.leader_checkbox_layout = row_layout
         self.parent.hierarchyLayout.addLayout(row_layout)
+
+    def add_hierarchy_level(self, level, items, selected_id=None):
+        """Добавляет уровень иерархии (вставляется ПЕРЕД чекбоксом руководителя)
+
+        items — [(id, name), ...]. selected_id выставляется без автоматического
+        построения следующего уровня (его строит вызывающий код).
+        """
+        if level < len(self.hierarchy_combos):
+            self.remove_levels_after(level - 1)
+
+        row_layout = QHBoxLayout()
+        row_layout.setSpacing(10)
+
+        label_text = self.get_level_label(level, items)
+        label = QLabel(f"{label_text}:")
+        label.setFixedWidth(self.LABEL_WIDTH)
+        label.setWordWrap(True)
+        label.setProperty("base_text", f"{label_text}:")
+
+        combo = QComboBox()
+        combo.setMinimumHeight(self.ROW_HEIGHT)
+        combo.addItem("Не выбрано", None)
+        for item_id, item_name in items:
+            combo.addItem(item_name, item_id)
+        combo.setProperty("level", level)
+
+        if selected_id:
+            index = combo.findData(selected_id)
+            if index >= 0:
+                combo.setCurrentIndex(index)
+
+        self._style_row(label, combo)
+        combo.currentIndexChanged.connect(lambda _i, c=combo: self._handle_change(c))
+
+        row_layout.addWidget(label)
+        row_layout.addWidget(combo, 1)
+
+        layout = self.parent.hierarchyLayout
+        insert_index = layout.count()
+        if self.leader_checkbox_layout is not None:
+            leader_idx = layout.indexOf(self.leader_checkbox_layout)
+            if leader_idx != -1:
+                insert_index = leader_idx
+        layout.insertLayout(insert_index, row_layout)
+
+        self.hierarchy_combos.append((combo, label, level))
+        self._row_layouts.append(row_layout)
+
+        self._refresh_path()
+        self.update_leader_checkbox()
+        return combo, label
+
+    def remove_levels_after(self, level):
+        """Удаляет все уровни иерархии ПОСЛЕ указанного"""
+        while len(self.hierarchy_combos) > level + 1:
+            self.hierarchy_combos.pop()
+            row = self._row_layouts.pop()
+            self.parent.hierarchyLayout.removeItem(row)
+            self._delete_layout(row)
+
+    # ==================== ОБРАБОТЧИКИ ====================
+
+    def on_hierarchy_changed(self, index):
+        """Совместимость со старым подключением сигнала через sender()."""
+        combo = self.parent.sender()
+        if combo is not None:
+            self._handle_change(combo)
+
+    def _handle_change(self, combo):
+        level = next((i for i, (c, _l, _lvl) in enumerate(self.hierarchy_combos) if c is combo), None)
+        if level is None:
+            return
+
+        selected_id = combo.currentData()
+        self.remove_levels_after(level)
+
+        if selected_id:
+            if level == 0:
+                self._ensure_structure_loaded(selected_id)
+                children = self.get_first_level_departments(selected_id)
+                roots = self._roots_of(selected_id)
+                print(
+                    f"[HIER] org={selected_id!r} ({type(selected_id).__name__}) | "
+                    f"отделов в дереве: {len(self.departments_tree)} | "
+                    f"корневых у организации: {roots} | отделов 1-го уровня: {len(children)}"
+                )
+                if not roots and self.departments_tree:
+                    org_key = self._key(selected_id)
+                    mine = [n for n in self.departments_tree.values() if self._key(n.get("organization_id")) == org_key]
+                    sample = next(iter(self.departments_tree.values()))
+                    print(
+                        f"[HIER] отделов этой организации в дереве: {len(mine)}; "
+                        f"пример узла: { {k: sample.get(k) for k in ('id', 'organization_id', 'parent_id')} }"
+                    )
+            else:
+                children = self.get_children_for_parent(selected_id)
+                print(f"[HIER] отдел={selected_id!r} | дочерних: {len(children)}")
+            if children:
+                self.add_hierarchy_level(level + 1, children)
+
+        self._refresh_path()
+        self.update_leader_checkbox()
+
+    def _refresh_path(self):
+        self.current_hierarchy_path = self.get_current_hierarchy_path()
+
+    def update_label_text(self, level, selected_id=None):
+        """Совместимость: подпись уровня теперь определяется типами отделов и не зависит от выбора."""
+        if level < len(self.hierarchy_combos):
+            _combo, label, _lvl = self.hierarchy_combos[level]
+            base_text = label.property("base_text")
+            if base_text:
+                label.setText(base_text)
+
+    def update_leader_checkbox(self):
+        """Состояние и текст чекбокса — руководитель последнего выбранного уровня"""
+        cb = self.leader_checkbox
+        if cb is None:
+            return
+
+        path = self.current_hierarchy_path
+        if not path:
+            cb.blockSignals(True)
+            cb.setChecked(False)
+            cb.blockSignals(False)
+            cb.setEnabled(False)
+            cb.setText("Является руководителем организации")
+            return
+
+        cb.setEnabled(True)
+        name = self.get_item_name(path[-1])
+        if len(path) == 1:
+            cb.setText(f"Является руководителем организации «{name}»" if name else "Является руководителем организации")
+        else:
+            cb.setText(f"Является руководителем «{name}»" if name else "Является руководителем")
+
+    def on_leader_toggled(self, checked):
+        if checked and not self.current_hierarchy_path:
+            self.leader_checkbox.blockSignals(True)
+            self.leader_checkbox.setChecked(False)
+            self.leader_checkbox.blockSignals(False)
+            QMessageBox.warning(
+                self.parent,
+                "Предупреждение",
+                "Для назначения руководителем необходимо выбрать организацию",
+            )
+            return
+        self.update_leader_checkbox()
+
+    # Раньше последний уровень скрывался при отметке руководителя; теперь он всегда виден.
+    def hide_last_level(self):
+        pass
+
+    def show_last_level(self):
+        pass
+
+    # ==================== РЕЗУЛЬТАТ ====================
+
+    def get_current_hierarchy_path(self):
+        """Путь [org_id, dep1_id, dep2_id, ...] — до первого невыбранного уровня"""
+        path = []
+        for combo, _label, _level in self.hierarchy_combos:
+            selected_id = combo.currentData()
+            if not selected_id:
+                break
+            path.append(selected_id)
+        return path
+
+    def is_leader(self):
+        return bool(self.leader_checkbox and self.leader_checkbox.isEnabled() and self.leader_checkbox.isChecked())
+
+    def get_selected_department_id(self):
+        """Отдел сотрудника: последний выбранный отдел; руководитель организации — отдел без parent_id."""
+        path = self.get_current_hierarchy_path()
+        if len(path) >= 2:
+            return path[-1]
+        if len(path) == 1 and self.is_leader():
+            return self.get_root_department_id(path[0])
+        return None
+
+    def set_selection(self, org_id, dept_id=None, is_leader=False):
+        """Восстанавливает выбор при редактировании: организация → цепочка отделов → чекбокс."""
+        if not self.hierarchy_combos:
+            return
+
+        self._ensure_structure_loaded(org_id)
+        root_ids = set(self._roots_of(org_id))
+        chain, seen, cur = [], set(), dept_id
+        cur = self._key(cur) if cur else None
+        while cur and cur in self.departments_tree and cur not in root_ids and cur not in seen:
+            seen.add(cur)
+            chain.append(cur)
+            parent = self.departments_tree[cur].get("parent_id")
+            cur = None if self._is_root_parent(parent) else self._key(parent)
+        chain.reverse()
+
+        for level, target in enumerate([org_id, *chain]):
+            if level >= len(self.hierarchy_combos):
+                break
+            combo = self.hierarchy_combos[level][0]
+            index = combo.findData(target)
+            if index < 0:
+                break
+            combo.setCurrentIndex(index)  # сигнал построит следующий уровень
+
+        if self.leader_checkbox is not None and self.leader_checkbox.isEnabled():
+            self.leader_checkbox.setChecked(bool(is_leader))
+
+    def set_test_data(self):
+        """Заполняет тестовые данные для отладки"""
+        print("[INFO] Используются тестовые данные")
+        self.organizations = {1: "ОАО МАЗ", 2: "ООО Тестовая организация"}
+        self.set_department_types(
+            [
+                {"id": 1, "name": "Управление"},
+                {"id": 2, "name": "Отдел"},
+                {"id": 3, "name": "Цех"},
+                {"id": 4, "name": "Подразделение"},
+            ]
+        )
+        self.build_departments_tree(
+            [
+                {"id": 1, "name": "Руководство МАЗ", "parent_id": None, "organization_id": 1, "department_type_id": 1},
+                {"id": 2, "name": "Цех №1", "parent_id": 1, "organization_id": 1, "department_type_id": 3},
+                {"id": 3, "name": "Информационные технологии", "parent_id": 1, "organization_id": 1, "department_type_id": 4},
+                {"id": 4, "name": "Отдел разработки", "parent_id": 3, "organization_id": 1, "department_type_id": 2},
+                {"id": 5, "name": "Руководство ТО", "parent_id": None, "organization_id": 2, "department_type_id": 1},
+                {"id": 6, "name": "Отдел продаж", "parent_id": 5, "organization_id": 2, "department_type_id": 2},
+            ]
+        )
+        self.group_departments_by_organization()
+
+    # ==================== СТИЛИ ====================
+
+    def _label_style(self):
+        t = get_manager().current
+        return f"color: {t.TEXT_PRIMARY}; font-weight: 500; font-size: 13px; background: transparent;"
+
+    def _combo_style(self):
+        from client.core.themes.icon_utils import icon_path
+
+        t = get_manager().current
+        arrow = icon_path("down_arrow", t.ICON_COLOR)
+        return f"""
+            QComboBox {{
+                border: 1px solid {t.BORDER_DEFAULT};
+                border-radius: 6px;
+                padding: 6px;
+                padding-right: 30px;
+                background-color: {t.BG_INPUT};
+                color: {t.TEXT_PRIMARY};
+                font-size: 13px;
+                min-height: 22px;
+            }}
+            QComboBox:hover {{
+                border-color: {t.ACCENT_PRIMARY};
+            }}
+            QComboBox:focus {{
+                border: 2px solid {t.ACCENT_PRIMARY};
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 30px;
+                border: none;
+            }}
+            QComboBox::down-arrow {{
+                image: url({arrow});
+                width: 16px;
+                height: 16px;
+                margin-right: 6px;
+            }}
+            QComboBox QAbstractItemView {{
+                border-radius: 6px;
+                background-color: {t.BG_CARD};
+                color: {t.TEXT_PRIMARY};
+                padding: 4px;
+                outline: none;
+                border: 1px solid {t.ACCENT_PRIMARY};
+                selection-background-color: {t.ACCENT_SELECTION_BG};
+                selection-color: {t.TEXT_PRIMARY};
+            }}
+            QComboBox QAbstractItemView::item {{
+                padding: 8px;
+                color: {t.TEXT_PRIMARY};
+                border: none;
+                outline: none;
+            }}
+            QComboBox QAbstractItemView::item:hover,
+            QComboBox QAbstractItemView::item:selected {{
+                background-color: {t.ACCENT_SELECTION_BG};
+                color: {t.TEXT_PRIMARY};
+            }}
+        """
+
+    def _style_row(self, label, combo):
+        label.setStyleSheet(self._label_style())
+        combo.setStyleSheet(self._combo_style())
 
     def _apply_leader_checkbox_style(self):
         """Стиль чекбокса руководителя с иконками темы."""
         from client.core.themes.icon_utils import icon_path
 
-        _t = get_manager().current
-
-        checked = icon_path("cb_checked", _t.ICON_COLOR)
-        unchecked = icon_path("cb_unchecked", _t.ICON_COLOR)
+        t = get_manager().current
+        checked = icon_path("cb_checked", t.ICON_COLOR)
+        unchecked = icon_path("cb_unchecked", t.ICON_COLOR)
 
         self.leader_checkbox.setStyleSheet(f"""
             QCheckBox {{
                 spacing: 8px;
-                color: {_t.TEXT_PRIMARY};
+                color: {t.TEXT_PRIMARY};
+                font-size: 13px;
                 background: transparent;
+            }}
+            QCheckBox:disabled {{
+                color: {t.TEXT_DISABLED};
             }}
             QCheckBox::indicator {{
                 width: 18px; height: 18px;
@@ -213,446 +647,9 @@ class HierarchyManager:
             }}
         """)
 
-    def add_hierarchy_level(self, level, items, selected_id=None):
-        """Добавляет уровень иерархии (вставляет ПЕРЕД чекбоксом)"""
-        print(f"[DEBUG] add_hierarchy_level(level={level}, items_count={len(items)})")
-
-        row_layout = QHBoxLayout()
-        row_layout.setSpacing(10)
-
-        level_name = self.get_level_name(level)
-        _t = get_manager().current
-        label = QLabel(f"{level_name}:")
-        label.setMinimumSize(120, 0)
-        label.setMaximumSize(120, 16777215)
-        label.setStyleSheet(
-            f"color: {_t.TEXT_PRIMARY}; font-weight: 500; background: transparent;"
-        )
-        label.setProperty("base_text", f"{level_name}:")
-
-        combo = QComboBox()
-        combo.setStyleSheet("""
-            QComboBox {
-                border: 1px solid #dee2e6;
-                border-radius: 6px;
-                padding: 5px;
-                background-color: white;
-                color: #1B232A;
-                font-size: 13px;
-            }
-            QComboBox:hover {
-                border-color: #ccab6e;
-            }
-            QComboBox:focus {
-                border: 2px solid #ccab6e;
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 30px;
-                border: none;
-            }
-            QComboBox::down-arrow {
-                image: url({ICON_ARROW_DOWN_PATH});
-                width: 16px;
-                height: 16px;
-                margin-right: 6px;
-            }
-            QComboBox QAbstractItemView {
-                border-radius: 6px;
-                background-color: white;
-                color: #1B232A;
-                padding: 4px;
-                outline: none;
-                border: 1px solid #ccab6e;
-            }
-            QComboBox QAbstractItemView::item {
-                padding: 8px;
-                color: #1B232A;
-                border: none;
-                outline: none;
-            }
-            QComboBox QAbstractItemView::item:hover {
-                background-color: #e3f2fd;
-                color: #1B232A;
-            }
-            QComboBox QAbstractItemView::item:selected {
-                background-color: #e3f2fd;
-                color: #1B232A;
-            }
-        """)
-
-        combo.addItem("Не выбрано", None)
-        for item_id, item_name in items:
-            combo.addItem(item_name, item_id)
-
-        combo.setProperty("level", level)
-        if selected_id:
-            index = combo.findData(selected_id)
-            if index >= 0:
-                combo.setCurrentIndex(index)
-
-        combo.currentIndexChanged.connect(self.on_hierarchy_changed)
-
-        row_layout.addWidget(label)
-        row_layout.addWidget(combo)
-
-        insert_index = self.parent.hierarchyLayout.count()
-        if self.leader_checkbox_layout:
-            leader_idx = self.parent.hierarchyLayout.indexOf(
-                self.leader_checkbox_layout
-            )
-            if leader_idx != -1:
-                insert_index = leader_idx
-
-        self.parent.hierarchyLayout.insertLayout(insert_index, row_layout)
-
-        self.hierarchy_combos.insert(level, (combo, label, level))
-
-        for i in range(level + 1, len(self.hierarchy_combos)):
-            self.hierarchy_combos[i] = (
-                self.hierarchy_combos[i][0],
-                self.hierarchy_combos[i][1],
-                i,
-            )
-            self.hierarchy_combos[i][0].setProperty("level", i)
-
-        if selected_id:
-            self.update_label_text(level, selected_id)
-
-        return combo, label
-
-    def remove_levels_after(self, level):
-        """Удаляет все уровни иерархии ПОСЛЕ указанного"""
-        print(f"[DEBUG] remove_levels_after(level={level})")
-
-        while len(self.hierarchy_combos) > level + 1:
-            combo, _label, _lvl = self.hierarchy_combos.pop()
-            for i in range(self.parent.hierarchyLayout.count()):
-                item = self.parent.hierarchyLayout.itemAt(i)
-                if item and item.layout():
-                    layout = item.layout()
-                    found = False
-                    for j in range(layout.count()):
-                        if layout.itemAt(j).widget() == combo:
-                            found = True
-                            break
-                    if found:
-                        while layout.count():
-                            widget = layout.takeAt(0).widget()
-                            if widget:
-                                widget.deleteLater()
-                        self.parent.hierarchyLayout.removeItem(item)
-                        break
-
-    def on_hierarchy_changed(self, index):
-        """Обработчик изменения значения в иерархическом комбобоксе"""
-        print(f"[DEBUG] on_hierarchy_changed(index={index})")
-
-        combo = self.parent.sender()
-        if not combo:
-            return
-
-        level = combo.property("level")
-        if level is None:
-            return
-
-        if self.leader_checkbox:
-            self.leader_checkbox.blockSignals(True)
-
-        selected_id = combo.currentData()
-        print(f"[DEBUG] Уровень {level}, выбран ID: {selected_id}")
-
-        self.current_hierarchy_path = self.current_hierarchy_path[:level]
-        if selected_id:
-            if level == 0:
-                # Уровень организации → берём КОРНЕВЫЕ отделы этой организации
-                children = self.get_children_for_parent(
-                    None, organization_id=selected_id
-                )
-            else:
-                # Уровень отдела → берём его дочерние
-                children = self.get_children_for_parent(selected_id)
-            if children:
-                self.add_hierarchy_level(level + 1, children)
-
-        self.update_leader_checkbox()
-
-        if self.leader_checkbox:
-            self.leader_checkbox.blockSignals(False)
-
-    def update_label_text(self, level, selected_id):
-        """Обновляет текст метки для указанного уровня"""
-        print(f"[DEBUG] update_label_text(level={level}, selected_id={selected_id})")
-
-        if level < len(self.hierarchy_combos):
-            _combo, label, _lvl = self.hierarchy_combos[level]
-            base_text = label.property("base_text") or self.get_level_name(level) + ":"
-            clean_base = base_text.rstrip(":")
-            new_text = f"{clean_base}:"
-            label.setText(new_text)
-            print(f"[DEBUG] Метка обновлена на: '{new_text}'")
-
-    def update_leader_checkbox(self):
-        """Обновляет состояние и текст чекбокса руководителя"""
-        if not self.leader_checkbox:
-            return
-
-        has_organization = len(self.current_hierarchy_path) > 0
-        self.leader_checkbox.setEnabled(has_organization)
-
-        if not has_organization:
-            self.leader_checkbox.setChecked(False)
-            self.leader_checkbox.setText("Является руководителем организации")
-            return
-
-        has_structural_units = len(self.hierarchy_combos) > 1
-
-        if has_structural_units:
-            last_combo = self.hierarchy_combos[-1][0]
-            last_selected = last_combo.currentData()
-
-            if last_selected:
-                last_level = len(self.hierarchy_combos) - 1
-                level_name = self.get_level_name(last_level).lower()
-                item_name = self.get_item_name(last_selected)
-                if item_name:
-                    self.leader_checkbox.setText(
-                        f"Является руководителем «{item_name}»"
-                    )
-                else:
-                    self.leader_checkbox.setText(f"Является руководителем {level_name}")
-            else:
-                prev_level = len(self.hierarchy_combos) - 2
-                level_name = self.get_level_name(prev_level).lower()
-                prev_id = (
-                    self.current_hierarchy_path[prev_level]
-                    if prev_level < len(self.current_hierarchy_path)
-                    else None
-                )
-                item_name = self.get_item_name(prev_id) if prev_id else None
-                if item_name:
-                    self.leader_checkbox.setText(
-                        f"Является руководителем «{item_name}»"
-                    )
-                else:
-                    self.leader_checkbox.setText(
-                        f"Является руководителем {level_name}"
-                    )
-        else:
-            org_id = self.current_hierarchy_path[0]
-            org_name = self.get_item_name(org_id)
-            if org_name:
-                self.leader_checkbox.setText(
-                    f"Является руководителем организации «{org_name}»"
-                )
-            else:
-                self.leader_checkbox.setText("Является руководителем организации")
-
-    def on_leader_toggled(self, checked):
-        """Обработчик переключения чекбокса руководителя"""
-        print(f"[DEBUG] on_leader_toggled(checked={checked})")
-
-        if checked:
-            if len(self.current_hierarchy_path) == 0:
-                self.leader_checkbox.setChecked(False)
-                from PyQt6.QtWidgets import QMessageBox
-
-                QMessageBox.warning(
-                    self.parent,
-                    "Предупреждение",
-                    "Для назначения руководителем необходимо выбрать организацию",
-                )
-                return
-
-            if len(self.hierarchy_combos) > 1:
-                last_combo = self.hierarchy_combos[-1][0]
-                last_selected = last_combo.currentData()
-
-                if last_selected is None:
-                    self.hide_last_level()
-        else:
-            self.show_last_level()
-
-        self.update_leader_checkbox()
-
-    def hide_last_level(self):
-        """Скрывает последний уровень иерархии при отметке руководителя"""
-        print("[DEBUG] hide_last_level() вызван")
-        if len(self.hierarchy_combos) > 1:
-            last_combo, _last_label, _last_level = self.hierarchy_combos[-1]
-
-            for i in range(self.parent.hierarchyLayout.count()):
-                item = self.parent.hierarchyLayout.itemAt(i)
-                if item and item.layout():
-                    layout = item.layout()
-                    for j in range(layout.count()):
-                        widget_item = layout.itemAt(j)
-                        if widget_item and widget_item.widget() == last_combo:
-                            for k in range(layout.count()):
-                                hide_item = layout.itemAt(k)
-                                if hide_item and hide_item.widget():
-                                    hide_item.widget().hide()
-                                    print("[DEBUG] Последний уровень скрыт")
-                            return
-
-    def show_last_level(self):
-        """Показывает последний уровень иерархии при снятии отметки руководителя"""
-        print("[DEBUG] show_last_level() вызван")
-        if len(self.hierarchy_combos) > 1:
-            last_combo, _last_label, _last_level = self.hierarchy_combos[-1]
-
-            for i in range(self.parent.hierarchyLayout.count()):
-                item = self.parent.hierarchyLayout.itemAt(i)
-                if item and item.layout():
-                    layout = item.layout()
-                    for j in range(layout.count()):
-                        widget_item = layout.itemAt(j)
-                        if widget_item and widget_item.widget() == last_combo:
-                            for k in range(layout.count()):
-                                show_item = layout.itemAt(k)
-                                if show_item and show_item.widget():
-                                    show_item.widget().show()
-                                    print("[DEBUG] Последний уровень показан")
-                            return
-
-    def get_current_hierarchy_path(self):
-        """Возвращает текущий путь иерархии [org_id, dep1_id, dep2_id, ...]"""
-        path = []
-        for combo, _label, _level in self.hierarchy_combos:
-            selected_id = combo.currentData()
-            if selected_id:
-                path.append(selected_id)
-            else:
-                break
-        return path
-
-    def set_test_data(self):
-        """Заполняет тестовые данные для отладки"""
-        print("[DEBUG] set_test_data() вызван")
-        print("[INFO] Используются тестовые данные")
-
-        self.organizations = {1: "ОАО МАЗ", 2: "ООО Тестовая организация"}
-
-        self.departments_tree = {
-            1: {
-                "id": 1,
-                "name": "Управление информационных технологий",
-                "parent_id": None,
-                "organization_id": 1,
-                "children": [2, 3],
-            },
-            2: {
-                "id": 2,
-                "name": "Отдел разработки",
-                "parent_id": 1,
-                "organization_id": 1,
-                "children": [4],
-            },
-            3: {
-                "id": 3,
-                "name": "Отдел тестирования",
-                "parent_id": 1,
-                "organization_id": 1,
-                "children": [],
-            },
-            4: {
-                "id": 4,
-                "name": "Группа бэкенда",
-                "parent_id": 2,
-                "organization_id": 1,
-                "children": [],
-            },
-            5: {
-                "id": 5,
-                "name": "Управление продаж",
-                "parent_id": None,
-                "organization_id": 2,
-                "children": [6],
-            },
-            6: {
-                "id": 6,
-                "name": "Отдел прямых продаж",
-                "parent_id": 5,
-                "organization_id": 2,
-                "children": [],
-            },
-        }
-
-        self.all_departments = {
-            1: "Управление информационных технологий",
-            2: "Отдел разработки",
-            3: "Отдел тестирования",
-            4: "Группа бэкенда",
-            5: "Управление продаж",
-            6: "Отдел прямых продаж",
-        }
-
-        self.departments_by_org = {1: [1, 2, 3, 4], 2: [5, 6]}
-
-        self.root_departments = {1: [1], 2: [5]}
-
     def apply_theme(self):
         """Перекрасить динамически созданные виджеты (combos, labels, checkbox)."""
-        _t = get_manager().current
-        from client.core.themes.icon_utils import icon_path
-
-        arrow = icon_path("down_arrow", _t.ICON_COLOR)
-
         for combo, label, _level in self.hierarchy_combos:
-            label.setStyleSheet(
-                f"color: {_t.TEXT_PRIMARY}; font-weight: 500; background: transparent;"
-            )
-            combo.setStyleSheet(f"""
-                QComboBox {{
-                    border: 1px solid {_t.BORDER_DEFAULT};
-                    border-radius: 6px;
-                    padding: 6px;
-                    padding-right: 30px;
-                    background-color: {_t.BG_INPUT};
-                    color: {_t.TEXT_PRIMARY};
-                    font-size: 13px;
-                    outline: none;
-                    min-height: 22px;
-                }}
-                QComboBox:hover {{
-                    border-color: {_t.ACCENT_PRIMARY};
-                }}
-                QComboBox:focus {{
-                    border: 2px solid {_t.ACCENT_PRIMARY};
-                }}
-                QComboBox::drop-down {{
-                    subcontrol-origin: padding;
-                    subcontrol-position: top right;
-                    width: 30px;
-                    border: none;
-                }}
-                QComboBox::down-arrow {{
-                    image: url({arrow});
-                    width: 16px;
-                    height: 16px;
-                    margin-right: 6px;
-                }}
-                QComboBox QAbstractItemView {{
-                    border-radius: 6px;
-                    background-color: {_t.BG_CARD};
-                    color: {_t.TEXT_PRIMARY};
-                    padding: 4px;
-                    outline: none;
-                    border: 1px solid {_t.ACCENT_PRIMARY};
-                }}
-                QComboBox QAbstractItemView::item {{
-                    padding: 8px;
-                    color: {_t.TEXT_PRIMARY};
-                    border: none;
-                    outline: none;
-                }}
-                QComboBox QAbstractItemView::item:hover,
-                QComboBox QAbstractItemView::item:selected {{
-                    background-color: {_t.ACCENT_SELECTION_BG};
-                    color: {_t.TEXT_PRIMARY};
-                }}
-            """)
-
+            self._style_row(label, combo)
         if self.leader_checkbox is not None:
             self._apply_leader_checkbox_style()
