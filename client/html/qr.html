@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QR-генератор</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6f5f2;--card:#fff;--fg:#1c1b19;--mut:#6b675f;--bd:#ddd9d0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171614;--card:#232220;--fg:#f1efea;--mut:#a29e94;--bd:#3a3834}}
+:root[data-theme="dark"]{--bg:#171614;--card:#232220;--fg:#f1efea;--mut:#a29e94;--bd:#3a3834}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px;display:grid;gap:20px;grid-template-columns:1fr 1fr}
+@media(max-width:700px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px}
+h1{font-size:20px;margin:0 0 14px}
+label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
+textarea{width:100%;min-height:80px;padding:10px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--fg);font:inherit;resize:vertical}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+input[type=color]{width:44px;height:34px;border:1px solid var(--bd);border-radius:6px;background:none;padding:2px}
+.out{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+img{width:100%;max-width:420px;border-radius:10px;border:1px solid var(--bd);background:#fff}
+small{color:var(--mut);text-align:center}
+</style></head>
+<body><main>
+<section class="card">
+<h1>QR-генератор</h1>
+<label for="t">Текст или ссылка</label>
+<textarea id="t">https://example.com</textarea>
+<div class="row">
+<div><label for="fg">Цвет</label><input type="color" id="fg" value="#000000"></div>
+<div><label for="bg">Фон</label><input type="color" id="bg" value="#ffffff"></div>
+</div>
+<label><input type="checkbox" id="lg" checked> Логотип в центре</label>
+<label for="f">Свой логотип (необязательно)</label>
+<input type="file" id="f" accept="image/*">
+</section>
+<section class="card out">
+<img id="o" alt="QR-код">
+<small>Сохранить: правый клик / долгое нажатие на картинку</small>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let logo=null;
+function draw(){
+  const qr=qrcode(0,'H');qr.addData($('t').value||' ');qr.make();
+  const n=qr.getModuleCount(),q=2,S=900,m=S/(n+2*q);
+  const c=document.createElement('canvas');c.width=c.height=S;
+  const x=c.getContext('2d');
+  x.fillStyle=$('bg').value;x.fillRect(0,0,S,S);
+  const fg=$('fg').value,on=$('lg').checked;
+  const L=on?Math.round(n*0.24):0,lo=(n-L)/2;
+  const inFinder=(r,k)=>(r<7&&k<7)||(r<7&&k>=n-7)||(r>=n-7&&k<7);
+  const inLogo=(r,k)=>on&&r+.5>lo&&r+.5<n-lo&&k+.5>lo&&k+.5<n-lo;
+  const d=(r,k)=>r>=0&&k>=0&&r<n&&k<n&&qr.isDark(r,k)&&!inFinder(r,k)&&!inLogo(r,k);
+  x.fillStyle=fg;
+  for(let r=0;r<n;r++)for(let k=0;k<n;k++){
+    if(!d(r,k))continue;
+    const u=!d(r-1,k),b=!d(r+1,k),l=!d(r,k-1),rt=!d(r,k+1),R=m*.5;
+    x.beginPath();
+    x.roundRect((k+q)*m-.3,(r+q)*m-.3,m+.6,m+.6,[u&&l?R:0,u&&rt?R:0,b&&rt?R:0,b&&l?R:0]);
+    x.fill();
+  }
+  // глазки (позиционные метки)
+  [[0,0],[0,n-7],[n-7,0]].forEach(([r,k])=>{
+    const px=(k+q)*m,py=(r+q)*m;
+    x.beginPath();
+    x.roundRect(px,py,7*m,7*m,2.6*m);
+    x.roundRect(px+m,py+m,5*m,5*m,1.7*m);
+    x.fill('evenodd');
+    x.beginPath();x.roundRect(px+2*m,py+2*m,3*m,3*m,1.5*m);x.fill();
+  });
+  // логотип
+  if(on){
+    const p=(lo+q)*m,s=L*m;
+    x.fillStyle=$('bg').value;x.beginPath();x.roundRect(p,p,s,s,s*.12);x.fill();
+    const pad=s*.12,w=s-2*pad;
+    if(logo){
+      const k=Math.min(w/logo.width,w/logo.height),iw=logo.width*k,ih=logo.height*k;
+      x.drawImage(logo,p+(s-iw)/2,p+(s-ih)/2,iw,ih);
+    }else{
+      const cols=['#c9b99a','#8c8a84','#2b2b2b','#c0272d'],h=w/cols.length;
+      cols.forEach((col,i)=>{x.fillStyle=col;x.beginPath();x.roundRect(p+pad,p+pad+i*h+h*.08,w,h*.84,h*.4);x.fill();});
+    }
+  }
+  $('o').src=c.toDataURL('image/png');
+}
+['t','fg','bg','lg'].forEach(i=>$(i).addEventListener('input',draw));
+$('f').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f){logo=null;draw();return}
+  const im=new Image();im.onload=()=>{logo=im;draw()};im.src=URL.createObjectURL(f);
+});
+draw();
+</script></body></html>
