@@ -3,3 +3,4 @@ apscheduler
 bcrypt
 PyJWT
 cachetools
+pydantic_settings

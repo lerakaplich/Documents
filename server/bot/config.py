@@ -1,22 +1,16 @@
-import os
-
-from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class BotSettings(BaseModel):
-    # Токен бота (берём из переменных окружения или ставим дефолт)
-    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "8108629062:AAFFRoG-fmL_X2UNM4JZUQCRLL200Qt61Hc")
+class BotSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    # Время рассылки статистики (по умолчанию 09:00)
-    STATS_SEND_HOUR: int = int(os.getenv("STATS_SEND_HOUR", 9))
-    STATS_SEND_MINUTE: int = int(os.getenv("STATS_SEND_MINUTE", 0))
+    TELEGRAM_BOT_TOKEN: str
+    SUPPORT_CHAT_ID: int
 
-    # Часовой пояс
-    BOT_TIMEZONE: str = os.getenv("BOT_TIMEZONE", "Europe/Minsk")
-
-    # Чат поддержки
-    SUPPORT_CHAT_ID: int = int(os.getenv("SUPPORT_CHAT_ID", -1004416230667))
+    STATS_SEND_HOUR: int = 9
+    STATS_SEND_MINUTE: int = 0
+    BOT_TIMEZONE: str = "Europe/Minsk"
 
 
+# Создаем экземпляр настроек
 bot_settings = BotSettings()
-

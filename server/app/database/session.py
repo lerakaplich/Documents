@@ -1,12 +1,20 @@
+import os
 from typing import AsyncGenerator
+
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-# Конфигурационные строки подключения (Разработчик 2 уберет их в .env файл)
-DOCUMENTS_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/documents_new"
-EMPLOYEES_DB_URL = "postgresql+asyncpg://postgres:admin@127.0.0.1:5432/employees_new"
+# Загружаем переменные из локального файла .env
+load_dotenv()
 
-# Добавьте для asyncpg (слушателя):
-DOCS_DB_URL_RAW = "postgresql://postgres:admin@127.0.0.1:5432/documents"
+# Получаем URLs из окружения
+DOCUMENTS_DB_URL = os.getenv("DOCUMENTS_DB_URL")
+EMPLOYEES_DB_URL = os.getenv("EMPLOYEES_DB_URL")
+DOCS_DB_URL_RAW = os.getenv("DOCS_DB_URL_RAW")
+
+# Дополнительная проверка, чтобы приложение сразу падало, если забыли заполнить .env
+if not DOCUMENTS_DB_URL or not EMPLOYEES_DB_URL:
+    raise ValueError("Не заданы переменные окружения для подключения к БД!")
 
 # 1. Создаем асинхронные движки
 # Пул для БД документов

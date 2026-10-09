@@ -1,15 +1,22 @@
 import os
+from dotenv import load_dotenv
 
-# Токен бота (на проде заберем из env, сейчас можно оставить дефолт для тестов)
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8108629062:AAFFRoG-fmL_X2UNM4JZUQCRLL200Qt61Hc")
+# Загружаем переменные из .env
+load_dotenv()
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if not TELEGRAM_BOT_TOKEN:
+    raise ValueError("Не задан TELEGRAM_BOT_TOKEN в переменных окружения!")
 
 # URL локального или внешнего API Telegram
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
-# В реальном проекте эти значения должны браться из settings (.env)
-JWT_SECRET_KEY = "SUPER_SECRET_KEY_FOR_SED_SYSTEM_DEVELOPMENT_2026"
-JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15  # Короткий срок жизни для безопасности
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not JWT_SECRET_KEY:
+    raise ValueError("Не задан JWT_SECRET_KEY в переменных окружения!")
+
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
 
 
 # Шаблоны системных уведомлений для сотрудников МАЗ
