@@ -1,6 +1,6 @@
 from sqlalchemy import select, update, delete, exists
 from sqlalchemy.ext.asyncio import AsyncSession
-from server.app.database.document_models import DocumentType, Document
+from server.app.database.document_models import DocumentType, Document, DocumentTypeDirection
 
 
 class DocTypeRepository:
@@ -16,15 +16,31 @@ class DocTypeRepository:
         return result.scalar_one_or_none()
 
     async def add(self, data):
-        new_obj = DocumentType(**data.model_dump())
+        # Если в data передаются allowed_directions, создаем тип и связи
+        dump_data = data.model_dump(exclude={"allowed_directions"})
+        new_obj = DocumentType(**dump_data)
         self.db.add(new_obj)
+        await self.db.flush()  # чтобы получить new_obj.id
+
+        if hasattr(data, "allowed_directions") and data.allowed_directions:
+            for direction in data.allowed_directions:
+                self.db.add(DocumentTypeDirection(type_id=new_obj.id, direction=direction))
+
         await self.db.commit()
         await self.db.refresh(new_obj)
         return new_obj
 
     async def update(self, type_id: int, data):
-        stmt = update(DocumentType).where(DocumentType.id == type_id).values(**data.model_dump(exclude_unset=True)).returning(DocumentType)
+        dump_data = data.model_dump(exclude_unset=True, exclude={"allowed_directions"})
+        stmt = update(DocumentType).where(DocumentType.id == type_id).values(**dump_data).returning(DocumentType)
         result = await self.db.execute(stmt)
+
+        # Если переданы новые направления, можно пересоздать их
+        if hasattr(data, "allowed_directions") and data.allowed_directions is not None:
+            await self.db.execute(delete(DocumentTypeDirection).where(DocumentTypeDirection.type_id == type_id))
+            for direction in data.allowed_directions:
+                self.db.add(DocumentTypeDirection(type_id=type_id, direction=direction))
+
         await self.db.commit()
         return result.scalar_one_or_none()
 

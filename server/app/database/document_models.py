@@ -70,6 +70,19 @@ class SecurityClearance(BaseDocuments):
     name: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class DocumentTypeDirection(BaseDocuments):
+    """Связь типов документов с разрешенными направлениями"""
+    __tablename__ = "document_type_directions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    type_id: Mapped[int] = mapped_column(Integer, ForeignKey("types.id", ondelete="CASCADE"), nullable=False)
+    direction: Mapped[DocDirection] = mapped_column(SqlEnum(DocDirection, name="doc_direction"), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('type_id', 'direction', name='unique_type_direction'),
+    )
+
+
 class DocumentType(BaseDocuments):
     """Конструктор типов документов с кастомными метаданными для UI PyQt6"""
     __tablename__ = "types"
@@ -79,6 +92,12 @@ class DocumentType(BaseDocuments):
     fields: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     auto_num: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
     smdo_code_type: Mapped[Optional[str]] = mapped_column(String(50))
+
+    allowed_directions: Mapped[list["DocumentTypeDirection"]] = relationship(
+        "DocumentTypeDirection",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
 
 
 class Tag(BaseDocuments):

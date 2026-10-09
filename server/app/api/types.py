@@ -1,10 +1,22 @@
 from fastapi import APIRouter, Depends, status
 from server.app.deps import get_current_user, get_doc_type_service
+from server.app.schemas.doc.allowed_combinations_dto import DirectionWithTypesRead
 from server.app.schemas.doc.doc_type import DocTypeRead, DocTypeCreate, DocTypeUpdate
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.documents.doc_type_service import DocTypeService
 
 router = APIRouter(prefix="/doc-types", tags=["Document Types"])
+
+@router.get("/allowed-combinations", response_model=list[DirectionWithTypesRead])
+async def get_allowed_document_combinations(
+    service: DocTypeService = Depends(get_doc_type_service),
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Возвращает список направлений и доступных для них типов документов
+    для построения динамических селектов на фронтенде (PyQt6).
+    """
+    return await service.get_combinations_grouped_by_direction()
 
 @router.get("", response_model=list[DocTypeRead])
 async def get_all_types(service: DocTypeService = Depends(get_doc_type_service)):

@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from server.app.database.document_models import DocumentType
+from server.app.database.document_models import DocumentType, DocDirection
 from server.app.repositories.doc_type_repo import DocTypeRepository
 from server.app.schemas.doc.doc_type import DocTypeCreate, DocTypeUpdate
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
@@ -184,3 +184,45 @@ class DocTypeService:
                 extra={"event_type": "doc_type_delete_error", "type_id": type_id, "admin_id": user.id}
             )
             raise
+
+    async def get_combinations_grouped_by_direction(self):
+        """Формирует список направлений и доступных для них типов документов для UI."""
+        logger.debug("Fetching combinations grouped by direction", extra={"event_type": "doc_direction_grouped_start"})
+
+        # Получаем все типы документов (вместе с их allowed_directions через lazy="selectin")
+        doc_types = await self.repo.get_all()
+
+        # Словарь для группировки: {DocDirection: [list of types]}
+        grouped_data = {
+            DocDirection.internal: [],
+            DocDirection.external: []
+        }
+
+        for dt in doc_types:
+            if dt.allowed_directions:
+                for ad in dt.allowed_directions:
+                    if ad.direction in grouped_data:
+                        grouped_data[ad.direction].append(
+                            {
+                                "type_id": dt.id,
+                                "type_name": dt.name
+                            }
+                        )
+
+        # Собираем финальный массив для ответа
+        result = [
+            {
+                "direction": DocDirection.internal,
+                "code": DocDirection.internal.code,
+                "label": "Внутреннее",
+                "allowed_types": grouped_data[DocDirection.internal]
+            },
+            {
+                "direction": DocDirection.external,
+                "code": DocDirection.external.code,
+                "label": "Внешнее",
+                "allowed_types": grouped_data[DocDirection.external]
+            }
+        ]
+
+        return result
