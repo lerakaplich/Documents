@@ -14,6 +14,7 @@ from server.app.database.session import get_docs_db, get_employees_db, \
     async_session_docs, async_session_employees  # УБРАЛИ кадровый get_employees_db
 from server.app.repositories.attachment_repo import AttachmentRepository
 from server.app.repositories.comment_repo import CommentRepository
+from server.app.repositories.dep_type_repo import DepartmentTypeRepository
 from server.app.repositories.doc_type_repo import DocTypeRepository
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.repositories.employee_repo import EmployeesRepository
@@ -24,6 +25,7 @@ from server.app.repositories.tag_repo import TagRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.authorization.auth_service import AuthService
 from server.app.services.common.notification_service import NotificationService
+from server.app.services.org.dep_type_service import DepartmentTypeService
 from server.app.services.overtime.overtime_export import OvertimeExportService
 from server.app.services.overtime.overtime_import import OvertimeImportService
 from server.app.services.common.tiff_converter import DocumentProcessor
@@ -124,6 +126,10 @@ def get_auth_service(
     session_repo = SessionRepository(db_docs)
     return AuthService(db_emp=db_emp, session_repo=session_repo)
 
+def get_department_type_service(
+    db: AsyncSession = Depends(get_employees_db)
+) -> DepartmentTypeService:
+    return DepartmentTypeService(db)
 
 def get_security_service(
         emp_db: AsyncSession = Depends(get_employees_db),

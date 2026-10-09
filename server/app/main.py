@@ -7,6 +7,7 @@ from server.app.api.positions import router as pos_router
 from server.app.api.types import router as type_router
 from server.app.api.tags import router as tag_router
 from server.app.api.overtimes import router as over_router
+from server.app.api.department_types import router as dept_type_router
 from sqlalchemy.ext.asyncio import AsyncSession
 from server.app.api.employees import router as employees_router
 from server.app.api.errors import global_exception_handler
@@ -29,6 +30,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(doc_router, prefix="/api/v1")
 app.include_router(org_router, prefix="/api/v1")
 app.include_router(dept_router, prefix="/api/v1")
+app.include_router(dept_type_router, prefix="/api/v1")
 app.include_router(pos_router, prefix="/api/v1")
 app.include_router(type_router, prefix="/api/v1")
 app.include_router(tag_router, prefix="/api/v1")
