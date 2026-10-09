@@ -57,6 +57,7 @@ class DocumentListItem(BaseModel):
     status: DocStatus = DocStatus.under_review
     direction: DocDirection
     sent_date: Optional[date] = None
+    created_at: Optional[datetime] = None
     deadline: Optional[date] = None
     last_comment_text: Optional[str] = None
 

@@ -481,8 +481,7 @@ class DocumentRepository:
             query = query.where(Document.sent_date <= params['date_to'])
 
         tag_ids = params.get('tag_ids')
-        if tag_ids:  # Сработает, только если список не None и не пустой
-            # Используем встроенный метод .any() по связи many-to-many (Document.tags)
+        if tag_ids:
             query = query.where(Document.tags.any(Tag.id.in_(tag_ids)))
 
         return query
