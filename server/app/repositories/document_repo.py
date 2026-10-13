@@ -29,6 +29,34 @@ class DocumentRepository:
         result = await self.db.execute(select(Document).where(Document.id == doc_id))
         return result.scalar_one_or_none()
 
+    def apply_deferred_pagination(self, query, sort_by: str, sort_order: str, limit: int, offset: int, user_id: int):
+        """
+        Применяет Deferred Join пагинацию к запросу.
+        """
+        # 1. Извлекаем из исходного query только колонку ID, отрезая всё лишнее (JOIN'ы, выборку колонок)
+        # Важно: базовый query должен уметь отдавать ID документов.
+        # Обычно это делается через subquery с теми же фильтрами.
+
+        # Альтернативный и самый надежный способ через SQLAlchemy:
+        # Берем текущий запрос, оставляем в нем только WHERE-условия и сортировку, но выбираем только ID.
+
+        # Шаг А: Создаем подзапрос для получения ID нужной страницы по индексам
+        id_query = query.with_only_columns(Document.id)
+        id_query = self.apply_sorting(id_query, sort_by, sort_order, user_id)
+        id_query = id_query.limit(limit).offset(offset).subquery()
+
+        # Шаг Б: Соединяем исходный запрос с подзапросом по ID
+        # Это заставит БД выполнить тяжелые JOIN'ы и выборку ТОЛЬКО для этих 20 строк.
+        paginated_query = query.join(
+            id_query,
+            Document.id == id_query.c.id
+        )
+
+        # Возвращаем отсортированными, чтобы порядок на странице сохранялся
+        paginated_query = self.apply_sorting(paginated_query, sort_by, sort_order, user_id)
+
+        return paginated_query
+
     async def delete(self, doc_id: int) -> None:
         """Удалить документ"""
         document = await self.get_by_id(doc_id)

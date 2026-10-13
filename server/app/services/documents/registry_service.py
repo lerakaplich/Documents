@@ -199,12 +199,21 @@ class RegistryService:
                 words_orgs_map=words_orgs_map
             )
 
-        # 5. Total
+        # 5. Total (считается быстро по индексам)
         total = await self.repo.count_query(query)
 
-        # 6. Сортировка и пагинация
-        query = self.repo.apply_sorting(query, sort_by, sort_order, user_id)
-        query = query.limit(limit).offset(offset)
+        if total == 0:
+            return 0, []
+
+        # 6. Оптимизированная пагинация через Deferred Join
+        query = self.repo.apply_deferred_pagination(
+            query=query,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            limit=limit,
+            offset=offset,
+            user_id=user_id
+        )
 
         # 7. Выполнение запроса
         rows = await self.repo.execute_query(query)
