@@ -53,30 +53,40 @@ class OvertimeRepository:
             page: int = 1,
             size: int = 20,
     ):
+        where_clause = (
+            (Overtime.employee_id == employee_id) &
+            (Overtime.overtime_date.between(start_date, end_date))
+        )
+
+        # 1. Подсчет общего количества (быстро по индексу)
+        count_stmt = select(func.count()).select_from(Overtime).where(where_clause)
+        total = await self.db.scalar(count_stmt) or 0
+        if total == 0:
+            return [], 0
+
+        # 2. Подзапрос для получения ID только нужной страницы (Deferred Join)
+        offset = (page - 1) * size
+        id_subq = (
+            select(Overtime.id)
+            .where(where_clause)
+            .order_by(Overtime.overtime_date.desc(), Overtime.id.desc())
+            .offset(offset)
+            .limit(size)
+            .subquery()
+        )
+
         full_name_expr = func.concat(
             Employee.last_name, ' ',
             Employee.first_name, ' ',
             func.coalesce(Employee.patronymic, '')
         ).label("full_name")
 
-        where_clause = (
-                (Overtime.employee_id == employee_id) &
-                (Overtime.overtime_date.between(start_date, end_date))
-        )
-
-        # 1. Подсчет общего количества
-        count_stmt = select(func.count()).select_from(Overtime).where(where_clause)
-        total = await self.db.scalar(count_stmt) or 0
-
-        # 2. Получение страницы данных
-        offset = (page - 1) * size
+        # 3. Основной запрос: соединяем по ID с подзапросом
         stmt = (
             select(Overtime, full_name_expr)
+            .join(id_subq, Overtime.id == id_subq.c.id)
             .join(Employee, Overtime.employee_id == Employee.id)
-            .where(where_clause)
-            .order_by(Overtime.overtime_date.desc())
-            .offset(offset)
-            .limit(size)
+            .order_by(Overtime.overtime_date.desc(), Overtime.id.desc())
         )
 
         result = await self.db.execute(stmt)
@@ -103,47 +113,61 @@ class OvertimeRepository:
         page: int = 1,
         size: int = 20,
     ):
-        full_name_expr = func.concat(
-            Employee.last_name, ' ',
-            Employee.first_name, ' ',
-            func.coalesce(Employee.patronymic, '')
-        ).label("full_name")
-
         # 1. Получаем hierarchy_path целевого отдела
         target_dept_path = await self.db.scalar(
             select(Department.hierarchy_path).where(Department.id == dept_id)
         )
 
-        # Базовые условия объединений и фильтров
         date_condition = Overtime.overtime_date.between(start_date, end_date)
-
         if target_dept_path:
             dept_condition = Department.hierarchy_path.like(f"{target_dept_path}%")
         else:
             dept_condition = (EmployeePosition.department_id == dept_id)
 
-        # 2. Подсчитываем общее количество уникальных переработок за период в этом отделе
+        # 2. Подсчитываем общее количество уникальных переработок
         count_stmt = (
             select(func.count(func.distinct(Overtime.id)))
+            .select_from(Overtime)
             .join(Employee, Overtime.employee_id == Employee.id)
             .join(EmployeePosition, Overtime.employee_id == EmployeePosition.employee_id)
             .join(Department, EmployeePosition.department_id == Department.id)
             .where(dept_condition, date_condition)
         )
         total = await self.db.scalar(count_stmt) or 0
+        if total == 0:
+            return [], 0
 
-        # 3. Достаем страницу записей с присоединенным ФИО
+        # 3. Подзапрос для получения ID страницы (с учетом distinct по переработкам)
         offset = (page - 1) * size
-        stmt = (
-            select(Overtime, full_name_expr)
+        id_subq = (
+            select(Overtime.id)
+            .select_from(Overtime)
             .join(Employee, Overtime.employee_id == Employee.id)
             .join(EmployeePosition, Overtime.employee_id == EmployeePosition.employee_id)
             .join(Department, EmployeePosition.department_id == Department.id)
             .where(dept_condition, date_condition)
-            .order_by(Overtime.overtime_date.desc())
-            .distinct()
+            .order_by(Overtime.overtime_date.desc(), Overtime.id.desc())
+            .distinct(Overtime.overtime_date, Overtime.id)  # синхронизируем с order_by
             .offset(offset)
             .limit(size)
+            .subquery()
+        )
+
+        full_name_expr = func.concat(
+            Employee.last_name, ' ',
+            Employee.first_name, ' ',
+            func.coalesce(Employee.patronymic, '')
+        ).label("full_name")
+
+        # 4. Основной запрос по собранным ID
+        stmt = (
+            select(Overtime, full_name_expr)
+            .join(id_subq, Overtime.id == id_subq.c.id)
+            .join(Employee, Overtime.employee_id == Employee.id)
+            .join(EmployeePosition, Overtime.employee_id == EmployeePosition.employee_id)
+            .join(Department, EmployeePosition.department_id == Department.id)
+            .order_by(Overtime.overtime_date.desc(), Overtime.id.desc())
+            .distinct()
         )
 
         result = await self.db.execute(stmt)
@@ -169,28 +193,37 @@ class OvertimeRepository:
             page: int = 1,
             size: int = 20
     ):
+        where_clause = Overtime.overtime_date.between(start_date, end_date)
+
+        # 1. Считаем общее количество
+        count_stmt = select(func.count()).select_from(Overtime).where(where_clause)
+        total = await self.db.scalar(count_stmt) or 0
+        if total == 0:
+            return [], 0
+
+        # 2. Подзапрос для получения ID страницы
+        offset = (page - 1) * size
+        id_subq = (
+            select(Overtime.id)
+            .where(where_clause)
+            .order_by(Overtime.overtime_date.desc(), Overtime.id.desc())
+            .offset(offset)
+            .limit(size)
+            .subquery()
+        )
+
         full_name_expr = func.concat(
             Employee.last_name, ' ',
             Employee.first_name, ' ',
             func.coalesce(Employee.patronymic, '')
         ).label("full_name")
 
-        # Базовый фильтр по диапазону дат
-        where_clause = Overtime.overtime_date.between(start_date, end_date)
-
-        # 1. Считаем общее количество подходящих записей
-        count_stmt = select(func.count()).select_from(Overtime).where(where_clause)
-        total = await self.db.scalar(count_stmt) or 0
-
-        # 2. Выбираем пагинированную страницу с JOIN ФИО
-        offset = (page - 1) * size
+        # 3. Основной запрос по ID
         stmt = (
             select(Overtime, full_name_expr)
+            .join(id_subq, Overtime.id == id_subq.c.id)
             .join(Employee, Overtime.employee_id == Employee.id)
-            .where(where_clause)
-            .order_by(Overtime.overtime_date.desc())
-            .offset(offset)
-            .limit(size)
+            .order_by(Overtime.overtime_date.desc(), Overtime.id.desc())
         )
 
         result = await self.db.execute(stmt)
