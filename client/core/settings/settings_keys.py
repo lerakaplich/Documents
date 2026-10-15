@@ -35,6 +35,9 @@ class SettingsKeys:
     AUTH_PHONE = "auth_phone"
     AUTH_SAVED_AT = "auth_saved_at"
 
+    # ============ ПОСЛЕДНИЙ ВЫХОД ============
+    LAST_EXIT_BY_USER = "last_exit_by_user"  # {"<user_id>": "ISO-время UTC"}
+
     @staticmethod
     def get_type_key(base_key: str, doc_type: str) -> str:
         if not doc_type or doc_type == SettingsKeys.DEFAULT_TYPE:

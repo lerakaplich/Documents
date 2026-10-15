@@ -31,6 +31,9 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 
 
 def global_exception_handler(exctype, value, tb):
+    if issubclass(exctype, KeyboardInterrupt):
+        sys.__excepthook__(exctype, value, tb)
+        return
     print("=" * 80)
     print("ГЛОБАЛЬНОЕ ИСКЛЮЧЕНИЕ:")
     print(f"Тип: {exctype}")
@@ -39,7 +42,6 @@ def global_exception_handler(exctype, value, tb):
     traceback.print_tb(tb)
     print("=" * 80)
     sys.__excepthook__(exctype, value, tb)
-
 
 sys.excepthook = global_exception_handler
 

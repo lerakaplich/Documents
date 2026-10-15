@@ -40,8 +40,14 @@ class SystemActions(QObject):
         self.http_client = http_client
         self.org_service = get_org_service(http_client)
         self.employee_service = EmployeeService(http_client)
+        self.structure_changed.connect(self._invalidate)
+        self.employees_changed.connect(self._invalidate)
 
     # ==================== ВСПОМОГАТЕЛЬНОЕ ====================
+    def _invalidate(self):
+        self.org_service.invalidate_cache()
+        self.http_client.invalidate_cache("/org")
+        self.http_client.invalidate_cache("/employees")
 
     def _service_call(self, service: Any, method_name: str, *args, what: str) -> tuple[bool, Any]:
         """Вызывает метод сервиса. Возвращает (успех, результат); ошибку показывает уведомлением."""

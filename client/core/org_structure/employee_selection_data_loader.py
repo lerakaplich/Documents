@@ -6,15 +6,24 @@
 Оптимизации:
 - параллельные HTTP-запросы через ThreadPoolExecutor;
 - кэш на уровне класса (сбрасывается через clear_cache());
+- блокировки: если несколько компонентов одновременно просят одни и те же
+  данные, грузит только первый, остальные ждут и берут готовый кэш;
 - пропуск организаций, у которых нет данных.
 """
 
 import concurrent.futures
+import threading
 from typing import Any
 
 
 class EmployeeSelectionDataLoader:
     """Загружает данные для EmployeeSelectionDialog."""
+
+    # ── Блокировки (по одной на каждый вид данных) ──
+    # Порядок захвата: depts/emps -> orgs (обратного порядка нет, взаимной блокировки быть не может)
+    _orgs_lock = threading.Lock()
+    _depts_lock = threading.Lock()
+    _emps_lock = threading.Lock()
 
     # ── Кэш (общий для всех инстансов) ──
     _cache_orgs: list[dict] | None = None
@@ -40,13 +49,22 @@ class EmployeeSelectionDataLoader:
     # ── организации ─────────────────────────────────────────────────
 
     def load_organizations(self) -> list[dict[str, Any]]:
-        if EmployeeSelectionDataLoader._cache_orgs is not None:
-            print(f"[Loader] организации из кэша: {len(EmployeeSelectionDataLoader._cache_orgs)}")
-            return EmployeeSelectionDataLoader._cache_orgs
+        cls = EmployeeSelectionDataLoader
+        if cls._cache_orgs is not None:
+            return cls._cache_orgs
+        with cls._orgs_lock:
+            return self._load_organizations_impl()
+
+    def _load_organizations_impl(self) -> list[dict[str, Any]]:
+        cls = EmployeeSelectionDataLoader
+        # повторная проверка: пока ждали замок, другой поток мог уже всё загрузить
+        if cls._cache_orgs is not None:
+            return cls._cache_orgs
         try:
             result = self.http.get("/org", params={"limit": 500, "offset": 0})
             if isinstance(result, list):
-                EmployeeSelectionDataLoader._cache_orgs = result
+                cls._cache_orgs = result
+                print(f"[Loader] организации загружены: {len(result)}")
                 return result
             print(f"[Loader] /org вернул не список: {type(result).__name__}")
             return []
@@ -57,9 +75,16 @@ class EmployeeSelectionDataLoader:
     # ── отделы ──────────────────────────────────────────────────────
 
     def load_departments_flat(self) -> list[dict[str, Any]]:
-        if EmployeeSelectionDataLoader._cache_departments is not None:
-            print(f"[Loader] отделы из кэша: {len(EmployeeSelectionDataLoader._cache_departments)}")
-            return EmployeeSelectionDataLoader._cache_departments
+        cls = EmployeeSelectionDataLoader
+        if cls._cache_departments is not None:
+            return cls._cache_departments
+        with cls._depts_lock:
+            return self._load_departments_impl()
+
+    def _load_departments_impl(self) -> list[dict[str, Any]]:
+        cls = EmployeeSelectionDataLoader
+        if cls._cache_departments is not None:
+            return cls._cache_departments
 
         orgs = self.load_organizations()
         result: list[dict[str, Any]] = []
@@ -81,7 +106,9 @@ class EmployeeSelectionDataLoader:
                 if tree:
                     self._flatten_tree(tree, org.get("id"), result, parent_id=None)
 
-        EmployeeSelectionDataLoader._cache_departments = result
+        # если организации не загрузились (ошибка сети), пустой результат не кэшируем
+        if orgs:
+            cls._cache_departments = result
         print(f"[Loader] отделы загружены: {len(result)} (из {len(orgs)} организаций)")
         return result
 
@@ -111,9 +138,16 @@ class EmployeeSelectionDataLoader:
     # ── сотрудники ──────────────────────────────────────────────────
 
     def load_employees(self) -> list[dict[str, Any]]:
-        if EmployeeSelectionDataLoader._cache_employees is not None:
-            print(f"[Loader] сотрудники из кэша: {len(EmployeeSelectionDataLoader._cache_employees)}")
-            return EmployeeSelectionDataLoader._cache_employees
+        cls = EmployeeSelectionDataLoader
+        if cls._cache_employees is not None:
+            return cls._cache_employees
+        with cls._emps_lock:
+            return self._load_employees_impl()
+
+    def _load_employees_impl(self) -> list[dict[str, Any]]:
+        cls = EmployeeSelectionDataLoader
+        if cls._cache_employees is not None:
+            return cls._cache_employees
 
         orgs = self.load_organizations()
         result: list[dict[str, Any]] = []
@@ -152,7 +186,9 @@ class EmployeeSelectionDataLoader:
 
                     result.append(emp)
 
-        EmployeeSelectionDataLoader._cache_employees = result
+        # если организации не загрузились (ошибка сети), пустой результат не кэшируем
+        if orgs:
+            cls._cache_employees = result
         print(f"[Loader] сотрудники загружены: {len(result)} (из {len(orgs)} организаций)")
         return result
 

@@ -8,7 +8,7 @@ from PyQt6.QtCore import (
     QSize,
     Qt,
     pyqtProperty,
-    pyqtSignal,
+    pyqtSignal, QObject, QRunnable, QThreadPool,
 )
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
@@ -16,17 +16,33 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QVBoxLayout,
-    QWidget,
+    QWidget, QHBoxLayout,
 )
 from PyQt6.uic import loadUi
 
 from client.core.state.app_state import AppState
 from client.core.themes import apply_theme_to_widget, get_manager
 from client.services.doc_type_service import DocTypeService
+from client.services.document_service import DocumentService
+from client.windows.left_panel.count_badge import CountBadge
 from client.windows.left_panel.direction_group import DirectionGroup
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+class _CountsSignals(QObject):
+    done = pyqtSignal(list)
+
+
+class _CountsTask(QRunnable):
+    def __init__(self, fn, signals):
+        super().__init__()
+        self._fn, self._signals = fn, signals
+
+    def run(self):
+        try:
+            self._signals.done.emit(self._fn())
+        except Exception as e:
+            print(f"LeftPanel: счётчики новых — {e}")
 
 class LeftPanel(QWidget):
     """Левая панель с динамическими группами направлений и анимацией сворачивания"""
@@ -44,6 +60,7 @@ class LeftPanel(QWidget):
     GROUP_EXTERNAL = "Внешние документы"
     GROUP_INTERNAL = "Внутренние документы"
     ALL_TYPES_LABEL = "Все типы"
+    GROUP_DIRECTION = {GROUP_EXTERNAL: "external", GROUP_INTERNAL: "internal"}
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -82,6 +99,13 @@ class LeftPanel(QWidget):
 
         self.groups: dict[str, DirectionGroup] = {}
 
+        self._since: str | None = None
+        self._new_counts: list[dict] = []
+        self._direction_types: dict[tuple[str, str], int | None] = {}
+        self._counts_signals = _CountsSignals(self)
+        self._counts_signals.done.connect(self.apply_new_counts)
+        self._setup_all_docs_badge()
+
         self.setup_groups_container()
 
         self.setup_buttons()
@@ -94,6 +118,50 @@ class LeftPanel(QWidget):
 
         # Загружаем типы документов с сервера
         self.load_doc_types()
+
+    # ========== СЧЁТЧИК НОВЫХ ДОКУМЕНТОВ ==========
+
+    def _setup_all_docs_badge(self):
+        btn = getattr(self, "allDocsBtn", None)
+        self.allDocsBadge = CountBadge(btn)
+        if btn is not None:
+            lay = QHBoxLayout(btn)
+            lay.setContentsMargins(0, 0, 12, 0)
+            lay.addStretch()
+            lay.addWidget(self.allDocsBadge)
+
+    def set_since(self, since: str | None):
+        """since — ISO-время прошлого выхода (UTC) или None."""
+        self._since = since
+        self.refresh_new_counts()
+
+    def refresh_new_counts(self):
+        if not self._since:
+            return
+        service = DocumentService(AppState().http_client)
+        since = self._since
+        QThreadPool.globalInstance().start(
+            _CountsTask(lambda: service.get_new_counts(since), self._counts_signals)
+        )
+
+    def apply_new_counts(self, rows: list):
+        self._new_counts = rows
+        by_pair, by_dir = {}, {}
+        for r in rows:
+            by_pair[(r["direction"], r["type_id"])] = r["count"]
+            by_dir[r["direction"]] = by_dir.get(r["direction"], 0) + r["count"]
+
+        self.allDocsBadge.set_count(sum(by_dir.values()))
+
+        for group_name, direction in self.GROUP_DIRECTION.items():
+            group = self.groups.get(group_name)
+            set_badge = getattr(group, "set_badge", None)
+            if set_badge is None:  # DirectionGroup ещё без бейджей — просто пропускаем
+                continue
+            set_badge(self.ALL_TYPES_LABEL, by_dir.get(direction, 0))
+            for (g, name), type_id in self._direction_types.items():
+                if g == group_name and type_id is not None:
+                    set_badge(name, by_pair.get((direction, type_id), 0))
 
     def setup_icons(self):
         """Настраивает иконки для всех кнопок с единым размером"""
@@ -426,9 +494,8 @@ class LeftPanel(QWidget):
     def add_direction(self, group_name: str, direction_name: str, metadata: dict[str, Any] | None = None):
         """Добавляет направление (тип документа) в указанную группу"""
         group = self.add_group(group_name)
-
-        # Сохраняем type_id в метаданных для передачи при клике
         type_id = metadata.get("type_id") if metadata else None
+        self._direction_types[(group_name, direction_name)] = type_id
 
         def on_click(name):
             self.on_direction_clicked(name, group_name, type_id)
@@ -440,6 +507,7 @@ class LeftPanel(QWidget):
         for group in self.groups.values():
             group.clear_directions()
         self.groups.clear()
+        self._direction_types.clear()
 
         while self.groups_layout.count():
             item = self.groups_layout.takeAt(0)

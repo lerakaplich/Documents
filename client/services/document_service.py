@@ -315,3 +315,12 @@ class DocumentService:
         except Exception as e:
             logger.error(f"❌ Ошибка загрузки истории: {e}")
             return []
+
+    def get_new_counts(self, since: str) -> list[dict[str, Any]]:
+        """GET /documents/documents/stats/new-since → [{direction, type_id, count}]"""
+        try:
+            r = self.client.get(f"{self.base_path}/stats/new-since", params={"since": since})
+            return r if isinstance(r, list) else []
+        except Exception as e:
+            print(f"❌ get_new_counts: {e}")
+            return []

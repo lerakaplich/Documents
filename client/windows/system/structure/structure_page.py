@@ -110,6 +110,11 @@ class StructurePage(QWidget):
         self.system_actions.structure_changed.connect(self._on_changed)
         self.system_actions.employees_changed.connect(self._on_changed)
 
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(300)
+        self._search_timer.timeout.connect(self._apply_filter)
+
         # Загружаем данные
         QTimer.singleShot(100, self.load_data)
 
@@ -346,7 +351,7 @@ class StructurePage(QWidget):
             self._items[key] = item
         t.blockSignals(False)
 
-        target = self._items.get(keep) or next(iter(self._items.values()), None)
+        target = self._items.get(keep)
         if target:
             t.setCurrentItem(target)
         else:
@@ -365,12 +370,7 @@ class StructurePage(QWidget):
 
     def on_search_changed(self):
         self.update_reset_button_visibility()
-        if self.searchEdit.text().strip():
-            # поиск должен видеть все подразделения, поэтому догружаем структуру всех организаций
-            for key, node in list(self._nodes.items()):
-                if node["kind"] == "org":
-                    self._ensure_structure(key)
-        self._apply_filter()
+        self._search_timer.start()
 
     def has_active_filters(self):
         return bool(self.searchEdit.text().strip())

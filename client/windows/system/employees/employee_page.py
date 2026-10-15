@@ -22,30 +22,33 @@ from PyQt6.uic import loadUi
 from client.core.config import config
 from client.core.http_client import HttpClient
 from client.core.state.app_state import AppState
-from client.core.themes import T, apply_theme_to_widget, get_menu_style
+from client.core.themes import apply_theme_to_widget, get_manager, get_menu_style
 from client.core.utils.context_menu import SEPARATOR, attach_context_menu
 from client.services.employee_service import EmployeeService
-from client.services.org_service import get_org_service
 from client.windows.animations.animated_notification import NotificationManager
 from client.windows.animations.floating_action_button import FloatingActionButton
 from client.windows.system.common import count_text, make_avatar, normalize_employee
+from client.windows.system.employees.employee_pagination_manager import EmployeePaginationManager
 from client.windows.system.system_actions import SystemActions
-from client.windows.system.system_utils import collect_paths, org_label, to_tree, work_phone
+from client.windows.system.system_utils import PATH_SEP, work_phone
 from client.windows.system.table_utils import ResizableColumns, header_label
 
 logger = logging.getLogger(__name__)
 
-COL_NAME, COL_POSITION, COL_DEPARTMENT, COL_PHONE, COL_EMAIL = range(5)
-HEADERS = ["ФИО", "Должность", "Отдел", "Рабочий телефон", "Email"]
-COL_KEYS = {  # столбцы, по которым можно сортировать кликом по заголовку
+COL_NUM, COL_NAME, COL_POSITION, COL_ORG, COL_DEPARTMENT, COL_PHONE, COL_EMAIL = range(7)
+HEADERS = ["", "ФИО", "Должность", "Организация", "Отдел", "Рабочий телефон", "Email"]  # первый столбец — № без названия
+COL_KEYS = {  # столбцы, по которым можно сортировать кликом по заголовку (№ не сортируется)
     COL_NAME: "full_name",
     COL_POSITION: "position",
+    COL_ORG: "organization",
     COL_DEPARTMENT: "dept_path",
     COL_PHONE: "work_phone",
     COL_EMAIL: "email",
 }
-COLUMN_WEIGHTS = [290, 190, 260, 150, 200]
-SETTINGS_KEY = "system_employees"  # ключ раскладки (ширина/порядок столбцов) в настройках
+COLUMN_WEIGHTS = [50, 270, 180, 170, 300, 140, 190]
+# новый ключ: набор столбцов изменился, старая сохранённая раскладка (ширина/порядок) не подойдёт
+SETTINGS_KEY = "system_employees_v2"
+PAGE_SIZE = 50  # сотрудников на странице
 ALL_ORGS = "Все организации"
 EMPLOYEE_FORMS = ("сотрудник", "сотрудника", "сотрудников")
 
@@ -88,8 +91,8 @@ class EmployeesPage(QWidget):
 
         # Данные
         self.employees: list[dict[str, Any]] = []
-        self.filtered_employees: list[dict[str, Any]] = []
-        self._dept_paths: dict[int, str] = {}  # id отдела -> "МАЗ / НТЦ / Телематика"
+        self.filtered_employees: list[dict[str, Any]] = []  # весь результат поиска/фильтра/сортировки
+        self.page_employees: list[dict[str, Any]] = []  # строки текущей страницы (по ним работают меню и двойной клик)
 
         # Состояние
         self.current_sort = "А→Я"
@@ -97,6 +100,8 @@ class EmployeesPage(QWidget):
         self._sort_asc = True
         self.is_loading = False
         self._hover_row = -1
+        self._page = 1
+        self._restyle_pending = False
 
         # Инициализация
         self.init_ui()
@@ -128,6 +133,10 @@ class EmployeesPage(QWidget):
 
         # Подключаемся к скроллу
         self.employeesTable.verticalScrollBar().valueChanged.connect(self.on_scroll)
+
+        # Пагинация под таблицей
+        self.pagination = EmployeePaginationManager()
+        self.pagination.setup_bar(self.employeesTable.parentWidget().layout(), self._change_page)
 
         # Скрываем кнопку сброса при старте
         self.btnResetFilters.hide()
@@ -205,7 +214,6 @@ class EmployeesPage(QWidget):
 
         try:
             raw_employees = self.employee_service.get_all_employees()
-            self._load_dept_paths()
             self.employees = [self._prepare(e) for e in raw_employees]
 
             self.is_loading = False
@@ -231,34 +239,49 @@ class EmployeesPage(QWidget):
         self.load_employees(notify=False)
         self.employees_changed.emit()
 
-    def _load_dept_paths(self):
-        """Пути отделов «МАЗ / НТЦ / Телематика» по структуре всех организаций"""
-        paths: dict[int, str] = {}
-        try:
-            org_service = get_org_service(self.http_client)
-            for org in org_service.get_all_organizations():
-                tree = to_tree(org_service.get_org_structure(org["id"]))
-                paths.update(collect_paths(org_label(org), tree))
-        except Exception as e:
-            logger.exception(f"Не удалось загрузить структуру для путей отделов: {e}")
-        self._dept_paths = paths
+    # ==================== ДАННЫЕ СОТРУДНИКА ДЛЯ ТАБЛИЦЫ ====================
+
+    @staticmethod
+    def _name_of(value) -> str:
+        """Название из строки или из объекта организации {name / short_name}"""
+        if isinstance(value, dict):
+            return value.get("short_name") or value.get("name") or ""
+        return value if isinstance(value, str) else ""
+
+    @staticmethod
+    def _chain_names(raw: dict[str, Any]) -> list[str]:
+        """Названия отделов от корня до отдела сотрудника (по первой должности).
+
+        Понимает ответ с positions[0].department_path / department_chain и плоский ответ,
+        где эти поля лежат прямо в сотруднике."""
+        positions = raw.get("positions") or []
+        pos = positions[0] if positions and isinstance(positions[0], dict) else {}
+        path = pos.get("department_path") or raw.get("department_path")
+        if isinstance(path, list) and path:
+            return [str(x) for x in path if x]
+        chain = pos.get("department_chain") or raw.get("department_chain") or []
+        return [(c.get("name") if isinstance(c, dict) else str(c)) for c in chain if c]
 
     def _prepare(self, raw: dict[str, Any]) -> dict[str, Any]:
         """Данные сотрудника для таблицы: нормализация + исходные данные + вычисляемые поля"""
         emp = dict(normalize_employee(raw))  # копия: исходный dict с сервера не трогаем
         emp["_raw"] = raw  # исходные данные нужны диалогу редактирования
         emp["work_phone"] = work_phone(emp)
+        emp["organization"] = (
+            raw.get("organization_name") or self._name_of(raw.get("organization")) or emp.get("organization") or ""
+        )
         emp["dept_path"] = self._dept_path(emp)
         return emp
 
     def _dept_path(self, emp: dict[str, Any]) -> str:
-        positions = emp.get("positions") or []
-        dep_id = positions[0].get("department_id") if positions else None
-        path = self._dept_paths.get(dep_id) if dep_id is not None else None
-        if path:
-            return path
-        # путь по структуре не нашёлся — собираем из того, что есть
-        return " / ".join(p for p in (emp.get("organization"), emp.get("department")) if p)
+        """«Организация / Отдел1 / Отдел2». Корневой отдел (первый в цепочке, без parent_id) не показываем."""
+        chain = self._chain_names(emp.get("_raw") or {})
+        if chain:
+            departments = chain[1:]  # chain[0] — корень
+        else:
+            # цепочки нет — берём то, что пришло в записи
+            departments = [emp["department"]] if emp.get("department") else []
+        return PATH_SEP.join(p for p in (emp.get("organization"), *departments) if p)
 
     def _rebuild_org_combo(self):
         current = self.orgCombo.currentText()
@@ -317,6 +340,7 @@ class EmployeesPage(QWidget):
         self.btnSort.setText("Сортировка ▼")
         self._refresh_headers()
         self.update_reset_button_visibility()
+        self._page = 1
         self.update_display()
 
     def _refresh_headers(self):
@@ -332,12 +356,14 @@ class EmployeesPage(QWidget):
         short_name = sort_name.split("(")[0].strip() if "(" in sort_name else sort_name
         self.btnSort.setText(f"Сортировка ▼ ({short_name})")
         self.update_reset_button_visibility()
+        self._page = 1
         self.update_display()
         self.show_info_notification(f"Сортировка: {short_name}")
 
     # ==================== ПОИСК И ФИЛЬТРЫ ====================
 
     def on_search_changed(self, *_):
+        self._page = 1
         self.update_reset_button_visibility()
         self.update_display()
 
@@ -367,6 +393,7 @@ class EmployeesPage(QWidget):
         self._refresh_headers()
         self.btnSort.setText("Сортировка ▼")
         self.btnResetFilters.hide()
+        self._page = 1
         self.update_display()
         self.show_info_notification("Фильтры сброшены")
 
@@ -413,36 +440,60 @@ class EmployeesPage(QWidget):
 
     # ==================== ОТОБРАЖЕНИЕ ====================
 
+    @staticmethod
+    def _theme():
+        """Актуальная тема на момент вызова (цвета не «запекаются» при создании страницы)"""
+        return get_manager().current
+
     def update_display(self):
-        """Обновление таблицы сотрудников"""
+        """Обновление таблицы сотрудников (текущая страница результата)"""
         self.filtered_employees = self.filter_and_sort_employees()
+        total = len(self.filtered_employees)
+        pages = max(1, -(-total // PAGE_SIZE))
+        self._page = min(max(self._page, 1), pages)
+        start = (self._page - 1) * PAGE_SIZE
+        self.page_employees = self.filtered_employees[start : start + PAGE_SIZE]
 
         t = self.employeesTable
         t.setUpdatesEnabled(False)
         t.clearContents()
-        t.setRowCount(len(self.filtered_employees))
+        t.setRowCount(len(self.page_employees))
         self._hover_row = -1
 
-        for row, emp in enumerate(self.filtered_employees):
-            self._fill_row(row, emp)
+        for row, emp in enumerate(self.page_employees):
+            self._fill_row(row, emp, start + row + 1)
 
         t.setUpdatesEnabled(True)
 
-        self.countLabel.setText(count_text(len(self.filtered_employees), EMPLOYEE_FORMS))
-        self.emptyLabel.setVisible(not self.filtered_employees)
-        t.setVisible(bool(self.filtered_employees))
+        self.countLabel.setText(count_text(total, EMPLOYEE_FORMS))
+        self.emptyLabel.setVisible(not self.page_employees)
+        t.setVisible(bool(self.page_employees))
+        self.pagination.update(self._page, pages, total)
 
         self.position_floating_button()
+
+    def _change_page(self, delta: int):
+        self._page += delta
+        self.update_display()
+        self.employeesTable.scrollToTop()
 
     def _text_item(self, text: str, muted: bool = False) -> QTableWidgetItem:
         item = QTableWidgetItem(text or "—")
         item.setToolTip(text or "")
         if muted or not text:
-            item.setForeground(QBrush(QColor(T.TEXT_ACCENT_SOFT)))
+            item.setForeground(QBrush(QColor(self._theme().TEXT_ACCENT_SOFT)))
         return item
 
-    def _fill_row(self, row: int, emp: dict[str, Any]):
+    def _number_item(self, number: int) -> QTableWidgetItem:
+        item = QTableWidgetItem(str(number))
+        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        item.setForeground(QBrush(QColor(self._theme().TEXT_ACCENT_SOFT)))
+        return item
+
+    def _fill_row(self, row: int, emp: dict[str, Any], number: int):
         t = self.employeesTable
+
+        t.setItem(row, COL_NUM, self._number_item(number))
 
         name_item = QTableWidgetItem()
         name_item.setData(Qt.ItemDataRole.UserRole, emp.get("id"))
@@ -454,6 +505,7 @@ class EmployeesPage(QWidget):
         if positions_count > 1:
             position_text = f"{position_text} (+{positions_count - 1})"
         t.setItem(row, COL_POSITION, self._text_item(position_text))
+        t.setItem(row, COL_ORG, self._text_item(emp.get("organization", "")))
         t.setItem(row, COL_DEPARTMENT, self._text_item(emp.get("dept_path", "")))
         t.setItem(row, COL_PHONE, self._text_item(emp.get("work_phone", "")))
         t.setItem(row, COL_EMAIL, self._text_item(emp.get("email", ""), muted=True))
@@ -473,7 +525,8 @@ class EmployeesPage(QWidget):
         lay.addWidget(make_avatar(full_name))
         lbl = QLabel(full_name)
         lbl.setStyleSheet(
-            f"border: none; background: transparent; font-size: 13px; font-weight: 600; color: {T.TEXT_DARK_STRONG};"
+            f"border: none; background: transparent; font-size: 13px; font-weight: 600; "
+            f"color: {self._theme().TEXT_PRIMARY};"
         )
         lay.addWidget(lbl, 1)
         return self._transparent(w)
@@ -482,7 +535,7 @@ class EmployeesPage(QWidget):
         """Подсветка строки под курсором"""
         if row == self._hover_row:
             return
-        hover = QColor(T.BG_HOVER_ALT)
+        hover = QColor(self._theme().BG_HOVER_ALT)
         for r, color in ((self._hover_row, None), (row, hover if hover.isValid() else None)):
             if r < 0 or r >= self.employeesTable.rowCount():
                 continue
@@ -494,18 +547,18 @@ class EmployeesPage(QWidget):
         self._hover_row = row
 
     def _edit_row(self, row: int):
-        if 0 <= row < len(self.filtered_employees):
-            self.on_edit_employee(self.filtered_employees[row])
+        if 0 <= row < len(self.page_employees):
+            self.on_edit_employee(self.page_employees[row])
 
     # ==================== КОНТЕКСТНОЕ МЕНЮ ====================
 
     def _row_menu_items(self, pos):
         """Меню по правой кнопке на строке сотрудника"""
         row = self.employeesTable.rowAt(pos.y())
-        if not 0 <= row < len(self.filtered_employees):
+        if not 0 <= row < len(self.page_employees):
             return None
         self._set_hover_row(row)
-        emp = self.filtered_employees[row]
+        emp = self.page_employees[row]
         return [
             ("Редактировать", lambda: self.on_edit_employee(emp)),
             SEPARATOR,
@@ -544,6 +597,23 @@ class EmployeesPage(QWidget):
 
         if hasattr(self, "notification_manager"):
             self.notification_manager.container.setGeometry(0, 0, self.width(), self.height())
+
+    def changeEvent(self, event):
+        """Сменилась тема/стиль — перерисовываем строки, чтобы цвета взялись из новой темы"""
+        super().changeEvent(event)
+        if (
+            event.type() in (QEvent.Type.StyleChange, QEvent.Type.PaletteChange)
+            and hasattr(self, "pagination")
+            and not self._restyle_pending
+        ):
+            self._restyle_pending = True
+            QTimer.singleShot(0, self.reapply_theme)
+
+    def reapply_theme(self):
+        """Можно вызывать и вручную из места, где переключается тема"""
+        self._restyle_pending = False
+        self.pagination.reapply_theme()
+        self.update_display()
 
     def get_all_employees(self):
         return self.employees.copy()
