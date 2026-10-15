@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status, Query, HTTPException
 from typing import Optional
 from datetime import date
+
+from starlette.responses import StreamingResponse
 
 from server.app.database.document_models import DocStatus, DocDirection, AppRights
 from server.app.deps import get_current_user, get_doc_service, get_registry_service
@@ -11,6 +13,7 @@ from server.app.schemas.doc.document_dto import (
 )
 from server.app.schemas.doc.history import DocumentHistoryItemRead
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
+from server.app.services.documents.unanswered_export import generate_unanswered_report_buffer
 
 # Импортируем обновленные сервисы СЭД
 from server.app.services.documents.document_service import DocumentService
@@ -147,6 +150,32 @@ async def get_unanswered_documents_stats(
     """
     return await doc_service.get_unanswered_stats(current_user)
 
+@router.get("/unanswered/export-excel", response_class=StreamingResponse)
+async def export_unanswered_documents_excel(
+    current_user: CurrentUser = Depends(get_current_user),
+    doc_service: DocumentService = Depends(get_doc_service),
+):
+    """
+    Эндпоинт генерирует и отдаёт Excel-файл со списком документов,
+    требующих ответа, с расчетом просрочки и штрафов.
+    """
+    # 1. Проверяем права администратора
+    if not doc_service.security.is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Экспорт статистики доступен только администраторам.",
+        )
 
+    # 2. Получаем статистику
+    stats_data = await doc_service.get_unanswered_stats(current_user)
+
+    # 3. Генерируем буфер с помощью чистой функции
+    file_buffer, filename = generate_unanswered_report_buffer(stats_data)
+
+    return StreamingResponse(
+        file_buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
