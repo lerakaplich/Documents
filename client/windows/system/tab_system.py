@@ -37,12 +37,10 @@ class SystemTab(QWidget):
         self.init_ui_from_file()
         self.load_all_data()
 
-    # ---------- остальное без изменений ----------
-
-    def create_employees_tab(self):
-        """Создание вкладки сотрудников"""
-        self.employees_page = EmployeesPage(http_client=self.http_client)
-        self.tabWidget.addTab(self.employees_page, "Сотрудники")
+    # ---------- ленивое создание вкладок ----------
+    # Конструкторы страниц сразу ходят в API (сотрудники, теги, типы, организации,
+    # структура ~100 запросов). Поэтому на старте добавляем пустые заглушки,
+    # а настоящая страница создаётся при первом открытии вкладки.
 
     def init_ui_from_file(self):
         """Загрузка UI из файла tab_system.ui"""
@@ -59,39 +57,55 @@ class SystemTab(QWidget):
         self.tabWidget = self.findChild(QTabWidget, "tabWidget")
 
     def load_all_data(self):
-        """Загрузка всех данных"""
-        print("Загрузка данных...")
+        """Добавляет вкладки-заглушки; данные грузятся при первом открытии вкладки."""
+        self._lazy_tabs = {}  # заглушка -> (атрибут, заголовок, фабрика)
+        self._pages_linked = False
 
-        # Создаем вкладки
-        self.create_employees_tab()
-        self.create_tags_tab()
-        self.create_document_types_tab()
-        self.create_organizations_tab()
-        self.create_structure_tabs()
+        tabs = (
+            ("employees_page", "Сотрудники", lambda: EmployeesPage(http_client=self.http_client)),
+            ("tags_page", "Теги", lambda: TagsPage()),
+            ("document_types_page", "Типы документов", lambda: DocumentTypesPage()),
+            ("organizations_page", "Организации", lambda: OrganizationsPage()),
+            ("structure_page", "Структура", lambda: StructurePage(parent=self, http_client=self.http_client)),
+        )
+        for attr, title, factory in tabs:
+            placeholder = QWidget()
+            self._lazy_tabs[placeholder] = (attr, title, factory)
+            self.tabWidget.addTab(placeholder, title)
 
-        print("Все данные загружены!")
+        self.tabWidget.currentChanged.connect(self._ensure_page)
+        self._ensure_page(self.tabWidget.currentIndex())  # текущая (первая) вкладка нужна сразу
 
-    def create_tags_tab(self):
-        """Создание вкладки тегов"""
-        self.tags_page = TagsPage()
-        self.tabWidget.addTab(self.tags_page, "Теги")
+    def _ensure_page(self, index: int):
+        """Создаёт настоящую страницу вместо заглушки, если её ещё нет."""
+        if index < 0:
+            return
+        placeholder = self.tabWidget.widget(index)
+        entry = self._lazy_tabs.pop(placeholder, None)
+        if entry is None:
+            return  # страница уже создана
 
-    def create_document_types_tab(self):
-        """Создание вкладки типов документов"""
-        self.document_types_page = DocumentTypesPage()
-        self.tabWidget.addTab(self.document_types_page, "Типы документов")
+        attr, title, factory = entry
+        page = factory()
+        setattr(self, attr, page)
 
-    def create_organizations_tab(self):
-        """Создание вкладки организаций"""
-        self.organizations_page = OrganizationsPage()
-        self.tabWidget.addTab(self.organizations_page, "Организации")
+        was_blocked = self.tabWidget.blockSignals(True)
+        try:
+            self.tabWidget.removeTab(index)
+            placeholder.deleteLater()
+            self.tabWidget.insertTab(index, page, title)
+            self.tabWidget.setCurrentIndex(index)
+        finally:
+            self.tabWidget.blockSignals(was_blocked)
 
-    def create_structure_tabs(self):
-        """Вкладка «Структура»: организации и подразделения из API"""
-        self.structure_page = StructurePage(parent=self, http_client=self.http_client)
-        self.tabWidget.addTab(self.structure_page, "Структура")
+        self._link_pages()
 
-        # вкладки «Сотрудники» и «Структура» показывают одни и те же данные — держим их в синхроне
+    def _link_pages(self):
+        """«Сотрудники» и «Структура» показывают одни и те же данные — держим в синхроне,
+        как только созданы обе страницы (если одной нет, она при создании загрузит свежие данные)."""
+        if self._pages_linked or self.employees_page is None or self.structure_page is None:
+            return
+        self._pages_linked = True
         self.employees_page.employees_changed.connect(self.structure_page.reload_employees)
         self.structure_page.structure_changed.connect(lambda: self.employees_page.load_employees(notify=False))
 

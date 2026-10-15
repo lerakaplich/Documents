@@ -1,7 +1,7 @@
 import sys
 import traceback
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, QTimer
 from PyQt6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from client.core.settings.settings_manager import SettingsManager
 from client.core.state.app_state import AppState
 from client.services.doc_type_service import doc_type_events
 from client.windows.documents.table.documents_panel import DocumentsPanel
@@ -62,13 +63,10 @@ class MainWindow(QMainWindow):
             self.documents_panel = DocumentsPanel()
             print("✓ DocumentsPanel создан успешно")
 
-            print("Создание ProfileForm...")
-            self.profile_form = ProfileForm()
-            print("✓ ProfileForm создан успешно")
-
-            print("Создание SystemTab...")
-            self.system_tab = SystemTab()
-            print("✓ SystemTab создан успешно")
+            # ProfileForm и SystemTab создаются лениво — при первом открытии вкладки:
+            # их конструкторы сразу ходят в сеть (профиль, оргструктура, теги, типы и т.д.)
+            self._profile_form = None
+            self._system_tab = None
 
             print("Создание SettingsTab...")
             self.settings_tab = SettingsTab(http_client=self.http_client)
@@ -76,9 +74,7 @@ class MainWindow(QMainWindow):
 
             # Добавляем панели
             self.content_stack.addWidget(self.documents_panel)  # index 0
-            self.content_stack.addWidget(self.profile_form)  # index 1
-            self.content_stack.addWidget(self.system_tab)  # index 2
-            self.content_stack.addWidget(self.settings_tab)  # index 3
+            self.content_stack.addWidget(self.settings_tab)
 
             layout.addWidget(self.left_panel)
             layout.addWidget(self.content_stack)
@@ -88,6 +84,11 @@ class MainWindow(QMainWindow):
 
             # Подключаем сигналы
             self.setup_connections()
+            # Счётчик новых документов: время прошлого выхода + heartbeat
+            try:
+                self._init_last_exit_tracking()
+            except Exception as e:
+                print(f"[MainWindow] счётчик новых отключён: {e}")
 
             # По умолчанию - документы
             self.content_stack.setCurrentWidget(self.documents_panel)
@@ -103,6 +104,22 @@ class MainWindow(QMainWindow):
             traceback.print_exc()
             QMessageBox.critical(self, "Ошибка", f"Не удалось инициализировать приложение:\n{e!s}")
             raise
+
+    # ========== ЛЕНИВЫЕ ВКЛАДКИ ==========
+
+    @property
+    def profile_form(self):
+        if self._profile_form is None:
+            self._profile_form = ProfileForm()
+            self.content_stack.addWidget(self._profile_form)
+        return self._profile_form
+
+    @property
+    def system_tab(self):
+        if self._system_tab is None:
+            self._system_tab = SystemTab()
+            self.content_stack.addWidget(self._system_tab)
+        return self._system_tab
 
     def setup_app_style(self):
         from client.core.themes import get_manager
@@ -178,6 +195,35 @@ class MainWindow(QMainWindow):
             print(f"✗ Ошибка при настройке сигналов: {e}")
             traceback.print_exc()
 
+    def _current_user_id(self):
+        # ЗАМЕНИТЕ на реальный источник id текущего пользователя.
+        # Здесь угадываю два частых варианта.
+        state = AppState()
+        user = getattr(state, "current_user", None)
+        if isinstance(user, dict) and user.get("id") is not None:
+            return user["id"]
+        return getattr(state, "user_id", None)
+
+    def _init_last_exit_tracking(self):
+        self._user_id = self._current_user_id()
+        if self._user_id is None:
+            print("[MainWindow] user_id не найден — счётчик новых отключён")
+            return
+
+        # 1) СНАЧАЛА читаем время прошлого выхода и отдаём панели
+        since = SettingsManager().get_last_exit(self._user_id)
+        self.left_panel.set_since(since)
+
+        # 2) ПОТОМ начинаем обновлять его раз в минуту (защита от аварийного завершения)
+        self._exit_timer = QTimer(self)
+        self._exit_timer.setInterval(60_000)
+        self._exit_timer.timeout.connect(self._save_last_exit)
+        self._exit_timer.start()
+
+    def _save_last_exit(self):
+        if getattr(self, "_user_id", None) is not None:
+            SettingsManager().save_last_exit(self._user_id)
+
     def on_doc_types_changed(self):
         """Типы или их поля изменились в «Системе» — обновляем навигацию, таблицу и кэш для диалога."""
         try:
@@ -249,6 +295,11 @@ class MainWindow(QMainWindow):
         if reply != QMessageBox.StandardButton.Yes:
             return
 
+        # Запоминаем время выхода и останавливаем heartbeat
+        self._save_last_exit()
+        if hasattr(self, "_exit_timer"):
+            self._exit_timer.stop()
+
         # ─── Серверный logout + очистка токенов и сохранённой сессии ───
         try:
             from client.core.state.app_state import AppState
@@ -297,6 +348,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         """Закрытие приложения без подтверждения."""
+        self._save_last_exit()
         event.accept()
         QApplication.instance().quit()
 

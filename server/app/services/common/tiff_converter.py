@@ -3,7 +3,7 @@ import logging
 import os
 import time
 
-import fitz as pymupdf
+import pymupdf
 from PIL import Image, ImageFilter, ImageEnhance, UnidentifiedImageError, ImageOps
 
 logger = logging.getLogger("app.services.document_processor")

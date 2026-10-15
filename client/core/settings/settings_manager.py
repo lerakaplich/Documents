@@ -3,7 +3,7 @@ import atexit
 import json
 import os
 import threading
-from datetime import datetime  # в начале файла
+from datetime import datetime, timezone  # в начале файла
 from typing import Any
 
 from .settings_keys import SettingsKeys
@@ -404,3 +404,15 @@ class SettingsManager:
         self.set(SettingsKeys.THEME_PALETTE, palette)
         self.set(SettingsKeys.THEME_MODE, mode)
         print(f"[SettingsManager] Theme saved: {palette} / {mode}")
+
+    # ============ ПОСЛЕДНИЙ ВЫХОД ============
+
+    def get_last_exit(self, user_id) -> str | None:
+        data = self.get(SettingsKeys.LAST_EXIT_BY_USER, {}) or {}
+        return data.get(str(user_id))
+
+    def save_last_exit(self, user_id) -> None:
+        data = dict(self.get(SettingsKeys.LAST_EXIT_BY_USER, {}) or {})
+        data[str(user_id)] = datetime.now(timezone.utc).isoformat()
+        self._settings[SettingsKeys.LAST_EXIT_BY_USER] = data
+        self._flush_settings()  # сразу на диск, а не через таймер на 0.5 с

@@ -4,7 +4,7 @@ from typing import AsyncGenerator
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-# Загружаем переменные из локального файла .env
+# Загружаем переменные из локального файла ..env
 load_dotenv()
 
 # Получаем URLs из окружения
@@ -12,7 +12,7 @@ DOCUMENTS_DB_URL = os.getenv("DOCUMENTS_DB_URL")
 EMPLOYEES_DB_URL = os.getenv("EMPLOYEES_DB_URL")
 DOCS_DB_URL_RAW = os.getenv("DOCS_DB_URL_RAW")
 
-# Дополнительная проверка, чтобы приложение сразу падало, если забыли заполнить .env
+# Дополнительная проверка, чтобы приложение сразу падало, если забыли заполнить ..env
 if not DOCUMENTS_DB_URL or not EMPLOYEES_DB_URL:
     raise ValueError("Не заданы переменные окружения для подключения к БД!")
 

@@ -84,6 +84,9 @@ def _jwt_expiry(token: str) -> datetime | None:
     return None
 
 
+CACHEABLE_PREFIXES = ("/org", "/doc-types", "/tag", "/employees/all")
+CACHE_TTL = 60  # секунд
+
 class HttpClient:
     def __init__(self, base_url: str):
         self.base_url = _normalize_base_url(base_url)
@@ -99,6 +102,39 @@ class HttpClient:
         # Refresh-токен ротируется сервером: два параллельных refresh с одним токеном
         # ломают сессию, поэтому обновляем строго по одному.
         self._refresh_lock = threading.Lock()
+        # в __init__
+        self._cache: dict[tuple, tuple[float, Any]] = {}
+        self._inflight: dict[tuple, threading.Event] = {}
+        self._cache_lock = threading.Lock()
+
+
+
+    def get_cached(self, endpoint: str, params: dict | None = None, ttl: float = CACHE_TTL):
+        import time
+        key = (endpoint, tuple(sorted((params or {}).items())))
+        while True:
+            with self._cache_lock:
+                hit = self._cache.get(key)
+                if hit and time.monotonic() - hit[0] < ttl:
+                    return hit[1]
+                event = self._inflight.get(key)
+                if event is None:
+                    self._inflight[key] = threading.Event()
+                    break
+            event.wait(timeout=30)  # ждём чужой запрос и повторяем проверку кэша
+        try:
+            result = self.get(endpoint, params)
+            with self._cache_lock:
+                self._cache[key] = (time.monotonic(), result)
+            return result
+        finally:
+            with self._cache_lock:
+                self._inflight.pop(key).set()
+
+    def invalidate_cache(self, prefix: str = ""):
+        with self._cache_lock:
+            for k in [k for k in self._cache if k[0].startswith(prefix)]:
+                del self._cache[k]
 
     def set_tokens(self, access_token: str, refresh_token: str, expires_in: int = 3600):
         """Установить токены"""

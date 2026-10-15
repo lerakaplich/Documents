@@ -3,7 +3,7 @@ __pycache__/
 *$py.class
 venv/
 .venv/
-env/
+.env/
 .idea/
 .vscode/
 .ruff_cache/
