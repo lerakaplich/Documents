@@ -4,6 +4,8 @@ from datetime import date, time
 from sqlalchemy import Integer, String, Text, Boolean, Date, BigInteger, ForeignKey, UniqueConstraint, Time
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from server.app.database.const import CASCADE_DELETE_ORPHAN
+
 
 class BaseEmployees(DeclarativeBase):
     pass
@@ -23,7 +25,7 @@ class Organization(BaseEmployees):
     email: Mapped[Optional[str]] = mapped_column(Text)
     is_subscriber: Mapped[bool] = mapped_column(Boolean, server_default="true", nullable=False)
 
-    departments: Mapped[list["Department"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
+    departments: Mapped[list["Department"]] = relationship(back_populates="organization", cascade=CASCADE_DELETE_ORPHAN)
 
 class DepartmentType(BaseEmployees):
     """Справочник типов подразделений (Отдел, Бюро, Дирекция и т.д.)"""
@@ -62,7 +64,7 @@ class Department(BaseEmployees):
     organization: Mapped["Organization"] = relationship(back_populates="departments")
     department_type: Mapped[Optional["DepartmentType"]] = relationship(back_populates="departments")
     positions: Mapped[list["EmployeePosition"]] = relationship(
-        back_populates="department", cascade="all, delete-orphan"
+        back_populates="department", cascade=CASCADE_DELETE_ORPHAN
     )
 
     # Поле называется 'head', связывается по head_employee_id
@@ -88,9 +90,9 @@ class Employee(BaseEmployees):
     chat_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
 
-    positions: Mapped[list["EmployeePosition"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
+    positions: Mapped[list["EmployeePosition"]] = relationship(back_populates="employee", cascade=CASCADE_DELETE_ORPHAN)
 
-    overtimes: Mapped[list["Overtime"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
+    overtimes: Mapped[list["Overtime"]] = relationship(back_populates="employee", cascade=CASCADE_DELETE_ORPHAN)
 
     @property
     def short_fio(self) -> str:

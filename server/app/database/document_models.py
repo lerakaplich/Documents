@@ -9,6 +9,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from server.app.database.const import CASCADE_DELETE_ORPHAN
+
 
 class BaseDocuments(DeclarativeBase):
     pass
@@ -95,7 +97,7 @@ class DocumentType(BaseDocuments):
 
     allowed_directions: Mapped[list["DocumentTypeDirection"]] = relationship(
         "DocumentTypeDirection",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_DELETE_ORPHAN,
         lazy="selectin"
     )
 
@@ -289,7 +291,7 @@ class Document(BaseDocuments):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     archives: Mapped[list["DocumentArchive"]] = relationship(
-        cascade="all, delete-orphan"
+        cascade=CASCADE_DELETE_ORPHAN
     )
 
     # Relationships (Внутри этой же БД)
@@ -300,22 +302,22 @@ class Document(BaseDocuments):
     )
     employees: Mapped[list["EmployeeDocument"]] = relationship(
         back_populates="document",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_DELETE_ORPHAN,
         lazy="selectin"
     )
     attachments: Mapped[list["DocumentAttachment"]] = relationship(
-        cascade="all, delete-orphan",
+        cascade=CASCADE_DELETE_ORPHAN,
         lazy="selectin"
     )
     receivers: Mapped[list["DocumentReceiver"]] = relationship(
         "DocumentReceiver",
         back_populates="document",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_DELETE_ORPHAN,
         lazy="selectin",
     )
     status_history: Mapped[list["DocumentStatusHistory"]] = relationship(
         back_populates="document",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_DELETE_ORPHAN,
         lazy="selectin",
         order_by="DocumentStatusHistory.changed_at.asc()"
     )
@@ -379,8 +381,8 @@ class SystemEmployee(BaseDocuments):
         nullable=False
     )
 
-    sessions: Mapped[list["UserSession"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
-    documents: Mapped[list["EmployeeDocument"]] = relationship(back_populates="employee", cascade="all, delete-orphan")
+    sessions: Mapped[list["UserSession"]] = relationship(back_populates="employee", cascade=CASCADE_DELETE_ORPHAN)
+    documents: Mapped[list["EmployeeDocument"]] = relationship(back_populates="employee", cascade=CASCADE_DELETE_ORPHAN)
 
 
 class EmployeeDocument(BaseDocuments):
