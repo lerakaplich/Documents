@@ -100,12 +100,24 @@ class OrgService:
             )
             for d in depts
         }
+
+        # Сначала находим ID самого главного корневого отдела (или отделов), у которых parent_id is None
+        root_parent_ids = {d.id for d in depts if d.parent_id is None}
+
         root_nodes = []
 
         for d in depts:
             node = nodes[d.id]
+
+            # 1. Пропускаем сам главный корневой отдел (чтобы его не было в ответе)
             if d.parent_id is None:
+                continue
+
+            # 2. Если родитель этого отдела — это наш корень, то этот отдел сам становится корнем верхнего уровня
+            if d.parent_id in root_parent_ids:
                 root_nodes.append(node)
+
+            # 3. Иначе цепляем его к его реальному родителю внутри дерева
             elif d.parent_id in nodes:
                 nodes[d.parent_id].children.append(node)
 
