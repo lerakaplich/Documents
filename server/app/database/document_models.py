@@ -142,6 +142,7 @@ class DocumentReceiver(BaseDocuments):
     document_id: Mapped[int] = mapped_column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
 
     # Микросервисные ссылки на db_employees (без FK на уровне БД)
+    target_employee_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     target_department_id: Mapped[Optional[int]] = mapped_column(Integer)
     target_organization_id: Mapped[Optional[int]] = mapped_column(Integer)
 

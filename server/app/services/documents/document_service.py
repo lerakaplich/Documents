@@ -6,6 +6,7 @@ from datetime import date
 from fastapi import HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 
+from server.app.core.connection_manager import manager
 from server.app.database.document_models import Document, EmployeeDocument, DocumentRole, DocDirection, \
     DocStatus, DocumentTag, DocumentReceiver
 from server.app.repositories.document_repo import DocumentRepository
@@ -131,25 +132,26 @@ class DocumentService:
                 initial_status = self._determine_initial_status(payload.deadline)
                 global_msg_id = payload.global_msg_id or str(uuid.uuid4())
 
-                # Множество для предотвращения дубликатов прав в EmployeeDocument
                 added_employee_ids: set[tuple[int, DocumentRole]] = set()
-
-                # 4. Предварительно формируем список объектов получателей (DocumentReceiver)
-                receivers_list: list[DocumentReceiver] = []
+                explicit_emp_ids: set[int] = set()
                 recipient_emp_ids_to_add: set[int] = set()
+                receivers_list: list[DocumentReceiver] = []
 
+                # Обработка официальных получателей (бланка)
                 if payload.receivers:
                     for receiver_form in payload.receivers:
-                        # А. Официальный бланк адресата (DocumentReceiver)
                         receivers_list.append(
                             DocumentReceiver(
+                                target_employee_id=receiver_form.target_employee_id,
                                 target_department_id=receiver_form.target_department_id,
                                 target_organization_id=receiver_form.target_organization_id,
                                 target_official_text=receiver_form.target_official_text,
                             )
                         )
+                        # Если указан конкретный человек в получателях бланка, автоматически даем ему роль recipient в СЭД
+                        if receiver_form.target_employee_id:
+                            recipient_emp_ids_to_add.add(receiver_form.target_employee_id)
 
-                        # Б. Резолв конкретных ID сотрудников для выдачи прав в СЭД
                         target_emp_ids = await self.resolve_recipient_employee_ids(receiver_form)
                         for emp_id in target_emp_ids:
                             recipient_emp_ids_to_add.add(emp_id)
@@ -171,11 +173,10 @@ class DocumentService:
                     parent_document_id=payload.parent_document_id,
                     confident_flag=payload.confident_flag,
                     clearance_id=payload.clearance_id,
-                    # Официальные реквизиты источника на бланке (source_*)
                     source_employee_id=payload.source_employee_id,
                     source_organization_id=payload.source_organization_id,
+                    source_department_id=getattr(payload, "source_department_id", None),
                     source_official_text=payload.source_official_text,
-                    # Передаем сформированную коллекцию получателей
                     receivers=receivers_list,
                 )
                 self.repo.db.add(new_doc)
@@ -217,18 +218,18 @@ class DocumentService:
                         explicit_emp_ids.add(emp_id)
 
                 # 6. Выдаем роль Отправителя (sender) оператору СЭД
-                # ТЕПЕРЬ ЭТО В КОНЦЕ: проверяем наполненный explicit_emp_ids
-                if operator_emp_id not in explicit_emp_ids:
-                    if (operator_emp_id, DocumentRole.sender) not in added_employee_ids:
-                        self.repo.db.add(
-                            EmployeeDocument(
-                                document_id=new_doc.id,
-                                employee_id=operator_emp_id,
-                                role=DocumentRole.sender,
-                                is_approved=True,
-                            )
+                actual_sender_id = payload.source_employee_id or operator_emp_id
+                if (actual_sender_id, DocumentRole.sender) not in added_employee_ids:
+                    self.repo.db.add(
+                        EmployeeDocument(
+                            document_id=new_doc.id,
+                            employee_id=actual_sender_id,
+                            role=DocumentRole.sender,
+                            is_approved=True,
                         )
-                        added_employee_ids.add((operator_emp_id, DocumentRole.sender))
+                    )
+                    added_employee_ids.add((actual_sender_id, DocumentRole.sender))
+                    explicit_emp_ids.add(actual_sender_id)
 
                 # 9. Привязка тегов
                 if payload.tag_ids:
@@ -273,7 +274,31 @@ class DocumentService:
             ],
         )
 
-        # 11. Изолированная отправка уведомлений
+        # === 10.5. РЕАЛЬНЫЕ WEBSOCKET УВЕДОМЛЕНИЯ ОНЛАЙН-ПОЛЬЗОВАТЕЛЯМ ===
+        try:
+            # Собираем ID всех участников, кому пришел документ (получатели и исполнители, исключая самого автора)
+            target_emp_ids = {
+                emp_doc.employee_id for emp_doc in new_doc.employees
+                if emp_doc.employee_id != user.id
+            }
+
+            ws_payload = {
+                "event": "new_document",
+                "document_id": new_doc.id,
+                "title": new_doc.title or "Без названия",
+                "reg_number": new_doc.reg_number or "Б/Н",
+            }
+
+            for emp_id in target_emp_ids:
+                await manager.send_personal_message(emp_id, ws_payload)
+        except Exception as ws_err:
+            logger.error(
+                f"Failed to send WebSocket notifications for doc_id={new_doc.id}: {ws_err}",
+                exc_info=True
+            )
+        # ===============================================================
+
+        # 11. Изолированная отправка фоновых уведомлений (например, Телеграм)
         try:
             asyncio.create_task(
                 self.notifications.notify_document_created(

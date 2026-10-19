@@ -388,6 +388,38 @@ class DocumentRepository:
         result = await self.db.execute(select(SystemEmployee).where(SystemEmployee.id == employee_id))
         return result.scalar_one_or_none()
 
+    async def get_employees_map(self, emp_ids: set[int]) -> dict[int, str]:
+        """Возвращает словарь {employee_id: "Фамилия И.О."} 1 batch-запросом из таблицы system_employees."""
+        if not emp_ids:
+            return {}
+
+        stmt = select(
+            SystemEmployee.id,
+            SystemEmployee.last_name,
+            SystemEmployee.first_name,
+            SystemEmployee.patronymic
+        ).where(SystemEmployee.id.in_(emp_ids))
+
+        result = await self.db.execute(stmt)
+        employees_map: dict[int, str] = {}
+
+        for emp_id, last_name, first_name, patronymic in result.all():
+            # Формируем красивое ФИО (например: "Иванов И.И.")
+            fio_parts = [last_name]
+            if first_name:
+                fio_parts.append(f"{first_name[0]}.")
+            if patronymic:
+                fio_parts.append(f"{patronymic[0]}.")
+
+            employees_map[emp_id] = " ".join(fio_parts)
+
+        # Fallback для тех ID, которых почему-то не оказалось в базе
+        for emp_id in emp_ids:
+            if emp_id not in employees_map:
+                employees_map[emp_id] = f"Сотрудник ID: {emp_id}"
+
+        return employees_map
+
     async def update_last_comment(self, document_id: int, text: str):
         """Обновляет денормализованный текст последнего комментария."""
         stmt = (

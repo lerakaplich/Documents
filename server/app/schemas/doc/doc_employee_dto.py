@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, Union
 
 from server.app.database.document_models import DocumentRole
@@ -24,9 +24,17 @@ class ParticipantItem(BaseModel):
 
 class DocumentReceiverCreate(BaseModel):
     """Схема создания адресата документа"""
+    target_employee_id: Optional[int] = Field(None, description="ID сотрудника")
     target_department_id: Optional[int] = Field(None, description="ID отдела-получателя")
     target_organization_id: Optional[int] = Field(None, description="ID сторонней организации")
     target_official_text: Optional[str] = Field(None, description="Наименование адресата/должности на бланке")
+
+    @field_validator("target_employee_id", "target_department_id", "target_organization_id", mode="before")
+    @classmethod
+    def zero_to_none(cls, v):
+        if v == 0 or v == "":
+            return None
+        return v
 
 
 class DocumentReceiverRead(DocumentReceiverCreate):

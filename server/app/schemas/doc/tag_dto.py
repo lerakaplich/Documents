@@ -15,6 +15,8 @@ class TagUpdate(BaseModel):
     priority: Optional[TagPriority] = None
     color: Optional[str] = Field(None, max_length=7)
 
-class TagRead(TagBase):
+class TagRead(BaseModel):
     id: int
-    model_config = ConfigDict(from_attributes=True)
+    name: str
+    priority: str
+    color: str

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, Union
 from datetime import date, datetime
 
@@ -30,16 +30,24 @@ class DocumentCreateForm(BaseModel):
 
     # --- ОФИЦИАЛЬНЫЙ ИСТОЧНИК / БЛАНК (source_*) ---
     source_employee_id: Optional[int] = Field(None, description="ID сотрудника-подписанта/отправителя на бланке")
-    source_organization_id: Optional[int] = Field(None, description="ID внешней организации-отправителя (для входящих)")
+    source_organization_id: Optional[int] = Field(None, description="ID внешней организации-отправителя")
+    source_department_id: Optional[int] = Field(None, description="ID отдела-отправителя")
     source_official_text: Optional[str] = Field(None, description="Текстовая подпись отправителя на бланке")
 
     # --- СИСТЕМНЫЕ ДОСТУПЫ В СЭД ---
-    sender_id: Optional[int] = Field(None, description="ID оператора, создающего запись (если создается от имени другого)")
+    sender_id: Optional[int] = Field(None, description="ID оператора, создающего запись")
     executors: list[int] = Field(default_factory=list, description="ID сотрудников-исполнителей")
     receivers: list[DocumentReceiverCreate] = Field(default_factory=list, description="Список адресатов-получателей")
 
     tag_ids: list[int] = Field(default_factory=list)
     needs_response: bool = False
+
+    @field_validator("source_employee_id", "source_organization_id", "source_department_id", "sender_id", "parent_document_id", "clearance_id", mode="before")
+    @classmethod
+    def zero_to_none(cls, v):
+        if v == 0 or v == "":
+            return None
+        return v
 
 class DocumentListItem(BaseModel):
     """Усеченная модель для отображения в главной таблице PyQt6"""
@@ -61,12 +69,13 @@ class DocumentListItem(BaseModel):
     deadline: Optional[date] = None
     last_comment_text: Optional[str] = None
 
-    # Поля отправителя и получателей (ИСПРАВЛЕНО: добавлены поля в Pydantic модель)
+    # Раздельные поля участников для интерфейса
     sender: Optional[ParticipantItem] = None
+    executors: list[ParticipantItem] = Field(default_factory=list)
     recipients: list[ParticipantItem] = Field(default_factory=list)
+    participants: list[ParticipantItem] = Field(default_factory=list)
 
     tags: list[TagRead] = Field(default_factory=list)
-    participants: list[ParticipantItem] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

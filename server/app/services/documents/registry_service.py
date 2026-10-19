@@ -41,6 +41,10 @@ class RegistryService:
         self.org_repo = org_repo
         self.structure_session = structure_session
 
+    async def fetch_employees_map(self, emp_ids: set[int]) -> dict[int, str]:
+        """Делегирует получение маппинга сотрудников репозиторию без лишнего кэширования."""
+        return await self.repo.get_employees_map(emp_ids)
+
     async def fetch_departments_map(self, dept_ids: set[int]) -> dict[int, str]:
         """Возвращает {dept_id: dept_name} из TTLCache или 1 batch-запросом из БД employees."""
         if not dept_ids:
@@ -225,12 +229,15 @@ class RegistryService:
         # =========================================================================
         dept_ids: set[int] = set()
         org_ids: set[int] = set()
+        emp_ids: set[int] = set()  # <--- Добавлено множество для сотрудников
 
         for doc, *rest in rows:
             if doc.source_department_id:
                 dept_ids.add(doc.source_department_id)
             if doc.source_organization_id:
                 org_ids.add(doc.source_organization_id)
+            if doc.source_employee_id:
+                emp_ids.add(doc.source_employee_id)  # <--- Собираем ID отправителя
 
             receivers = getattr(doc, "receivers", []) or []
             for rec in receivers:
@@ -238,10 +245,17 @@ class RegistryService:
                     dept_ids.add(rec.target_department_id)
                 if rec.target_organization_id:
                     org_ids.add(rec.target_organization_id)
+                if rec.target_employee_id:
+                    emp_ids.add(rec.target_employee_id)  # <--- Собираем ID получателей из бланка
 
-        # Запрашиваем маппинги параллельно из 2-й базы (БД employees) с учётом TTLCache
+            for ed in doc.employees:
+                if ed.employee_id:
+                    emp_ids.add(ed.employee_id)  # <--- Собираем ID участников (executors, recipients и т.д.)
+
+        # Запрашиваем маппинги параллельно с учётом TTLCache
         departments_map = await self.fetch_departments_map(dept_ids)
         organizations_map = await self.fetch_organizations_map(org_ids)
+        employees_map = await self.fetch_employees_map(emp_ids)  # <--- Загружаем словарь сотрудников
 
         # =========================================================================
         # 8. МАППИНГ DTO
@@ -257,61 +271,62 @@ class RegistryService:
             item.has_attachments = has_attachments or False
             item.type_name = doc.type.name if doc.type else "Без типа"
 
-            # --- Вычисление отправителя (sender) ---
-            source_emp = next(
-                (ed.employee for ed in doc.employees if ed.employee_id == doc.source_employee_id),
-                None
-            )
-
-            if source_emp:
-                sender_name = _format_fio(source_emp)
-            elif getattr(doc, "source_official_text", None):
-                sender_name = doc.source_official_text
-            elif doc.source_department_id:
-                sender_name = departments_map.get(
-                    doc.source_department_id, f"Подразделение ID: {doc.source_department_id}"
-                )
-            elif doc.source_organization_id:
-                sender_name = organizations_map.get(
-                    doc.source_organization_id, f"Организация ID: {doc.source_organization_id}"
-                )
+            # --- 1. ОТПРАВИТЕЛЬ (Sender) ---
+            sender_name = None
+            if doc.source_employee_id and doc.source_employee_id in employees_map:
+                sender_name = employees_map[doc.source_employee_id]
+            elif doc.source_department_id and doc.source_department_id in departments_map:
+                sender_name = departments_map[doc.source_department_id]
+            elif doc.source_organization_id and doc.source_organization_id in organizations_map:
+                sender_name = organizations_map[doc.source_organization_id]
             else:
-                sender_name = "Не указан"
+                sys_sender = next((ed for ed in doc.employees if ed.role == DocumentRole.sender), None)
+                if sys_sender and sys_sender.employee:
+                    sender_name = _format_fio(sys_sender.employee)
+                elif getattr(doc, "source_official_text", None):
+                    sender_name = doc.source_official_text
+                else:
+                    sender_name = "Не указан"
 
             item.sender = ParticipantItem(name=sender_name, role=DocumentRole.sender)
 
-            # --- Вычисление получателей (recipients) ---
-            receivers = getattr(doc, "receivers", None)
-            if receivers:
-                item.recipients = []
-                for rec in receivers:
-                    if getattr(rec, "target_official_text", None):
-                        rec_name = rec.target_official_text
-                    elif rec.target_department_id:
-                        rec_name = departments_map.get(
-                            rec.target_department_id, f"Подразделение ID: {rec.target_department_id}"
-                        )
-                    elif rec.target_organization_id:
-                        rec_name = organizations_map.get(
-                            rec.target_organization_id, f"Организация ID: {rec.target_organization_id}"
-                        )
-                    else:
-                        rec_name = "Получатель без наименования"
+            # --- 2. ОФИЦИАЛЬНЫЕ ПОЛУЧАТЕЛИ (Recipients - поддержка нескольких) ---
+            item.recipients = []
+            receivers = getattr(doc, "receivers", None) or []
+            for rec in receivers:
+                if rec.target_employee_id and rec.target_employee_id in employees_map:
+                    rec_name = employees_map[rec.target_employee_id]
+                elif getattr(rec, "target_official_text", None):
+                    rec_name = rec.target_official_text
+                elif rec.target_department_id and rec.target_department_id in departments_map:
+                    rec_name = departments_map[rec.target_department_id]
+                elif rec.target_organization_id and rec.target_organization_id in organizations_map:
+                    rec_name = organizations_map[rec.target_organization_id]
+                else:
+                    rec_name = "Получатель"
 
-                    item.recipients.append(
-                        ParticipantItem(name=rec_name, role=DocumentRole.recipient)
-                    )
-            else:
+                item.recipients.append(ParticipantItem(name=rec_name, role=DocumentRole.recipient))
+
+            # Если в официальном бланке пусто, берем системных получателей
+            if not item.recipients:
                 item.recipients = [
                     ParticipantItem(name=_format_fio(ed.employee), role=ed.role)
                     for ed in doc.employees
-                    if ed.role == DocumentRole.recipient
+                    if ed.role == DocumentRole.recipient and ed.employee
                 ]
 
-            # Список всех связанных участников
+            # --- 3. ИСПОЛНИТЕЛИ (Executors) ---
+            item.executors = [
+                ParticipantItem(name=_format_fio(ed.employee), role=ed.role)
+                for ed in doc.employees
+                if ed.role == DocumentRole.executor and ed.employee
+            ]
+
+            # --- ВСЕ УЧАСТНИКИ (Participants) ---
             item.participants = [
                 ParticipantItem(name=_format_fio(ed.employee), role=ed.role)
                 for ed in doc.employees
+                if ed.employee
             ]
 
             item.tags = [
