@@ -58,6 +58,13 @@ def decode_access_token(token: str) -> Dict[str, Any]:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+def decode_access_token_ws(token: str) -> dict | None:
+    """Декодирует токен для вебсокетов без выброса HTTPException."""
+    try:
+        return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+    except Exception:
+        return None  # Если токен невалиден, просто вернем None
+
 def hash_refresh_token(token: str) -> str:
     """Хеширует refresh-токен перед сохранением в БД."""
     return hashlib.sha256(token.encode('utf-8')).hexdigest()
