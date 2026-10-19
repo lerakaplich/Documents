@@ -45,23 +45,6 @@ async def get_all_employees(
     return items
 
 
-@router.get(
-    "/structure/search",
-    response_model=list[StructureSearchResult],
-    summary="Поиск по оргструктуре (организации, отделы, сотрудники)",
-)
-async def search_structure(
-    q: str = Query(
-        ...,
-        min_length=2,
-        description="Строка поиска (минимум 2 символа)",
-        examples=["Бухгалтер"],  # Заменили example на examples
-    ),
-    service: RegistryService = Depends(get_registry_service),
-):
-    return await service.search_structure(query_text=q)
-
-
 # =============================================================================
 # 2. Профиль текущего пользователя (/me)
 # =============================================================================

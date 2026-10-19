@@ -1,8 +1,10 @@
-from server.app.deps import get_org_service, get_current_user, get_employee_service
+from server.app.deps import get_org_service, get_current_user, get_employee_service, get_registry_service
 from server.app.schemas.org import OrganizationRead, OrganizationUpdate, DepartmentNode, OrganizationCreate
+from server.app.schemas.org.structure_search import StructureSearchResult
 
 from server.app.schemas.user_schemas.employee_dto import CurrentUser, EmployeeRead, EmployeeShortRead
 from server.app.schemas.user_schemas.overtime_dto import PageResponse
+from server.app.services.documents.registry_service import RegistryService
 from server.app.services.employees.employee_service import EmployeeService
 
 from server.app.services.org.org_service import OrgService
@@ -37,6 +39,21 @@ async def get_all_organizations(
 ):
     return await service.get_all_organizations(limit=limit, offset=offset)
 
+@router.get(
+    "/structure/search",
+    response_model=list[StructureSearchResult],
+    summary="Поиск по оргструктуре (организации, отделы, сотрудники)",
+)
+async def search_structure(
+    q: str = Query(
+        ...,
+        min_length=2,
+        description="Строка поиска (минимум 2 символа)",
+        examples=["Бухгалтер"],  # Заменили example на examples
+    ),
+    service: RegistryService = Depends(get_registry_service),
+):
+    return await service.search_structure(query_text=q)
 
 @router.get(
     "/{org_id}",
@@ -48,50 +65,6 @@ async def get_organization(
     service: OrgService = Depends(get_org_service)
 ):
     return await service.get_organization_by_id(org_id)
-
-
-@router.get(
-    "/{org_id}/structure",
-    response_model=list[DepartmentNode],
-    summary="Получить древовидную структуру отделов организации"
-)
-async def get_org_structure(
-    org_id: int,
-    service: OrgService = Depends(get_org_service)
-):
-    return await service.get_org_structure(org_id)
-
-@router.get(
-    "/{org_id}/employees/short",
-    response_model=PageResponse[EmployeeShortRead],
-    summary="Получить короткий список сотрудников организации (с пагинацией)"
-)
-async def get_org_employees_short(
-    org_id: int,
-    show_fired: bool = Query(False, description="Показывать уволенных"),
-    page: int = Query(1, ge=1, description="Номер страницы"),
-    size: int = Query(20, ge=1, le=100, description="Количество элементов на странице"),
-    current_user: CurrentUser = Depends(get_current_user),
-    service: OrgService = Depends(get_org_service),
-):
-    return await service.get_org_employees_short(
-        org_id=org_id,
-        show_fired=show_fired,
-        page=page,
-        size=size
-    )
-
-@router.get(
-    "/{org_id}/employees",
-    response_model=list[EmployeeRead],
-    summary="Получить всех сотрудников организации"
-)
-async def get_org_employees(
-    org_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
-    service: OrgService = Depends(get_org_service),
-):
-    return await service.get_organization_employees(current_user, org_id)
 
 @router.patch(
     "/{org_id}",
@@ -118,3 +91,46 @@ async def delete_organization(
     service: OrgService = Depends(get_org_service)
 ):
     await service.delete_organization(current_user, org_id)
+
+@router.get(
+    "/{org_id}/structure",
+    response_model=list[DepartmentNode],
+    summary="Получить древовидную структуру отделов организации"
+)
+async def get_org_structure(
+    org_id: int,
+    service: OrgService = Depends(get_org_service)
+):
+    return await service.get_org_structure(org_id)
+
+@router.get(
+    "/{org_id}/employees",
+    response_model=list[EmployeeRead],
+    summary="Получить всех сотрудников организации"
+)
+async def get_org_employees(
+    org_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: OrgService = Depends(get_org_service),
+):
+    return await service.get_organization_employees(current_user, org_id)
+
+@router.get(
+    "/{org_id}/employees/short",
+    response_model=PageResponse[EmployeeShortRead],
+    summary="Получить короткий список сотрудников организации (с пагинацией)"
+)
+async def get_org_employees_short(
+    org_id: int,
+    show_fired: bool = Query(False, description="Показывать уволенных"),
+    page: int = Query(1, ge=1, description="Номер страницы"),
+    size: int = Query(20, ge=1, le=100, description="Количество элементов на странице"),
+    current_user: CurrentUser = Depends(get_current_user),
+    service: OrgService = Depends(get_org_service),
+):
+    return await service.get_org_employees_short(
+        org_id=org_id,
+        show_fired=show_fired,
+        page=page,
+        size=size
+    )
