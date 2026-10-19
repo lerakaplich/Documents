@@ -1,5 +1,17 @@
 class SelectionManager:
-    """Менеджер управления выбранными элементами"""
+    """
+    Менеджер выбранных элементов.
+
+    Выбор хранится как набор пар (type, id):
+        1 — организация, 2 — отдел, 3 — сотрудник.
+    Словари organizations/departments/employees — те же объекты, что и у
+    HierarchyBuilder: при ленивой подгрузке они пополняются, и новые узлы
+    сразу становятся «известными» менеджеру.
+    """
+
+    TYPE_ORG = 1
+    TYPE_DEPT = 2
+    TYPE_EMP = 3
 
     def __init__(
         self,
@@ -10,150 +22,12 @@ class SelectionManager:
         self.organizations = organizations
         self.departments = departments
         self.employees = employees
-        # Используем составной ключ (type, id) для уникальной идентификации
         self.selected_items: set[tuple[int, int]] = set()  # (type, id)
 
-    def set_selected(self, items: list[tuple[int, int]]):
-        """Устанавливает выбранные элементы по списку (type, id)"""
-        self.selected_items.clear()
-        for type_id, node_id in items:
-            if self._is_valid_item(type_id, node_id):
-                self.selected_items.add((type_id, node_id))
+    # ── известность узла ──
 
-    def set_selected_by_ids(self, ids: list[int], node_type: int | None = None):
-        """Устанавливает выбранные элементы по списку ID (с определением типа)"""
-        self.selected_items.clear()
-        for node_id in ids:
-            if node_type is not None:
-                # Если тип указан явно
-                if self._is_valid_item(node_type, node_id):
-                    self.selected_items.add((node_type, node_id))
-            else:
-                # Пытаемся определить тип
-                detected_type = self._get_node_type(node_id)
-                if detected_type is not None:
-                    self.selected_items.add((detected_type, node_id))
-
-    def add(self, node_id: int, node_type: int | None = None):
-        """Добавляет элемент в выбранные"""
-        if node_type is None:
-            node_type = self._get_node_type(node_id)
-        if node_type is not None and self._is_valid_item(node_type, node_id):
-            self.selected_items.add((node_type, node_id))
-
-    def remove(self, node_id: int, node_type: int | None = None):
-        """Удаляет элемент из выбранных"""
-        if node_type is None:
-            node_type = self._get_node_type(node_id)
-        if node_type is not None:
-            self.selected_items.discard((node_type, node_id))
-
-    def toggle(self, node_id: int, selected: bool, node_type: int | None = None):
-        """Устанавливает состояние выбора для узла"""
-        if node_type is None:
-            node_type = self._get_node_type(node_id)
-
-        if node_type is None:
-            print(f"[SelectionManager] Ошибка: не удалось определить тип для id={node_id}")
-            return
-
-        if not self._is_valid_item(node_type, node_id):
-            print(f"[SelectionManager] Ошибка: элемент не найден type={node_type}, id={node_id}")
-            return
-
-        print(f"[SelectionManager] toggle: type={node_type}, id={node_id}, selected={selected}")
-
-        if selected:
-            self.selected_items.add((node_type, node_id))
-        else:
-            self.selected_items.discard((node_type, node_id))
-
-        print(f"[SelectionManager] selected_items: {self.selected_items}")
-
-    def get_selected_ids(self) -> list[int]:
-        """Возвращает список выбранных ID (без учета типов)"""
-        result = [item_id for _, item_id in self.selected_items]
-        print(f"[SelectionManager] get_selected_ids: {result}")
-        return result
-
-    def get_selected_items(self) -> set[tuple[int, int]]:
-        """Возвращает набор выбранных элементов (type, id)"""
-        return self.selected_items
-
-    def is_selected(self, node_id: int, node_type: int | None = None) -> bool:
-        """Проверяет, выбран ли узел"""
-        if node_type is None:
-            node_type = self._get_node_type(node_id)
-
-        if node_type is None:
-            return False
-
-        return (node_type, node_id) in self.selected_items
-
-    def get_selected_organizations(self) -> list[dict]:
-        """Возвращает выбранные организации"""
-        result = []
-        for type_id, org_id in self.selected_items:
-            if type_id == 1:
-                org = self.organizations.get(org_id)
-                if org:
-                    result.append(org)
-        return result
-
-    def get_selected_departments(self) -> list[dict]:
-        """Возвращает выбранные отделы"""
-        result = []
-        for type_id, dept_id in self.selected_items:
-            if type_id == 2:
-                dept = self.departments.get(dept_id)
-                if dept:
-                    result.append(dept)
-        return result
-
-    def get_selected_employees(self) -> list[dict]:
-        """Возвращает выбранных сотрудников"""
-        result = []
-        for type_id, emp_id in self.selected_items:
-            if type_id == 3:
-                emp = self.employees.get(emp_id)
-                if emp:
-                    result.append(emp)
-        return result
-
-    def get_selection_stats(self) -> dict[str, int]:
-        """Возвращает статистику выбранных элементов"""
-        org_count = 0
-        dept_count = 0
-        emp_count = 0
-
-        for type_id, _ in self.selected_items:
-            if type_id == 1:
-                org_count += 1
-            elif type_id == 2:
-                dept_count += 1
-            elif type_id == 3:
-                emp_count += 1
-
-        return {
-            "total": len(self.selected_items),
-            "organizations": org_count,
-            "departments": dept_count,
-            "employees": emp_count,
-        }
-
-    def _get_node_type(self, node_id: int) -> int | None:
-        """Определяет тип узла по ID"""
-        # Проверяем все возможные типы
-        if node_id in self.organizations:
-            return 1  # Организация
-        if node_id in self.departments:
-            return 2  # Отдел
-        if node_id in self.employees:
-            return 3  # Сотрудник
-        return None
-
-    def _is_valid_item(self, node_type: int, node_id: int) -> bool:
-        """Проверяет, существует ли элемент с данным типом и ID"""
+    def is_known(self, node_type: int, node_id: int) -> bool:
+        """Есть ли такой узел в справочниках (загружен ли он)."""
         if node_type == 1:
             return node_id in self.organizations
         if node_type == 2:
@@ -161,3 +35,90 @@ class SelectionManager:
         if node_type == 3:
             return node_id in self.employees
         return False
+
+    # оставлено для обратной совместимости
+    _is_valid_item = is_known
+
+    def _get_node_type(self, node_id: int) -> int | None:
+        """Определяет тип по ID (только для старого кода; при коллизиях id неоднозначно)."""
+        if node_id in self.organizations:
+            return 1
+        if node_id in self.departments:
+            return 2
+        if node_id in self.employees:
+            return 3
+        return None
+
+    # ── изменение выбора ──
+
+    def set_selected(self, items: list[tuple[int, int]]):
+        """Устанавливает выбранные элементы по списку (type, id); неизвестные пропускаются."""
+        self.selected_items.clear()
+        for type_id, node_id in items:
+            if self.is_known(type_id, node_id):
+                self.selected_items.add((type_id, node_id))
+
+    def set_selected_by_ids(self, ids: list[int], node_type: int | None = None):
+        self.selected_items.clear()
+        for node_id in ids:
+            t = node_type if node_type is not None else self._get_node_type(node_id)
+            if t is not None and self.is_known(t, node_id):
+                self.selected_items.add((t, node_id))
+
+    def add(self, node_id: int, node_type: int | None = None):
+        if node_type is None:
+            node_type = self._get_node_type(node_id)
+        if node_type is not None and self.is_known(node_type, node_id):
+            self.selected_items.add((node_type, node_id))
+
+    def remove(self, node_id: int, node_type: int | None = None):
+        if node_type is None:
+            node_type = self._get_node_type(node_id)
+        if node_type is not None:
+            self.selected_items.discard((node_type, node_id))
+
+    def toggle(self, node_id: int, selected: bool, node_type: int | None = None):
+        """Устанавливает состояние выбора узла. Неизвестные узлы игнорируются."""
+        if node_type is None:
+            node_type = self._get_node_type(node_id)
+        if node_type is None or not self.is_known(node_type, node_id):
+            return
+        if selected:
+            self.selected_items.add((node_type, node_id))
+        else:
+            self.selected_items.discard((node_type, node_id))
+
+    # ── чтение ──
+
+    def is_selected(self, node_id: int, node_type: int | None = None) -> bool:
+        """Выбран ли узел. ВСЕГДА передавайте node_type — иначе при совпадении id возможна путаница."""
+        if node_type is None:
+            node_type = self._get_node_type(node_id)
+        if node_type is None:
+            return False
+        return (node_type, node_id) in self.selected_items
+
+    def get_selected_items(self) -> set[tuple[int, int]]:
+        return self.selected_items
+
+    def get_selected_pairs(self) -> list[tuple[int, int]]:
+        return sorted(self.selected_items)
+
+    def get_selected_ids(self) -> list[int]:
+        """Только id, без типов (для старого кода)."""
+        return [item_id for _, item_id in sorted(self.selected_items)]
+
+    def get_selected_organizations(self) -> list[dict]:
+        return [self.organizations[i] for t, i in self.selected_items if t == 1 and i in self.organizations]
+
+    def get_selected_departments(self) -> list[dict]:
+        return [self.departments[i] for t, i in self.selected_items if t == 2 and i in self.departments]
+
+    def get_selected_employees(self) -> list[dict]:
+        return [self.employees[i] for t, i in self.selected_items if t == 3 and i in self.employees]
+
+    def get_selection_stats(self) -> dict[str, int]:
+        org = sum(1 for t, _ in self.selected_items if t == 1)
+        dept = sum(1 for t, _ in self.selected_items if t == 2)
+        emp = sum(1 for t, _ in self.selected_items if t == 3)
+        return {"total": len(self.selected_items), "organizations": org, "departments": dept, "employees": emp}

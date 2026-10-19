@@ -100,10 +100,8 @@ class DocumentsCrudController:
                 parent=panel,
                 mode="create",
                 current_user=controller.get_current_user(),
-                organizations=self._organizations(),
-                departments=self._departments(),
-                employees=self._employees(),
-                tags=self._tags(),
+                # Организации/отделы/сотрудники и теги НЕ предзагружаем: их лениво
+                # подтягивают пикеры (EmployeeSelectionDialog / TagSelectionDialog).
                 document_types=controller.get_document_types(),
                 initial_type_id=controller.current_type_id,
                 initial_direction=controller.current_direction,
@@ -131,10 +129,6 @@ class DocumentsCrudController:
                 parent=panel,
                 mode="create",
                 current_user=controller.get_current_user(),
-                organizations=self._organizations(),
-                departments=self._departments(),
-                employees=self._employees(),
-                tags=self._tags(),
                 document_types=controller.get_document_types(),
                 http_client=panel.http_client,
                 reply_to=document,
@@ -186,9 +180,7 @@ class DocumentsCrudController:
                 parent=panel,
                 mode="edit",
                 document_data=full_document,
-                organizations=self._organizations(),
-                departments=self._departments(),
-                employees=self._employees(),
+                # оргструктуру не передаём: названия узлов документа диалог подтягивает точечно
                 tags=self._tags(),
                 http_client=panel.http_client,
             )

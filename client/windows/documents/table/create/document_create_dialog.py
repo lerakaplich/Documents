@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from PyQt6 import uic
-from PyQt6.QtCore import QDate, pyqtSignal
+from PyQt6.QtCore import QDate, QObject, QRunnable, QThreadPool, pyqtSignal
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 from client.core.themes import apply_theme_to_widget
@@ -87,6 +87,52 @@ except ImportError as _e:
     print(f"[DocumentDialog] CustomDateEdit недоступен: {_e}")
 
 
+class _NameResolveSignals(QObject):
+    done = pyqtSignal(object)
+
+
+class _NameResolveTask(QRunnable):
+    """
+    Режим edit: подтягивает названия только тех узлов, что есть в документе
+    (по одному запросу на узел), вместо загрузки всей оргструктуры.
+    nodes — список пар (type, id); type 0 = неизвестен (пробуем отдел, затем организацию).
+    """
+
+    _PATHS = {
+        1: ("/org/{id}",),
+        2: ("/departments/{id}",),
+        3: ("/employees/{id}",),
+        0: ("/departments/{id}", "/org/{id}"),
+    }
+
+    def __init__(self, http_client, nodes):
+        super().__init__()
+        self.http = http_client
+        self.nodes = nodes
+        self.signals = _NameResolveSignals()
+        self.setAutoDelete(False)
+
+    def _fetch(self, node):
+        node_type, node_id = node
+        for path in self._PATHS.get(node_type, ()):
+            try:
+                data = self.http.get(path.format(id=node_id))
+            except Exception as e:  # noqa: BLE001
+                print(f"[DocumentDialog] {path.format(id=node_id)}: {e}")
+                continue
+            if isinstance(data, dict) and data:
+                real_type = node_type or (2 if path.startswith("/departments") else 1)
+                return node_type, node_id, real_type, data
+        return node_type, node_id, None, None
+
+    def run(self):
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+            result = list(ex.map(self._fetch, self.nodes))
+        self.signals.done.emit(result)
+
+
 class DocumentDialog(QWidget):
     """
     Универсальный диалог для создания и редактирования документа.
@@ -134,14 +180,6 @@ class DocumentDialog(QWidget):
         self.doc_type_service = doc_type_service or self._resolve_doc_type_service()
         self.attachment_service = self._resolve_attachment_service()
 
-        # Справочники (орг./отделы/сотрудники) нужны не только пикерам
-        # выбора, но и самому диалогу — чтобы разложить выбранные
-        # receiver_ids/executor_ids по типу узла при сборке payload
-        # (иначе _orgs/_depts/_emps будут пустыми и получатели/исполнители
-        # не найдутся, даже если реально были выбраны в пикере).
-        if self.http_client and (not self.organizations or not self.departments or not self.employees):
-            self._load_org_structure_if_needed()
-
         # Состояние формы
         self.selected_sender: dict[str, Any] | None = None
         self.selected_receivers: list = []
@@ -188,12 +226,13 @@ class DocumentDialog(QWidget):
                 self.direction_box.setCurrentIndex(idx)
                 self._direction_pinned = True
 
-        # Если режим редактирования - загружаем данные
-        if self.mode == "edit" and self.document_data:
-            self._load_document_data()
+        # Справочники целиком не грузим ни в create, ни в edit: пикеры подгружают их лениво,
+        # а подписи кнопок в edit — точечно (_resolve_names_async), по запросу на узел документа.
 
         # Устанавливаем заголовок и кнопки в зависимости от режима
         self._setup_mode_ui()
+        if self.mode == "edit":
+            self._resolve_names_async()
 
         self._connect_signals()
         self._set_default_dates()
@@ -223,6 +262,93 @@ class DocumentDialog(QWidget):
 
             traceback.print_exc()
             self._setup_fallback_ui()
+
+    # ─────────────── выбор узлов: пары (type, id) ───────────────
+    # type: 1 — организация, 2 — отдел, 3 — сотрудник
+
+    def _lookup_node(self, node_type: int, node_id: int) -> dict | None:
+        source = {1: self.organizations, 2: self.departments, 3: self.employees}.get(node_type, [])
+        return next((x for x in source if x.get("id") == node_id), None)
+
+    def _as_pairs(self, items, prefer=(3, 2, 1)) -> list[tuple[int, int]]:
+        """
+        Приводит список к парам (type, id). Принимает пары [type, id]
+        либо «голые» id (старый формат из edit-данных): тип тогда определяется
+        по справочникам в порядке prefer; если не найден — тип 0 (неизвестен).
+        """
+        result: list[tuple[int, int]] = []
+        for it in items or []:
+            if isinstance(it, (list, tuple)) and len(it) == 2:
+                result.append((int(it[0]), int(it[1])))
+                continue
+            try:
+                node_id = int(it)
+            except (TypeError, ValueError):
+                continue
+            node_type = next((t for t in prefer if self._lookup_node(t, node_id) is not None), 0)
+            result.append((node_type, node_id))
+        return result
+
+    @staticmethod
+    def _with_name(node: dict) -> dict:
+        if not node.get("name"):
+            parts = [node.get("last_name"), node.get("first_name"), node.get("patronymic")]
+            node["name"] = " ".join(p for p in parts if p).strip() or node.get("full_name") or ""
+        return node
+
+    def _resolve_names_async(self):
+        """edit: названия получателей/исполнителей — точечно, в фоне (по запросу на узел)."""
+        if not self.http_client:
+            return
+        nodes = []
+        for t, i in [*self.selected_receivers, *self.selected_executors]:
+            known = self._lookup_node(t, i) is not None if t else any(
+                self._lookup_node(x, i) is not None for x in (1, 2, 3)
+            )
+            if not known and (t, i) not in nodes:
+                nodes.append((t, i))
+        if not nodes:
+            return
+        task = _NameResolveTask(self.http_client, nodes)
+        task.signals.done.connect(self._on_names_resolved)
+        self._name_task = task  # держим ссылку
+        QThreadPool.globalInstance().start(task)
+
+    def _on_names_resolved(self, results):
+        type_fix: dict[int, int] = {}
+        for _orig_type, node_id, real_type, data in results:
+            if not data:
+                continue
+            data = self._with_name(dict(data))
+            target = {1: self.organizations, 2: self.departments, 3: self.employees}[real_type]
+            if not any(x.get("id") == node_id for x in target):
+                target.append(data)
+            if not _orig_type:
+                type_fix[node_id] = real_type
+        if type_fix:  # у получателей с неизвестным типом проставляем найденный
+            self.selected_receivers = [
+                (type_fix.get(i, t) if t == 0 else t, i) for t, i in self.selected_receivers
+            ]
+        self._update_receiver_button_text()
+        self._update_executor_button_text()
+
+    def _nodes_for_save(self, pairs: list) -> list:
+        """create: пары (type, id) — DocumentService различает узлы по типу.
+        edit: «голые» id — как отдавалось раньше (контроллер обновления их ожидает)."""
+        if self.mode == "create":
+            return [tuple(p) for p in pairs]
+        return [i for _, i in pairs]
+
+    def _merge_picked(self, dialog):
+        """Добавляет выбранные в пикере узлы в справочники диалога (без дублей)."""
+        for attr, getter in (
+                ("organizations", dialog.get_selected_organizations),
+                ("departments", dialog.get_selected_departments),
+                ("employees", dialog.get_selected_employees),
+        ):
+            current = getattr(self, attr)
+            known = {x.get("id") for x in current}
+            setattr(self, attr, [*current, *(x for x in getter() if x.get("id") not in known)])
 
     def _replace_date_edits(self):
         """
@@ -502,11 +628,32 @@ class DocumentDialog(QWidget):
             self._update_sender_button_text()
 
         # Получатели
-        self.selected_receivers = data.get("receiver_ids", [])
+        receivers = data.get("receivers")
+        if isinstance(receivers, list) and receivers and isinstance(receivers[0], dict):
+            # сырой формат сервера: точные типы узлов
+            pairs = []
+            for r in receivers:
+                if r.get("target_department_id") is not None:
+                    pairs.append((2, r["target_department_id"]))
+                elif r.get("target_organization_id") is not None:
+                    pairs.append((1, r["target_organization_id"]))
+            self.selected_receivers = pairs
+        else:
+            self.selected_receivers = self._as_pairs(data.get("receiver_ids", []), prefer=(2, 1, 3))
         self._update_receiver_button_text()
 
         # Исполнители
-        self.selected_executors = data.get("executor_ids", [])
+        executors = data.get("executors")
+        if isinstance(executors, list) and executors and isinstance(executors[0], dict):
+            for e in executors:  # уже готовые данные сотрудников — кладём в справочник
+                emp_id = e.get("id", e.get("employee_id"))
+                if emp_id is not None and self._lookup_node(3, emp_id) is None:
+                    self.employees.append(self._with_name({**e, "id": emp_id}))
+            ex_ids = [e.get("id", e.get("employee_id")) for e in executors]
+        else:
+            ex_ids = data.get("executor_ids", [])
+        # исполнитель — всегда сотрудник
+        self.selected_executors = [(3, int(i)) for _, i in self._as_pairs(ex_ids, prefer=(3,))]
         self._update_executor_button_text()
 
         # Теги
@@ -635,7 +782,7 @@ class DocumentDialog(QWidget):
         sender_id = None
         if isinstance(self.selected_sender, dict):
             sender_id = self.selected_sender.get("id")
-        preselected = [sender_id] if sender_id else []
+        preselected = [(3, sender_id)] if sender_id else []
 
         dialog = EmployeeSelectionDialog(
             organizations=self.organizations,
@@ -646,11 +793,15 @@ class DocumentDialog(QWidget):
             title="Выбор отправителя",
             instruction="Выберите отправителя документа:",
             http_client=self.http_client,
+            mode="employees",
         )
-        dialog.selection_confirmed.connect(self._on_sender_selected)
+        dialog.selection_confirmed.connect(
+            lambda ids, d=dialog: (self._merge_picked(d), self._on_sender_selected(ids))
+        )
         dialog.exec()
 
-    def _on_sender_selected(self, selected_ids):
+    def _on_sender_selected(self, selected_pairs):
+        selected_ids = [i for t, i in self._as_pairs(selected_pairs) if t in (0, 3)]
         if not selected_ids:
             self.selected_sender = None
             self._update_sender_button_text()
@@ -791,12 +942,15 @@ class DocumentDialog(QWidget):
             title="Выбор получателей",
             instruction="Выберите получателей документа:",
             http_client=self.http_client,
+            mode="receivers",
         )
-        dialog.selection_confirmed.connect(self._on_receivers_selected)
+        dialog.selection_confirmed.connect(
+            lambda ids, d=dialog: (self._merge_picked(d), self._on_receivers_selected(ids))
+        )
         dialog.exec()
 
-    def _on_receivers_selected(self, selected_ids):
-        self.selected_receivers = selected_ids
+    def _on_receivers_selected(self, selected_pairs):
+        self.selected_receivers = self._as_pairs(selected_pairs, prefer=(2, 1, 3))
         self._update_receiver_button_text()
 
     def _update_receiver_button_text(self):
@@ -828,12 +982,15 @@ class DocumentDialog(QWidget):
             title="Выбор исполнителей",
             instruction="Выберите исполнителей документа:",
             http_client=self.http_client,
+            mode="employees",
         )
-        dialog.selection_confirmed.connect(self._on_executors_selected)
+        dialog.selection_confirmed.connect(
+            lambda ids, d=dialog: (self._merge_picked(d), self._on_executors_selected(ids))
+        )
         dialog.exec()
 
-    def _on_executors_selected(self, selected_ids):
-        self.selected_executors = selected_ids
+    def _on_executors_selected(self, selected_pairs):
+        self.selected_executors = self._as_pairs(selected_pairs)
         self._update_executor_button_text()
 
     def _update_executor_button_text(self):
@@ -852,39 +1009,35 @@ class DocumentDialog(QWidget):
         self.btnExecutor.setText(text)
         self.btnExecutor.setToolTip(", ".join(names))
 
-    def _get_employee_names(self, node_ids: list) -> list:
+    def _get_employee_names(self, nodes: list) -> list:
         """
-        Возвращает подписи для кнопок получателей/исполнителей.
-        Узел может быть сотрудником, отделом или организацией (дерево выбора
-        общее для всех трёх), поэтому ищем по всем трём справочникам, а не
-        только по self.employees — иначе выбранные орг./отделы пропадали
-        из текста кнопки молча.
+        Подписи для кнопок получателей/исполнителей. nodes — пары (type, id);
+        тип 0 (неизвестен) ищется по всем справочникам.
         """
+
+        def title(item: dict) -> str:
+            return (
+                item.get("name")
+                or item.get("full_name")
+                or item.get("display_text")
+                or " ".join(
+                    filter(
+                        None,
+                        [item.get("last_name", ""), item.get("first_name", ""), item.get("patronymic", "")],
+                    )
+                ).strip()
+            )
+
         names = []
-        for node_id in node_ids:
-            found_name = None
-            for source in (self.employees, self.departments, self.organizations):
-                for item in source:
-                    if item.get("id") == node_id:
-                        found_name = (
-                            item.get("name")
-                            or item.get("full_name")
-                            or item.get("display_text")
-                            or " ".join(
-                                filter(
-                                    None,
-                                    [
-                                        item.get("last_name", ""),
-                                        item.get("first_name", ""),
-                                        item.get("patronymic", ""),
-                                    ],
-                                )
-                            ).strip()
-                        )
-                        break
-                if found_name:
+        for node_type, node_id in self._as_pairs(nodes):
+            types = (node_type,) if node_type in (1, 2, 3) else (3, 2, 1)
+            found = None
+            for t in types:
+                item = self._lookup_node(t, node_id)
+                if item:
+                    found = title(item)
                     break
-            names.append(found_name or f"ID:{node_id}")
+            names.append(found or f"ID:{node_id}")
         return names
 
     # ─────────────────── ТЕГИ ───────────────────
@@ -1053,8 +1206,8 @@ class DocumentDialog(QWidget):
                 "about": self.regarding_edit.toPlainText().strip() if en("about") else "",
                 "reg_number": self.number_edit.toPlainText().strip() if en("reg_number") else "",
                 "sender_id": sender_id if en("sender_id") else None,
-                "receiver_ids": self.selected_receivers if en("recipients") else [],
-                "executor_ids": self.selected_executors if en("executors") else [],
+                "receiver_ids": self._nodes_for_save(self.selected_receivers) if en("recipients") else [],
+                "executor_ids": self._nodes_for_save(self.selected_executors) if en("executors") else [],
                 "tags": self.selected_tags if en("tag_ids") else [],
                 "global_msg_id": global_msg_id,
                 "needs_response": bool(

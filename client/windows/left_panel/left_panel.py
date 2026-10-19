@@ -61,6 +61,11 @@ class LeftPanel(QWidget):
     GROUP_INTERNAL = "Внутренние документы"
     ALL_TYPES_LABEL = "Все типы"
     GROUP_DIRECTION = {GROUP_EXTERNAL: "external", GROUP_INTERNAL: "internal"}
+    GROUP_EXTERNAL = "Внешние документы"
+    GROUP_INTERNAL = "Внутренние документы"
+    ALL_TYPES_LABEL = "Все типы"
+    GROUP_DIRECTION = {GROUP_EXTERNAL: "external", GROUP_INTERNAL: "internal"}
+    DIRECTION_GROUP = {v: k for k, v in GROUP_DIRECTION.items()}
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -525,54 +530,45 @@ class LeftPanel(QWidget):
 
     def load_doc_types(self):
         """
-        Загружает типы документов с сервера и раскладывает их
-        в две группы: «Внешние документы» и «Внутренние документы».
-        В каждой группе — пункт «Все типы».
+        Загружает разрешённые комбинации «направление → типы документов»
+        и раскладывает их по группам. В каждой группе — пункт «Все типы».
         """
         self.clear_all_directions()
 
-        # Заглушка на время загрузки
-        self.add_direction(
-            self.GROUP_EXTERNAL,
-            self.ALL_TYPES_LABEL,
-            {"type_id": None, "group": self.GROUP_EXTERNAL},
-        )
-        self.add_direction(
-            self.GROUP_INTERNAL,
-            self.ALL_TYPES_LABEL,
-            {"type_id": None, "group": self.GROUP_INTERNAL},
-        )
+        # «Все типы» добавляем сразу, чтобы группы были видны на время загрузки
+        for group_name in (self.GROUP_EXTERNAL, self.GROUP_INTERNAL):
+            self.add_direction(
+                group_name,
+                self.ALL_TYPES_LABEL,
+                {"type_id": None, "group": group_name},
+            )
 
         try:
-            http_client = AppState().http_client
-            service = DocTypeService(http_client)
-            types = service.get_all_types() or []
+            service = DocTypeService(AppState().http_client)
+            combinations = service.get_allowed_combinations() or []
         except Exception as e:
             print(f"LeftPanel: не удалось загрузить типы документов — {e}")
             return
 
-        # Первый проход — «Все типы» уже добавлены, теперь реальные типы
-        for doc_type in types:
-            type_id = doc_type.get("id")
-            name = doc_type.get("name")
-            if not name:
-                continue
+        total = 0
+        for item in combinations:
+            group_name = self.DIRECTION_GROUP.get(item.get("direction"))
+            if group_name is None:
+                continue  # неизвестное направление — пропускаем
 
-            # В каждой группе — свой пункт «Все типы» (уже добавлен).
-            # Все реальные типы кладём в обе группы, чтобы пользователь
-            # мог фильтровать по типу в любом разделе.
-            self.add_direction(
-                self.GROUP_EXTERNAL,
-                name,
-                {"type_id": type_id, "group": self.GROUP_EXTERNAL},
-            )
-            self.add_direction(
-                self.GROUP_INTERNAL,
-                name,
-                {"type_id": type_id, "group": self.GROUP_INTERNAL},
-            )
+            for t in item.get("allowed_types") or []:
+                type_id = t.get("type_id")
+                name = t.get("type_name")
+                if type_id is None or not name:
+                    continue
+                self.add_direction(
+                    group_name,
+                    name,
+                    {"type_id": type_id, "group": group_name},
+                )
+                total += 1
 
-        print(f"LeftPanel: загружено {len(types)} типов документов в 2 группы")
+        print(f"LeftPanel: загружено {total} типов документов по направлениям")
 
     def load_test_data(self):
         """Загружает тестовые данные из DocumentDataConfig"""

@@ -118,6 +118,23 @@ class DocTypeService:
             logger.exception(f"❌ Ошибка удаления типа {type_id}: {e}")
             return False
 
+    def get_allowed_combinations(self) -> list[dict[str, Any]]:
+        """
+        Направления и доступные для них типы документов.
+        GET /doc-types/allowed-combinations
+
+        Формат элемента:
+        {"direction": "internal", "code": 0, "label": "...",
+         "allowed_types": [{"type_id": 1, "type_name": "..."}]}
+        """
+        try:
+            response = self.http.get(f"{self.base_path}/allowed-combinations")
+            if isinstance(response, list):
+                return response
+            return []
+        except Exception as e:
+            logger.exception(f"❌ Ошибка получения комбинаций направлений и типов: {e}")
+            return []
 
 # Синглтон
 _doc_type_service_instance: DocTypeService | None = None
