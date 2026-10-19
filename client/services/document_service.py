@@ -181,15 +181,26 @@ class DocumentService:
                 return v
 
         # ── Получатели ──
-        # UI отдаёт плоский список ID. Разделяем по типу через справочники,
-        # которые прокидывает диалог: data["_orgs"], data["_depts"], data["_emps"].
+        # Диалог отдаёт пары (type, id): 1 — организация, 2 — отдел, 3 — сотрудник.
+        # Для обратной совместимости принимаются и «голые» id — тогда тип
+        # определяется по справочникам data["_orgs"], data["_depts"], data["_emps"]
+        # (при совпадении id возможна путаница — поэтому предпочтительны пары).
         orgs = {o["id"] for o in (data.get("_orgs") or []) if "id" in o}
         depts = {d["id"] for d in (data.get("_depts") or []) if "id" in d}
         emps = {e["id"] for e in (data.get("_emps") or []) if "id" in e}
 
+        def _is_pair(x) -> bool:
+            return isinstance(x, (list, tuple)) and len(x) == 2
+
         receivers_payload: list[dict[str, Any]] = []
-        for node_id in data.get("receiver_ids") or []:
-            if node_id in depts:
+        for item in data.get("receiver_ids") or []:
+            if _is_pair(item):
+                node_type, node_id = int(item[0]), int(item[1])
+            else:
+                node_id = item
+                node_type = 2 if node_id in depts else 1 if node_id in orgs else 3 if node_id in emps else 0
+
+            if node_type == 2:
                 receivers_payload.append(
                     {
                         "target_department_id": node_id,
@@ -197,7 +208,7 @@ class DocumentService:
                         "target_official_text": None,
                     }
                 )
-            elif node_id in orgs:
+            elif node_type == 1:
                 receivers_payload.append(
                     {
                         "target_department_id": None,
@@ -205,27 +216,33 @@ class DocumentService:
                         "target_official_text": None,
                     }
                 )
-            elif node_id in emps:
+            elif node_type == 3:
                 # В `document_receivers` нет employee_id — по контракту
                 # сотрудник как получатель не выражается. Скипаем.
                 print(f"[DocumentService] ⚠️ сотрудник-получатель id={node_id} пропущен")
             else:
-                print(f"[DocumentService] ⚠️ неизвестный получатель id={node_id}")
+                print(f"[DocumentService] ⚠️ неизвестный получатель {item!r}")
 
         # ── Исполнители ──
-        # В employee_document.role исполнителем может быть только сотрудник,
-        # поэтому если в executor_ids случайно попал id организации/отдела
-        # (диалог выбора общий для орг/отделов/сотрудников) — отсекаем его,
-        # а не отправляем на сервер как есть.
-        raw_executors = list(data.get("executor_ids") or [])
-        if emps:
-            executors_payload = [eid for eid in raw_executors if eid in emps]
-            skipped = [eid for eid in raw_executors if eid not in emps]
-            if skipped:
-                print(f"[DocumentService] ⚠️ исполнители пропущены (не сотрудники): {skipped}")
-        else:
-            # Справочник сотрудников не передан — доверяем списку как есть.
-            executors_payload = raw_executors
+        # В employee_document.role исполнителем может быть только сотрудник.
+        # Пары (type, id): берём только type == 3, остальное отсекаем.
+        # «Голые» id: фильтруем по справочнику сотрудников (если он передан).
+        executors_payload: list[int] = []
+        skipped: list[Any] = []
+        for item in data.get("executor_ids") or []:
+            if _is_pair(item):
+                node_type, node_id = int(item[0]), int(item[1])
+                if node_type in (0, 3):
+                    executors_payload.append(node_id)
+                else:
+                    skipped.append(item)
+            elif not emps or item in emps:
+                executors_payload.append(item)
+            else:
+                skipped.append(item)
+        if skipped:
+            print(f"[DocumentService] ⚠️ исполнители пропущены (не сотрудники): {skipped}")
+        executors_payload = list(dict.fromkeys(executors_payload))
 
         # ── Теги ──
         tags_raw = data.get("tags") or []

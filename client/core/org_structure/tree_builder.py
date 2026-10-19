@@ -1,116 +1,186 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QTreeWidgetItem
 
+from .hierarchy_builder import HierarchyBuilder
 from .selection_manager import SelectionManager
-from .tree_filter import TreeFilter
 
 
 class TreeBuilder:
-    """Построитель дерева для отображения"""
+    """
+    Построитель дерева для пикера.
 
+    - build_org_items(): верхний уровень (все организации); у незагруженной
+      организации есть потомок-заглушка «Загрузка…», чтобы появилась стрелка раскрытия;
+    - fill_org_item(): заменяет заглушку содержимым организации;
+    - build_search_items(): отфильтрованное дерево для результатов поиска.
+    """
+
+    NODE_TYPE_PLACEHOLDER = 0
     NODE_TYPE_ORGANIZATION = 1
     NODE_TYPE_DEPARTMENT = 2
     NODE_TYPE_EMPLOYEE = 3
 
-    def __init__(self, hierarchy: dict[int, dict], selection_manager: SelectionManager):
-        self.hierarchy = hierarchy
+    def __init__(
+        self,
+        builder: HierarchyBuilder,
+        selection_manager: SelectionManager,
+        allow_org_select: bool = True,
+    ):
+        self.builder = builder
         self.selection_manager = selection_manager
+        self.allow_org_select = allow_org_select
 
-    def build_tree(self, filter_text: str = "") -> list[QTreeWidgetItem]:
-        """Строит дерево"""
+    # ───────────────────────── ленивое дерево ─────────────────────────
+
+    def build_org_items(self) -> list[QTreeWidgetItem]:
         items = []
-        filter_lower = filter_text.lower().strip()
+        for org_id, org in self.builder.organizations.items():
+            item = self._create_organization_item(org_id, org)
+            if self.builder.is_loaded(org_id):
+                self._fill(item, org_id)
+            else:
+                self._add_placeholder(item)
+            items.append(item)
+        return items
 
-        for org_id, org_struct in self.hierarchy.items():
-            org = org_struct["organization"]
+    def fill_org_item(self, org_item: QTreeWidgetItem, org_id: int):
+        """Заменяет содержимое организации (заглушку) загруженными данными."""
+        org_item.takeChildren()
+        self._fill(org_item, org_id)
 
-            if filter_lower and filter_lower not in org["name"].lower():
-                if not TreeFilter.has_match_in_children(org_struct, filter_lower):
-                    continue
+    def set_placeholder_text(self, org_item: QTreeWidgetItem, text: str):
+        if org_item.childCount() == 1:
+            data = org_item.child(0).data(0, Qt.ItemDataRole.UserRole) or {}
+            if data.get("type") == self.NODE_TYPE_PLACEHOLDER:
+                org_item.child(0).setText(0, text)
+
+    def _fill(self, org_item: QTreeWidgetItem, org_id: int):
+        struct = self.builder.build_org(org_id)
+        self._add_departments(org_item, struct["departments"])
+        if struct["employees"]:
+            self._add_employee_group(org_item, struct["employees"])
+
+    def _add_placeholder(self, parent: QTreeWidgetItem):
+        item = QTreeWidgetItem(parent)
+        item.setText(0, "Загрузка…")
+        item.setData(0, Qt.ItemDataRole.UserRole, {"type": self.NODE_TYPE_PLACEHOLDER, "id": -1, "name": ""})
+        item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+
+    # ───────────────────────── поиск ─────────────────────────
+
+    def build_search_items(self, query: str) -> list[QTreeWidgetItem]:
+        """
+        Результаты поиска (данные всех организаций уже должны быть загружены):
+        - совпал сотрудник → организация → цепочка отделов → только он;
+        - совпал отдел → организация → цепочка отделов → найденный отдел
+          со всем поддеревом и всеми сотрудниками;
+        - совпала организация → организация целиком.
+        """
+        q = query.lower().strip()
+        items = []
+        for org_id, org in self.builder.organizations.items():
+            struct = self.builder.build_org(org_id)
+            org_match = q in (org.get("name") or "").lower()
 
             org_item = self._create_organization_item(org_id, org)
-            self._add_departments(org_item, org_struct["departments"], filter_lower)
-            self._add_employees(org_item, org_struct["employees"], filter_lower)
+            self._add_departments_filtered(org_item, struct["departments"], q, org_match)
+            emps = [e for e in struct["employees"] if org_match or q in (e.get("name") or "").lower()]
+            if emps:
+                self._add_employee_group(org_item, emps)
 
-            if filter_lower and TreeFilter.has_match_in_node(org_item, filter_lower):
+            if org_match or org_item.childCount():
                 org_item.setExpanded(True)
-
-            items.append(org_item)
-
+                items.append(org_item)
         return items
+
+    def _add_departments_filtered(self, parent: QTreeWidgetItem, dept_structs: list[dict], q: str, force: bool):
+        for ds in dept_structs:
+            dept = ds["department"]
+            label = f"{dept.get('number') or ''} {dept.get('name') or ''}".lower()
+            dept_match = force or q in label
+
+            item = self._create_department_item(dept)
+            self._add_departments_filtered(item, ds["children"], q, dept_match)
+            emps = [e for e in ds["employees"] if dept_match or q in (e.get("name") or "").lower()]
+            if emps:
+                self._add_employee_group(item, emps)
+
+            if dept_match or item.childCount():
+                parent.addChild(item)
+                item.setExpanded(True)
+
+    # ───────────────────────── элементы ─────────────────────────
+
+    def _setup_checkable(self, item: QTreeWidgetItem, node_type: int, node_id: int, checkable: bool = True):
+        if not checkable:
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+            return
+        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+        selected = self.selection_manager.is_selected(node_id, node_type)
+        item.setCheckState(0, Qt.CheckState.Checked if selected else Qt.CheckState.Unchecked)
 
     def _create_organization_item(self, org_id: int, org: dict) -> QTreeWidgetItem:
         item = QTreeWidgetItem()
-        item.setText(0, org["name"])
+        item.setText(0, org.get("name", ""))
         item.setData(
             0,
             Qt.ItemDataRole.UserRole,
-            {"type": self.NODE_TYPE_ORGANIZATION, "id": org_id, "name": org["name"]},
+            {"type": self.NODE_TYPE_ORGANIZATION, "id": org_id, "name": org.get("name", "")},
         )
-        self._setup_checkable(item)
-        if self.selection_manager.is_selected(org_id):
-            item.setCheckState(0, Qt.CheckState.Checked)
+        self._setup_checkable(item, self.NODE_TYPE_ORGANIZATION, org_id, checkable=self.allow_org_select)
         return item
 
     def _create_department_item(self, dept: dict) -> QTreeWidgetItem:
-        dept_name = dept["name"]
-        if dept.get("number"):
-            dept_name = f"{dept['number']}. {dept_name}"
+        dept_name = dept.get("name", "")
+        label = f"{dept['number']}. {dept_name}" if dept.get("number") else dept_name
 
         item = QTreeWidgetItem()
-        item.setText(0, dept_name)
+        item.setText(0, label)
         item.setData(
             0,
             Qt.ItemDataRole.UserRole,
-            {"type": self.NODE_TYPE_DEPARTMENT, "id": dept["id"], "name": dept["name"]},
+            {"type": self.NODE_TYPE_DEPARTMENT, "id": dept["id"], "name": dept_name},
         )
-        self._setup_checkable(item)
-        if self.selection_manager.is_selected(dept["id"]):
-            item.setCheckState(0, Qt.CheckState.Checked)
+        self._setup_checkable(item, self.NODE_TYPE_DEPARTMENT, dept["id"])
         return item
+
+    @staticmethod
+    def _employee_label(emp: dict) -> str:
+        last = emp.get("last_name") or ""
+        first = emp.get("first_name") or ""
+        patr = emp.get("patronymic") or ""
+        if not (last or first):
+            return emp.get("name") or f"ID: {emp.get('id')}"
+        label = last
+        if first:
+            label += f" {first[0]}."
+        if patr:
+            label += f" {patr[0]}."
+        if emp.get("position"):
+            label += f" ({emp['position']})"
+        return label.strip()
 
     def _create_employee_item(self, emp: dict) -> QTreeWidgetItem:
-        emp_name = f"{emp['last_name']} {emp['first_name'][0]}. {emp['patronymic'][0] if emp.get('patronymic') else ''}"
-        if emp.get("position"):
-            emp_name += f" ({emp['position']})"
-
         item = QTreeWidgetItem()
-        item.setText(0, emp_name)
+        item.setText(0, self._employee_label(emp))
         item.setData(
             0,
             Qt.ItemDataRole.UserRole,
-            {"type": self.NODE_TYPE_EMPLOYEE, "id": emp["id"], "name": emp["name"]},
+            {"type": self.NODE_TYPE_EMPLOYEE, "id": emp["id"], "name": emp.get("name", "")},
         )
-        self._setup_checkable(item)
-        if self.selection_manager.is_selected(emp["id"]):
-            item.setCheckState(0, Qt.CheckState.Checked)
+        self._setup_checkable(item, self.NODE_TYPE_EMPLOYEE, emp["id"])
         return item
 
-    def _setup_checkable(self, item: QTreeWidgetItem):
-        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-        item.setCheckState(0, Qt.CheckState.Unchecked)
-
-    def _add_departments(self, parent: QTreeWidgetItem, departments: list[dict], filter_text: str):
-        for dept_struct in departments:
-            dept = dept_struct["department"]
-
-            if filter_text and filter_text not in dept["name"].lower():
-                if not TreeFilter.has_match_in_children(dept_struct, filter_text):
-                    continue
-
-            dept_item = self._create_department_item(dept)
+    def _add_departments(self, parent: QTreeWidgetItem, departments: list[dict]):
+        for ds in departments:
+            dept_item = self._create_department_item(ds["department"])
             parent.addChild(dept_item)
+            if ds["children"]:
+                self._add_departments(dept_item, ds["children"])
+            if ds["employees"]:
+                self._add_employee_group(dept_item, ds["employees"])
 
-            if dept_struct["children"]:
-                self._add_departments(dept_item, dept_struct["children"], filter_text)
-
-            if dept_struct["employees"]:
-                self._add_employee_group(dept_item, dept_struct["employees"], filter_text)
-
-            if filter_text and TreeFilter.has_match_in_node(dept_item, filter_text):
-                dept_item.setExpanded(True)
-
-    def _add_employee_group(self, parent: QTreeWidgetItem, employees: list[dict], filter_text: str):
+    def _add_employee_group(self, parent: QTreeWidgetItem, employees: list[dict]):
         group_item = QTreeWidgetItem(parent)
         group_item.setText(0, "Сотрудники")
         group_item.setData(
@@ -119,13 +189,5 @@ class TreeBuilder:
             {"type": self.NODE_TYPE_DEPARTMENT, "id": -1, "name": "Сотрудники"},
         )
         group_item.setFlags(group_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
-
         for emp in employees:
-            if filter_text and filter_text not in emp["name"].lower():
-                continue
-            emp_item = self._create_employee_item(emp)
-            group_item.addChild(emp_item)
-
-    def _add_employees(self, parent: QTreeWidgetItem, employees: list[dict], filter_text: str):
-        if employees:
-            self._add_employee_group(parent, employees, filter_text)
+            group_item.addChild(self._create_employee_item(emp))

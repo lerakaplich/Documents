@@ -5,7 +5,7 @@ class ClientConfig:
     """Конфигурация клиента"""
 
     # URL сервера
-    SERVER_HOST = os.getenv("SERVER_HOST", "localhost")
+    SERVER_HOST = os.getenv("SERVER_HOST", "10.12.124.24")
     SERVER_PORT = os.getenv("SERVER_PORT", "8000")
     API_VERSION = os.getenv("API_VERSION", "v1")
 
