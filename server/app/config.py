@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Загружаем переменные из ..env
@@ -28,3 +30,10 @@ MSG_TEMPLATE_NEW_REVISION = (
 MSG_TEMPLATE_NEW_DOCUMENT = (
     "📥 Вам направлен новый документ №{reg_number} «{title}» на рассмотрение."
 )
+
+# Путь к папке с обновлениями
+UPDATES_DIR = Path("storage/updates")
+UPDATES_DIR.mkdir(parents=True, exist_ok=True)
+
+VERSION_FILE = UPDATES_DIR / "version.txt"
+UPDATE_FILENAME = "app_update.zip"
