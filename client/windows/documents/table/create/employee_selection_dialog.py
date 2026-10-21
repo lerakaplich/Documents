@@ -2,18 +2,23 @@ import os
 from typing import Any
 
 from PyQt6.QtCore import QObject, QRunnable, Qt, QThreadPool, pyqtSignal
-from PyQt6.QtWidgets import QDialog, QLayout, QPushButton, QSizePolicy, QTreeWidgetItem
+from PyQt6.QtWidgets import QDialog, QLayout, QMessageBox, QPushButton, QSizePolicy, QTreeWidgetItem
 
 from client.core.org_structure.employee_selection_data_loader import (
     EmployeeSelectionDataLoader,
 )
 from client.core.org_structure.hierarchy_builder import HierarchyBuilder
+from client.core.org_structure.search_hits import (
+    DEPT,
+    EMP,
+    MIN_SEARCH_LEN,
+    ORG,
+    parse_search_hits,
+)
 from client.core.org_structure.selection_manager import SelectionManager
 from client.core.org_structure.tree_builder import TreeBuilder
 from client.core.themes import apply_theme_to_widget
 from client.windows.documents.table.create.employee_selection import EmployeeSelection
-
-ORG, DEPT, EMP = 1, 2, 3
 
 MODE_RECEIVERS = "receivers"  # организации / отделы / сотрудники, организация — «целиком»
 MODE_EMPLOYEES = "employees"  # отправитель / исполнители: только сотрудники
@@ -52,14 +57,17 @@ class EmployeeSelectionDialog(QDialog):
       (или при установке галочки на организации) в фоне;
     - уже выбранные узлы (preselected_ids) определяют, какие организации
       нужно сразу подгрузить и раскрыть;
-    - поиск — по кнопке «Поиск» (или Enter).
+    - поиск — по кнопке «Поиск» (или Enter): серверный GET /org/structure/search,
+      затем подгружаются только организации, в которых что-то найдено;
+    - в результатах поиска галочка на организации/отделе, показанных лишь как путь
+      к найденному (МАЗ → НТЦ → Телематика → Иванов), выбирает только найденных.
 
     selection_confirmed отдаёт список пар [type, id]: 1 — организация,
     2 — отдел, 3 — сотрудник.
     В режиме receivers результат «схлопывается»: у выбранной организации/отдела
     потомки не перечисляются.
 
-    Если http_client нет, работает по переданным спискам (как раньше).
+    Если http_client нет, работает по переданным спискам и локальному поиску (как раньше).
     """
 
     selection_confirmed = pyqtSignal(list)
@@ -75,14 +83,20 @@ class EmployeeSelectionDialog(QDialog):
         instruction: str = "Выберите организации, отделы или сотрудников:",
         http_client=None,
         mode: str = MODE_RECEIVERS,
+        allow_org_select: bool | None = None,
     ):
         super().__init__(parent)
 
         self._updating = False
         self._closing = False
         self._search_mode = False
+        self._path_mode = False  # серверный поиск: работает логика «узлов-путей»
+        self._search_matches: set[tuple[int, int]] = set()  # реально найденные узлы (type, id)
         self._last_query = ""
         self.mode = mode
+        # можно ли отмечать организацию: по умолчанию — только в режиме receivers;
+        # для режима employees (отправитель/исполнители) включается явно allow_org_select=True
+        self.allow_org = (mode == MODE_RECEIVERS) if allow_org_select is None else allow_org_select
         self.http_client = http_client or self._resolve_http_client()
         self._lazy = self.http_client is not None
 
@@ -154,7 +168,7 @@ class EmployeeSelectionDialog(QDialog):
         self.tree_builder = TreeBuilder(
             self.builder,
             self.selection_manager,
-            allow_org_select=(self.mode == MODE_RECEIVERS),
+            allow_org_select=self.allow_org,
         )
 
         # выбранные ранее: пары (type, id); пока узел не загружен — лежат в _pending
@@ -225,18 +239,19 @@ class EmployeeSelectionDialog(QDialog):
             self._loading_orgs.discard(org_id)
             self.builder.add_org_data(org_id, result["departments"], result["employees"])
             self._resolve_pending()
-            if not self._search_mode:
-                self._fill_org(org_id)
+            self._fill_org(org_id)
             self._update_selection_info()
 
         elif kind == "search":
             if key[1] != self._last_query:
                 return  # устаревший запрос
-            for org_id, data in result.items():
+            hits, orgs_data = result
+            for org_id, data in orgs_data.items():
                 self.builder.add_org_data(org_id, data["departments"], data["employees"])
                 self._loading_orgs.discard(org_id)
             self._resolve_pending()
-            self._show_search_results(key[1])
+            self._show_search_results(hits)
+            self._update_selection_info()
 
     def _on_task_failed(self, key, message):
         self._tasks.pop(key, None)
@@ -249,8 +264,9 @@ class EmployeeSelectionDialog(QDialog):
             item = self._org_items.get(org_id)
             if item is not None:
                 self.tree_builder.set_placeholder_text(item, "Не удалось загрузить — сверните и раскройте снова")
-        elif key[0] == "search":
+        elif key[0] == "search" and key[1] == self._last_query:
             self._set_search_busy(False)
+            QMessageBox.warning(self, "Поиск", f"Не удалось выполнить поиск:\n{message}")
 
     # ───────────────────────── UI ─────────────────────────
 
@@ -358,20 +374,29 @@ class EmployeeSelectionDialog(QDialog):
 
     # ───────────────────────── дерево ─────────────────────────
 
+    def _register_org_items(self, items: list[QTreeWidgetItem]):
+        self._org_items.clear()
+        for item in items:
+            data = item.data(0, Qt.ItemDataRole.UserRole) or {}
+            if data.get("type") == ORG:
+                self._org_items[data["id"]] = item
+
     def _populate_tree(self):
         """Ленивое дерево: все организации, содержимое — у загруженных."""
         if not hasattr(self, "treeWidget"):
             return
         self._search_mode = False
+        self._path_mode = False
+        self._search_matches = set()
         self.treeWidget.blockSignals(True)
         self._updating = True
         try:
             self.treeWidget.clear()
-            self._org_items.clear()
-            for item in self.tree_builder.build_org_items():
+            items = self.tree_builder.build_org_items()
+            self._register_org_items(items)
+            for item in items:
                 self.treeWidget.addTopLevelItem(item)
                 org_id = item.data(0, Qt.ItemDataRole.UserRole)["id"]
-                self._org_items[org_id] = item
                 if self.builder.is_loaded(org_id):
                     self._after_fill(item, org_id)
         finally:
@@ -379,6 +404,8 @@ class EmployeeSelectionDialog(QDialog):
             self.treeWidget.blockSignals(False)
 
     def _fill_org(self, org_id: int):
+        if self._search_mode and (ORG, org_id) not in self._search_matches:
+            return  # в результатах поиска показываем только найденное, а не всю организацию
         item = self._org_items.get(org_id)
         if item is None:
             return
@@ -417,16 +444,16 @@ class EmployeeSelectionDialog(QDialog):
         data = item.data(0, Qt.ItemDataRole.UserRole) or {}
         node_type, node_id = data.get("type"), data.get("id")
         if node_type in (ORG, DEPT) and node_id is not None and node_id > 0:
-            if self.selection_manager.is_selected(node_id, node_type) and self.mode == MODE_RECEIVERS:
+            if self.selection_manager.is_selected(node_id, node_type) and (self.mode == MODE_RECEIVERS or self.allow_org):
                 self._select_descendants(node_type, node_id, True)
                 return
         for i in range(item.childCount()):
             self._cascade_selected(item.child(i))
 
     def _on_item_expanded(self, item: QTreeWidgetItem):
-        if self._search_mode:
-            return
         data = item.data(0, Qt.ItemDataRole.UserRole) or {}
+        if self._search_mode and (data.get("type"), data.get("id")) not in self._search_matches:
+            return
         if data.get("type") == ORG and not self.builder.is_loaded(data["id"]):
             self.tree_builder.set_placeholder_text(item, "Загрузка…")
             self._start_load(data["id"])
@@ -440,8 +467,30 @@ class EmployeeSelectionDialog(QDialog):
         for e in emps:
             self.selection_manager.toggle(e, checked, EMP)
 
+    def _is_path_item(self, item: QTreeWidgetItem) -> bool:
+        """
+        Узел-«путь» в результатах серверного поиска: организация/отдел, которые сами НЕ найдены
+        и не лежат внутри найденного, а лишь показаны как предки (МАЗ → НТЦ → Телематика → Иванов).
+        Галочка на таком узле выбирает только найденных под ним, но не всю организацию.
+        """
+        if not self._path_mode:
+            return False
+        data = item.data(0, Qt.ItemDataRole.UserRole) or {}
+        if data.get("type") not in (ORG, DEPT) or (data.get("id") or -1) < 0:
+            return False
+        node = item
+        while node is not None:
+            d = node.data(0, Qt.ItemDataRole.UserRole) or {}
+            if (d.get("type"), d.get("id")) in self._search_matches:
+                return False
+            node = node.parent()
+        return True
+
     def _sync_item_states(self, item: QTreeWidgetItem):
         """Выставляет галочки в поддереве по состоянию менеджера выбора."""
+        for i in range(item.childCount()):
+            self._sync_item_states(item.child(i))
+
         data = item.data(0, Qt.ItemDataRole.UserRole) or {}
         node_type, node_id = data.get("type"), data.get("id")
         if (
@@ -450,15 +499,33 @@ class EmployeeSelectionDialog(QDialog):
             and node_id > 0
             and item.flags() & Qt.ItemFlag.ItemIsUserCheckable
         ):
-            state = (
-                Qt.CheckState.Checked
-                if self.selection_manager.is_selected(node_id, node_type)
-                else Qt.CheckState.Unchecked
-            )
+            if self._is_path_item(item):
+                # предок в поиске: отмечен, если отмечены все найденные под ним
+                kids = self._checkable_children(item)
+                checked = bool(kids) and all(k.checkState(0) == Qt.CheckState.Checked for k in kids)
+            else:
+                checked = self.selection_manager.is_selected(node_id, node_type)
+            state = Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
             if item.checkState(0) != state:
                 item.setCheckState(0, state)
+
+    def _apply_to_visible(self, item: QTreeWidgetItem, checked: bool):
+        """Режим поиска: переключает только узлы, видимые под item (то есть найденные)."""
         for i in range(item.childCount()):
-            self._sync_item_states(item.child(i))
+            child = item.child(i)
+            if not (child.flags() & Qt.ItemFlag.ItemIsUserCheckable):
+                self._apply_to_visible(child, checked)  # группа «Сотрудники»
+                continue
+            data = child.data(0, Qt.ItemDataRole.UserRole) or {}
+            cid, ctype = data.get("id"), data.get("type")
+            if cid is None or cid < 0 or ctype not in (ORG, DEPT, EMP):
+                continue
+            if self._is_path_item(child):
+                self._apply_to_visible(child, checked)
+            else:
+                self.selection_manager.toggle(cid, checked, ctype)
+                if ctype == DEPT or (ctype == ORG and self.builder.is_loaded(cid)):
+                    self._select_descendants(ctype, cid, checked)
 
     def _on_tree_item_changed(self, item, column):
         if self._updating:
@@ -473,6 +540,18 @@ class EmployeeSelectionDialog(QDialog):
             return
 
         is_checked = item.checkState(column) == Qt.CheckState.Checked
+
+        # Поиск: галочка на МАЗ/НТЦ/Телематике выбирает только найденных (Иванова), не всю организацию
+        if self._is_path_item(item):
+            self._updating = True
+            try:
+                self._apply_to_visible(item, is_checked)
+                self._sync_item_states(item)
+                self._update_parents(item)
+                self._update_selection_info()
+            finally:
+                self._updating = False
+            return
 
         self._updating = True
         try:
@@ -520,7 +599,9 @@ class EmployeeSelectionDialog(QDialog):
                 if kids and data.get("id", -1) > 0:
                     all_checked = all(k.checkState(0) == Qt.CheckState.Checked for k in kids)
                     parent.setCheckState(0, Qt.CheckState.Checked if all_checked else Qt.CheckState.Unchecked)
-                    self.selection_manager.toggle(data["id"], all_checked, data["type"])
+                    # предков-«путь» в поиске в менеджер не пишем — иначе выберется вся организация
+                    if not self._is_path_item(parent):
+                        self.selection_manager.toggle(data["id"], all_checked, data["type"])
             parent = parent.parent()
 
     # ───────────────────────── поиск ─────────────────────────
@@ -546,21 +627,74 @@ class EmployeeSelectionDialog(QDialog):
                 self._populate_tree()
             return
 
-        self._last_query = query
+        # без сервера — локальный поиск по переданным спискам
         if not self._lazy:
-            self._show_search_results(query)
+            self._last_query = query
+            self._show_local_search_results(query)
             return
 
-        # грузим организации, которых ещё нет (остальные берутся из кэша загрузчика)
-        self._set_search_busy(True)
-        loader = self.loader
-        org_ids = list(self.builder.organizations)
-        self._tasks.pop(("search", query), None)
-        self._start_task(("search", query), lambda: loader.load_all_orgs_data(org_ids))
+        if len(query) < MIN_SEARCH_LEN:
+            QMessageBox.information(self, "Поиск", f"Введите минимум {MIN_SEARCH_LEN} символа для поиска.")
+            return
 
-    def _show_search_results(self, query: str):
+        self._last_query = query
+        self._set_search_busy(True)
+
+        from client.services.org_service import get_org_service
+
+        service = get_org_service(self.http_client)
+        loader = self.loader
+        organizations = set(self.builder.organizations)
+
+        def work():
+            print(f"[EmployeeSelectionDialog] Поиск: GET /org/structure/search?q={query!r}")
+            raw = service.search_structure(query)
+            hits = parse_search_hits(raw)
+            print(f"[EmployeeSelectionDialog] Поиск: найдено {len(hits)}")
+
+            # Организации, где найдены отделы/сотрудники: грузим только их (и только ещё не загруженные)
+            wanted_orgs = {org for t, _id, org in hits if t != ORG and org is not None}
+            need = sorted(o for o in wanted_orgs if o in organizations and not self.builder.is_loaded(o))
+            orgs_data = loader.load_all_orgs_data(need) if need else {}
+            return hits, orgs_data
+
+        self._tasks.pop(("search", query), None)
+        self._start_task(("search", query), work)
+
+    def _show_search_results(self, hits: list[tuple[int, int, int | None]]):
+        """Результаты серверного поиска: только найденное и путь к нему."""
         self._set_search_busy(False)
         self._search_mode = True
+        self._path_mode = True
+        matches = {(t, i) for t, i, _org in hits}
+        self._search_matches = matches
+
+        missing = [(t, i) for t, i in sorted(matches) if t != ORG and not self.selection_manager.is_known(t, i)]
+        if missing:
+            print(f"[EmployeeSelectionDialog] Поиск: найдено, но нет в загруженных данных: {missing[:20]}")
+
+        self.treeWidget.blockSignals(True)
+        self._updating = True
+        try:
+            self.treeWidget.clear()
+            items = self.tree_builder.build_match_items(matches)
+            self._register_org_items(items)
+            if not items:
+                empty = QTreeWidgetItem(["Ничего не найдено"])
+                empty.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                self.treeWidget.addTopLevelItem(empty)
+            for item in items:
+                self.treeWidget.addTopLevelItem(item)
+                self._sync_item_states(item)
+        finally:
+            self._updating = False
+            self.treeWidget.blockSignals(False)
+
+    def _show_local_search_results(self, query: str):
+        """Запасной вариант без http_client: поиск по уже имеющимся данным, как раньше."""
+        self._search_mode = True
+        self._path_mode = False
+        self._search_matches = set()
         self.treeWidget.blockSignals(True)
         self._updating = True
         try:
@@ -585,7 +719,16 @@ class EmployeeSelectionDialog(QDialog):
     def _result_pairs(self) -> list[tuple[int, int]]:
         selected = self._all_selected()
         if self.mode == MODE_EMPLOYEES:
-            return sorted(p for p in selected if p[0] == EMP)
+            if not self.allow_org:
+                return sorted(p for p in selected if p[0] == EMP)
+            # сотрудники и организации (организация — сама по себе, без перечисления её сотрудников);
+            # отделы в результат не попадают, их сотрудники перечисляются поштучно
+            drop_emps: set[tuple[int, int]] = set()
+            for t, i in selected:
+                if t == ORG and self.selection_manager.is_known(t, i):
+                    _depts, emps = self.builder.descendants(t, i)
+                    drop_emps |= {(EMP, e) for e in emps}
+            return sorted(p for p in selected if p[0] in (ORG, EMP) and p not in drop_emps)
 
         # receivers: у выбранной организации/отдела потомков не перечисляем
         drop: set[tuple[int, int]] = set()

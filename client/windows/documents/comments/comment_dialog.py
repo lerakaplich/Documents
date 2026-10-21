@@ -1,28 +1,112 @@
 # client/windows/documents/comments/comment_dialog.py
 """
-Диалог для просмотра и добавления комментариев к документу
+Диалог для просмотра и добавления комментариев к документу.
+
+Источник правды — сервер:
+    GET  /comments/{document_id}        → [{"id", "text", "created_at" (ISO, UTC), "author_fio"}, ...]
+    POST /comments/{document_id}/edit   (form-поле text) → {"status": "success", ...}
+POST возвращает только статус, поэтому после добавления список перечитывается с сервера
+(так в нём появляются настоящие id, время и ФИО автора).
 """
 
+import json
 import os
+import re
 from datetime import datetime
 
-from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtCore import QEvent, QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
+    QAbstractItemView,
     QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
     QListWidgetItem,
+    QMessageBox,
     QVBoxLayout,
     QWidget,
 )
 from PyQt6.uic import loadUi
 
+from client.core.state.app_state import AppState
 from client.core.themes import T, apply_theme_to_widget
+from client.services.comment_service import CommentService
 
 ROOT_DIR = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 )
+
+_FALLBACK_FORMATS = ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%d.%m.%Y %H:%M", "%Y-%m-%d")
+
+
+def parse_dt(value) -> datetime | None:
+    """
+    Любое представление времени → наивный datetime в ЛОКАЛЬНОМ часовом поясе (или None).
+    Сервер отдаёт ISO в UTC ('2026-10-19T13:34:30.634016Z') — переводим в локальное время.
+    Наивные значения считаем уже локальными.
+    """
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        text = str(value).strip()
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        try:
+            dt = datetime.fromisoformat(text)
+        except ValueError:
+            dt = None
+            for fmt in _FALLBACK_FORMATS:
+                try:
+                    dt = datetime.strptime(text, fmt)
+                    break
+                except ValueError:
+                    continue
+            if dt is None:
+                return None
+    if dt.tzinfo is not None:
+        dt = dt.astimezone().replace(tzinfo=None)
+    return dt
+
+
+def format_dt(value) -> str:
+    dt = parse_dt(value)
+    if dt is not None:
+        return dt.strftime("%d.%m.%Y %H:%M")
+    return str(value) if value else "Только что"
+
+
+def split_api_error(exc: Exception) -> tuple[int | None, str]:
+    """
+    Разбирает исключение клиента вида 'Ошибка 403: {"detail":"..."}'
+    → (403, "...") — код ответа и человекочитаемый текст без сырого JSON.
+    Если у исключения есть status_code/detail (типизированная ошибка) — берём их.
+    """
+    status = getattr(exc, "status_code", None)
+    detail = getattr(exc, "detail", None)
+    message = str(exc)
+
+    if status is None:
+        m = re.match(r"\s*Ошибка\s+(\d{3})\s*:\s*(.*)", message, re.DOTALL)
+        if m:
+            status = int(m.group(1))
+            message = m.group(2)
+
+    if detail is None:
+        try:
+            payload = json.loads(message)
+            detail = payload.get("detail") if isinstance(payload, dict) else None
+        except (ValueError, TypeError):
+            detail = None
+        # текст мог быть обрезан клиентом (response.text[:200]) — достаём detail регуляркой
+        if detail is None:
+            m = re.search(r'"detail"\s*:\s*"([^"]*)', message)
+            detail = m.group(1) if m else message
+
+    if not isinstance(detail, str):
+        detail = str(detail)
+    return status, detail.strip()
 
 
 class CommentItemWidget(QWidget):
@@ -61,14 +145,8 @@ class CommentItemWidget(QWidget):
         sep_label.setStyleSheet(f"color: {T.TEXT_TERTIARY}; background-color: transparent;")
         header_layout.addWidget(sep_label)
 
-        # Время
-        time_label = QLabel()
-        created_at = comment.get("created_at")
-        if created_at:
-            time_str = created_at.strftime("%d.%m.%Y %H:%M") if isinstance(created_at, datetime) else str(created_at)
-        else:
-            time_str = "Только что"
-        time_label.setText(time_str)
+        # Время (локальное, dd.MM.yyyy HH:mm)
+        time_label = QLabel(format_dt(comment.get("created_at")))
         time_label.setStyleSheet(f"""
             QLabel {{
                 color: {T.TEXT_TERTIARY};
@@ -83,9 +161,9 @@ class CommentItemWidget(QWidget):
 
         # Текст комментария
         text_label = QLabel()
-        text = comment.get("text", "")
-        text_label.setText(text)
+        text_label.setText(comment.get("text", ""))
         text_label.setWordWrap(True)
+        text_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         text_label.setStyleSheet(f"""
             QLabel {{
                 color: {T.TEXT_HEADING};
@@ -121,10 +199,6 @@ class CommentItemWidget(QWidget):
         """)
 
 
-from client.core.state.app_state import AppState
-from client.services.comment_service import CommentService
-
-
 class CommentDialog(QDialog):
     comment_added = pyqtSignal(dict)
 
@@ -133,6 +207,7 @@ class CommentDialog(QDialog):
         self.document_data = document_data
         self.current_user = current_user or self._get_default_user()
         self._comments_cache = []
+        self._input_locked = False
         self.http_client = http_client or AppState().http_client
         self.comment_service = CommentService(self.http_client)
 
@@ -141,8 +216,9 @@ class CommentDialog(QDialog):
         apply_theme_to_widget(self)
 
         self._setup_ui()
-        self._load_comments_from_server()  # ← вместо self._load_comments()
+        self._load_comments_from_server()
         self._connect_signals()
+        self._apply_permissions()
 
     def _get_default_user(self) -> dict:
         """Возвращает тестового пользователя"""
@@ -156,9 +232,7 @@ class CommentDialog(QDialog):
 
     def _setup_ui(self):
         """Настройка UI элементов"""
-        # Устанавливаем заголовок
         doc_number = self.document_data.get("reg_number", self.document_data.get("number", "Без номера"))
-        self.document_data.get("title", self.document_data.get("subject", "Без темы"))
 
         self.docInfoLabel.setText(f"Документ №{doc_number}")
         self.commentsListWidget.setStyleSheet(f"""
@@ -174,6 +248,11 @@ class CommentDialog(QDialog):
                 width: 100%;
             }}
         """)
+        # Комментарии разной высоты: плавная прокрутка по пикселям, без горизонтальной полосы
+        self.commentsListWidget.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.commentsListWidget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.commentsListWidget.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+
         # Настраиваем размеры
         self.setMinimumWidth(600)
         self.setMinimumHeight(500)
@@ -181,32 +260,36 @@ class CommentDialog(QDialog):
         # Устанавливаем фокус на поле ввода
         self.commentTextEdit.setFocus()
 
-    def _load_comments_from_server(self):
-        doc_id = self.document_data.get("id")
-        if not doc_id:
-            self._load_comments()
-            return
+    # ─────────────────────── загрузка ───────────────────────
 
+    def _fetch_comments(self, doc_id) -> list | None:
+        """Комментарии с сервера; None — если запрос не удался."""
         try:
-            server_comments = self.comment_service.get_comments(doc_id) or []
+            return list(self.comment_service.get_comments(doc_id) or [])
         except Exception as e:
             print(f"[CommentDialog] Ошибка загрузки комментариев: {e}")
-            server_comments = []
+            return None
 
-        # Локальные (добавленные в этой сессии) — оставляем тоже
-        local = self.document_data.get("comments", []) or []
-        server_ids = {c.get("id") for c in server_comments}
-        merged = list(server_comments) + [c for c in local if c.get("id") not in server_ids]
-
-        self.document_data["comments"] = merged
+    def _load_comments_from_server(self):
+        doc_id = self.document_data.get("id")
+        if doc_id:
+            server_comments = self._fetch_comments(doc_id)
+            if server_comments is not None:
+                # Сервер — источник правды: локальные копии не домешиваем (иначе после
+                # повторного открытия окна комментарии дублировались бы).
+                self.document_data["comments"] = server_comments
         self._load_comments()
+
+    @staticmethod
+    def _sort_key(comment: dict) -> datetime:
+        return parse_dt(comment.get("created_at")) or datetime.min
 
     def _load_comments(self):
         """Загрузка комментариев в список"""
         self.commentsListWidget.clear()
 
-        comments = self.document_data.get("comments", [])
-        self._comments_cache = comments.copy()
+        comments = self.document_data.get("comments", []) or []
+        self._comments_cache = list(comments)
 
         if not comments:
             item = QListWidgetItem("Нет комментариев")
@@ -216,54 +299,12 @@ class CommentDialog(QDialog):
             self.commentsListWidget.addItem(item)
             return
 
-        # Функция для преобразования created_at в datetime (без часового пояса)
-        def parse_created_at(comment):
-            created_at = comment.get("created_at")
-            if created_at is None:
-                return datetime.min
-
-            if isinstance(created_at, datetime):
-                # Если дата с часовым поясом - убираем его
-                if created_at.tzinfo is not None:
-                    return created_at.replace(tzinfo=None)
-                return created_at
-
-            if isinstance(created_at, str):
-                try:
-                    # Пробуем парсить строку
-                    # Сначала пробуем ISO формат с Z или +00:00
-                    if created_at.endswith("Z"):
-                        created_at = created_at[:-1] + "+00:00"
-
-                    # Парсим с возможным часовым поясом
-                    dt = datetime.fromisoformat(created_at)
-                    # Если есть часовой пояс - убираем его
-                    if dt.tzinfo is not None:
-                        dt = dt.replace(tzinfo=None)
-                    return dt
-                except (ValueError, TypeError):
-                    # Пробуем другие форматы
-                    for fmt in [
-                        "%Y-%m-%d %H:%M:%S",
-                        "%Y-%m-%d %H:%M",
-                        "%d.%m.%Y %H:%M",
-                        "%Y-%m-%d",
-                    ]:
-                        try:
-                            return datetime.strptime(created_at, fmt)
-                        except ValueError:
-                            continue
-                    return datetime.min
-
-            return datetime.min
-
-        # Сортируем комментарии по дате
-        sorted_comments = sorted(comments, key=parse_created_at, reverse=False)
+        sorted_comments = sorted(comments, key=self._sort_key)  # старые сверху, новые снизу
 
         for i, comment in enumerate(sorted_comments):
-            show_separator = i < len(sorted_comments) - 1
-            self._add_comment_to_list(comment, show_separator)
+            self._add_comment_to_list(comment, show_separator=i < len(sorted_comments) - 1)
 
+        self._refit_items()
         self.commentsListWidget.scrollToBottom()
 
     def _add_comment_to_list(self, comment: dict, show_separator: bool = True):
@@ -271,14 +312,45 @@ class CommentDialog(QDialog):
         item = QListWidgetItem()
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
 
-        # Создаем виджет для комментария
         widget = CommentItemWidget(comment, show_separator=show_separator)
-
-        # Устанавливаем высоту элемента
-        item.setSizeHint(widget.sizeHint())
+        item.setSizeHint(self._item_size(widget))
 
         self.commentsListWidget.addItem(item)
         self.commentsListWidget.setItemWidget(item, widget)
+
+    # ─────────────────────── размеры элементов ───────────────────────
+
+    def _item_size(self, widget: QWidget) -> QSize:
+        """
+        Высота элемента с учётом переноса текста: sizeHint() виджета с QLabel(wordWrap)
+        без заданной ширины считает текст в одну строку и обрезает длинные комментарии.
+        """
+        width = max(self.commentsListWidget.viewport().width(), 200)
+        layout = widget.layout()
+        if layout is not None and layout.hasHeightForWidth():
+            height = layout.heightForWidth(width)
+        else:
+            height = widget.sizeHint().height()
+        return QSize(width, max(height, widget.minimumSizeHint().height()))
+
+    def _refit_items(self):
+        """Пересчёт высоты всех комментариев под текущую ширину списка."""
+        lst = self.commentsListWidget
+        for row in range(lst.count()):
+            item = lst.item(row)
+            widget = lst.itemWidget(item)
+            if widget is not None:
+                item.setSizeHint(self._item_size(widget))
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._refit_items()  # ширина списка известна только после показа
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._refit_items()
+
+    # ─────────────────────── ввод и отправка ───────────────────────
 
     def _connect_signals(self):
         """Подключение сигналов"""
@@ -289,81 +361,81 @@ class CommentDialog(QDialog):
 
     def eventFilter(self, obj, event):
         """Обработка событий для поля ввода"""
-        from PyQt6.QtCore import QEvent
-
-        if obj == self.commentTextEdit and event.type() == QEvent.Type.KeyPress:
-            key_event = event
-            if key_event.key() == Qt.Key.Key_Return and key_event.modifiers() == Qt.KeyboardModifier.ControlModifier:
-                self._on_send_clicked()
-                return True
+        if (
+            obj is self.commentTextEdit
+            and event.type() == QEvent.Type.KeyPress
+            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+            and event.modifiers() & Qt.KeyboardModifier.ControlModifier
+        ):
+            self._on_send_clicked()
+            return True
         return super().eventFilter(obj, event)
+
+    def _apply_permissions(self):
+        """Если сервер заранее сообщил, что замечания вносить нельзя (can_comment=False) — блокируем ввод."""
+        if self.document_data.get("can_comment") is False:
+            self._lock_input("У вас нет прав на внесение замечаний к этому документу.")
+
+    def _lock_input(self, reason: str):
+        """Блокирует поле ввода и кнопку отправки; просмотр комментариев остаётся доступным."""
+        self._input_locked = True
+        self.commentTextEdit.setReadOnly(True)
+        self.commentTextEdit.clear()
+        self.commentTextEdit.setPlaceholderText(reason)
+        self.sendButton.setEnabled(False)
+        self.sendButton.setToolTip(reason)
 
     def _on_send_clicked(self):
         text = self.commentTextEdit.toPlainText().strip()
-        if not text:
+        if self._input_locked or not text or not self.sendButton.isEnabled():
             return
 
         doc_id = self.document_data.get("id")
+        if not doc_id:
+            QMessageBox.warning(self, "Комментарий", "Документ не сохранён на сервере — комментарий добавить нельзя.")
+            return
 
-        # 1. Отправляем на сервер (если возможно)
-        if doc_id:
+        known_ids = {c.get("id") for c in self.document_data.get("comments", []) or []}
+
+        self.sendButton.setEnabled(False)
+        try:
             try:
                 self.comment_service.add_comment(doc_id, text)
             except Exception as e:
-                print(f"[CommentDialog] Не удалось отправить комментарий: {e}")
+                status, detail = split_api_error(e)
+                if status == 403:
+                    # Нет прав — штатная ситуация: без traceback, права до закрытия окна не изменятся
+                    print(f"[CommentDialog] Нет прав на замечания к документу {doc_id}")
+                    self._lock_input(detail)
+                    QMessageBox.information(self, "Комментарий", detail)
+                else:
+                    print(f"[CommentDialog] Не удалось отправить комментарий: {e}")
+                    QMessageBox.warning(self, "Комментарий", f"Не удалось отправить комментарий:\n{detail}")
+                return
 
-        # 2. Локально — как раньше
-        new_comment = {
-            "id": len(self._comments_cache) + 1,
-            "author_fio": self.current_user.get("full_name", "Пользователь"),
-            "author": self.current_user.get("full_name", "Пользователь"),
-            "text": text,
-            "created_at": datetime.now(),
-            "user_id": self.current_user.get("id", 0),
-        }
+            # POST отдаёт только статус — перечитываем список и находим новый комментарий
+            fresh = self._fetch_comments(doc_id)
+        finally:
+            if not self._input_locked:
+                self.sendButton.setEnabled(True)
 
-        # Добавляем в кеш
-        self._comments_cache.append(new_comment)
+        added = [c for c in (fresh or []) if c.get("id") not in known_ids]
+        if not added:
+            # Текст из поля не стираем, чтобы его можно было отправить повторно
+            QMessageBox.warning(
+                self,
+                "Комментарий",
+                "Сервер не подтвердил добавление комментария. Проверьте соединение и попробуйте ещё раз.",
+            )
+            return
 
-        # Получаем текущее количество элементов
-        count = self.commentsListWidget.count()
-
-        # Если есть сообщение "Нет комментариев" - удаляем его
-        if count == 1:
-            item = self.commentsListWidget.item(0)
-            if item and item.text() == "Нет комментариев":
-                self.commentsListWidget.takeItem(0)
-                count = 0
-
-        # Добавляем разделитель к предыдущему последнему комментарию, если он был
-        if count > 0:
-            # Обновляем последний элемент - добавляем ему разделитель
-            last_item = self.commentsListWidget.item(count - 1)
-            if last_item:
-                old_widget = self.commentsListWidget.itemWidget(last_item)
-                if old_widget and hasattr(old_widget, "comment"):
-                    # Создаем новый виджет с разделителем
-                    new_widget = CommentItemWidget(old_widget.comment, show_separator=True)
-                    last_item.setSizeHint(new_widget.sizeHint())
-                    self.commentsListWidget.setItemWidget(last_item, new_widget)
-
-        # Добавляем новый комментарий без разделителя (он будет последним)
-        self._add_comment_to_list(new_comment, show_separator=False)
-
-        # Прокручиваем к новому комментарию
-        self.commentsListWidget.scrollToBottom()
-
-        # Очищаем поле ввода
-        self.commentTextEdit.clear()
-
-        # Эмитим сигнал
-        self.comment_added.emit(new_comment)
-
-        # Обновляем данные документа
-        if "comments" not in self.document_data:
-            self.document_data["comments"] = []
-        self.document_data["comments"].append(new_comment)
+        self.document_data["comments"] = fresh
         self.document_data["last_comment_text"] = text
+        self._load_comments()
+        self.commentTextEdit.clear()
+        self.commentTextEdit.setFocus()
+
+        self.comment_added.emit(max(added, key=self._sort_key))
 
     def get_comments(self) -> list:
         """Получить все комментарии"""

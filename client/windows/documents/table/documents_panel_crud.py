@@ -180,8 +180,9 @@ class DocumentsCrudController:
                 parent=panel,
                 mode="edit",
                 document_data=full_document,
-                # оргструктуру не передаём: названия узлов документа диалог подтягивает точечно
-                tags=self._tags(),
+                # оргструктуру и теги не передаём: названия узлов документа диалог подтягивает точечно,
+                # а справочник тегов — только если в документе пришли голые id тегов
+
                 http_client=panel.http_client,
             )
             dialog.document_updated.connect(self._on_updated)
