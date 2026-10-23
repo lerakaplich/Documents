@@ -667,10 +667,20 @@ class DocumentRepository:
     def apply_sorting(self, query, sort_by: str, sort_order: str, user_id: int):
         """
         Сортировка реестра документов:
-        Срочные документы всегда идут первыми (если приоритет не переопределен),
-        затем применяется указанное поле сортировки.
+        1. Закрепленные пользователем документы всегда идут первыми.
+        2. Срочные документы идут следующими.
+        3. Затем применяется указанное поле сортировки.
         """
-        # 1. По умолчанию срочные документы поднимаются вверх
+        # 1. Сначала подтягиваем закрепленные документы текущего пользователя на самый верх
+        pinned_exists = exists().where(
+            and_(
+                DocumentPin.document_id == Document.id,
+                DocumentPin.employee_id == user_id
+            )
+        )
+        query = query.order_by(desc(pinned_exists))
+
+        # 2. По умолчанию срочные документы поднимаются вверх (после закрепленных)
         urgent_exists = exists().where(
             and_(
                 DocumentTag.document_id == Document.id,
@@ -680,7 +690,7 @@ class DocumentRepository:
         )
         query = query.order_by(desc(urgent_exists))
 
-        # 2. Вычисляемые выражения для сложных полей
+        # 3. Вычисляемые выражения для сложных полей
 
         # Сортировка по приоритету тегов (urgent=3, important=2, normal=1, без тегов=0)
         max_tag_priority = (
@@ -715,7 +725,7 @@ class DocumentRepository:
             )
         )
 
-        # 3. Карта соответствия ключей API полям/выражениям базы данных
+        # 4. Карта соответствия ключей API полям/выражениям базы данных
         fields = {
             "sequence_number": Document.sequence_number,  # порядковый номер
             "title": Document.title,  # тема
