@@ -4,8 +4,10 @@ import sys
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import MemoryStorage, SimpleEventIsolation
 
+from server.app.services.tiff.photo_tiff_service import PhotoTiffService
 from server.bot.config import bot_settings
 from server.bot.handlers import main_router
 from server.bot.middlewares.auth import EmployeeAuthMiddleware
@@ -16,53 +18,54 @@ from server.bot.scheduler import setup_scheduler
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger("bot_main")
 
 
-
-
-async def main():
-    logger.info("Запуск инфраструктуры Telegram Bot...")
-
-    # 1. Инициализация Bot и Dispatcher
-    bot = Bot(
-        token=bot_settings.TELEGRAM_BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode="HTML")  # <--- Устанавливаем дефолт здесь!
+def build_dispatcher() -> Dispatcher:
+    dp = Dispatcher(
+        storage=MemoryStorage(),
+        # Апдейты одного пользователя обрабатываются последовательно:
+        # без этого альбом из N фото теряет файлы на гонке FSM
+        events_isolation=SimpleEventIsolation(),
+        photo_service=PhotoTiffService(),  # попадает в workflow_data -> аргумент хендлеров
     )
-    dp = Dispatcher(storage=MemoryStorage())
 
-    # 2.1. Создаем и кладем сессии БД в context data
     dp.update.outer_middleware(DbSessionMiddleware())
-
-    # 2.2. Инициализируем сервисы, используя созданные сессии БД
     dp.update.outer_middleware(ServicesMiddleware())
 
-    # 2.3. Авторизуем сотрудника
-    dp.update.outer_middleware(EmployeeAuthMiddleware())
+    auth = EmployeeAuthMiddleware()
+    dp.message.outer_middleware(auth)
+    dp.callback_query.outer_middleware(auth)
 
-    # --- 3. Подключение роутеров ---
     dp.include_router(main_router)
+    return dp
 
-    # 4. Инициализация планировщика APScheduler (утренняя статистика)
+
+async def main() -> None:
+    bot = Bot(
+        token=bot_settings.TELEGRAM_BOT_TOKEN,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
+    dp = build_dispatcher()
+
+    await bot.delete_webhook(drop_pending_updates=True)
+    logger.info("Вебхук снят (если был установлен), начинаем polling")
+
     scheduler = setup_scheduler()
     scheduler.start()
-    logger.info("Планировщик APScheduler запущен.")
+    logger.info("Бот запущен")
 
-    # 5. Запуск поллинга (прослушивания обновлений от Telegram)
     try:
-        logger.info("Бот запущен и слушает новые сообщения...")
         await dp.start_polling(bot)
-    except (KeyboardInterrupt, SystemExit):
-        logger.info("Получен сигнал остановки...")
     finally:
         scheduler.shutdown()
         await bot.session.close()
-        logger.info("Бот успешно остановлен.")
+        logger.info("Бот остановлен")
 
 
 if __name__ == "__main__":
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(main())

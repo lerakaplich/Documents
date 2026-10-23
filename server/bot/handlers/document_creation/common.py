@@ -11,7 +11,6 @@ from server.bot.states.bot_states import CreateDocumentFSM
 router = Router()
 
 
-@router.message(F.text == "❌ Отмена")
 @router.callback_query(F.data == "cancel_doc_creation")
 async def cancel_handler(event: types.Message | types.CallbackQuery, state: FSMContext):
     current_state = await state.get_state()
@@ -25,9 +24,7 @@ async def cancel_handler(event: types.Message | types.CallbackQuery, state: FSMC
         await event.answer("❌ Действие отменено.", reply_markup=get_main_menu())
 
 
-@router.message(F.text == "Новый документ")
-async def start_create_document(message: types.Message, state: FSMContext, doc_session: AsyncSession):
-    bot_repo = BotRepository(doc_session)
+async def start_create_document(message: types.Message, state: FSMContext, bot_repo: BotRepository):
     types_list = await bot_repo.get_all_types()
 
     if not types_list:

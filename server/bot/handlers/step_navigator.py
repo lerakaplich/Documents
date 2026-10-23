@@ -6,13 +6,13 @@ from server.bot.handlers.document_creation.participants import show_org_tree
 from server.bot.handlers.document_creation.tags import show_tags_menu
 from server.bot.keyboards.document_create_kb import (
     get_skip_or_cancel_keyboard,
-    get_cancel_keyboard,
+    get_cancel_inline_kb,
     get_attachments_keyboard
 )
 from server.bot.services.bot_repo import BotRepository
 from server.bot.states.bot_states import CreateDocumentFSM
 
-async def go_to_next_step(message: Message, state: FSMContext, bot_repository: BotRepository):
+async def go_to_next_step(message: Message, state: FSMContext, bot_repo: BotRepository):
     """
     Глобальный диспетчер: анализирует JSONB-конфигурацию типа документа
     и запрашивает только те поля, которые установлены в true.
@@ -34,7 +34,7 @@ async def go_to_next_step(message: Message, state: FSMContext, bot_repository: B
             "📝 **Введите тему (заголовок) документа:**\n\n"
             "_Кратко опишите суть документа._",
             parse_mode="Markdown",
-            reply_markup=get_cancel_keyboard()
+            reply_markup=get_cancel_inline_kb()
         )
         return
 
@@ -78,7 +78,7 @@ async def go_to_next_step(message: Message, state: FSMContext, bot_repository: B
         await show_org_tree(
             event=message,
             state=state,
-            bot_repo=bot_repository,
+            bot_repo=bot_repo,
             target_role="source"  # <- Было "sender"
         )
         return
@@ -89,7 +89,7 @@ async def go_to_next_step(message: Message, state: FSMContext, bot_repository: B
         await show_org_tree(
             event=message,
             state=state,
-            bot_repo=bot_repository,
+            bot_repo=bot_repo,
             target_role="receivers"  # <- Было "recipients"
         )
         return
@@ -100,7 +100,7 @@ async def go_to_next_step(message: Message, state: FSMContext, bot_repository: B
         await show_org_tree(
             event=message,
             state=state,
-            bot_repo=bot_repository,
+            bot_repo=bot_repo,
             target_role="executors"
         )
         return
@@ -111,7 +111,7 @@ async def go_to_next_step(message: Message, state: FSMContext, bot_repository: B
         await show_tags_menu(
             event=message,
             state=state,
-            bot_repo=bot_repository,
+            bot_repo=bot_repo,
             page=1
         )
         return
@@ -133,4 +133,4 @@ async def go_to_next_step(message: Message, state: FSMContext, bot_repository: B
 
     # Все требуемые поля собраны — переход к подтверждению
     await state.set_state(CreateDocumentFSM.confirm_creation)
-    await show_confirmation_summary(message, state, bot_repository)
+    await show_confirmation_summary(message, state, bot_repo)

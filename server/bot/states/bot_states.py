@@ -24,3 +24,6 @@ class CreateDocumentFSM(StatesGroup):
     # Обязательный финальный базис
     waiting_for_attachments = State()       # Загрузка файлов/вложений (attachments)
     confirm_creation = State()              # Финальное подтверждение и сборка DTO
+
+class PhotoToTiffFSM(StatesGroup):
+    collecting = State()   # Приём фото/изображений-файлов

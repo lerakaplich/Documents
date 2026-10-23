@@ -6,10 +6,10 @@ from aiogram.filters import CommandStart, Command, StateFilter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from server.app.core.security_tokens import hash_password
 from server.app.database.employee_models import Employee
 from server.bot.keyboards.menu_kb import get_main_menu
 from server.bot.services import messages as msg
-from server.bot.services.utils import hash_password
 
 router = Router()
 

@@ -27,7 +27,7 @@ def get_types_keyboard(types: list[DocumentType]) -> ReplyKeyboardMarkup:
     )
 
 
-def get_cancel_keyboard() -> InlineKeyboardMarkup:
+def get_cancel_inline_kb() -> InlineKeyboardMarkup:
     """Клавиатура с кнопкой отмены"""
     builder = InlineKeyboardBuilder()
     builder.button(text="❌ Отмена", callback_data="cancel_doc_creation")

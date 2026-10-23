@@ -7,7 +7,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 # Импортируем твои генераторы сессий (адаптируй пути, если они называются иначе)
-from server.app.database.session import get_docs_db, get_employees_db
+from server.app.database.session import get_docs_db, get_employees_db, async_session_employees, async_session_docs
 from server.bot.config import bot_settings
 from server.bot.services.tg_client import TelegramClient
 from server.bot.services.stats_service import StatsNotificationService
@@ -24,8 +24,8 @@ async def send_morning_stats_job():
 
     for attempt in range(1, max_retries + 1):
         try:
-            async with asynccontextmanager(get_employees_db)() as emp_session:
-                async with asynccontextmanager(get_docs_db)() as doc_session:
+            async with async_session_employees() as emp_session:
+                async with async_session_docs() as doc_session:
                     tg_client = TelegramClient(token=bot_settings.TELEGRAM_BOT_TOKEN)
                     service = StatsNotificationService(emp_session, doc_session, tg_client)
 

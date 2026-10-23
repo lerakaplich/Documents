@@ -11,6 +11,10 @@ from server.app.config import ACCESS_TOKEN_EXPIRE_MINUTES, JWT_SECRET_KEY, JWT_A
 
 logger = logging.getLogger("app.security")
 
+def hash_password(password: str) -> str:
+    """Хэширование пароля с солью bcrypt"""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Безопасная проверка хэша пароля."""

@@ -14,7 +14,7 @@ from server.app.services.common.notification_service import NotificationService
 from server.app.services.documents.document_service import DocumentService
 from server.app.services.documents.attachment_service import AttachmentService
 from server.app.services.common.security_service import SecurityService
-from server.app.services.common.tiff_converter import DocumentProcessor
+from server.app.services.tiff.tiff_converter import DocumentProcessor
 
 class ServicesMiddleware(BaseMiddleware):
     async def __call__(

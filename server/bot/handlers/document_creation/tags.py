@@ -45,7 +45,7 @@ async def show_tags_menu(
 
 # Переключение галочки тега
 @router.callback_query(CreateDocumentFSM.waiting_for_tags, F.data.startswith("tag_toggle:"))
-async def process_tag_toggle(callback: types.CallbackQuery, state: FSMContext, bot_repository: BotRepository):
+async def process_tag_toggle(callback: types.CallbackQuery, state: FSMContext, bot_repo: BotRepository):
     _, tag_id_str, page_str = callback.data.split(":")
     tag_id = int(tag_id_str)
     page = int(page_str)
@@ -59,27 +59,20 @@ async def process_tag_toggle(callback: types.CallbackQuery, state: FSMContext, b
         selected_tags.add(tag_id)
 
     await state.update_data(tag_ids=list(selected_tags))
-    await show_tags_menu(callback, state, bot_repository, page=page)
+    await show_tags_menu(callback, state, bot_repo, page=page)
 
 
 # Переключение страницы тегов
 @router.callback_query(CreateDocumentFSM.waiting_for_tags, F.data.startswith("tags_page:"))
-async def process_tags_page(callback: types.CallbackQuery, state: FSMContext, bot_repository: BotRepository):
+async def process_tags_page(callback: types.CallbackQuery, state: FSMContext, bot_repo: BotRepository):
     page = int(callback.data.split(":")[1])
-    await show_tags_menu(callback, state, bot_repository, page=page)
-
-
-# Клик по заглушке пагинации
-@router.callback_query(CreateDocumentFSM.waiting_for_tags, F.data == "noop")
-async def process_noop(callback: types.CallbackQuery):
-    await callback.answer()
-
+    await show_tags_menu(callback, state, bot_repo, page=page)
 
 # Подтверждение выбора тегов
 @router.callback_query(CreateDocumentFSM.waiting_for_tags, F.data == "tags_confirm")
-async def process_tags_confirm(callback: types.CallbackQuery, state: FSMContext, bot_repository: BotRepository):
+async def process_tags_confirm(callback: types.CallbackQuery, state: FSMContext, bot_repo: BotRepository):
     # Импортируем локально для избежания циклических импортов
     from server.bot.handlers.step_navigator import go_to_next_step
 
     await callback.answer()
-    await go_to_next_step(callback.message, state, bot_repository)
+    await go_to_next_step(callback.message, state, bot_repo)

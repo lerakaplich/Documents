@@ -16,6 +16,7 @@ class DocumentCreateForm(BaseModel):
     about: Optional[str] = None
     reg_number: Optional[str] = None
     sequence_number: Optional[int] = None
+    sent_date: Optional[date] = None
     deadline: Optional[date] = None
 
     # СМДО / Входящие реквизиты

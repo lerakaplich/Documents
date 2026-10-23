@@ -1,3 +1,5 @@
+import html
+import logging
 from datetime import datetime
 
 from aiogram import Router, F, types
@@ -14,6 +16,8 @@ from server.bot.keyboards.menu_kb import get_main_menu
 from server.bot.middlewares.file_upload import TelegramUploadFile
 from server.bot.services.bot_repo import BotRepository
 from server.bot.states.bot_states import CreateDocumentFSM
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -32,7 +36,6 @@ async def show_confirmation_summary(
         state: FSMContext,
         bot_repo: BotRepository
 ):
-    """Формирует итоговую сводную карточку документа."""
     await state.set_state(CreateDocumentFSM.confirm_creation)
     data = await state.get_data()
 
@@ -47,7 +50,7 @@ async def show_confirmation_summary(
         if org:
             sender_name = f"🏢 {org.name}"
 
-    # 2. Получатели (Разбор DTO структуры receivers)
+    # 2. Получатели
     recipients_names = []
     receivers = data.get("receivers", [])
     for r in receivers:
@@ -80,18 +83,29 @@ async def show_confirmation_summary(
     attachments = data.get("attachments", [])
     files_str = f"{len(attachments)} шт." if attachments else "Нет"
 
+    # ---- Экранируем всё пользовательское / пришедшее из БД ----
+    title_safe = html.escape(str(data.get("title") or "—"))
+    about_safe = html.escape(str(data.get("about") or "—"))
+    sent_date_safe = html.escape(str(data.get("sent_date") or "—"))
+    deadline_safe = html.escape(str(data.get("deadline") or "—"))
+    sender_safe = html.escape(sender_name)
+    recipients_safe = html.escape(", ".join(recipients_names) if recipients_names else "—")
+    executors_safe = html.escape(", ".join(executors_names) if executors_names else "—")
+    tags_safe = html.escape(" ".join(tag_names) if tag_names else "—")
+    files_safe = html.escape(files_str)
+
     summary_text = (
-        "📋 **ПРОВЕРЬТЕ ДАННЫЕ ДОКУМЕНТА**\n"
+        "📋 <b>ПРОВЕРЬТЕ ДАННЫЕ ДОКУМЕНТА</b>\n"
         "═════════════════════════════\n\n"
-        f"📌 **Заголовок:** {data.get('title', '—')}\n"
-        f"📄 **Касается:** {data.get('about') or '—'}\n"
-        f"📤 **Дата отправки:** {data.get('sent_date') or '—'}\n"
-        f"📅 **Дедлайн:** {data.get('deadline') or '—'}\n\n"
-        f"👤 **Отправитель:** {sender_name}\n"
-        f"📥 **Получатели:** {', '.join(recipients_names) if recipients_names else '—'}\n"
-        f"👥 **Исполнители:** {', '.join(executors_names) if executors_names else '—'}\n\n"
-        f"🏷 **Теги:** {' '.join(tag_names) if tag_names else '—'}\n"
-        f"📎 **Вложения:** {files_str}\n"
+        f"📌 <b>Заголовок:</b> {title_safe}\n"
+        f"📄 <b>Касается:</b> {about_safe}\n"
+        f"📤 <b>Дата отправки:</b> {sent_date_safe}\n"
+        f"📅 <b>Дедлайн:</b> {deadline_safe}\n\n"
+        f"👤 <b>Отправитель:</b> {sender_safe}\n"
+        f"📥 <b>Получатели:</b> {recipients_safe}\n"
+        f"👥 <b>Исполнители:</b> {executors_safe}\n\n"
+        f"🏷 <b>Теги:</b> {tags_safe}\n"
+        f"📎 <b>Вложения:</b> {files_safe}\n"
         "═════════════════════════════\n\n"
         "Всё верно? Нажмите кнопку для сохранения в СЭД."
     )
@@ -99,7 +113,7 @@ async def show_confirmation_summary(
     await message.answer(
         summary_text,
         reply_markup=get_confirmation_keyboard(),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 
@@ -107,7 +121,7 @@ async def show_confirmation_summary(
 async def process_save_document(
     callback: types.CallbackQuery,
     state: FSMContext,
-    bot_repository: BotRepository,
+    bot_repo: BotRepository,
     document_service: DocumentService,
     attachment_service: AttachmentService
 ):
@@ -115,9 +129,12 @@ async def process_save_document(
     data = await state.get_data()
 
     # 1. Получение текущего сотрудника из БД
-    employee = await bot_repository.get_employee_by_chat_id(callback.from_user.id)
+    employee = await bot_repo.get_employee_by_chat_id(callback.from_user.id)
     if not employee:
-        await callback.message.answer("❌ **Ошибка:** Ваш профиль Telegram не привязан к сотруднику СЭД.")
+        await callback.message.answer(
+            "❌ <b>Ошибка:</b> Ваш профиль Telegram не привязан к сотруднику СЭД.",
+            parse_mode="HTML"
+        )
         return
 
     rights = getattr(employee, "rights", None)
@@ -144,6 +161,8 @@ async def process_save_document(
             deadline = datetime.strptime(deadline, "%Y-%m-%d").date()
 
         # 2. Сборка DTO сохранения документа
+        # Отправитель передаётся ровно так, как его сохранил participants.py:
+        # либо source_employee_id, либо source_organization_id (одно из двух).
         payload = DocumentCreateForm(
             type_id=data["type_id"],
             direction=data["direction"],
@@ -157,9 +176,10 @@ async def process_save_document(
             parent_document_id=data.get("parent_document_id"),
             confident_flag=data.get("confident_flag", False),
             clearance_id=data.get("clearance_id"),
-            sender_id=data.get("source_employee_id"),  # Берём сохранённого сотрудника
+            source_employee_id=data.get("source_employee_id"),
+            source_organization_id=data.get("source_organization_id"),
             executors=data.get("executors", []),
-            receivers=data.get("receivers", []),        # Передаём сформированный массив receivers
+            receivers=data.get("receivers", []),
             tag_ids=data.get("tag_ids", [])
         )
 
@@ -168,7 +188,10 @@ async def process_save_document(
         # 3. Обработка файлов
         attachments = data.get("attachments", [])
         if attachments:
-            await callback.message.edit_text("⏳ **Обработка и конвертация вложений...**")
+            await callback.message.edit_text(
+                "⏳ <b>Обработка и конвертация вложений...</b>",
+                parse_mode="HTML"
+            )
 
             for att in attachments:
                 file_info = await callback.bot.get_file(att["file_id"])
@@ -189,11 +212,15 @@ async def process_save_document(
                 )
 
         # 4. Завершение
-        reg_info = f" № **{new_doc.reg_number}**" if getattr(new_doc, "reg_number", None) else ""
+        if getattr(new_doc, "reg_number", None):
+            reg_info = f" № <b>{html.escape(str(new_doc.reg_number))}</b>"
+        else:
+            reg_info = ""
+
         await callback.message.edit_text(
-            f"🎉 **Документ{reg_info} успешно зарегистрирован!**\n\n"
-            f"ID записи в СЭД: `{new_doc.id}`",
-            parse_mode="Markdown"
+            f"🎉 <b>Документ{reg_info} успешно зарегистрирован!</b>\n\n"
+            f"ID записи в СЭД: <code>{new_doc.id}</code>",
+            parse_mode="HTML"
         )
         await state.clear()
 
@@ -202,8 +229,16 @@ async def process_save_document(
             reply_markup=get_main_menu()
         )
 
-    except Exception as e:
+    except Exception:
+        # Полный стектрейс — только в лог
+        logger.exception(
+            "Не удалось сохранить документ (user_id=%s, chat_id=%s)",
+            current_user.id, callback.from_user.id
+        )
+        # Пользователю — нейтральный текст без деталей исключения
         await callback.message.answer(
-            f"❌ **Ошибка при сохранении документа:**\n`{str(e)}`",
-            parse_mode="Markdown"
+            "❌ <b>Не удалось сохранить документ.</b>\n\n"
+            "Попробуйте позже или обратитесь к администратору. "
+            "Данные формы сохранены — можно повторить попытку.",
+            parse_mode="HTML"
         )

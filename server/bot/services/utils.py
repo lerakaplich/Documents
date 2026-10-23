@@ -13,11 +13,6 @@ async def build_doc_service_for_bot(
     attachment_svc = get_attachment_service(db_docs=db_docs, security_svc=security_svc)
     return await get_doc_service(db_docs=db_docs, db_emp=db_emp, attachment_svc=attachment_svc)
 
-def hash_password(password: str) -> str:
-    """Хэширование пароля с солью bcrypt"""
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
-
 
 def get_period_for_date(target_date: date) -> tuple[date, date, str]:
     """

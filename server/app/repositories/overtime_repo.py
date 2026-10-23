@@ -354,3 +354,51 @@ class OvertimeRepository:
 
         result = await self.db.execute(stmt)
         return result.all()
+
+    async def count_by_employee_period(
+            self, employee_id: int, start_date: date, end_date: date
+    ) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(Overtime)
+            .where(
+                Overtime.employee_id == employee_id,
+                Overtime.overtime_date.between(start_date, end_date),
+            )
+        )
+        return int(await self.db.scalar(stmt) or 0)
+
+    async def get_by_employee_period(
+            self,
+            employee_id: int,
+            start_date: date,
+            end_date: date,
+            page: int = 1,
+            size: int = 5,
+    ) -> list[Overtime]:
+        stmt = (
+            select(Overtime)
+            .where(
+                Overtime.employee_id == employee_id,
+                Overtime.overtime_date.between(start_date, end_date),
+            )
+            .order_by(Overtime.overtime_date.asc(), Overtime.id.asc())
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        res = await self.db.execute(stmt)
+        return list(res.scalars().all())
+
+    async def get_hours_rows_by_employee_period(
+            self, employee_id: int, start_date: date, end_date: date
+    ):
+        """Только (start, end) для подсчёта часов в Python."""
+        stmt = (
+            select(Overtime.overtime_start, Overtime.overtime_end)
+            .where(
+                Overtime.employee_id == employee_id,
+                Overtime.overtime_date.between(start_date, end_date),
+            )
+        )
+        res = await self.db.execute(stmt)
+        return res.all()

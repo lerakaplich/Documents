@@ -1,3 +1,4 @@
+import html
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -83,18 +84,19 @@ async def show_org_tree(
     }
 
     title = role_titles.get(target_role, "Выберите участника")
-    context_str = "Корень структуры"
     if current_dept:
-        context_str = f"Отдел: **{current_dept.name}**"
+        context_str = f"Отдел: <b>{html.escape(current_dept.name)}</b>"
     elif current_org:
-        context_str = f"Организация: **{current_org.name}**"
+        context_str = f"Организация: <b>{html.escape(current_org.name)}</b>"
+    else:
+        context_str = "Корень структуры"
 
     text = f"{title}\nКонтекст: {context_str}\n\nВыберите элемент:"
 
     if isinstance(event, CallbackQuery):
-        await event.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
+        await event.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
     else:
-        await event.answer(text, parse_mode="Markdown", reply_markup=kb)
+        await event.answer(text, parse_mode="HTML", reply_markup=kb)
 
 
 # =========================================================================
@@ -221,8 +223,3 @@ async def process_org_tree_navigation(
         await callback.answer("Выбор отменен")
         await callback.message.delete()
         return
-
-
-@router.callback_query(F.data == "ignore")
-async def ignore_callback(callback: types.CallbackQuery):
-    await callback.answer("Действие недоступно", show_alert=True)

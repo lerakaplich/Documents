@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
@@ -111,6 +111,11 @@ class DocumentService:
         # 1. Оператор в СЭД (кто создает запись)
         operator_emp_id = payload.sender_id or user.id
 
+        if not payload.sent_date:
+            sent_date = date.today()
+        else:
+            sent_date = payload.sent_date
+
         # 2. Проверка прав при создании карточки от чужого имени
         if payload.sender_id and payload.sender_id != user.id:
             if not self.security.is_admin(user):
@@ -178,6 +183,7 @@ class DocumentService:
                     source_department_id=getattr(payload, "source_department_id", None),
                     source_official_text=payload.source_official_text,
                     receivers=receivers_list,
+                    sent_date=sent_date,
                 )
                 self.repo.db.add(new_doc)
                 await self.repo.db.flush()

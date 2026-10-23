@@ -53,26 +53,6 @@ class BotRepository:
 
         return tags, total_count
 
-    async def get_all_organizations(self) -> list[Organization]:
-        """Получает список всех организаций из базы кадров (emp_session)"""
-        stmt = select(Organization).order_by(Organization.name)
-        res = await self.emp_session.execute(stmt)
-        return list(res.scalars().all())
-
-    async def get_organizations_by_ids(self, org_ids: list[int]) -> list[Organization]:
-        if not org_ids:
-            return []
-        query = select(Organization).where(Organization.id.in_(org_ids))
-        result = await self.emp_session.execute(query)
-        return list(result.scalars().all())
-
-    async def get_departments_by_ids(self, dept_ids: list[int]) -> list[Department]:
-        if not dept_ids:
-            return []
-        query = select(Department).where(Department.id.in_(dept_ids))
-        result = await self.emp_session.execute(query)
-        return list(result.scalars().all())
-
     async def get_departments_by_parent(
             self,
             parent_id: Optional[int] = None,
@@ -124,66 +104,6 @@ class BotRepository:
         )
         res = await self.emp_session.execute(stmt)
         return list(res.scalars().all())
-
-    async def save_document_from_fsm(self, data: dict, sender_employee_id: int) -> Document:
-        """
-        Финальное сохранение документа из данных FSMContext
-        """
-        # 1. Создаем сам документ
-        new_doc = Document(
-            type_id=data["type_id"],
-            direction=data["direction"],
-            title=data.get("title"),
-            about=data.get("about"),
-            reg_number=data.get("reg_number"),
-            deadline=data.get("deadline"),
-            source_employee_id=sender_employee_id,
-            status="under_review"
-        )
-        self.doc_session.add(new_doc)
-        await self.doc_session.flush()  # Получаем new_doc.id
-
-        # 2. Добавляем автора (sender)
-        self.doc_session.add(EmployeeDocument(
-            document_id=new_doc.id,
-            employee_id=sender_employee_id,
-            role=DocumentRole.sender
-        ))
-
-        # 3. Добавляем получателей
-        for emp_id in data.get("recipients", []):
-            self.doc_session.add(EmployeeDocument(
-                document_id=new_doc.id,
-                employee_id=emp_id,
-                role=DocumentRole.recipient
-            ))
-
-        # 4. Добавляем исполнителей
-        for emp_id in data.get("executors", []):
-            self.doc_session.add(EmployeeDocument(
-                document_id=new_doc.id,
-                employee_id=emp_id,
-                role=DocumentRole.executor
-            ))
-
-        # 5. Привязываем теги
-        for tag_id in data.get("tag_ids", []):
-            self.doc_session.add(DocumentTag(
-                document_id=new_doc.id,
-                tag_id=tag_id
-            ))
-
-        # 6. Вложения
-        for att in data.get("attachments", []):
-            self.doc_session.add(DocumentAttachment(
-                document_id=new_doc.id,
-                file_name=att["file_name"],
-                storage_path=att["storage_path"],
-                file_size=att.get("file_size")
-            ))
-
-        await self.doc_session.commit()
-        return new_doc
 
     async def get_employee_by_chat_id(self, chat_id: int) -> Optional[Employee]:
         """

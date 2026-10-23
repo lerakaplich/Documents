@@ -11,7 +11,7 @@ from sqlalchemy import select
 from cachetools import TTLCache
 
 from server.app.config import TELEGRAM_BOT_TOKEN
-from server.app.core.security_tokens import verify_password, create_access_token, hash_refresh_token
+from server.app.core.security_tokens import verify_password, create_access_token, hash_refresh_token, hash_password
 from server.app.core.utils import mask_phone_number
 from server.app.database.document_models import UserSession
 from server.app.database.employee_models import Employee, EmployeePosition
@@ -235,7 +235,7 @@ class AuthService:
             )
 
         # Хэшируем новый и сохраняем
-        hashed_new = bcrypt.hashpw(payload.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        hashed_new = hash_password(payload.new_password)
         employee.password_hash = hashed_new
 
         # СНИМАЕМ ФЛАГ ВРЕМЕННОГО ПАРОЛЯ
@@ -358,7 +358,7 @@ class AuthService:
         if not employee:
             raise HTTPException(status_code=404, detail="Сотрудник не найден.")
 
-        hashed_new = bcrypt.hashpw(payload.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        hashed_new = hash_password(payload.new_password)
         employee.password_hash = hashed_new
 
         await self.session_repo.delete_all_for_employee(employee_id)

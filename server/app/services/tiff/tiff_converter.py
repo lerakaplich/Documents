@@ -319,6 +319,50 @@ class DocumentProcessor:
             )
             raise
 
+    def convert_images_to_tiff(self, input_paths: list[str], output_path: str) -> str:
+        """Склеивает изображения в один многостраничный TIFF (страница на файл)."""
+        if not input_paths:
+            raise ValueError("Не переданы изображения для конвертации")
+
+        start_time = time.perf_counter()
+        pages: list[Image.Image] = []
+        try:
+            for path in input_paths:
+                with Image.open(path) as img:
+                    img = ImageOps.exif_transpose(img)  # учитываем поворот с телефона
+                    pages.append(self.preprocess_image(img.convert("RGB")))
+
+            pages[0].save(
+                output_path,
+                save_all=True,
+                append_images=pages[1:],
+                compression='tiff_ccitt',
+                dpi=(self.DEFAULT_DPI, self.DEFAULT_DPI),
+            )
+        except UnidentifiedImageError:
+            logger.error(
+                "Cannot identify one of the images for multi-page TIFF",
+                extra={"event_type": "doc_invalid_image", "files_count": len(input_paths)},
+            )
+            raise
+        except Exception as e:
+            logger.exception(
+                f"Failed to build multi-page TIFF from {len(input_paths)} images: {e}",
+                extra={"event_type": "doc_convert_images_error"},
+            )
+            raise
+
+        elapsed = round(time.perf_counter() - start_time, 3)
+        logger.info(
+            f"Built TIFF from {len(pages)} images in {elapsed}s: {output_path}",
+            extra={
+                "event_type": "doc_convert_images_success",
+                "pages": len(pages),
+                "duration_sec": elapsed,
+            },
+        )
+        return output_path
+
 
 # =========================================================
 # Пример использования в сервисе (RegistryService)

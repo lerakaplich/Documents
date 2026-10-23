@@ -12,7 +12,7 @@ from fastapi import UploadFile, HTTPException, status
 from server.app.repositories.attachment_repo import AttachmentRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.common.security_service import SecurityService
-from server.app.services.common.tiff_converter import DocumentProcessor
+from server.app.services.tiff.tiff_converter import DocumentProcessor
 
 logger = logging.getLogger("app.services.attachment_service")
 

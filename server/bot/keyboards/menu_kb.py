@@ -1,30 +1,22 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
+
+from server.bot.keyboards.texts import CANCEL_TEXT, MenuButton
+
 
 def get_main_menu() -> ReplyKeyboardMarkup:
-    """Генерирует главное меню для авторизованного сотрудника"""
-    keyboard = [
-        [
-            KeyboardButton(text="Новый документ"),
-            KeyboardButton(text="Распознать по фото")
-        ],
-        [
-            KeyboardButton(text="Мои переработки"),
-            KeyboardButton(text="Поддержка")
-        ]
-    ]
     return ReplyKeyboardMarkup(
-        keyboard=keyboard,
-        resize_keyboard=True,  # Кнопки будут компактными под размер экрана
-        input_field_placeholder="Выберите действие из меню..."
+        keyboard=[
+            [KeyboardButton(text=MenuButton.NEW_DOCUMENT), KeyboardButton(text=MenuButton.PHOTO_TO_TIFF)],
+            [KeyboardButton(text=MenuButton.OVERTIMES), KeyboardButton(text=MenuButton.SUPPORT)],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Выберите действие из меню...",
     )
 
+
 def get_cancel_keyboard() -> ReplyKeyboardMarkup:
-    """Клавиатура для отмены текущего действия (FSM-сценария)"""
-    keyboard = [
-        [KeyboardButton(text="❌ Отмена")]
-    ]
     return ReplyKeyboardMarkup(
-        keyboard=keyboard,
+        keyboard=[[KeyboardButton(text=CANCEL_TEXT)]],
         resize_keyboard=True,
-        input_field_placeholder="Для возврата нажмите кнопку..."
+        input_field_placeholder="Для возврата нажмите кнопку...",
     )

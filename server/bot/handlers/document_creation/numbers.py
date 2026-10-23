@@ -1,13 +1,12 @@
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.app.database.document_models import DocDirection
+from server.app.services.documents.document_service import DocumentService
 from server.bot.handlers.step_navigator import go_to_next_step
 from server.bot.keyboards.menu_kb import get_cancel_keyboard
 from server.bot.services.bot_repo import BotRepository
-from server.bot.services.utils import build_doc_service_for_bot
 from server.bot.states.bot_states import CreateDocumentFSM
 
 router = Router()
@@ -18,10 +17,9 @@ router = Router()
 async def process_direction_selection(
     callback: types.CallbackQuery,
     state: FSMContext,
-    doc_session: AsyncSession,
-    emp_session: AsyncSession,
-    internal_user_id: int,  # 👈 Автоматически из EmployeeAuthMiddleware
-    department_id: int | None  # 👈 Автоматически из EmployeeAuthMiddleware
+    document_service: DocumentService,   # 👈 из аргументов хэндлера
+    internal_user_id: int,               # 👈 из EmployeeAuthMiddleware
+    department_id: int | None            # 👈 из EmployeeAuthMiddleware
 ):
     direction_str = callback.data.split(":")[1]
     await state.update_data(
@@ -34,11 +32,7 @@ async def process_direction_selection(
     type_id: int = data.get("type_id")
     direction_enum = DocDirection(direction_str)
 
-    # Получаем бизнес-сервис
-    doc_service = await build_doc_service_for_bot(db_docs=doc_session, db_emp=emp_session)
-
-    # Вызываем расчет предложенных номеров с РЕАЛЬНЫМ internal_user_id из базы кадров
-    proposed_res = await doc_service.generate_proposed_number(
+    proposed_res = await document_service.generate_proposed_number(
         type_id=type_id,
         direction=direction_enum,
         user_id=internal_user_id
@@ -69,10 +63,8 @@ async def process_direction_selection(
 # ШАГ 2.2: Сохранение Порядкового номера
 @router.callback_query(F.data == "use_suggested_seq_num", CreateDocumentFSM.waiting_for_sequence_num)
 async def process_suggested_seq_num(
-        callback: types.CallbackQuery,
-        state: FSMContext,
-        doc_session: AsyncSession,
-        emp_session: AsyncSession
+    callback: types.CallbackQuery,
+    state: FSMContext
 ):
     data = await state.get_data()
     seq_num = data.get("suggested_seq_num")
@@ -84,8 +76,8 @@ async def process_suggested_seq_num(
 
 @router.message(CreateDocumentFSM.waiting_for_sequence_num)
 async def process_manual_seq_num(
-        message: types.Message,
-        state: FSMContext
+    message: types.Message,
+    state: FSMContext
 ):
     if not message.text or not message.text.isdigit():
         await message.answer("⚠️ Порядковый номер должен состоять только из цифр. Попробуйте еще раз:")
@@ -95,6 +87,7 @@ async def process_manual_seq_num(
     await state.update_data(sequence_number=seq_num)
 
     await ask_reg_number(message, state)
+
 
 async def ask_reg_number(
     message: types.Message,
@@ -156,6 +149,7 @@ async def process_manual_reg_num(
 
     await ask_needs_response(message, state)
 
+
 async def ask_needs_response(
     message: types.Message,
     state: FSMContext
@@ -182,16 +176,14 @@ async def ask_needs_response(
 async def process_needs_response_selection(
     callback: types.CallbackQuery,
     state: FSMContext,
-    doc_session: AsyncSession,
-    emp_session: AsyncSession
+    bot_repo: BotRepository,
+    document_service: DocumentService  # 👈 на будущее, если понадобится в go_to_next_step
 ):
     resp_choice = callback.data.split(":")[1]
     needs_response_val = (resp_choice == "yes")
 
-    # Сохраняем флаг в FSM
     await state.update_data(needs_response=needs_response_val)
     await callback.answer()
 
-    # Переходим к следующему шагу (к динамическим полям типа title, about, deadline и т.д.)
-    bot_repo = BotRepository(doc_session=doc_session, emp_session=emp_session)
+    # Если go_to_next_step не нуждается в document_service — можно не объявлять его в аргументах
     await go_to_next_step(callback.message, state, bot_repo)
