@@ -67,6 +67,17 @@ class OrgService:
             logger.exception(f"Ошибка получения структуры организации {org_id}: {e}")
             return []
 
+    def search_structure(self, query: str) -> list[dict[str, Any]]:
+        """
+        Поиск по оргструктуре (организации, отделы, сотрудники):
+        GET /org/structure/search?q=... (на сервере q — минимум 2 символа).
+
+        Ошибки НЕ глотаются: вызывающий должен отличать «ничего не найдено»
+        от «сервер не ответил».
+        """
+        response = self.http.get(f"{self.base_path}/structure/search", params={"q": query})
+        return response if isinstance(response, list) else []
+
     # client/services/org_service.py
 
     def create_organization(self, org_data: dict[str, Any]) -> dict[str, Any] | None:

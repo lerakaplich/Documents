@@ -129,6 +129,22 @@ QPushButton#btnExecutor:focus, QPushButton#btn_tag:focus {
     border: 2px solid {ACCENT_PRIMARY};
 }
 
+/* ===== ЧЕКБОКС «ТРЕБУЕТСЯ ОТВЕТ» ===== */
+QCheckBox {
+    color: {TEXT_PRIMARY};
+    spacing: 0px;
+    font-size: 13px;
+    background: transparent;
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    image: url({ICON_CHECKBOX_UNCHECKED_PATH});
+}
+QCheckBox::indicator:checked {
+    image: url({ICON_CHECKBOX_CHECKED_PATH});
+}
+
 /* ===== КНОПКА СОХРАНЕНИЯ ===== */
 QPushButton#btn_attach {
     border-radius: 10px;
@@ -651,6 +667,25 @@ QTextBrowser {
       </layout>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="needs_response_check">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>32</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string>spacing: 10px; font-weight: 500;</string>
+     </property>
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="text">
+      <string>Требуется ответ</string>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QLabel" name="labelContent">

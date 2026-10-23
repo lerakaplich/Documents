@@ -109,6 +109,58 @@ class TreeBuilder:
                 parent.addChild(item)
                 item.setExpanded(True)
 
+    def build_match_items(self, matches: set[tuple[int, int]]) -> list[QTreeWidgetItem]:
+        """
+        Результаты СЕРВЕРНОГО поиска. matches — множество пар (type, id) найденных узлов.
+        В отличие от build_search_items() текст здесь не сравнивается: что найдено,
+        решил сервер (он ищет и по должностям и т.п.).
+
+        - загруженная организация: цепочка отделов к найденным узлам; найденный отдел —
+          с поддеревом и сотрудниками; найденный сотрудник — только он;
+        - найденная, но ещё не загруженная организация: узел с заглушкой «Загрузка…»
+          (раскрытие подгрузит её содержимое);
+        - организации без найденных узлов не показываются.
+        """
+        items = []
+        for org_id, org in self.builder.organizations.items():
+            org_match = (self.NODE_TYPE_ORGANIZATION, org_id) in matches
+            org_item = self._create_organization_item(org_id, org)
+
+            if self.builder.is_loaded(org_id):
+                struct = self.builder.build_org(org_id)
+                self._add_departments_matched(org_item, struct["departments"], matches, org_match)
+                emps = [
+                    e for e in struct["employees"] if org_match or (self.NODE_TYPE_EMPLOYEE, e["id"]) in matches
+                ]
+                if emps:
+                    self._add_employee_group(org_item, emps)
+                if org_match or org_item.childCount():
+                    org_item.setExpanded(True)
+                    items.append(org_item)
+            elif org_match:
+                self._add_placeholder(org_item)
+                items.append(org_item)
+        return items
+
+    def _add_departments_matched(
+        self, parent: QTreeWidgetItem, dept_structs: list[dict], matches: set[tuple[int, int]], force: bool
+    ):
+        for ds in dept_structs:
+            dept = ds["department"]
+            dept_match = force or (self.NODE_TYPE_DEPARTMENT, dept["id"]) in matches
+
+            item = self._create_department_item(dept)
+            self._add_departments_matched(item, ds["children"], matches, dept_match)
+            emps = [
+                e for e in ds["employees"] if dept_match or (self.NODE_TYPE_EMPLOYEE, e["id"]) in matches
+            ]
+            if emps:
+                self._add_employee_group(item, emps)
+
+            if dept_match or item.childCount():
+                parent.addChild(item)
+                item.setExpanded(True)
+
     # ───────────────────────── элементы ─────────────────────────
 
     def _setup_checkable(self, item: QTreeWidgetItem, node_type: int, node_id: int, checkable: bool = True):
