@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import HTTPException
 from starlette import status
 
+from server.app.database.document_models import AppRights
 from server.app.repositories.document_repo import DocumentRepository
 
 logger = logging.getLogger(__name__)
@@ -13,10 +14,11 @@ class WorkflowService:
     def __init__(self, repo: DocumentRepository):
         self.repo = repo
 
-    async def _verify_document_and_access(self, doc_id: int, user_id: int):
+    async def _verify_document_and_access(self, doc_id: int, user_id: int, user_rights: AppRights | None = None):
         """
         Проверяет существование документа и наличие прав у пользователя.
-        Сначала гарантирует 404, если документа нет, а затем 403, если нет прав.
+        Администраторы и суперлидмины имеют доступ ко всем документам.
+        Если у обычного пользователя забрали права, но документ был закреплен/в архиве — очищаем эти связи.
         """
         document = await self.repo.get_by_id(doc_id)
         if not document:
@@ -25,16 +27,27 @@ class WorkflowService:
                 detail="Документ не найден."
             )
 
-        has_access = await self.repo.check_user_has_role(doc_id, user_id)
+        # Проверяем, является ли пользователь админом
+        is_admin = user_rights in [AppRights.admin, AppRights.superadmin]
+
+        has_access = is_admin or await self.repo.check_user_has_role(doc_id, user_id)
+
         if not has_access:
+            # ЕСЛИ У ПОЛЬЗОВАТЕЛЯ ЗАБРАЛИ ПРАВА:
+            # Автоматически удаляем запись из закрепленных и архива, если они там были
+            await self.repo.unpin_document(doc_id, user_id)
+            await self.repo.unarchive_document(doc_id, user_id)
+            await self.repo.db.commit()
+
             logger.warning(
-                f"Access denied for user_id={user_id} on doc_id={doc_id}",
+                f"Access denied for user_id={user_id} on doc_id={doc_id}. Cleaned up pins/archives.",
                 extra={"event_type": "workflow_access_denied", "doc_id": doc_id, "user_id": user_id}
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="У вас нет прав для взаимодействия с этим документом."
+                detail="У вас больше нет прав для взаимодействия с этим документом."
             )
+
         return document
 
     async def toggle_completion(self, doc_id: int, user_id: int, is_completed: bool) -> None:
@@ -141,9 +154,9 @@ class WorkflowService:
                 detail="Ошибка при изменении статуса архивации документа."
             )
 
-    async def toggle_pin(self, doc_id: int, user_id: int, pin: bool) -> None:
+    async def toggle_pin(self, doc_id: int, user_id: int, pin: bool, user_rights: AppRights | None = None) -> None:
         """Закрепление или открепление документа в интерфейсе пользователя"""
-        await self._verify_document_and_access(doc_id, user_id)
+        await self._verify_document_and_access(doc_id, user_id, user_rights)
 
         try:
             if pin:

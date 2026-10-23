@@ -140,7 +140,7 @@ async def pin_doc(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkflowService = Depends(get_workflow_service)
 ):
-    await service.toggle_pin(doc_id, current_user.id, pin=True)
+    await service.toggle_pin(doc_id, current_user.id, pin=True, user_rights=current_user.rights)
 
 @router.delete("/{doc_id}/pin", status_code=status.HTTP_204_NO_CONTENT)
 async def unpin_doc(
@@ -148,5 +148,5 @@ async def unpin_doc(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkflowService = Depends(get_workflow_service)
 ):
-    await service.toggle_pin(doc_id, current_user.id, pin=False)
+    await service.toggle_pin(doc_id, current_user.id, pin=False, user_rights=current_user.rights)
 
