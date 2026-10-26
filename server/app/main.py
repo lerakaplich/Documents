@@ -1,3 +1,7 @@
+import logging
+import os
+from logging.handlers import RotatingFileHandler
+
 from fastapi import FastAPI, Depends
 from server.app.api.auth_router import router as auth_router
 from server.app.api.doc import doc_router
