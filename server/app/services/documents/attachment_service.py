@@ -9,6 +9,7 @@ import shutil
 
 from fastapi import UploadFile, HTTPException, status
 
+from server.app.config import BASE_STORAGE_DIR
 from server.app.repositories.attachment_repo import AttachmentRepository
 from server.app.schemas.user_schemas.employee_dto import CurrentUser
 from server.app.services.common.security_service import SecurityService
@@ -22,10 +23,25 @@ class AttachmentService:
         self.processor = processor
         self.security = security
 
+    def _to_absolute_path(self, db_path: str) -> str:
+        """Превращает относительный путь из БД в абсолютный, используя BASE_STORAGE_DIR."""
+        if not db_path:
+            return db_path
+
+        # Если путь уже абсолютный (начинается с диска), можно на всякий случай тоже обработать,
+        # но нам важно приклеить относительный путь к BASE_STORAGE_DIR.
+        # Очищаем путь от возможных ведущих слешей и дублирования слова 'storage'
+        clean_path = db_path.lstrip("/\\")
+        if clean_path.startswith("storage"):
+            clean_path = clean_path[len("storage"):].lstrip("/\\")
+
+        # Соединяем ваш базовый путь (например, D:\storage) с относительной частью
+        return os.path.join(BASE_STORAGE_DIR, clean_path)
+
     def _get_doc_dir(self, sent_date: date, doc_id: int) -> str:
         """Формирует путь storage/YYYY/MM/DD/doc_id/"""
         path = os.path.join(
-            "storage",
+            BASE_STORAGE_DIR,
             sent_date.strftime("%Y"),
             sent_date.strftime("%m"),
             sent_date.strftime("%d"),
@@ -304,7 +320,8 @@ class AttachmentService:
             )
             raise HTTPException(status_code=400, detail="Нельзя удалить последнее вложение")
 
-        archive_path, file_name = attachment.storage_path.split('#')
+        rel_archive_path, file_name = attachment.storage_path.split('#')
+        archive_path = self._to_absolute_path(rel_archive_path)
         work_dir = os.path.join(os.path.dirname(archive_path), f"temp_del_{uuid.uuid4().hex}")
         os.makedirs(work_dir, exist_ok=True)
 
@@ -370,7 +387,8 @@ class AttachmentService:
                 detail="Ошибка формата пути к файлу в БД",
             )
 
-        archive_path, file_name = attachment.storage_path.split("#")
+        rel_archive_path, file_name = attachment.storage_path.split('#')
+        archive_path = self._to_absolute_path(rel_archive_path)
 
         os.makedirs("temp", exist_ok=True)
         ext = os.path.splitext(file_name)[1]
@@ -430,7 +448,8 @@ class AttachmentService:
                 detail="Ошибка формата пути к файлу в БД",
             )
 
-        archive_path, file_name = attachment.storage_path.split("#")
+        rel_archive_path, file_name = attachment.storage_path.split('#')
+        archive_path = self._to_absolute_path(rel_archive_path)
 
         os.makedirs("temp", exist_ok=True)
         ext = os.path.splitext(file_name)[1]

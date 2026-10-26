@@ -31,6 +31,8 @@ MSG_TEMPLATE_NEW_DOCUMENT = (
     "📥 Вам направлен новый документ №{reg_number} «{title}» на рассмотрение."
 )
 
+BASE_STORAGE_DIR = r"D:\storage"
+
 # Путь к папке с обновлениями
 UPDATES_DIR = Path("storage/updates")
 UPDATES_DIR.mkdir(parents=True, exist_ok=True)

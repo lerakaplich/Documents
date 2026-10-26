@@ -1,5 +1,6 @@
 # server/bot/config.py
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -7,7 +8,14 @@ from pydantic import BaseModel
 
 # .env ищем рядом с проектом, независимо от cwd.
 # config.py лежит в server/bot/, значит корень проекта — на два уровня выше.
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if getattr(sys, 'frozen', False):
+    # Если запущен собранный .exe — ищем .env прямо рядом с exe-файлом или выше
+    _PROJECT_ROOT = Path(sys.executable).parent
+else:
+    # Если запущен обычный python — ищем в корне проекта (как у вас сейчас)
+    _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+# Пробуем загрузить .env (если он там есть)
 load_dotenv(_PROJECT_ROOT / ".env")
 
 
