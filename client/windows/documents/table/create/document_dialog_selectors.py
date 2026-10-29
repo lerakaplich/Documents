@@ -6,15 +6,45 @@
 
 from PyQt6.QtWidgets import QMessageBox
 
-from client.windows.documents.table.create.employee_selection_dialog import (
+from client.core.frequent_manager import (
+    ROLE_EXECUTOR,
+    ROLE_RECEIVER,
+    ROLE_SENDER,
+    FrequentManager,
+)
+from client.windows.documents.table.create.selection.employee_selection_dialog import (
     EmployeeSelectionDialog,
 )
-from client.windows.documents.table.create.tag_selection_dialog import (
+from client.windows.documents.table.create.selection.tag_selection_dialog import (
     TagSelectionDialog,
 )
 
 
 class SelectorsMixin:
+    # ─────────────────── «САМЫЕ ЧАСТЫЕ» ───────────────────
+
+    def _stash_frequent(self, role: str, dialog):
+        """Запомнить последний подтверждённый выбор роли; в счётчик попадёт только после сохранения."""
+        try:
+            if not hasattr(self, "_frequent_pending"):
+                self._frequent_pending = {}
+            self._frequent_pending[role] = dialog.get_picked_descriptors()
+        except Exception as e:
+            print(f"[Selectors] не удалось запомнить выбор для частых ({role}): {e}")
+
+    def _commit_frequent(self):
+        """Вызвать ОДИН раз после успешного сохранения документа: +1 к счётчикам выбранных."""
+        pending = getattr(self, "_frequent_pending", None)
+        if not pending:
+            return
+        try:
+            fm = FrequentManager()
+            for role, items in pending.items():
+                fm.record(role, items)
+        except Exception as e:
+            print(f"[Selectors] не удалось обновить частые: {e}")
+        self._frequent_pending = {}
+
     # ─────────────────── ОТПРАВИТЕЛЬ ───────────────────
 
     def _open_sender_selection(self):
@@ -43,11 +73,10 @@ class SelectorsMixin:
             http_client=self.http_client,
             mode="employees",
             allow_org_select=True,
-
-
+            frequent_role=ROLE_SENDER,
         )
         dialog.selection_confirmed.connect(
-            lambda ids, d=dialog: (self._merge_picked(d), self._on_sender_selected(ids))
+            lambda ids, d=dialog: (self._merge_picked(d), self._stash_frequent(ROLE_SENDER, d), self._on_sender_selected(ids))
         )
         dialog.exec()
 
@@ -121,9 +150,10 @@ class SelectorsMixin:
             instruction="Выберите получателей документа:",
             http_client=self.http_client,
             mode="receivers",
+            frequent_role=ROLE_RECEIVER,
         )
         dialog.selection_confirmed.connect(
-            lambda ids, d=dialog: (self._merge_picked(d), self._on_receivers_selected(ids))
+            lambda ids, d=dialog: (self._merge_picked(d), self._stash_frequent(ROLE_RECEIVER, d), self._on_receivers_selected(ids))
         )
         dialog.exec()
 
@@ -161,9 +191,10 @@ class SelectorsMixin:
             instruction="Выберите исполнителей документа:",
             http_client=self.http_client,
             mode="employees",
+            frequent_role=ROLE_EXECUTOR,
         )
         dialog.selection_confirmed.connect(
-            lambda ids, d=dialog: (self._merge_picked(d), self._on_executors_selected(ids))
+            lambda ids, d=dialog: (self._merge_picked(d), self._stash_frequent(ROLE_EXECUTOR, d), self._on_executors_selected(ids))
         )
         dialog.exec()
 

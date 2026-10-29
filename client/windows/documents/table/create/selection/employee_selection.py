@@ -48,9 +48,16 @@ class EmployeeSelection:
 
     @staticmethod
     def get_ui_path() -> str:
-        """Определяет путь к UI файлу"""
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        root_dir = base_dir
-        for _ in range(4):
+        """Определяет путь к UI файлу (ищем папку ui, поднимаясь вверх от этого модуля)"""
+        rel = os.path.join("ui", "documents", "create", "employee_selection_dialog.ui")
+        folder = os.path.dirname(os.path.abspath(__file__))
+        for _ in range(8):
+            candidate = os.path.join(folder, rel)
+            if os.path.exists(candidate):
+                return candidate
+            folder = os.path.dirname(folder)
+        # запасной вариант (прежний расчёт, модуль лежит в create/selection/)
+        root_dir = os.path.dirname(os.path.abspath(__file__))
+        for _ in range(5):
             root_dir = os.path.dirname(root_dir)
-        return os.path.join(root_dir, "ui", "documents", "create", "employee_selection_dialog.ui")
+        return os.path.join(root_dir, rel)
