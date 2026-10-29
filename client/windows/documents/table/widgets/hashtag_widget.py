@@ -10,7 +10,7 @@ class HashtagWidget(QWidget):
         super().__init__(parent)
 
         self.tag_name = tag_name
-        self.tag_color = tag_color
+        self.tag_color = self._normalize_color(tag_color)
         self.display_text = f"#{self.tag_name}"
 
         # Определяем контрастные цвета
@@ -19,44 +19,53 @@ class HashtagWidget(QWidget):
         # Настройка размеров
         self.setFixedHeight(24)
 
-        # Настройка шрифта
-        self.font = QFont()
-        self.font.setPointSize(9)
-        self.font.setBold(True)
+        # Настройка шрифта.
+        # ВАЖНО: нельзя называть атрибут `font` — это затирает метод QWidget.font().
+        self._tag_font = QFont()
+        self._tag_font.setPointSize(9)
+        self._tag_font.setBold(True)
 
         # Вычисляем ширину под текст
         self.update_width()
 
         self.setObjectName("HashtagWidget")
 
-        # Прозрачный фон для самого виджета
-        self.setStyleSheet("""
-            QWidget#HashtagWidget {
-                background: transparent;
-                border: none;
-            }
-        """)
+        # Фон прозрачный: всё рисуем сами в paintEvent. Отдельный styleSheet на
+        # каждый хэштег не нужен (обычный QWidget фон и так не рисует), а на
+        # таблице с сотнями тегов он заметно тормозит polish/перерисовку.
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         # Запрещаем виджету сжиматься и растягиваться
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
     def update_width(self):
         """Пересчёт ширины виджета под текст"""
-        fm = QFontMetrics(self.font)
+        fm = QFontMetrics(self._tag_font)
         text_width = fm.horizontalAdvance(self.display_text)
-        # padding 10px слева + 10px справа + 2px на границу
+        # padding 10px слева + 10px справа + 2px на границу + 2px запас на сглаживание
         total_width = text_width + 24
         self.setFixedWidth(total_width)
+
+    @staticmethod
+    def _normalize_color(color) -> str:
+        """
+        Приводит цвет к виду '#RRGGBB'. Понимает '#RGB', '#RRGGBB', имена цветов Qt
+        ('red'); для None/мусора возвращает нейтральный серый, а не падает.
+        """
+        default = "#808080"
+        if not color:
+            return default
+        qc = QColor(str(color).strip())
+        if not qc.isValid():
+            return default
+        return qc.name()  # всегда '#rrggbb'
 
     def get_contrast_colors(self, hex_color):
         """
         Определение контрастных цветов для текста и границы
         """
-        hex_color = hex_color.lstrip("#")
-
-        r = int(hex_color[0:2], 16)
-        g = int(hex_color[2:4], 16)
-        b = int(hex_color[4:6], 16)
+        qc = QColor(self._normalize_color(hex_color))
+        r, g, b = qc.red(), qc.green(), qc.blue()
 
         luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
 
@@ -86,6 +95,12 @@ class HashtagWidget(QWidget):
     def paintEvent(self, event):
         """Отрисовка хэштега с фоном, границей и текстом"""
         painter = QPainter(self)
+        try:
+            self._paint(painter)
+        finally:
+            painter.end()
+
+    def _paint(self, painter: QPainter):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         rect = QRectF(1, 1, self.width() - 2, self.height() - 2)
@@ -96,13 +111,13 @@ class HashtagWidget(QWidget):
         painter.drawRoundedRect(rect, 5, 5)
 
         # Рисуем текст
-        painter.setFont(self.font)
+        painter.setFont(self._tag_font)
         painter.setPen(self.text_color)
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.display_text)
 
-        painter.end()
-
     def update_style(self):
         """Обновление стилей (перерисовка)"""
+        self.tag_color = self._normalize_color(self.tag_color)
         self.text_color, self.border_color = self.get_contrast_colors(self.tag_color)
+        self.update_width()
         self.update()

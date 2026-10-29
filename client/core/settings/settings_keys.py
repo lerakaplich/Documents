@@ -8,7 +8,6 @@ class SettingsKeys:
     ROW_ORDER = "row_order"
     ROW_HEIGHTS = "row_heights"  # Устаревает, используем ROW_HEIGHTS_BY_ID
     ROW_HEIGHTS_BY_ID = "row_heights_by_id"  # НОВЫЙ КЛЮЧ - по ID
-    PINNED = "pinned"
     HIDDEN_ROWS = "hidden_rows"
 
     # ============ ТЕМА ============
@@ -23,7 +22,6 @@ class SettingsKeys:
     ROW_HEIGHTS_TYPE = "row_heights"  # Устаревает
     ROW_HEIGHTS_BY_ID_TYPE = "row_heights_by_id"  # НОВЫЙ КЛЮЧ
     ROW_ORDER_TYPE = "row_order"
-    PINNED_TYPE = "pinned"
     HIDDEN_ROWS_TYPE = "hidden_rows"
 
     ARCHIVE_TYPE = "archive"

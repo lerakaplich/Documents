@@ -16,10 +16,11 @@
 
 import os
 import sys
+from datetime import date
 
-from PyQt6.QtCore import QObject, QRunnable, QThreadPool, QTimer, pyqtSignal, Qt
+from PyQt6.QtCore import QObject, QRunnable, QThreadPool, pyqtSignal, Qt
 from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
+from PyQt6.QtWidgets import QApplication, QFileDialog, QMessageBox, QPushButton, QWidget
 from PyQt6.uic import loadUi
 
 from client.core.state.app_state import AppState
@@ -117,12 +118,8 @@ class DocumentsPanel(QWidget):
         # Контроллер бизнес-логики (реальные документы идут через http_client)
         self.controller = DocumentsPanelController(self.http_client)
 
-        # Поиск идёт на сервер — не шлём запрос на каждую букву
-        self._pending_search = ""
-        self._search_timer = QTimer(self)
-        self._search_timer.setSingleShot(True)
-        self._search_timer.setInterval(350)
-        self._search_timer.timeout.connect(self._run_search)
+        # Поиск идёт на сервер и запускается только по кнопке «Поиск» или Enter
+        self._last_search = ""
 
         # Загрузка списков идёт в фоне. Поток один: контроллер хранит состояние
         # (тип/страница/сортировка), поэтому запросы выстраиваются в очередь,
@@ -153,7 +150,9 @@ class DocumentsPanel(QWidget):
         if hasattr(self, "statsBtn"):
             self.statsBtn.clicked.connect(self._show_unanswered_stats)
         if hasattr(self, "searchEdit"):
-            self.searchEdit.textChanged.connect(self.on_search_changed)
+            self.searchEdit.returnPressed.connect(self._run_search)
+            self.searchEdit.textChanged.connect(self._on_search_text_changed)
+            self._init_search_button()
 
         self._connect_signals()
         self._init_floating_button()
@@ -286,18 +285,34 @@ class DocumentsPanel(QWidget):
         self.position_floating_button()
 
     def _show_unanswered_stats(self):
-        """Открывает диалог со статистикой по неотвеченным документам."""
-        from client.services.document_service import DocumentService
-        from client.windows.documents.stats.unanswered_stats_dialog import (
-            UnansweredStatsDialog,
-        )
+        """Кнопка «Статистика»: скачивает Excel со статистикой по неотвеченным документам и сохраняет его."""
+        from client.windows.documents.comments.comment_dialog import split_api_error
 
+        default_name = f"unanswered_documents_{date.today():%Y-%m-%d}.xlsx"
+        path, _ = QFileDialog.getSaveFileName(self, "Сохранить статистику", default_name, "Excel (*.xlsx)")
+        if not path:
+            return  # пользователь отменил выбор
+        if not path.lower().endswith(".xlsx"):
+            path += ".xlsx"
+
+        error = None
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            service = DocumentService(self.http_client)
-            stats = service.get_unanswered_stats()
-            UnansweredStatsDialog(stats, parent=self).exec()
-        except Exception as e:
-            QMessageBox.warning(self, "Ошибка", f"Не удалось загрузить статистику: {e}")
+            data = self.http_client.get_binary("/documents/documents/unanswered/export-excel")
+            with open(path, "wb") as f:
+                f.write(data)
+        except PermissionError:
+            error = "Не удалось записать файл. Возможно, он открыт в Excel или нет прав на папку."
+        except Exception as e:  # noqa: BLE001
+            status, detail = split_api_error(e)
+            error = detail if status == 403 else f"Не удалось получить файл:\n{detail}"
+        finally:
+            QApplication.restoreOverrideCursor()
+
+        if error:
+            QMessageBox.warning(self, "Статистика", error)
+            return
+        QMessageBox.information(self, "Статистика", f"Таблица сохранена:\n{os.path.normpath(path)}")
 
     def _connect_signals(self):
         self.documents_table.document_action_triggered.connect(self.document_action_triggered.emit)
@@ -443,14 +458,60 @@ class DocumentsPanel(QWidget):
 
     # ========== ПОИСК ==========
 
-    def on_search_changed(self, text):
-        self.search_requested.emit(text)
-        self._pending_search = text
-        self._search_timer.start()  # перезапуск: запрос уйдёт после паузы в наборе
+    def _init_search_button(self):
+        """
+        Кнопка поиска: берём из .ui (searchButton / searchBtn / btnSearch);
+        если её там нет — добавляем рядом с полем поиска.
+        """
+        for name in ("searchButton", "searchBtn", "btnSearch"):
+            btn = getattr(self, name, None)
+            if btn is not None:
+                self.searchButton = btn
+                break
+        else:
+            self.searchButton = QPushButton("Поиск", self)
+            layout, index = self._find_layout_of(self.layout(), self.searchEdit)
+            if layout is not None and hasattr(layout, "insertWidget"):
+                layout.insertWidget(index + 1, self.searchButton)
+            elif layout is not None:
+                layout.addWidget(self.searchButton)
+        self.searchButton.setToolTip("Найти (или нажмите Enter в поле поиска)")
+        self.searchButton.setAutoDefault(False)
+        self.searchButton.setDefault(False)
+        self.searchButton.clicked.connect(self._run_search)
 
-    def _run_search(self):
-        query = self._pending_search
+    def _find_layout_of(self, layout, widget):
+        """Ищет layout, в котором лежит widget (с заходом во вложенные layout'ы)."""
+        if layout is None:
+            return None, -1
+        idx = layout.indexOf(widget)
+        if idx >= 0:
+            return layout, idx
+        for i in range(layout.count()):
+            sub_layout = layout.itemAt(i).layout()
+            if sub_layout is not None:
+                found, found_idx = self._find_layout_of(sub_layout, widget)
+                if found is not None:
+                    return found, found_idx
+        return None, -1
+
+    def _on_search_text_changed(self, text):
+        """Пока набираем — ничего не шлём. Но если поле очистили, сбрасываем прошлый поиск."""
+        if not text.strip() and self._last_search:
+            self._run_search()
+
+    def _run_search(self, query=None):
+        """Запускает поиск по тексту из поля (или по переданной строке)."""
+        if not isinstance(query, str):  # clicked/returnPressed передают bool или ничего
+            query = self.searchEdit.text() if hasattr(self, "searchEdit") else ""
+        query = query.strip()
+        self._last_search = query
+        self.search_requested.emit(query)
         self._load_async(lambda: self.controller.search_documents(query))
+
+    def on_search_changed(self, text):
+        """Совместимость со старым API: программный запуск поиска по готовой строке."""
+        self._run_search(text)
 
     # ========== ТЕМА / ПРОЧЕЕ ==========
 

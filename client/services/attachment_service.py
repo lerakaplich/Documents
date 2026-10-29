@@ -21,11 +21,16 @@
 """
 
 import logging
+import time
 from typing import Any
 
-from client.core.http_client import HttpClient
+from client.core.http_client import ApiError, HttpClient
 
 logger = logging.getLogger(__name__)
+
+# Если сервер на /info ответил ошибкой, не долбим его тем же вложением каждый раз,
+# когда таблица перерисовывается: помним неудачу на это время (секунды).
+_PAGE_COUNT_FAIL_TTL = 120
 
 
 class AttachmentService:
@@ -34,6 +39,8 @@ class AttachmentService:
     def __init__(self, http_client: HttpClient):
         self.client = http_client
         self.base_path = "/documents/attachments"
+        self._page_count_cache: dict[int, int | None] = {}   # удачные ответы
+        self._page_count_failed: dict[int, float] = {}        # attachment_id -> monotonic() ошибки
 
     def get_attachments(self, document_id: int) -> list[dict[str, Any]]:
         """
@@ -82,14 +89,32 @@ class AttachmentService:
         """
         GET /documents/attachments/{attach_id}/info — число страниц вложения
         (для TIFF/PDF). None — если получить не удалось.
+
+        Результат кэшируется; после ошибки сервера (например, 500 из-за
+        отсутствующего/битого файла) повторный запрос по тому же вложению
+        откладывается на _PAGE_COUNT_FAIL_TTL секунд.
         """
-        try:
-            r = self.client.get(f"{self.base_path}/{attachment_id}/info")
-            return r.get("total_pages") if isinstance(r, dict) else None
-        except Exception as e:
-            logger.exception(f"❌ get_page_count(attachment_id={attachment_id}): {e}")
+        if attachment_id in self._page_count_cache:
+            return self._page_count_cache[attachment_id]
+
+        failed_at = self._page_count_failed.get(attachment_id)
+        if failed_at is not None and time.monotonic() - failed_at < _PAGE_COUNT_FAIL_TTL:
             return None
 
+        try:
+            r = self.client.get(f"{self.base_path}/{attachment_id}/info")
+            pages = r.get("total_pages") if isinstance(r, dict) else None
+            self._page_count_cache[attachment_id] = pages
+            self._page_count_failed.pop(attachment_id, None)
+            return pages
+        except ApiError as e:
+            # Ошибка на стороне сервера — трейсбек клиента ничего не даёт.
+            self._page_count_failed[attachment_id] = time.monotonic()
+            logger.warning("get_page_count(attachment_id=%s): сервер ответил %s", attachment_id, e.status_code)
+            return None
+        except Exception:
+            logger.exception("❌ get_page_count(attachment_id=%s)", attachment_id)
+            return None
 
     def get_page_image(self, attachment_id: int, page: int) -> bytes:
         """

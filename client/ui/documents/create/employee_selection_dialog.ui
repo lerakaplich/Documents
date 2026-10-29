@@ -61,6 +61,7 @@ QLineEdit#searchEdit {
     padding: 6px 10px;
     font-size: 14px;
     background-color: {BG_INPUT};
+    color: {TEXT_PRIMARY};
     placeholder-text-color: {TEXT_MUTED_ALT};
 }
 QLineEdit#searchEdit:focus {

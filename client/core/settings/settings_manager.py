@@ -108,13 +108,6 @@ class SettingsManager:
     def set_row_heights(self, heights: dict):
         self.set(SettingsKeys.ROW_HEIGHTS, heights)
 
-    # --- Закрепленные ---
-    def get_pinned(self) -> list:
-        return self.get(SettingsKeys.PINNED, [])
-
-    def set_pinned(self, ids: list):
-        self.set(SettingsKeys.PINNED, ids)
-
     # --- Скрытые строки ---
     def get_hidden_rows(self) -> list:
         return self.get(SettingsKeys.HIDDEN_ROWS, [])
@@ -170,16 +163,6 @@ class SettingsManager:
         key = self._get_type_key(SettingsKeys.ROW_ORDER_TYPE, doc_type)
         self.set(key, order)
 
-    def get_pinned_by_type(self, doc_type: str | None = None) -> list:
-        """Получить закрепленные документы для типа"""
-        key = self._get_type_key(SettingsKeys.PINNED_TYPE, doc_type)
-        return self.get(key, [])
-
-    def set_pinned_by_type(self, ids: list, doc_type: str | None = None):
-        """Сохранить закрепленные документы для типа"""
-        key = self._get_type_key(SettingsKeys.PINNED_TYPE, doc_type)
-        self.set(key, ids)
-
     def get_hidden_rows_by_type(self, doc_type: str | None = None) -> list:
         """Получить скрытые строки для типа документа"""
         key = self._get_type_key(SettingsKeys.HIDDEN_ROWS_TYPE, doc_type)
@@ -190,21 +173,17 @@ class SettingsManager:
         key = self._get_type_key(SettingsKeys.HIDDEN_ROWS_TYPE, doc_type)
         self.set(key, rows)
 
-    # ============ МЕТОДЫ ДЛЯ СОВМЕСТИМОСТИ ============
+    # ============ МИГРАЦИЯ: ЛОКАЛЬНЫЕ ЗАКРЕПЫ -> БД ============
 
-    # Для обратной совместимости с существующим кодом
-    def get_pinned_ids(self, doc_type: str | None = None) -> list:
-        """Получить закрепленные ID документов (совместимость)"""
-        if doc_type:
-            return self.get_pinned_by_type(doc_type)
-        return self.get_pinned()
-
-    def set_pinned_ids(self, ids: list, doc_type: str | None = None):
-        """Сохранить закрепленные ID документов (совместимость)"""
-        if doc_type:
-            self.set_pinned_by_type(ids, doc_type)
-        else:
-            self.set_pinned(ids)
+    def pop_legacy_pinned(self) -> list[int]:
+        """Забрать и удалить все локальные закрепы (для разового переноса в БД)."""
+        ids: set[int] = set()
+        for key in [k for k in self._settings if k == "pinned" or k.startswith("pinned_")]:
+            value = self._settings.pop(key, None)
+            if isinstance(value, list):
+                ids.update(int(x) for x in value if str(x).isdigit())
+        self._save_settings()
+        return sorted(ids)
 
     # ============ ОЧИСТКА ============
 
@@ -216,7 +195,6 @@ class SettingsManager:
             SettingsKeys.get_type_key(SettingsKeys.COLUMN_ORDER, doc_type),
             SettingsKeys.get_type_key(SettingsKeys.ROW_HEIGHTS_TYPE, doc_type),
             SettingsKeys.get_type_key(SettingsKeys.ROW_ORDER_TYPE, doc_type),
-            SettingsKeys.get_type_key(SettingsKeys.PINNED_TYPE, doc_type),
             SettingsKeys.get_type_key(SettingsKeys.HIDDEN_ROWS_TYPE, doc_type),
         ]
         for key in keys_to_remove:
@@ -242,7 +220,6 @@ class SettingsManager:
         print(f"  column_order: {self.get_column_order(doc_type)}")
         print(f"  row_heights: {self.get_row_heights_by_type(doc_type)}")
         print(f"  row_order: {self.get_row_order_by_type(doc_type)}")
-        print(f"  pinned: {self.get_pinned_by_type(doc_type)}")
         print(f"  hidden_rows: {self.get_hidden_rows_by_type(doc_type)}")
         print("=====================================\n")
 
@@ -253,7 +230,6 @@ class SettingsManager:
         # Глобальные настройки
         print(f"  row_order: {self.get_row_order()}")
         print(f"  row_heights: {self.get_row_heights()}")
-        print(f"  pinned: {self.get_pinned()}")
         print(f"  hidden_rows: {self.get_hidden_rows()}")
 
         # Настройки по типам
@@ -266,7 +242,6 @@ class SettingsManager:
                     "column_order_",
                     "row_heights_",
                     "row_order_",
-                    "pinned_",
                     "hidden_rows_",
                 )
             ):
@@ -312,12 +287,6 @@ class SettingsManager:
         key = self._get_type_key(SettingsKeys.ROW_ORDER_TYPE, doc_type)
         return self.get(key, [])
 
-    def get_pinned_by_doc_type(self, doc_type: str | None = None) -> list:
-        """Получить закреплённые документы вида (без подстановки данных из default)"""
-        doc_type = doc_type or self.get_current_document_type()
-        key = self._get_type_key(SettingsKeys.PINNED_TYPE, doc_type)
-        return self.get(key, [])
-
     def get_hidden_rows_by_doc_type(self, doc_type: str | None = None) -> list:
         """Получить скрытые строки вида (без подстановки данных из default)"""
         doc_type = doc_type or self.get_current_document_type()
@@ -329,12 +298,6 @@ class SettingsManager:
         doc_type = doc_type or self.get_current_document_type()
         key = self._get_type_key(SettingsKeys.ROW_ORDER_TYPE, doc_type)
         self.set(key, order)
-
-    def set_pinned_by_doc_type(self, ids: list, doc_type: str | None = None):
-        """Сохранить закрепленные документы для типа"""
-        doc_type = doc_type or self.get_current_document_type()
-        key = self._get_type_key(SettingsKeys.PINNED_TYPE, doc_type)
-        self.set(key, ids)
 
     def set_hidden_rows_by_doc_type(self, rows: list, doc_type: str | None = None):
         """Сохранить скрытые строки для типа документа"""

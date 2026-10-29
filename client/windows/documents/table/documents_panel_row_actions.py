@@ -10,6 +10,8 @@ from datetime import datetime
 
 from PyQt6.QtWidgets import QMessageBox
 
+from client.services.delegation_service import DelegationService
+from client.windows.documents.comments.comment_dialog import split_api_error
 from client.windows.documents.history.history_dialog import HistoryDialog
 
 
@@ -222,29 +224,91 @@ class DocumentsRowActionController:
 
     # ---------- перенаправление ----------
 
+    # ---------- перенаправление ----------
+
     def _redirect(self, document_data: dict):
         panel = self.panel
+        doc_id = document_data.get("id")
+        if not doc_id:
+            QMessageBox.warning(panel, "Перенаправление", "Документ не сохранён на сервере.")
+            return
         try:
             from client.windows.documents.redirect.redirect_dialog import RedirectDialog
 
-            doc_id = document_data.get("id")
-            current_recipients = document_data.get("delegates", [])
-            all_employees = panel.controller.get_employees_for_redirect()
-
-            dialog = RedirectDialog(current_recipients, all_employees, parent=panel)
-            dialog.redirect_confirmed.connect(lambda ids, comment: self._confirm_redirect(doc_id, ids, comment))
+            current = document_data.get("delegates") or []
+            if not any(isinstance(e, dict) for e in current):
+                # delegates пришли именами — ID берём из delegates_ids
+                current = [{"id": i} for i in (document_data.get("delegates_ids") or [])]
+            # Диалог сам лениво грузит структуру через http_client,
+            # поэтому get_employees_for_redirect() (загрузка всех сотрудников) не нужен
+            dialog = RedirectDialog(current, parent=panel, http_client=panel.http_client)
+            dialog.redirect_confirmed.connect(
+                lambda ids, comment: self._confirm_redirect(doc_id, ids, comment, current)
+            )
             dialog.exec()
-        except Exception:
+        except Exception as e:
             import traceback
 
             traceback.print_exc()
+            QMessageBox.warning(panel, "Перенаправление", f"Не удалось открыть диалог: {e!s}")
 
-    def _confirm_redirect(self, document_id: int, recipient_ids: list, comment: str):
+    def _confirm_redirect(self, document_id: int, recipient_ids: list, comment: str, current: list):
         panel = self.panel
-        success = panel.controller.redirect_document(document_id, recipient_ids, comment)
-        if success:
-            panel.refresh()
+        old_ids = {e["id"] for e in current if isinstance(e, dict) and e.get("id") is not None}
+        new_ids = set(recipient_ids)
+        to_add = sorted(new_ids - old_ids)
+        to_remove = sorted(old_ids - new_ids)
 
+        if not to_add and not to_remove:
+            QMessageBox.information(panel, "Перенаправление", "Состав участников не изменился.")
+            return
+
+        # Отзыв прав необратим без повторного назначения — спрашиваем отдельно
+        if to_remove:
+            answer = QMessageBox.question(
+                panel,
+                "Перенаправление",
+                f"Вы сняли выбор с участников ({len(to_remove)}). Отозвать у них доступ к документу?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                to_remove = []
+
+        service = DelegationService(panel.http_client)
+        added, failed = 0, []
+        try:
+            if to_add:
+                service.add_delegates(document_id, to_add, comment)
+                added = len(to_add)
+            for emp_id in to_remove:
+                try:
+                    service.remove_delegate(document_id, emp_id)
+                except Exception as e:  # noqa: BLE001
+                    failed.append((emp_id, split_api_error(e)[1]))
+        except Exception as e:  # noqa: BLE001
+            status, detail = split_api_error(e)
+            print(f"[DocumentsPanel] Ошибка перенаправления документа {document_id}: {e}")
+            QMessageBox.warning(
+                panel,
+                "Нет доступа" if status == 403 else "Перенаправление",
+                detail if status == 403 else f"Не удалось перенаправить документ:\n{detail}",
+            )
+            return
+
+        panel.refresh()
+
+        removed = len(to_remove) - len(failed)
+        text = []
+        if added:
+            text.append(f"Добавлено участников: {added}")
+        if removed:
+            text.append(f"Отозвано: {removed}")
+        if failed:
+            text.append("Не удалось отозвать:\n" + "\n".join(f"  id {i}: {d}" for i, d in failed))
+        (QMessageBox.warning if failed else QMessageBox.information)(
+            panel, "Перенаправление", "\n".join(text) or "Готово"
+        )
     # ---------- комментарии ----------
 
     def _comment(self, document_data: dict):

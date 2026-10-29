@@ -131,7 +131,15 @@ class RowManager(QObject):
     # ========== APPLY ==========
 
     def apply_pinning(self):
-        """Применить закрепление к данным"""
+        """Вызывается после загрузки данных с сервера: берём закрепы из is_pinned
+        документов (источник правды — БД) и применяем их к таблице."""
+        documents = self._data_manager.get_documents()
+        if documents:
+            self._pin_manager.sync_from_documents(documents)
+            print(
+                f"[RowManager] закреплено с сервера: "
+                f"{len(self._pin_manager.pinned_ids)} из {len(documents)}"
+            )
         self._apply_pinning()
 
     def _apply_pinning(self):

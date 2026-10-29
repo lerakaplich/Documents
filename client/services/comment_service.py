@@ -21,16 +21,9 @@ class CommentService:
             return []
 
     def add_comment(self, document_id: int, text: str) -> dict[str, Any]:
-        """
-        POST /documents/comments/{document_id}/edit — добавить комментарий.
-        (Серверный эндпоинт может называться иначе — уточни у бэкенда.)
-        """
-        try:
-            logger.info(f"📤 Отправка комментария к документу {document_id}")
-            return self.http.post_form(
-                f"/documents/comments/{document_id}/edit",
-                data={"text": text},
-            )
-        except Exception as e:
-            logger.exception(f"❌ Ошибка отправки комментария: {e}")
-            return {}
+        logger.info(f"📤 Отправка комментария к документу {document_id}")
+        # Исключения (ApiError) пробрасываем в диалог — он сам разбирает 403
+        return self.http.post_form(
+            f"/documents/comments/{document_id}/edit",
+            data={"text": text},
+        )

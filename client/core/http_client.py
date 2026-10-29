@@ -13,6 +13,8 @@ from uuid import UUID
 
 import requests
 from requests.adapters import HTTPAdapter
+from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, NewConnectionError, ReadTimeoutError
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,45 @@ UPLOAD_TIMEOUT = (5, 60)
 
 class AuthError(Exception):
     """Ошибка авторизации"""
+
+
+class ApiError(Exception):
+    """
+    HTTP-ошибка сервера (status >= 400).
+
+    Наследуется от Exception и сохраняет прежний текст сообщения
+    «Ошибка <код>: <тело>», поэтому существующий код `except Exception`
+    продолжает работать, а новый может проверять `e.status_code`
+    (например, молча обработать 404 вместо трейсбека).
+    """
+
+    def __init__(self, status_code: int, body: str):
+        self.status_code = status_code
+        self.body = body
+        super().__init__(f"Ошибка {status_code}: {body}")
+
+
+class ServerUnavailableError(requests.exceptions.ConnectionError):
+    """
+    Сервер не ответил: таймаут или нет соединения.
+
+    Наследует requests.ConnectionError, поэтому существующий код с
+    `except requests.ConnectionError` / `except Exception` работает как раньше,
+    но сообщение короткое и без цепочки urllib3 на сотню строк в логе.
+    """
+
+
+def _network_error_text(e: requests.RequestException) -> str:
+    """Человекочитаемая причина сетевой ошибки (requests прячет её внутри MaxRetryError)."""
+    reason = e.args[0].reason if e.args and isinstance(e.args[0], MaxRetryError) else None
+    if isinstance(e, requests.ReadTimeout) or isinstance(reason, ReadTimeoutError):
+        return f"сервер принял запрос, но не ответил за {DEFAULT_TIMEOUT[1]} с"
+    # NewConnectionError в urllib3 2.x — подкласс ConnectTimeoutError, поэтому проверяем его первым
+    if isinstance(reason, NewConnectionError):
+        return "нет соединения с сервером (отказ в подключении или нет маршрута)"
+    if isinstance(e, requests.ConnectTimeout) or isinstance(reason, ConnectTimeoutError):
+        return f"не удалось подключиться за {DEFAULT_TIMEOUT[0]} с"
+    return "нет соединения с сервером"
 
 
 class _ApiJSONEncoder(json.JSONEncoder):
@@ -92,7 +133,21 @@ class HttpClient:
         self.base_url = _normalize_base_url(base_url)
         self.session = requests.Session()
         # Пул соединений: клиент ходит параллельно (ThreadPoolExecutor в загрузчиках)
-        adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20)
+        # Повторяем ТОЛЬКО неудачные подключения (connect timeout / refused): запрос
+        # при этом на сервер не уходил, поэтому повтор безопасен даже для POST.
+        # Раньше один потерянный SYN = ошибка входа, и пользователю приходилось
+        # нажимать «Войти» второй раз.
+        retry = Retry(
+            total=None,
+            connect=2,
+            read=0,
+            status=0,
+            redirect=0,
+            backoff_factor=0.5,
+            allowed_methods=None,
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20, max_retries=retry)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
@@ -105,13 +160,14 @@ class HttpClient:
         # в __init__
         self._cache: dict[tuple, tuple[float, Any]] = {}
         self._inflight: dict[tuple, threading.Event] = {}
+        self._failures: dict[tuple, tuple[float, BaseException]] = {}
         self._cache_lock = threading.Lock()
 
 
 
     def get_cached(self, endpoint: str, params: dict | None = None, ttl: float = CACHE_TTL):
         import time
-        key = (endpoint, tuple(sorted((params or {}).items())))
+        key = (endpoint, tuple(sorted((k, repr(v)) for k, v in (params or {}).items())))
         while True:
             with self._cache_lock:
                 hit = self._cache.get(key)
@@ -121,12 +177,23 @@ class HttpClient:
                 if event is None:
                     self._inflight[key] = threading.Event()
                     break
+            started = time.monotonic()
             event.wait(timeout=30)  # ждём чужой запрос и повторяем проверку кэша
+            with self._cache_lock:
+                failure = self._failures.get(key)
+            if failure and failure[0] >= started:
+                # Чужой запрос упал, пока мы ждали — повторять его по очереди (каждый до 30 с) нет смысла
+                raise failure[1]
         try:
             result = self.get(endpoint, params)
             with self._cache_lock:
                 self._cache[key] = (time.monotonic(), result)
+                self._failures.pop(key, None)
             return result
+        except Exception as e:
+            with self._cache_lock:
+                self._failures[key] = (time.monotonic(), e)
+            raise
         finally:
             with self._cache_lock:
                 self._inflight.pop(key).set()
@@ -197,10 +264,16 @@ class HttpClient:
                 logger.exception(f"Ошибка при обновлении токена: {e}")
                 return False
 
-    def _auth_header(self) -> dict[str, str]:
-        """Authorization-заголовок с автоматическим обновлением токена."""
+    def _auth_header(self, quiet: bool = False) -> dict[str, str]:
+        """
+        Authorization-заголовок с автоматическим обновлением токена.
+
+        quiet=True — не warn-ить об отсутствии токена (логин и другие /auth/*
+        запросы по определению идут без токена).
+        """
         if not self._access_token:
-            logger.warning("⚠️ Токен отсутствует в запросе!")
+            if not quiet:
+                logger.warning("⚠️ Токен отсутствует в запросе!")
             return {}
         if self._is_token_expired():
             logger.info("⏰ Токен истек, обновляем...")
@@ -208,7 +281,7 @@ class HttpClient:
                 raise AuthError("Не удалось обновить токен")
         return {"Authorization": f"Bearer {self._access_token}"}
 
-    def _get_headers(self) -> dict[str, str]:
+    def _get_headers(self, quiet_no_token: bool = False) -> dict[str, str]:
         """Получить заголовки для запроса с автоматическим обновлением токена"""
         headers = {
             "Content-Type": "application/json",
@@ -217,7 +290,7 @@ class HttpClient:
             # brotli (br) убран: requests без пакета brotli его не распаковывает
             "Accept-Encoding": "gzip, deflate",
         }
-        headers.update(self._auth_header())
+        headers.update(self._auth_header(quiet=quiet_no_token))
         return headers
 
     def _get_multipart_headers(self) -> dict[str, str]:
@@ -233,7 +306,7 @@ class HttpClient:
     def _request(self, method: str, endpoint: str, **kwargs) -> dict[str, Any]:
         """Базовый метод для всех запросов с обработкой ошибок"""
         url = f"{self.base_url}{endpoint}"
-        headers = self._get_headers()
+        headers = self._get_headers(quiet_no_token=endpoint.startswith("/auth/"))
 
         # ── Превращаем json=payload в data=<строка>, чтобы поддержать date/datetime ──
         if "json" in kwargs and kwargs["json"] is not None:
@@ -252,6 +325,14 @@ class HttpClient:
             sent_token = self._access_token
             response = self.session.request(method=method, url=url, headers=headers, timeout=DEFAULT_TIMEOUT, **kwargs)
 
+            # 401 без токена (например, неверный пароль при логине) — это не «протух
+            # токен»: refresh бессмыслен, показываем настоящий ответ сервера.
+            if response.status_code == 401 and sent_token is None:
+                # Ожидаемая ситуация (неверный пароль, протухший/удалённый на сервере
+                # refresh_token) — не ошибка клиента, поэтому warning, а не error.
+                logger.warning("401 %s: %s", endpoint, self._error_detail(response))
+                raise AuthError(self._error_detail(response))
+
             if response.status_code == 401:
                 logger.warning("Получена 401 ошибка, пробуем обновить токен...")
                 if self._refresh_access_token(failed_token=sent_token):
@@ -268,17 +349,33 @@ class HttpClient:
             logger.debug("📥 %s %s -> %s", method, endpoint, response.status_code)
 
             if response.status_code >= 400:
-                logger.error(f"❌ Текст ошибки: {response.text[:500]}")
-                raise Exception(f"Ошибка {response.status_code}: {response.text[:200]}")
+                logger.error("❌ %s %s -> %s: %s", method, endpoint, response.status_code, response.text[:500])
+                raise ApiError(response.status_code, response.text[:200])
 
             if not response.content:
                 return {}
 
             return response.json()
 
+        except (requests.ConnectionError, requests.Timeout) as e:
+            # Сервер недоступен или не ответил — трейсбек на 100 строк ничего не добавляет.
+            text = _network_error_text(e)
+            logger.error("Сервер недоступен (%s %s): %s", method, url, text)
+            raise ServerUnavailableError(f"Сервер недоступен: {text}") from None
         except requests.RequestException as e:
             logger.exception(f"Ошибка запроса: {e}")
             raise
+
+    @staticmethod
+    def _error_detail(response: requests.Response) -> str:
+        """Достаёт человекочитаемый detail из JSON-ответа FastAPI."""
+        try:
+            detail = response.json().get("detail")
+            if isinstance(detail, str) and detail:
+                return detail
+        except Exception:
+            pass
+        return f"Ошибка {response.status_code}: {response.text[:200]}"
 
     # ==================== ОСНОВНЫЕ МЕТОДЫ ====================
 
@@ -297,6 +394,37 @@ class HttpClient:
     def patch(self, endpoint: str, data: dict | None = None, json: dict | None = None) -> dict[str, Any]:
         """PATCH запрос"""
         return self._request("PATCH", endpoint, json=json, data=data)
+
+    def get_binary(self, endpoint: str, params: dict | None = None) -> bytes:
+        """
+        GET с бинарным ответом (JPEG-страницы вложений и т.п.).
+        Те же правила, что у _request: авто-refresh токена, один повтор при 401,
+        ApiError при status >= 400.
+        """
+        url = f"{self.base_path_url(endpoint)}"
+        headers = {"Accept": "*/*", "Accept-Encoding": "gzip, deflate"}
+        headers.update(self._auth_header())
+        sent_token = self._access_token
+        try:
+            response = self.session.get(url, headers=headers, params=params, timeout=DEFAULT_TIMEOUT)
+            if response.status_code == 401 and sent_token is not None:
+                if not self._refresh_access_token(failed_token=sent_token):
+                    raise AuthError("Не удалось обновить токен, требуется повторная авторизация")
+                headers["Authorization"] = f"Bearer {self._access_token}"
+                response = self.session.get(url, headers=headers, params=params, timeout=DEFAULT_TIMEOUT)
+        except (requests.ConnectionError, requests.Timeout) as e:
+            text = _network_error_text(e)
+            logger.error("Сервер недоступен (GET %s): %s", url, text)
+            raise ServerUnavailableError(f"Сервер недоступен: {text}") from None
+        if response.status_code == 401:
+            raise AuthError("Сессия истекла, требуется повторный вход")
+        if response.status_code >= 400:
+            logger.error("❌ GET %s -> %s: %s", endpoint, response.status_code, response.text[:300])
+            raise ApiError(response.status_code, response.text[:200])
+        return response.content
+
+    def base_path_url(self, endpoint: str) -> str:
+        return f"{self.base_url}{endpoint}"
 
     def delete(self, endpoint: str) -> dict[str, Any]:
         """DELETE запрос"""
@@ -345,7 +473,7 @@ class HttpClient:
         if response.status_code >= 400:
             body = response.text[:500] if response.content else "<empty>"
             logger.error(f"❌ Текст ошибки: {body}")
-            raise Exception(f"Ошибка {response.status_code}: {body}")
+            raise ApiError(response.status_code, body)
 
         if not response.content:
             return {"ok": True}
@@ -366,11 +494,20 @@ class HttpClient:
         """POST application/x-www-form-urlencoded (для FastAPI Form)."""
         url = f"{self.base_url}{endpoint}"
         headers = {"Accept": "application/json"}
-        headers.update(self._auth_header())
+        headers.update(self._auth_header(quiet=endpoint.startswith("/auth/")))
         logger.debug("📤 POST (form) %s", url)
+        sent_token = self._access_token
         response = self.session.post(url, headers=headers, data=data, timeout=DEFAULT_TIMEOUT)
+
+        if response.status_code == 401 and sent_token is not None:
+            # как и в _request: токен мог протухнуть — обновляем и повторяем один раз
+            if not self._refresh_access_token(failed_token=sent_token):
+                raise AuthError("Не удалось обновить токен, требуется повторная авторизация")
+            headers["Authorization"] = f"Bearer {self._access_token}"
+            response = self.session.post(url, headers=headers, data=data, timeout=DEFAULT_TIMEOUT)
+
         if response.status_code >= 400:
-            raise Exception(f"Ошибка {response.status_code}: {response.text[:200]}")
+            raise ApiError(response.status_code, response.text[:200])
         if not response.content:
             return {}
         return response.json()

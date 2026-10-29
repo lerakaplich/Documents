@@ -3,8 +3,6 @@
 from datetime import datetime
 from typing import Any
 
-from fastapi import params
-
 from client.core.http_client import HttpClient, logger
 
 # Поля, обязательные по контракту POST /documents (DocumentCreateForm).
@@ -34,13 +32,8 @@ def validate_create_payload(payload: dict[str, Any]) -> list[str]:
 class DocumentService:
     def __init__(self, http_client: HttpClient):
         self.client = http_client
-        # ВАЖНО: 404 на POST /documents почти наверняка означает, что
-        # реальный путь другой — по структуре сервера файл документов лежит
-        # в server/app/api/doc/documents.py (в отличие от, например, типов —
-        # server/app/api/types.py), значит роутер документов, скорее всего,
-        # подключён в main.py с дополнительным префиксом (например,
-        # "/doc/documents" или похожим). Проверьте include_router(...) для
-        # documents в server/app/main.py и поправьте base_path здесь.
+        # Роутер документов смонтирован под групповым префиксом "/documents",
+        # а у самого роутера prefix="/documents" — отсюда "/documents/documents".
         self.base_path = "/documents/documents"
 
     # ─────────── ЧТЕНИЕ ───────────
@@ -117,13 +110,7 @@ class DocumentService:
 
     def get_all_documents(self) -> list[dict[str, Any]]:
         """Оставлено для обратной совместимости. Предпочитайте get_documents()."""
-        try:
-            print(f"[DocumentService] GET {self.base_path}/ params={params}")
-            r = self.client.get(f"{self.base_path}/", params=params)
-            return r.get("items", []) if isinstance(r, dict) else r
-        except Exception as e:
-            print(f"❌ get_all_documents: {e}")
-            return []
+        return self.get_documents().get("items", [])
 
     def get_document_by_id(self, document_id: int) -> dict[str, Any] | None:
         try:
@@ -139,7 +126,7 @@ class DocumentService:
         if errors:
             raise ValueError("; ".join(errors))
         print(f"📤 POST /documents/ payload: {payload}")
-        return self.client.post(f"{self.base_path}/", json=payload)  # ← добавили "/"
+        return self.client.post(f"{self.base_path}/", json=payload)
 
     def get_proposed_number(self, type_id: int, direction: str) -> str | None:
         try:
@@ -169,16 +156,24 @@ class DocumentService:
         """
 
         def _iso(v):
+            """Только дата 'YYYY-MM-DD', без времени."""
             if not v:
                 return None
-            if hasattr(v, "toString"):  # QDate
+            if hasattr(v, "toString"):  # QDate / QDateTime
                 return v.toString("yyyy-MM-dd")
-            if isinstance(v, str) and len(v) >= 10 and v[4] == "-":
-                return v
-            try:
-                return datetime.strptime(v, "%d.%m.%Y").date().isoformat()
-            except Exception:
-                return v
+            if isinstance(v, datetime):
+                return v.date().isoformat()
+            if hasattr(v, "isoformat"):  # date
+                return v.isoformat()
+            if isinstance(v, str):
+                v = v.strip()
+                if len(v) >= 10 and v[4] == "-":
+                    return v[:10]  # отрезаем время: '2026-10-22T15:30' -> '2026-10-22'
+                try:
+                    return datetime.strptime(v[:10], "%d.%m.%Y").date().isoformat()
+                except ValueError:
+                    return None
+            return None
 
         # ── Получатели ──
         # Диалог отдаёт пары (type, id): 1 — организация, 2 — отдел, 3 — сотрудник.
@@ -192,6 +187,14 @@ class DocumentService:
         def _is_pair(x) -> bool:
             return isinstance(x, (list, tuple)) and len(x) == 2
 
+        def _receiver(emp=None, dept=None, org=None) -> dict[str, Any]:
+            return {
+                "target_employee_id": emp,
+                "target_department_id": dept,
+                "target_organization_id": org,
+                "target_official_text": None,
+            }
+
         receivers_payload: list[dict[str, Any]] = []
         for item in data.get("receiver_ids") or []:
             if _is_pair(item):
@@ -200,26 +203,12 @@ class DocumentService:
                 node_id = item
                 node_type = 2 if node_id in depts else 1 if node_id in orgs else 3 if node_id in emps else 0
 
-            if node_type == 2:
-                receivers_payload.append(
-                    {
-                        "target_department_id": node_id,
-                        "target_organization_id": None,
-                        "target_official_text": None,
-                    }
-                )
-            elif node_type == 1:
-                receivers_payload.append(
-                    {
-                        "target_department_id": None,
-                        "target_organization_id": node_id,
-                        "target_official_text": None,
-                    }
-                )
+            if node_type == 1:
+                receivers_payload.append(_receiver(org=node_id))
+            elif node_type == 2:
+                receivers_payload.append(_receiver(dept=node_id))
             elif node_type == 3:
-                # В `document_receivers` нет employee_id — по контракту
-                # сотрудник как получатель не выражается. Скипаем.
-                print(f"[DocumentService] ⚠️ сотрудник-получатель id={node_id} пропущен")
+                receivers_payload.append(_receiver(emp=node_id))
             else:
                 print(f"[DocumentService] ⚠️ неизвестный получатель {item!r}")
 
@@ -269,6 +258,7 @@ class DocumentService:
             "clearance_id": data.get("clearance_id"),
             "source_employee_id": data.get("source_employee_id"),
             "source_organization_id": data.get("source_organization_id"),
+            "source_department_id": data.get("source_department_id"),
             "source_official_text": (data.get("source_official_text") or "").strip() or None,
             "sender_id": data.get("sender_id"),
             "executors": executors_payload,
@@ -290,6 +280,7 @@ class DocumentService:
             "clearance_id",
             "source_employee_id",
             "source_organization_id",
+            "source_department_id",
             "source_official_text",
             "sender_id",
         }
@@ -324,6 +315,14 @@ class DocumentService:
     def unarchive_document(self, document_id: int) -> None:
         """DELETE /documents/workflow/{id}/archive — из персонального архива."""
         self.client.delete(f"/documents/workflow/{document_id}/archive")
+
+    def pin_document(self, document_id: int) -> None:
+        """POST /documents/workflow/{id}/pin — закрепить для текущего пользователя."""
+        self.client.post(f"/documents/workflow/{document_id}/pin")
+
+    def unpin_document(self, document_id: int) -> None:
+        """DELETE /documents/workflow/{id}/pin — открепить."""
+        self.client.delete(f"/documents/workflow/{document_id}/pin")
 
     def get_document_history(self, document_id: int) -> list:
         """GET /documents/{document_id}/history — сквозная история документа."""

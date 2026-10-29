@@ -1,76 +1,101 @@
 # client/windows/documents/stats/unanswered_stats_dialog.py
+"""
+Диалог со статистикой по неотвеченным документам.
+
+Разметка и стили — в client/ui/documents/unanswered_stats_dialog.ui
+(цвета — токенами темы вида {BG_DIALOG}, подставляются apply_theme_to_widget).
+Здесь — загрузка .ui, заполнение таблицы и экспорт в Excel.
+"""
+
+import os
+from datetime import date
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QBrush, QColor
 from PyQt6.QtWidgets import (
+    QApplication,
     QDialog,
-    QHBoxLayout,
+    QFileDialog,
     QHeaderView,
-    QLabel,
-    QPushButton,
-    QTableWidget,
+    QMessageBox,
     QTableWidgetItem,
-    QVBoxLayout,
 )
+from PyQt6.uic import loadUi
 
-from client.core.themes import get_manager
+from client.core.state.app_state import AppState
+from client.core.themes import apply_theme_to_widget, get_manager
+from client.windows.documents.comments.comment_dialog import split_api_error
+
+EXPORT_ENDPOINT = "/documents/documents/unanswered/export-excel"
+
+# Режимы ширины колонок: №, Документ, Тема, Срок, Просрочка, Штраф
+_COLUMN_MODES = (
+    QHeaderView.ResizeMode.ResizeToContents,
+    QHeaderView.ResizeMode.ResizeToContents,
+    QHeaderView.ResizeMode.Stretch,
+    QHeaderView.ResizeMode.ResizeToContents,
+    QHeaderView.ResizeMode.ResizeToContents,
+    QHeaderView.ResizeMode.ResizeToContents,
+)
 
 
 class UnansweredStatsDialog(QDialog):
     """Диалог со статистикой по неотвеченным документам."""
 
-    def __init__(self, stats: list, parent=None):
+    def __init__(self, stats: list, parent=None, http_client=None):
         super().__init__(parent)
         self.stats = stats or []
+        self.http_client = http_client or AppState().http_client
 
-        self.setWindowTitle("Статистика по неотвеченным документам")
-        self.resize(1000, 600)
-        self.setModal(True)
+        self._load_ui()
+        apply_theme_to_widget(self)
 
-        self._build_ui()
-        self._apply_theme()
+        self._setup_table()
+        self._fill_summary()
+        self._fill_table()
+        self._connect_signals()
 
-    # ─────────────────────────────────────────────
+    # ─────────── UI ───────────
 
-    def _build_ui(self):
-        root = QVBoxLayout(self)
-        root.setContentsMargins(20, 20, 20, 20)
-        root.setSpacing(12)
+    @staticmethod
+    def _ui_path() -> str:
+        """client/windows/documents/stats/ → client/ui/documents/unanswered_stats_dialog.ui"""
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        client_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+        return os.path.join(client_dir, "ui", "documents", "unanswered_stats_dialog.ui")
 
-        # Заголовок + итог
-        header = QHBoxLayout()
+    def _load_ui(self):
+        ui_path = self._ui_path()
+        if not os.path.exists(ui_path):
+            raise FileNotFoundError(f"UI файл не найден: {ui_path}")
+        loadUi(ui_path, self)
 
-        title = QLabel("Документы без ответа")
-        title.setObjectName("statsTitle")
-        header.addWidget(title)
+    def _connect_signals(self):
+        self.exportButton.clicked.connect(self._export_excel)
+        self.closeButton.clicked.connect(self.accept)
+        # Enter не должен случайно запускать экспорт или закрывать окно
+        self.exportButton.setAutoDefault(False)
+        self.closeButton.setAutoDefault(False)
 
-        header.addStretch()
+    def _setup_table(self):
+        header = self.statsTable.horizontalHeader()
+        for col, mode in enumerate(_COLUMN_MODES):
+            header.setSectionResizeMode(col, mode)
 
+    # ─────────── Данные ───────────
+
+    def _fill_summary(self):
         total_penalty = sum(int(s.get("penalty", 0) or 0) for s in self.stats)
-        summary = QLabel(f"Всего: {len(self.stats)}  •  Общий штраф: {total_penalty}")
-        summary.setObjectName("statsSummary")
-        header.addWidget(summary)
+        self.statsSummary.setText(f"Всего: {len(self.stats)}  •  Общий штраф: {total_penalty}")
+        # Если пусто — показываем сообщение над таблицей
+        self.statsEmpty.setVisible(not self.stats)
 
-        root.addLayout(header)
+    def _fill_table(self):
+        overdue_brush = QBrush(QColor(get_manager().current.TEXT_DANGER))
 
-        # Таблица
-        self.table = QTableWidget()
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["№", "Документ", "Тема", "Срок", "Просрочка (дн.)", "Штраф"])
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
-
-        # Заполнение
+        self.statsTable.setRowCount(0)
         for i, s in enumerate(self.stats):
-            self.table.insertRow(i)
+            self.statsTable.insertRow(i)
 
             reg = str(s.get("reg_number") or s.get("document_id") or "—")
             title = str(s.get("title") or s.get("about") or "—")
@@ -78,117 +103,53 @@ class UnansweredStatsDialog(QDialog):
             days = s.get("days_overdue") or s.get("overdue_days") or 0
             penalty = s.get("penalty") or 0
 
-            self.table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
-            self.table.setItem(i, 1, QTableWidgetItem(reg))
-            self.table.setItem(i, 2, QTableWidgetItem(title))
-            self.table.setItem(i, 3, QTableWidgetItem(deadline))
-            self.table.setItem(i, 4, QTableWidgetItem(str(days)))
-            self.table.setItem(i, 5, QTableWidgetItem(str(penalty)))
+            values = (str(i + 1), reg, title, deadline, str(days), str(penalty))
+            for col, value in enumerate(values):
+                self.statsTable.setItem(i, col, QTableWidgetItem(value))
 
-            # Подсветка просрочки красным, если > 0
+            # Подсветка просрочки, если > 0
             try:
-                if int(days) > 0:
-                    for col in range(6):
-                        item = self.table.item(i, col)
-                        if item:
-                            item.setForeground(QBrush(QColor("#E53E3E")))
-            except Exception:
-                pass
+                overdue = int(days) > 0
+            except (TypeError, ValueError):
+                overdue = False
+            if overdue:
+                for col in range(self.statsTable.columnCount()):
+                    item = self.statsTable.item(i, col)
+                    if item:
+                        item.setForeground(overdue_brush)
 
-        root.addWidget(self.table, 1)
+    # ─────────── Экспорт ───────────
 
-        # Кнопка «Закрыть»
-        buttons = QHBoxLayout()
-        buttons.addStretch()
+    def _export_excel(self):
+        """Скачивает Excel с сервера, сохраняет в выбранное место и сообщает об успехе."""
+        default_name = f"unanswered_documents_{date.today():%Y-%m-%d}.xlsx"
+        path, _ = QFileDialog.getSaveFileName(self, "Сохранить таблицу", default_name, "Excel (*.xlsx)")
+        if not path:
+            return  # пользователь отменил выбор
+        if not path.lower().endswith(".xlsx"):
+            path += ".xlsx"
 
-        close_btn = QPushButton("Закрыть")
-        close_btn.setMinimumSize(120, 36)
-        close_btn.clicked.connect(self.accept)
-        buttons.addWidget(close_btn)
+        error = None
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            data = self.http_client.get_binary(EXPORT_ENDPOINT)
+            with open(path, "wb") as f:
+                f.write(data)
+        except PermissionError:
+            error = "Не удалось записать файл. Возможно, он открыт в Excel или нет прав на папку."
+        except Exception as e:  # noqa: BLE001
+            status, detail = split_api_error(e)
+            error = detail if status == 403 else f"Не удалось получить файл:\n{detail}"
+        finally:
+            QApplication.restoreOverrideCursor()
 
-        root.addLayout(buttons)
+        if error:
+            QMessageBox.warning(self, "Экспорт", error)
+            return
+        QMessageBox.information(self, "Экспорт", f"Таблица сохранена:\n{os.path.normpath(path)}")
 
-        # Если пусто — покажем сообщение в заголовке
-        if not self.stats:
-            empty = QLabel("Нет документов, требующих ответа 🎉")
-            empty.setObjectName("statsEmpty")
-            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            root.insertWidget(1, empty)
-
-    # ─────────────────────────────────────────────
-
-    def _apply_theme(self):
-        t = get_manager().current
-        self.setStyleSheet(f"""
-            QDialog {{
-                background-color: {t.BG_DIALOG};
-            }}
-            QLabel#statsTitle {{
-                font-size: 20px;
-                font-weight: bold;
-                color: {t.TEXT_PRIMARY};
-                background: transparent;
-            }}
-            QLabel#statsSummary {{
-                font-size: 14px;
-                font-weight: 500;
-                color: {t.TEXT_MUTED_ALT};
-                background: transparent;
-            }}
-            QLabel#statsEmpty {{
-                font-size: 16px;
-                color: {t.TEXT_MUTED_ALT};
-                padding: 20px;
-                background: transparent;
-            }}
-            QTableWidget {{
-                background-color: {t.BG_CARD};
-                color: {t.TEXT_PRIMARY};
-                gridline-color: {t.TABLE_GRID};
-                border: 1px solid {t.BORDER_LIGHT};
-                border-radius: 8px;
-            }}
-            QHeaderView::section {{
-                background-color: {t.TABLE_HEADER_BG};
-                color: {t.TABLE_HEADER_TEXT};
-                padding: 8px;
-                border: none;
-                border-right: 1px solid {t.TABLE_HEADER_BORDER};
-                border-bottom: 2px solid {t.TABLE_HEADER_BORDER};
-                font-weight: bold;
-                font-size: 13px;
-            }}
-            QPushButton {{
-                background-color: {t.ACCENT_PRIMARY};
-                color: {t.TEXT_ON_ACCENT};
-                border: none;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 600;
-                padding: 0 20px;
-            }}
-            QPushButton:hover {{
-                background-color: {t.ACCENT_HOVER};
-            }}
-            QPushButton:pressed {{
-                background-color: {t.ACCENT_PRESSED};
-            }}
-            QScrollBar:vertical {{
-                background: {t.SCROLLBAR_BG};
-                width: 8px;
-                border-radius: 4px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {t.SCROLLBAR_HANDLE};
-                border-radius: 4px;
-                min-height: 20px;
-            }}
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{
-                border: none;
-                background: none;
-            }}
-        """)
+    # ─────────── Тема ───────────
 
     def reapply_theme(self):
-        self._apply_theme()
+        apply_theme_to_widget(self)
+        self._fill_table()  # цвет подсветки просрочки берётся из темы

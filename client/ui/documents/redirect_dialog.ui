@@ -260,6 +260,25 @@ QScrollBar::sub-page:vertical {
             <property name="cursor">
              <cursorShape>PointingHandCursor</cursorShape>
             </property>
+            <property name="styleSheet">
+             <string notr="true">
+QPushButton {
+    background-color: {ACCENT_DANGER};
+    color: {TEXT_ON_ACCENT};
+    border-radius: 8px;
+    font-weight: bold;
+	padding: 6px 10px;
+    font-size: 14px;
+    border: none;
+}
+QPushButton:hover {
+    background-color: {ACCENT_DANGER_HOVER};
+}
+QPushButton:pressed {
+    background-color: {ACCENT_DANGER_PRESSED};
+}
+</string>
+            </property>
             <property name="text">
              <string>Поиск</string>
             </property>

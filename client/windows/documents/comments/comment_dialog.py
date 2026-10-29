@@ -29,8 +29,18 @@ from PyQt6.QtWidgets import (
 from PyQt6.uic import loadUi
 
 from client.core.state.app_state import AppState
-from client.core.themes import T, apply_theme_to_widget
 from client.services.comment_service import CommentService
+from client.core.themes import apply_theme_to_widget, get_manager
+
+
+class _ThemeProxy:
+    """T.<токен> всегда берёт значение из текущей активной темы (на момент вызова)."""
+
+    def __getattr__(self, name):
+        return getattr(get_manager().current, name)
+
+
+T = _ThemeProxy()
 
 ROOT_DIR = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))

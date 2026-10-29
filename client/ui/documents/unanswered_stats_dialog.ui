@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>UnansweredStatsDialog</class>
+ <widget class="QDialog" name="UnansweredStatsDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Статистика по неотвеченным документам</string>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+* {
+    font-family: 'Segoe UI', Arial;
+}
+
+QDialog {
+    background-color: {BG_DIALOG};
+    color: {TEXT_PRIMARY};
+}
+
+QLabel#statsTitle {
+    font-size: 20px;
+    font-weight: bold;
+    color: {TEXT_PRIMARY};
+    background: transparent;
+}
+
+QLabel#statsSummary {
+    font-size: 14px;
+    font-weight: 500;
+    color: {TEXT_MUTED_ALT};
+    background: transparent;
+}
+
+QLabel#statsEmpty {
+    font-size: 16px;
+    color: {TEXT_MUTED_ALT};
+    padding: 20px;
+    background: transparent;
+}
+
+QTableWidget#statsTable {
+    background-color: {BG_CARD};
+    color: {TEXT_PRIMARY};
+    gridline-color: {TABLE_GRID};
+    border: 1px solid {BORDER_LIGHT};
+    border-radius: 8px;
+    font-size: 14px;
+    outline: 0;
+}
+QTableWidget#statsTable::item {
+    padding: 4px 6px;
+}
+QTableWidget#statsTable::item:selected {
+    background-color: {TABLE_SELECTION_BG};
+    color: {TABLE_SELECTION_TEXT};
+}
+
+QHeaderView::section {
+    background-color: {TABLE_HEADER_BG};
+    color: {TABLE_HEADER_TEXT};
+    padding: 8px;
+    border: none;
+    border-right: 1px solid {TABLE_HEADER_BORDER};
+    border-bottom: 2px solid {TABLE_HEADER_BORDER};
+    font-weight: bold;
+    font-size: 13px;
+}
+
+QPushButton {
+    background-color: {ACCENT_PRIMARY};
+    color: {TEXT_ON_ACCENT};
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0px 20px;
+}
+QPushButton:hover {
+    background-color: {ACCENT_HOVER};
+}
+QPushButton:pressed {
+    background-color: {ACCENT_PRESSED};
+}
+
+QScrollBar:vertical {
+    background: {SCROLLBAR_BG};
+    width: 8px;
+    border-radius: 4px;
+    margin: 0px;
+    border: none;
+}
+QScrollBar::handle:vertical {
+    background: {SCROLLBAR_HANDLE};
+    border-radius: 4px;
+    min-height: 20px;
+}
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="rootLayout">
+   <property name="spacing">
+    <number>12</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="headerLayout">
+     <item>
+      <widget class="QLabel" name="statsTitle">
+       <property name="text">
+        <string>Документы без ответа</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="headerSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="statsSummary">
+       <property name="text">
+        <string>Всего: 0  •  Общий штраф: 0</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="statsEmpty">
+     <property name="visible">
+      <bool>false</bool>
+     </property>
+     <property name="text">
+      <string>Нет документов, требующих ответа 🎉</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="statsTable">
+     <property name="editTriggers">
+      <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+     </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+     </property>
+     <attribute name="horizontalHeaderStretchLastSection">
+      <bool>true</bool>
+     </attribute>
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>№</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Документ</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Тема</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Срок</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Просрочка (дн.)</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Штраф</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="buttonsLayout">
+     <item>
+      <spacer name="buttonsSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportButton">
+       <property name="minimumSize">
+        <size>
+         <width>160</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="text">
+        <string>Сохранить в Excel</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="closeButton">
+       <property name="minimumSize">
+        <size>
+         <width>120</width>
+         <height>36</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="text">
+        <string>Закрыть</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
