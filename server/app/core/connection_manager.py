@@ -30,7 +30,7 @@ class ConnectionManager:
             logger.info(f"WS message successfully sent to employee_id={employee_id}: {message}")
             return True
         except Exception as e:
-            logger.error(f"Failed to send WS message to employee_id={employee_id}: {e}")
+            logger.exception(f"Failed to send WS message to employee_id={employee_id}: {e}")
             self.disconnect(employee_id)
             return False
 

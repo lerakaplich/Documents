@@ -298,7 +298,7 @@ class DocumentService:
             for emp_id in target_emp_ids:
                 await manager.send_personal_message(emp_id, ws_payload)
         except Exception as ws_err:
-            logger.error(
+            logger.exception(
                 f"Failed to send WebSocket notifications for doc_id={new_doc.id}: {ws_err}",
                 exc_info=True
             )

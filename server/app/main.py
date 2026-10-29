@@ -1,7 +1,3 @@
-import logging
-import os
-from logging.handlers import RotatingFileHandler
-
 from fastapi import FastAPI, Depends
 from server.app.api.auth_router import router as auth_router
 from server.app.api.doc import doc_router
@@ -24,6 +20,8 @@ from server.app.repositories.employee_repo import EmployeesRepository
 from server.app.repositories.document_repo import DocumentRepository
 from server.app.services.common.sync_service import SyncService
 
+API_V1_PREFIX = "/api/v1"
+
 setup_logging(debug=False)
 
 app = FastAPI(
@@ -32,18 +30,18 @@ app = FastAPI(
 )
 
 # Подключаем наш написанный модуль авторизации
-app.include_router(api_router, prefix="/api/v1")
-app.include_router(auth_router, prefix="/api/v1")
-app.include_router(doc_router, prefix="/api/v1")
-app.include_router(org_router, prefix="/api/v1")
-app.include_router(dept_router, prefix="/api/v1")
-app.include_router(dept_type_router, prefix="/api/v1")
-app.include_router(pos_router, prefix="/api/v1")
-app.include_router(ws_router, prefix="/api/v1")
-app.include_router(type_router, prefix="/api/v1")
-app.include_router(tag_router, prefix="/api/v1")
-app.include_router(over_router, prefix="/api/v1")
-app.include_router(employees_router, prefix="/api/v1")
+app.include_router(api_router, prefix=API_V1_PREFIX)
+app.include_router(auth_router, prefix=API_V1_PREFIX)
+app.include_router(doc_router, prefix=API_V1_PREFIX)
+app.include_router(org_router, prefix=API_V1_PREFIX)
+app.include_router(dept_router, prefix=API_V1_PREFIX)
+app.include_router(dept_type_router, prefix=API_V1_PREFIX)
+app.include_router(pos_router, prefix=API_V1_PREFIX)
+app.include_router(ws_router, prefix=API_V1_PREFIX)
+app.include_router(type_router, prefix=API_V1_PREFIX)
+app.include_router(tag_router, prefix=API_V1_PREFIX)
+app.include_router(over_router, prefix=API_V1_PREFIX)
+app.include_router(employees_router, prefix=API_V1_PREFIX)
 app.add_exception_handler(Exception, global_exception_handler)
 
 app.add_middleware(LoggingAndTraceMiddleware)
