@@ -306,7 +306,7 @@ async def process_bulk_description(
 
     repo = OvertimeRepository(emp_session)
     try:
-        updated = await repo.update_bulk_notes_for_employee(
+        await repo.update_bulk_notes_for_employee(
             overtime_ids=selected_ids,
             employee_id=current_employee.id,   # 👈 защита от правки чужих записей
             note=note_text,

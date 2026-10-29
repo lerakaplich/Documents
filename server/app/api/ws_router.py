@@ -1,10 +1,7 @@
-import jwt
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
 
-from server.app.config import JWT_SECRET_KEY, JWT_ALGORITHM
 from server.app.core.connection_manager import manager
-from server.app.core.security_tokens import decode_access_token, \
-    decode_access_token_ws  # Ваша функция декодирования токена
+from server.app.core.security_tokens import decode_access_token_ws
 
 router = APIRouter(prefix="/ws", tags=["WebSockets"])
 
@@ -36,6 +33,6 @@ async def websocket_endpoint(
     try:
         while True:
             # Держим соединение открытым, ждем сообщения/пинги от клиента
-            data = await websocket.receive_text()
+            await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(employee_id)
